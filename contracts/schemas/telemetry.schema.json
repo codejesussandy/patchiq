@@ -1,0 +1,413 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://patchify.io/schemas/telemetry.json",
+  "title": "Real-Time Telemetry",
+  "description": "Real-time performance and health metrics collected by agents",
+  "type": "object",
+  "definitions": {
+    "CPUTelemetry": {
+      "type": "object",
+      "description": "CPU performance metrics",
+      "required": ["usagePercent"],
+      "properties": {
+        "usagePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Overall CPU usage percentage"
+        },
+        "perCoreUsage": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "description": "Per-core CPU usage"
+        },
+        "userPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "User mode CPU time"
+        },
+        "systemPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "System/kernel CPU time"
+        },
+        "idlePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "loadAverage1m": {
+          "type": "number",
+          "description": "1-minute load average (Unix)"
+        },
+        "loadAverage5m": {
+          "type": "number",
+          "description": "5-minute load average (Unix)"
+        },
+        "loadAverage15m": {
+          "type": "number",
+          "description": "15-minute load average (Unix)"
+        },
+        "processCount": {
+          "type": "integer",
+          "description": "Total process count"
+        },
+        "threadCount": {
+          "type": "integer",
+          "description": "Total thread count"
+        },
+        "temperature": {
+          "type": "number",
+          "description": "CPU temperature in Celsius"
+        },
+        "frequency": {
+          "type": "integer",
+          "description": "Current CPU frequency in MHz"
+        },
+        "throttled": {
+          "type": "boolean",
+          "description": "Whether CPU is being throttled"
+        }
+      }
+    },
+    "MemoryTelemetry": {
+      "type": "object",
+      "description": "Memory performance metrics",
+      "required": ["usagePercent", "usedBytes", "availableBytes"],
+      "properties": {
+        "usagePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "totalBytes": {
+          "type": "integer"
+        },
+        "usedBytes": {
+          "type": "integer"
+        },
+        "availableBytes": {
+          "type": "integer"
+        },
+        "freeBytes": {
+          "type": "integer"
+        },
+        "cachedBytes": {
+          "type": "integer",
+          "description": "Cached memory (Linux/macOS)"
+        },
+        "buffersBytes": {
+          "type": "integer",
+          "description": "Buffer memory (Linux)"
+        },
+        "swapUsagePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "swapTotalBytes": {
+          "type": "integer"
+        },
+        "swapUsedBytes": {
+          "type": "integer"
+        },
+        "swapFreeBytes": {
+          "type": "integer"
+        },
+        "pageFaultsPerSec": {
+          "type": "number"
+        },
+        "commitPercent": {
+          "type": "number",
+          "description": "Commit charge percentage (Windows)"
+        }
+      }
+    },
+    "DiskTelemetry": {
+      "type": "object",
+      "description": "Disk I/O metrics",
+      "properties": {
+        "drives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "mountPoint": {
+                "type": "string"
+              },
+              "usagePercent": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "usedBytes": {
+                "type": "integer"
+              },
+              "freeBytes": {
+                "type": "integer"
+              },
+              "readBytesPerSec": {
+                "type": "number"
+              },
+              "writeBytesPerSec": {
+                "type": "number"
+              },
+              "readOpsPerSec": {
+                "type": "number"
+              },
+              "writeOpsPerSec": {
+                "type": "number"
+              },
+              "queueLength": {
+                "type": "number",
+                "description": "Average disk queue length"
+              },
+              "busyPercent": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Percentage of time disk was busy"
+              },
+              "latencyMs": {
+                "type": "number",
+                "description": "Average I/O latency in milliseconds"
+              }
+            }
+          }
+        },
+        "totalReadBytesPerSec": {
+          "type": "number"
+        },
+        "totalWriteBytesPerSec": {
+          "type": "number"
+        }
+      }
+    },
+    "NetworkTelemetry": {
+      "type": "object",
+      "description": "Network I/O metrics",
+      "properties": {
+        "interfaces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "bytesSentPerSec": {
+                "type": "number"
+              },
+              "bytesReceivedPerSec": {
+                "type": "number"
+              },
+              "packetsSentPerSec": {
+                "type": "number"
+              },
+              "packetsReceivedPerSec": {
+                "type": "number"
+              },
+              "errorsIn": {
+                "type": "integer"
+              },
+              "errorsOut": {
+                "type": "integer"
+              },
+              "droppedIn": {
+                "type": "integer"
+              },
+              "droppedOut": {
+                "type": "integer"
+              },
+              "utilizationPercent": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        },
+        "totalBytesSentPerSec": {
+          "type": "number"
+        },
+        "totalBytesReceivedPerSec": {
+          "type": "number"
+        },
+        "tcpConnectionsEstablished": {
+          "type": "integer"
+        },
+        "tcpConnectionsActive": {
+          "type": "integer"
+        },
+        "latencyMs": {
+          "type": "number",
+          "description": "Network latency to gateway/internet"
+        },
+        "internetConnected": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ProcessMetrics": {
+      "type": "object",
+      "description": "Top processes by resource usage",
+      "properties": {
+        "topByCpu": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "properties": {
+              "pid": { "type": "integer" },
+              "name": { "type": "string" },
+              "cpuPercent": { "type": "number" },
+              "memoryPercent": { "type": "number" },
+              "user": { "type": "string" }
+            }
+          }
+        },
+        "topByMemory": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "properties": {
+              "pid": { "type": "integer" },
+              "name": { "type": "string" },
+              "cpuPercent": { "type": "number" },
+              "memoryPercent": { "type": "number" },
+              "memoryBytes": { "type": "integer" },
+              "user": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "SystemErrors": {
+      "type": "object",
+      "description": "System error and crash information",
+      "properties": {
+        "applicationCrashCount24h": {
+          "type": "integer",
+          "description": "App crashes in last 24 hours"
+        },
+        "applicationCrashCount7d": {
+          "type": "integer",
+          "description": "App crashes in last 7 days"
+        },
+        "lastCrash": {
+          "type": "object",
+          "properties": {
+            "timestamp": { "type": "string", "format": "date-time" },
+            "application": { "type": "string" },
+            "errorCode": { "type": "string" },
+            "description": { "type": "string" }
+          }
+        },
+        "bsodCount30d": {
+          "type": "integer",
+          "description": "Blue Screen of Death count in last 30 days (Windows)"
+        },
+        "lastBsod": {
+          "type": "object",
+          "properties": {
+            "timestamp": { "type": "string", "format": "date-time" },
+            "stopCode": { "type": "string" },
+            "bugCheckCode": { "type": "string" },
+            "parameter1": { "type": "string" },
+            "parameter2": { "type": "string" },
+            "parameter3": { "type": "string" },
+            "parameter4": { "type": "string" },
+            "driverName": { "type": "string" }
+          },
+          "description": "Last BSOD details (Windows)"
+        },
+        "kernelPanicCount30d": {
+          "type": "integer",
+          "description": "Kernel panic count in last 30 days (macOS/Linux)"
+        },
+        "lastKernelPanic": {
+          "type": "object",
+          "properties": {
+            "timestamp": { "type": "string", "format": "date-time" },
+            "panicString": { "type": "string" }
+          }
+        },
+        "systemEventLogErrors24h": {
+          "type": "integer",
+          "description": "System event log errors in last 24 hours"
+        },
+        "criticalEventCount24h": {
+          "type": "integer"
+        }
+      }
+    },
+    "TelemetryPayload": {
+      "type": "object",
+      "description": "Complete telemetry payload",
+      "required": ["timestamp", "agentId", "cpu", "memory"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When telemetry was collected"
+        },
+        "agentId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "intervalSeconds": {
+          "type": "integer",
+          "description": "Interval since last telemetry"
+        },
+        "cpu": {
+          "$ref": "#/definitions/CPUTelemetry"
+        },
+        "memory": {
+          "$ref": "#/definitions/MemoryTelemetry"
+        },
+        "disk": {
+          "$ref": "#/definitions/DiskTelemetry"
+        },
+        "network": {
+          "$ref": "#/definitions/NetworkTelemetry"
+        },
+        "processes": {
+          "$ref": "#/definitions/ProcessMetrics"
+        },
+        "errors": {
+          "$ref": "#/definitions/SystemErrors"
+        },
+        "systemUptime": {
+          "type": "integer",
+          "description": "System uptime in seconds"
+        },
+        "agentUptime": {
+          "type": "integer",
+          "description": "Agent process uptime in seconds"
+        },
+        "pendingReboot": {
+          "type": "boolean"
+        },
+        "batteryChargePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "batteryCharging": {
+          "type": "boolean"
+        },
+        "onACPower": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "$ref": "#/definitions/TelemetryPayload"
+}

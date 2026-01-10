@@ -1,0 +1,404 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://patchify.io/schemas/security.json",
+  "title": "Security & Compliance",
+  "description": "Security and compliance data collected by agents",
+  "type": "object",
+  "definitions": {
+    "EncryptionStatus": {
+      "type": "object",
+      "description": "Drive encryption status",
+      "properties": {
+        "driveEncryptionEnabled": {
+          "type": "boolean",
+          "description": "Whether system drive is encrypted"
+        },
+        "encryptionType": {
+          "type": "string",
+          "enum": ["BitLocker", "FileVault", "LUKS", "VeraCrypt", "None", "Unknown"],
+          "description": "Encryption technology in use"
+        },
+        "drives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "mountPoint": {
+                "type": "string",
+                "description": "Drive letter or mount point"
+              },
+              "encrypted": {
+                "type": "boolean"
+              },
+              "encryptionMethod": {
+                "type": "string"
+              },
+              "encryptionPercentage": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "status": {
+                "type": "string",
+                "enum": ["FullyEncrypted", "PartiallyEncrypted", "EncryptionInProgress", "DecryptionInProgress", "NotEncrypted", "Suspended", "Unknown"]
+              },
+              "protectionStatus": {
+                "type": "string",
+                "enum": ["On", "Off", "Unknown"]
+              },
+              "recoveryKeyBackedUp": {
+                "type": "boolean",
+                "description": "Whether recovery key is backed up (BitLocker/FileVault)"
+              }
+            }
+          }
+        },
+        "tpmEnabled": {
+          "type": "boolean",
+          "description": "TPM available and enabled"
+        },
+        "tpmVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "FirewallStatus": {
+      "type": "object",
+      "description": "Firewall configuration and status",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether firewall is enabled"
+        },
+        "productName": {
+          "type": "string",
+          "description": "Firewall product name",
+          "examples": ["Windows Defender Firewall", "macOS Application Firewall", "ufw", "firewalld"]
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "enum": ["Domain", "Private", "Public", "All"],
+                "description": "Profile name (Windows)"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "defaultInboundAction": {
+                "type": "string",
+                "enum": ["Allow", "Block", "NotConfigured"]
+              },
+              "defaultOutboundAction": {
+                "type": "string",
+                "enum": ["Allow", "Block", "NotConfigured"]
+              }
+            }
+          },
+          "description": "Firewall profiles (Windows)"
+        },
+        "activeProfile": {
+          "type": "string",
+          "description": "Currently active profile"
+        },
+        "stealthModeEnabled": {
+          "type": "boolean",
+          "description": "Stealth mode (macOS)"
+        },
+        "blockAllIncoming": {
+          "type": "boolean",
+          "description": "Block all incoming connections (macOS)"
+        },
+        "loggingEnabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "AntivirusStatus": {
+      "type": "object",
+      "description": "Antivirus/Anti-malware status",
+      "properties": {
+        "installed": {
+          "type": "boolean",
+          "description": "Whether AV is installed"
+        },
+        "products": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "AV product name",
+                "examples": ["Windows Defender", "CrowdStrike Falcon", "Sophos", "Symantec Endpoint Protection"]
+              },
+              "vendor": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "realTimeProtection": {
+                "type": "boolean",
+                "description": "Real-time protection enabled"
+              },
+              "definitionVersion": {
+                "type": "string",
+                "description": "Virus definition version"
+              },
+              "definitionDate": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When definitions were last updated"
+              },
+              "definitionAge": {
+                "type": "string",
+                "description": "Human-readable definition age",
+                "examples": ["2 hours ago", "1 day ago"]
+              },
+              "lastScanDate": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "lastScanType": {
+                "type": "string",
+                "enum": ["Quick", "Full", "Custom", "Unknown"]
+              },
+              "lastScanResult": {
+                "type": "string",
+                "enum": ["Clean", "ThreatsFound", "InProgress", "Failed", "Unknown"]
+              },
+              "threatsDetected": {
+                "type": "integer",
+                "description": "Number of threats detected in last scan"
+              },
+              "quarantinedItems": {
+                "type": "integer",
+                "description": "Number of items in quarantine"
+              }
+            }
+          }
+        },
+        "xdrInstalled": {
+          "type": "boolean",
+          "description": "Whether XDR/EDR is installed"
+        },
+        "xdrProductName": {
+          "type": "string"
+        }
+      }
+    },
+    "LocalUser": {
+      "type": "object",
+      "description": "Local user account information",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "sid": {
+          "type": "string",
+          "description": "Security Identifier (Windows)"
+        },
+        "uid": {
+          "type": "integer",
+          "description": "User ID (Unix)"
+        },
+        "isAdmin": {
+          "type": "boolean",
+          "description": "Whether user has admin privileges"
+        },
+        "isBuiltIn": {
+          "type": "boolean",
+          "description": "Whether this is a built-in account"
+        },
+        "isEnabled": {
+          "type": "boolean"
+        },
+        "isLocked": {
+          "type": "boolean"
+        },
+        "passwordRequired": {
+          "type": "boolean"
+        },
+        "passwordLastSet": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "passwordAge": {
+          "type": "string",
+          "description": "Human-readable password age"
+        },
+        "passwordExpires": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "passwordNeverExpires": {
+          "type": "boolean"
+        },
+        "lastLogon": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "groups": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Groups user belongs to"
+        }
+      }
+    },
+    "UserAccounts": {
+      "type": "object",
+      "description": "Local user account information",
+      "properties": {
+        "localUsers": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/LocalUser" }
+        },
+        "localAdminCount": {
+          "type": "integer",
+          "description": "Number of local admin accounts"
+        },
+        "localAdminAccounts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of local admin usernames"
+        },
+        "guestAccountEnabled": {
+          "type": "boolean"
+        },
+        "autoLoginEnabled": {
+          "type": "boolean"
+        },
+        "autoLoginUser": {
+          "type": "string"
+        }
+      }
+    },
+    "PatchStatus": {
+      "type": "object",
+      "description": "Patch/Update status",
+      "properties": {
+        "lastScanDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastScanRelative": {
+          "type": "string",
+          "examples": ["2 hours ago", "Yesterday"]
+        },
+        "pendingUpdates": {
+          "type": "integer",
+          "description": "Number of pending updates"
+        },
+        "criticalUpdates": {
+          "type": "integer",
+          "description": "Number of critical updates missing"
+        },
+        "securityUpdates": {
+          "type": "integer",
+          "description": "Number of security updates missing"
+        },
+        "otherUpdates": {
+          "type": "integer",
+          "description": "Number of other updates missing"
+        },
+        "pendingReboot": {
+          "type": "boolean",
+          "description": "Whether reboot is pending for updates"
+        },
+        "lastUpdateInstalled": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "windowsUpdateEnabled": {
+          "type": "boolean",
+          "description": "Windows Update service enabled"
+        },
+        "autoUpdateEnabled": {
+          "type": "boolean"
+        },
+        "missingPatches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "kbNumber": { "type": "string" },
+              "title": { "type": "string" },
+              "severity": {
+                "type": "string",
+                "enum": ["Critical", "Important", "Moderate", "Low", "Unspecified"]
+              },
+              "releaseDate": { "type": "string", "format": "date" },
+              "rebootRequired": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "SecurityCompliance": {
+      "type": "object",
+      "description": "Complete security and compliance data",
+      "required": ["collectedAt"],
+      "properties": {
+        "collectedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "encryption": {
+          "$ref": "#/definitions/EncryptionStatus"
+        },
+        "firewall": {
+          "$ref": "#/definitions/FirewallStatus"
+        },
+        "antivirus": {
+          "$ref": "#/definitions/AntivirusStatus"
+        },
+        "userAccounts": {
+          "$ref": "#/definitions/UserAccounts"
+        },
+        "patchStatus": {
+          "$ref": "#/definitions/PatchStatus"
+        },
+        "secureBootEnabled": {
+          "type": "boolean"
+        },
+        "uacEnabled": {
+          "type": "boolean",
+          "description": "User Account Control enabled (Windows)"
+        },
+        "sipEnabled": {
+          "type": "boolean",
+          "description": "System Integrity Protection enabled (macOS)"
+        },
+        "gatekeeperEnabled": {
+          "type": "boolean",
+          "description": "Gatekeeper enabled (macOS)"
+        },
+        "screenLockEnabled": {
+          "type": "boolean"
+        },
+        "screenLockTimeout": {
+          "type": "integer",
+          "description": "Screen lock timeout in seconds"
+        },
+        "remoteDesktopEnabled": {
+          "type": "boolean"
+        },
+        "sshEnabled": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "$ref": "#/definitions/SecurityCompliance"
+}

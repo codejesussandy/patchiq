@@ -1,0 +1,519 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://patchify.io/schemas/hardware.json",
+  "title": "Hardware Inventory",
+  "description": "Complete hardware inventory data collected by agents",
+  "type": "object",
+  "definitions": {
+    "SystemIdentity": {
+      "type": "object",
+      "description": "System identity information",
+      "required": ["manufacturer", "model", "serialNumber", "uuid"],
+      "properties": {
+        "manufacturer": {
+          "type": "string",
+          "description": "System manufacturer (e.g., Dell, Apple, Lenovo)",
+          "examples": ["Dell Inc.", "Apple Inc.", "Lenovo", "HP"]
+        },
+        "model": {
+          "type": "string",
+          "description": "Model name/number",
+          "examples": ["XPS 15 9520", "MacBook Pro 16,1", "ThinkPad X1 Carbon"]
+        },
+        "serialNumber": {
+          "type": "string",
+          "description": "Hardware serial number"
+        },
+        "uuid": {
+          "type": "string",
+          "description": "System UUID from SMBIOS"
+        },
+        "sku": {
+          "type": "string",
+          "description": "System SKU/Product ID"
+        },
+        "assetTag": {
+          "type": "string",
+          "description": "Asset tag if set in BIOS"
+        }
+      }
+    },
+    "BIOS": {
+      "type": "object",
+      "description": "BIOS/UEFI information",
+      "required": ["vendor", "version"],
+      "properties": {
+        "vendor": {
+          "type": "string",
+          "description": "BIOS vendor"
+        },
+        "version": {
+          "type": "string",
+          "description": "BIOS version string"
+        },
+        "releaseDate": {
+          "type": "string",
+          "format": "date",
+          "description": "BIOS release date"
+        },
+        "firmwareType": {
+          "type": "string",
+          "enum": ["BIOS", "UEFI"],
+          "description": "Firmware type"
+        },
+        "secureBootEnabled": {
+          "type": "boolean",
+          "description": "Whether Secure Boot is enabled"
+        },
+        "secureBootCapable": {
+          "type": "boolean",
+          "description": "Whether system supports Secure Boot"
+        },
+        "tpmVersion": {
+          "type": "string",
+          "description": "TPM version if present",
+          "examples": ["1.2", "2.0"]
+        },
+        "tpmEnabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Processor": {
+      "type": "object",
+      "description": "CPU information",
+      "required": ["name", "manufacturer", "architecture", "coreCount", "threadCount", "clockSpeedMHz"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Processor name",
+          "examples": ["Intel Core i7-12700H", "Apple M2 Pro", "AMD Ryzen 9 7950X"]
+        },
+        "manufacturer": {
+          "type": "string",
+          "examples": ["Intel", "AMD", "Apple"]
+        },
+        "architecture": {
+          "type": "string",
+          "enum": ["x64", "x86", "arm64", "arm"],
+          "description": "CPU architecture"
+        },
+        "coreCount": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Physical core count"
+        },
+        "threadCount": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Logical processor count"
+        },
+        "clockSpeedMHz": {
+          "type": "integer",
+          "description": "Base clock speed in MHz"
+        },
+        "maxClockSpeedMHz": {
+          "type": "integer",
+          "description": "Max turbo clock speed in MHz"
+        },
+        "socketType": {
+          "type": "string",
+          "description": "CPU socket type"
+        },
+        "cacheL1KB": {
+          "type": "integer"
+        },
+        "cacheL2KB": {
+          "type": "integer"
+        },
+        "cacheL3KB": {
+          "type": "integer"
+        },
+        "virtualizationEnabled": {
+          "type": "boolean",
+          "description": "VT-x/AMD-V enabled"
+        }
+      }
+    },
+    "MemoryModule": {
+      "type": "object",
+      "description": "Individual memory module/DIMM",
+      "properties": {
+        "slot": {
+          "type": "string",
+          "description": "Physical slot identifier",
+          "examples": ["DIMM 0", "Bank 0/DIMM 0", "ChannelA-DIMM0"]
+        },
+        "manufacturer": {
+          "type": "string",
+          "examples": ["Samsung", "Micron", "SK Hynix", "Kingston"]
+        },
+        "partNumber": {
+          "type": "string"
+        },
+        "serialNumber": {
+          "type": "string"
+        },
+        "capacityGB": {
+          "type": "number",
+          "description": "Module capacity in GB"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["DDR3", "DDR4", "DDR5", "LPDDR4", "LPDDR5", "Unknown"],
+          "description": "Memory type"
+        },
+        "speedMHz": {
+          "type": "integer",
+          "description": "Memory speed in MHz"
+        },
+        "formFactor": {
+          "type": "string",
+          "enum": ["DIMM", "SODIMM", "Onboard", "Unknown"]
+        },
+        "bankLabel": {
+          "type": "string"
+        },
+        "configured": {
+          "type": "boolean",
+          "description": "Whether slot is populated"
+        }
+      }
+    },
+    "Memory": {
+      "type": "object",
+      "description": "Memory (RAM) information",
+      "required": ["totalPhysicalGB", "modules"],
+      "properties": {
+        "totalPhysicalGB": {
+          "type": "number",
+          "description": "Total physical memory in GB"
+        },
+        "availableGB": {
+          "type": "number",
+          "description": "Currently available memory in GB"
+        },
+        "usedGB": {
+          "type": "number",
+          "description": "Currently used memory in GB"
+        },
+        "usagePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "totalSlots": {
+          "type": "integer",
+          "description": "Total memory slots"
+        },
+        "usedSlots": {
+          "type": "integer",
+          "description": "Populated memory slots"
+        },
+        "modules": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/MemoryModule" },
+          "description": "Individual memory modules"
+        },
+        "maxCapacityGB": {
+          "type": "number",
+          "description": "Maximum supported memory"
+        }
+      }
+    },
+    "StorageDrive": {
+      "type": "object",
+      "description": "Storage drive information",
+      "required": ["name", "type", "capacityGB"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Drive name/model"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["HDD", "SSD", "NVMe", "USB", "Network", "Unknown"],
+          "description": "Drive type"
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["Fixed", "Removable", "External"],
+          "description": "Media type"
+        },
+        "interfaceType": {
+          "type": "string",
+          "enum": ["SATA", "NVMe", "USB", "SCSI", "IDE", "Unknown"],
+          "description": "Interface type"
+        },
+        "serialNumber": {
+          "type": "string"
+        },
+        "firmwareVersion": {
+          "type": "string"
+        },
+        "capacityGB": {
+          "type": "number",
+          "description": "Total capacity in GB"
+        },
+        "freeSpaceGB": {
+          "type": "number",
+          "description": "Free space in GB"
+        },
+        "usedSpaceGB": {
+          "type": "number"
+        },
+        "usagePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "partitions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Partition" }
+        },
+        "smartStatus": {
+          "$ref": "#/definitions/SmartStatus"
+        }
+      }
+    },
+    "Partition": {
+      "type": "object",
+      "description": "Disk partition information",
+      "properties": {
+        "mountPoint": {
+          "type": "string",
+          "description": "Mount point or drive letter",
+          "examples": ["C:", "D:", "/", "/home", "/Users"]
+        },
+        "label": {
+          "type": "string",
+          "description": "Volume label"
+        },
+        "fileSystem": {
+          "type": "string",
+          "enum": ["NTFS", "FAT32", "exFAT", "ext4", "APFS", "HFS+", "XFS", "BTRFS", "Unknown"]
+        },
+        "capacityGB": {
+          "type": "number"
+        },
+        "freeSpaceGB": {
+          "type": "number"
+        },
+        "usagePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "bitLockerStatus": {
+          "type": "string",
+          "enum": ["Encrypted", "Decrypted", "EncryptionInProgress", "DecryptionInProgress", "NotEncryptable", "Unknown"],
+          "description": "BitLocker status (Windows only)"
+        },
+        "fileVaultStatus": {
+          "type": "string",
+          "enum": ["Encrypted", "Decrypted", "EncryptionInProgress", "DecryptionInProgress", "Unknown"],
+          "description": "FileVault status (macOS only)"
+        },
+        "luksStatus": {
+          "type": "string",
+          "enum": ["Encrypted", "Decrypted", "Unknown"],
+          "description": "LUKS encryption status (Linux only)"
+        }
+      }
+    },
+    "SmartStatus": {
+      "type": "object",
+      "description": "S.M.A.R.T. health status",
+      "properties": {
+        "healthy": {
+          "type": "boolean",
+          "description": "Overall health status"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["OK", "Warning", "Critical", "Unknown"],
+          "description": "Health status string"
+        },
+        "temperature": {
+          "type": "integer",
+          "description": "Drive temperature in Celsius"
+        },
+        "powerOnHours": {
+          "type": "integer",
+          "description": "Total power-on hours"
+        },
+        "reallocatedSectors": {
+          "type": "integer",
+          "description": "Reallocated sector count"
+        },
+        "pendingSectors": {
+          "type": "integer",
+          "description": "Pending sector count"
+        },
+        "uncorrectableSectors": {
+          "type": "integer"
+        },
+        "wearLevelingCount": {
+          "type": "integer",
+          "description": "SSD wear leveling count (0-100)"
+        },
+        "mediaWearoutIndicator": {
+          "type": "integer",
+          "description": "SSD endurance remaining (0-100)"
+        }
+      }
+    },
+    "Battery": {
+      "type": "object",
+      "description": "Battery information (laptops/mobile)",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Battery name/identifier"
+        },
+        "manufacturer": {
+          "type": "string"
+        },
+        "chemistry": {
+          "type": "string",
+          "enum": ["Li-Ion", "Li-Poly", "NiMH", "NiCd", "Unknown"]
+        },
+        "designCapacityWh": {
+          "type": "number",
+          "description": "Design capacity in Wh"
+        },
+        "fullChargeCapacityWh": {
+          "type": "number",
+          "description": "Current full charge capacity in Wh"
+        },
+        "healthPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Battery health (fullCharge/design * 100)"
+        },
+        "cycleCount": {
+          "type": "integer",
+          "description": "Number of charge cycles"
+        },
+        "chargeLevel": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Current charge level percentage"
+        },
+        "chargingStatus": {
+          "type": "string",
+          "enum": ["Charging", "Discharging", "Full", "NotCharging", "Unknown"]
+        },
+        "estimatedRuntimeMinutes": {
+          "type": "integer",
+          "description": "Estimated runtime in minutes"
+        },
+        "temperature": {
+          "type": "number",
+          "description": "Battery temperature in Celsius"
+        },
+        "voltage": {
+          "type": "number",
+          "description": "Current voltage in mV"
+        },
+        "serialNumber": {
+          "type": "string"
+        }
+      }
+    },
+    "BaseBoard": {
+      "type": "object",
+      "description": "Motherboard/baseboard information",
+      "properties": {
+        "manufacturer": {
+          "type": "string"
+        },
+        "product": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "serialNumber": {
+          "type": "string"
+        },
+        "assetTag": {
+          "type": "string"
+        }
+      }
+    },
+    "GraphicsCard": {
+      "type": "object",
+      "description": "GPU/Graphics card information",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "GPU name",
+          "examples": ["NVIDIA GeForce RTX 4090", "AMD Radeon RX 7900 XTX", "Intel UHD Graphics 770"]
+        },
+        "manufacturer": {
+          "type": "string"
+        },
+        "driverVersion": {
+          "type": "string"
+        },
+        "driverDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "videoMemoryMB": {
+          "type": "integer"
+        },
+        "currentResolution": {
+          "type": "string",
+          "examples": ["1920x1080", "3840x2160"]
+        },
+        "refreshRate": {
+          "type": "integer",
+          "description": "Refresh rate in Hz"
+        }
+      }
+    },
+    "HardwareInventory": {
+      "type": "object",
+      "description": "Complete hardware inventory",
+      "required": ["collectedAt", "systemIdentity", "bios", "processor", "memory", "storage"],
+      "properties": {
+        "collectedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When inventory was collected"
+        },
+        "systemIdentity": {
+          "$ref": "#/definitions/SystemIdentity"
+        },
+        "bios": {
+          "$ref": "#/definitions/BIOS"
+        },
+        "processor": {
+          "$ref": "#/definitions/Processor"
+        },
+        "memory": {
+          "$ref": "#/definitions/Memory"
+        },
+        "storage": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/StorageDrive" }
+        },
+        "battery": {
+          "$ref": "#/definitions/Battery"
+        },
+        "baseBoard": {
+          "$ref": "#/definitions/BaseBoard"
+        },
+        "graphicsCards": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/GraphicsCard" }
+        }
+      }
+    }
+  },
+  "$ref": "#/definitions/HardwareInventory"
+}

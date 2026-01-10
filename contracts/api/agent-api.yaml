@@ -1,0 +1,693 @@
+openapi: 3.0.3
+info:
+  title: Patchify Agent API
+  description: |
+    API endpoints for agent-to-server communication.
+    These endpoints are called by the Patchify agent running on endpoints.
+  version: 1.0.0
+  contact:
+    name: Patchify Team
+    email: api@patchify.io
+
+servers:
+  - url: http://localhost:3000/api
+    description: Development server
+  - url: https://api.patchify.io/api
+    description: Production server
+
+tags:
+  - name: Registration
+    description: Agent registration and authentication
+  - name: Heartbeat
+    description: Agent status updates
+  - name: Inventory
+    description: Device inventory collection
+  - name: Commands
+    description: Command queue and execution
+  - name: Telemetry
+    description: Real-time performance metrics
+
+paths:
+  /agent/register:
+    post:
+      tags: [Registration]
+      summary: Register a new agent
+      description: |
+        Called when agent is first installed or needs to re-register.
+        Returns agent credentials and configuration.
+      operationId: registerAgent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRegistrationRequest'
+      responses:
+        '201':
+          description: Agent registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRegistrationResponse'
+        '200':
+          description: Agent re-registered (already existed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRegistrationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /agent/heartbeat:
+    post:
+      tags: [Heartbeat]
+      summary: Send agent heartbeat
+      description: Periodic status update from agent
+      operationId: agentHeartbeat
+      security:
+        - AgentAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HeartbeatRequest'
+      responses:
+        '200':
+          description: Heartbeat acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeartbeatResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /agent/config:
+    get:
+      tags: [Registration]
+      summary: Get agent configuration
+      description: Fetch current configuration for the agent
+      operationId: getAgentConfig
+      security:
+        - AgentAuth: []
+      responses:
+        '200':
+          description: Current configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /agent/token/refresh:
+    post:
+      tags: [Registration]
+      summary: Refresh access token
+      description: Get new access token using refresh token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: New tokens issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+                  expiresIn:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /agent/inventory:
+    post:
+      tags: [Inventory]
+      summary: Upload full inventory
+      description: Upload complete device inventory data
+      operationId: uploadInventory
+      security:
+        - AgentAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryPayload'
+      responses:
+        '200':
+          description: Inventory received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+                  assetId:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: Payload too large
+
+    patch:
+      tags: [Inventory]
+      summary: Upload inventory delta
+      description: Upload partial inventory changes
+      operationId: uploadInventoryDelta
+      security:
+        - AgentAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryDelta'
+      responses:
+        '200':
+          description: Delta applied
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /agent/telemetry:
+    post:
+      tags: [Telemetry]
+      summary: Upload telemetry data
+      description: Upload real-time performance metrics
+      operationId: uploadTelemetry
+      security:
+        - AgentAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryPayload'
+      responses:
+        '200':
+          description: Telemetry received
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /agent/patch-scan:
+    post:
+      tags: [Inventory]
+      summary: Upload patch scan results
+      description: Upload results of patch compliance scan
+      operationId: uploadPatchScan
+      security:
+        - AgentAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchScanResult'
+      responses:
+        '200':
+          description: Scan results received
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /agent/commands:
+    get:
+      tags: [Commands]
+      summary: Get pending commands
+      description: Fetch commands queued for this agent
+      operationId: getCommands
+      security:
+        - AgentAuth: []
+      responses:
+        '200':
+          description: Pending commands
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commands:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Command'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /agent/commands/{commandId}/result:
+    post:
+      tags: [Commands]
+      summary: Report command result
+      description: Report the result of command execution
+      operationId: reportCommandResult
+      security:
+        - AgentAuth: []
+      parameters:
+        - name: commandId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandResult'
+      responses:
+        '200':
+          description: Result recorded
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Command not found
+
+  /agent/commands/{commandId}/progress:
+    post:
+      tags: [Commands]
+      summary: Report command progress
+      description: Report progress of long-running command
+      operationId: reportCommandProgress
+      security:
+        - AgentAuth: []
+      parameters:
+        - name: commandId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [running, paused]
+                progress:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                message:
+                  type: string
+      responses:
+        '200':
+          description: Progress recorded
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    AgentAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Agent access token from registration
+
+  schemas:
+    AgentRegistrationRequest:
+      type: object
+      required: [machineId, hostname, os, osVersion, agentVersion]
+      properties:
+        machineId:
+          type: string
+          minLength: 16
+        hostname:
+          type: string
+        os:
+          type: string
+          enum: [Windows, MacOS, Linux]
+        osVersion:
+          type: string
+        osBuild:
+          type: string
+        architecture:
+          type: string
+          enum: [x64, x86, arm64, arm]
+        agentVersion:
+          type: string
+        serialNumber:
+          type: string
+        manufacturer:
+          type: string
+        model:
+          type: string
+        ipAddress:
+          type: string
+        macAddress:
+          type: string
+        timezone:
+          type: string
+        locale:
+          type: string
+
+    AgentRegistrationResponse:
+      type: object
+      required: [agentId, accessToken, config]
+      properties:
+        agentId:
+          type: string
+          format: uuid
+        assetId:
+          type: string
+          format: uuid
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenExpiresIn:
+          type: integer
+        config:
+          $ref: '#/components/schemas/AgentConfig'
+        message:
+          type: string
+
+    AgentConfig:
+      type: object
+      properties:
+        heartbeatIntervalSeconds:
+          type: integer
+          default: 60
+        inventoryScheduleCron:
+          type: string
+        telemetryIntervalSeconds:
+          type: integer
+          default: 60
+        telemetryEnabled:
+          type: boolean
+          default: true
+        patchScanScheduleCron:
+          type: string
+        logLevel:
+          type: string
+          enum: [debug, info, warn, error]
+        serverUrl:
+          type: string
+          format: uri
+
+    HeartbeatRequest:
+      type: object
+      required: [timestamp, status]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [healthy, degraded, error]
+        uptime:
+          type: integer
+        agentUptime:
+          type: integer
+        cpuUsage:
+          type: number
+        memoryUsage:
+          type: number
+        diskUsage:
+          type: number
+        pendingReboot:
+          type: boolean
+        ipAddress:
+          type: string
+        lastError:
+          type: string
+
+    HeartbeatResponse:
+      type: object
+      properties:
+        acknowledged:
+          type: boolean
+        serverTime:
+          type: string
+          format: date-time
+        commandsPending:
+          type: boolean
+        configUpdated:
+          type: boolean
+        inventoryRequested:
+          type: boolean
+        message:
+          type: string
+
+    InventoryPayload:
+      type: object
+      required: [collectedAt, agentId]
+      properties:
+        collectedAt:
+          type: string
+          format: date-time
+        agentId:
+          type: string
+        agentVersion:
+          type: string
+        collectionDurationMs:
+          type: integer
+        hardware:
+          type: object
+          description: See hardware.schema.json
+        software:
+          type: object
+          description: See software.schema.json
+        network:
+          type: object
+          description: See network.schema.json
+        security:
+          type: object
+          description: See security.schema.json
+        peripherals:
+          type: object
+          description: See peripheral.schema.json
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              error:
+                type: string
+              code:
+                type: string
+
+    InventoryDelta:
+      type: object
+      required: [agentId, timestamp, changes]
+      properties:
+        agentId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        changes:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              operation:
+                type: string
+                enum: [add, remove, update]
+              path:
+                type: string
+              value:
+                type: object
+              filter:
+                type: object
+
+    TelemetryPayload:
+      type: object
+      description: See telemetry.schema.json
+      required: [timestamp, agentId, cpu, memory]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        agentId:
+          type: string
+        intervalSeconds:
+          type: integer
+        cpu:
+          type: object
+        memory:
+          type: object
+        disk:
+          type: object
+        network:
+          type: object
+        processes:
+          type: object
+        errors:
+          type: object
+
+    PatchScanResult:
+      type: object
+      required: [scannedAt, agentId]
+      properties:
+        scannedAt:
+          type: string
+          format: date-time
+        agentId:
+          type: string
+        scanDurationMs:
+          type: integer
+        osPatches:
+          type: object
+          properties:
+            total:
+              type: integer
+            installed:
+              type: integer
+            missing:
+              type: integer
+            missingPatches:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  kbNumber:
+                    type: string
+                  title:
+                    type: string
+                  severity:
+                    type: string
+                  releaseDate:
+                    type: string
+                  size:
+                    type: integer
+                  rebootRequired:
+                    type: boolean
+        thirdPartyPatches:
+          type: object
+          properties:
+            total:
+              type: integer
+            installed:
+              type: integer
+            missing:
+              type: integer
+            missingPatches:
+              type: array
+              items:
+                type: object
+
+    Command:
+      type: object
+      required: [id, type]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - inventory_full
+            - inventory_hardware
+            - inventory_software
+            - inventory_security
+            - patch_scan
+            - patch_install
+            - patch_rollback
+            - reboot
+            - shutdown
+            - script
+            - config_update
+            - agent_update
+            - uninstall
+        payload:
+          type: object
+        priority:
+          type: string
+          enum: [critical, high, normal, low]
+        timeout:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        retryCount:
+          type: integer
+        maxRetries:
+          type: integer
+
+    CommandResult:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [success, failed, timeout, cancelled, skipped]
+        output:
+          type: string
+        error:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              code:
+                type: string
+              details:
+                type: object
+
+    Unauthorized:
+      description: Authentication required or invalid
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              code:
+                type: string
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              retryAfter:
+                type: integer

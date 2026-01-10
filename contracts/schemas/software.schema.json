@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://patchify.io/schemas/software.json",
+  "title": "Software Inventory",
+  "description": "Operating system and software data collected by agents",
+  "type": "object",
+  "definitions": {
+    "OperatingSystem": {
+      "type": "object",
+      "description": "Operating system details",
+      "required": ["name", "version", "architecture"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "OS name",
+          "examples": ["Windows 11 Pro", "macOS Sequoia", "Ubuntu 22.04 LTS"]
+        },
+        "version": {
+          "type": "string",
+          "description": "OS version",
+          "examples": ["23H2", "14.2", "22.04"]
+        },
+        "buildNumber": {
+          "type": "string",
+          "description": "Build number",
+          "examples": ["22631.2506", "23D60", "5.15.0-91-generic"]
+        },
+        "architecture": {
+          "type": "string",
+          "enum": ["x64", "x86", "arm64", "arm"],
+          "description": "OS architecture"
+        },
+        "installDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "OS installation date"
+        },
+        "lastBootTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "uptime": {
+          "type": "integer",
+          "description": "System uptime in seconds"
+        },
+        "uptimeFormatted": {
+          "type": "string",
+          "description": "Human-readable uptime",
+          "examples": ["2 days, 5 hours, 30 minutes"]
+        },
+        "kernel": {
+          "type": "string",
+          "description": "Kernel version (Linux/macOS)"
+        },
+        "edition": {
+          "type": "string",
+          "description": "OS edition",
+          "examples": ["Pro", "Enterprise", "Home"]
+        },
+        "productId": {
+          "type": "string"
+        },
+        "serialNumber": {
+          "type": "string",
+          "description": "macOS serial or Windows product key (partial)"
+        },
+        "licenseStatus": {
+          "type": "string",
+          "enum": ["Licensed", "NotLicensed", "GracePeriod", "Notification", "ExtendedGrace", "Unknown"],
+          "description": "License activation status"
+        },
+        "systemLocale": {
+          "type": "string",
+          "examples": ["en-US", "en-GB", "de-DE"]
+        },
+        "timezone": {
+          "type": "string",
+          "examples": ["America/New_York", "Europe/London", "Asia/Kolkata"]
+        },
+        "pendingReboot": {
+          "type": "boolean",
+          "description": "Whether system requires reboot"
+        },
+        "pendingRebootReasons": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Reasons for pending reboot",
+          "examples": [["Windows Update", "Component Based Servicing"]]
+        }
+      }
+    },
+    "Application": {
+      "type": "object",
+      "description": "Installed application",
+      "required": ["name", "version"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this app record"
+        },
+        "name": {
+          "type": "string",
+          "description": "Application name"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name if different from name"
+        },
+        "version": {
+          "type": "string"
+        },
+        "vendor": {
+          "type": "string",
+          "description": "Publisher/vendor name"
+        },
+        "installDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "installLocation": {
+          "type": "string",
+          "description": "Installation path"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "description": "Installed size in bytes"
+        },
+        "sizeFormatted": {
+          "type": "string",
+          "description": "Human-readable size",
+          "examples": ["256 MB", "1.2 GB"]
+        },
+        "architecture": {
+          "type": "string",
+          "enum": ["x64", "x86", "arm64", "universal", "unknown"]
+        },
+        "installSource": {
+          "type": "string",
+          "enum": ["MSI", "EXE", "Store", "Homebrew", "APT", "Snap", "Flatpak", "DMG", "PKG", "Unknown"],
+          "description": "Installation source/method"
+        },
+        "uninstallString": {
+          "type": "string",
+          "description": "Uninstall command"
+        },
+        "isSystemComponent": {
+          "type": "boolean",
+          "description": "Whether this is a system component"
+        },
+        "autoUpdateEnabled": {
+          "type": "boolean"
+        },
+        "patchAvailable": {
+          "type": "boolean",
+          "description": "Whether patch is available for this app"
+        },
+        "latestVersion": {
+          "type": "string",
+          "description": "Latest available version if known"
+        }
+      }
+    },
+    "Service": {
+      "type": "object",
+      "description": "System service/daemon",
+      "required": ["name", "status"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Service name/identifier"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Human-readable display name"
+        },
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Running", "Stopped", "Starting", "Stopping", "Paused", "Unknown"],
+          "description": "Current status"
+        },
+        "startupType": {
+          "type": "string",
+          "enum": ["Automatic", "AutomaticDelayed", "Manual", "Disabled", "Unknown"],
+          "description": "Startup type"
+        },
+        "account": {
+          "type": "string",
+          "description": "Service account",
+          "examples": ["LocalSystem", "NetworkService", "LocalService", "root"]
+        },
+        "pid": {
+          "type": "integer",
+          "description": "Process ID if running"
+        },
+        "path": {
+          "type": "string",
+          "description": "Executable path"
+        },
+        "canStop": {
+          "type": "boolean"
+        },
+        "canPause": {
+          "type": "boolean"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Services this depends on"
+        }
+      }
+    },
+    "StartupProgram": {
+      "type": "object",
+      "description": "Startup/login item",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string",
+          "description": "Registry key or startup folder"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "user": {
+          "type": "string",
+          "description": "User this startup item belongs to"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["Registry", "Folder", "Task", "LaunchAgent", "LaunchDaemon", "SystemdUnit", "Unknown"]
+        }
+      }
+    },
+    "InstalledUpdate": {
+      "type": "object",
+      "description": "Installed update/hotfix",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kbNumber": {
+          "type": "string",
+          "description": "KB article number (Windows)"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "installedOn": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "installedBy": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["Security", "Critical", "Feature", "Driver", "Definition", "Other"]
+        }
+      }
+    },
+    "SoftwareInventory": {
+      "type": "object",
+      "description": "Complete software inventory",
+      "required": ["collectedAt", "operatingSystem", "applications"],
+      "properties": {
+        "collectedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "operatingSystem": {
+          "$ref": "#/definitions/OperatingSystem"
+        },
+        "applications": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Application" }
+        },
+        "applicationCount": {
+          "type": "integer"
+        },
+        "services": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Service" }
+        },
+        "serviceCount": {
+          "type": "integer"
+        },
+        "runningServiceCount": {
+          "type": "integer"
+        },
+        "startupPrograms": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/StartupProgram" }
+        },
+        "installedUpdates": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/InstalledUpdate" }
+        },
+        "installedUpdateCount": {
+          "type": "integer"
+        },
+        "browsers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "version": { "type": "string" },
+              "isDefault": { "type": "boolean" }
+            }
+          }
+        },
+        "defaultBrowser": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$ref": "#/definitions/SoftwareInventory"
+}
