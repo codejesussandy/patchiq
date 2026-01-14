@@ -339,11 +339,14 @@ export const UserLocation = () => {
   ];
 
   const filteredLocations = locations.filter((location) => {
+    // If no search text, show all items
     if (!searchText) return true;
 
     const searchLower = searchText.toLowerCase();
 
     // Only search in fields that are enabled in filters
+    if (!filters.enableId && !filters.enableName && !filters.enableDescription) return false;
+
     let matches = false;
     if (filters.enableId && location.id.toLowerCase().includes(searchLower)) matches = true;
     if (filters.enableName && location.name.toLowerCase().includes(searchLower)) matches = true;

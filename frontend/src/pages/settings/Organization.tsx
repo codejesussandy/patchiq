@@ -331,11 +331,14 @@ export const Organization = () => {
   ];
 
   const filteredOrganizations = organizations.filter((org) => {
+    // If no search text, show all items
     if (!searchText) return true;
 
     const searchLower = searchText.toLowerCase();
 
     // Only search in fields that are enabled in filters
+    if (!filters.enableId && !filters.enableName && !filters.enableDescription) return false;
+
     let matches = false;
     if (filters.enableId && org.id.toLowerCase().includes(searchLower)) matches = true;
     if (filters.enableName && org.name.toLowerCase().includes(searchLower)) matches = true;
