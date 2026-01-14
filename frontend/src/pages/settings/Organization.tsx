@@ -22,6 +22,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { Dayjs } from 'dayjs';
+import { settingsService } from '../../services/settings.service';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -73,10 +74,7 @@ export const Organization = () => {
     setLoading(true);
     try {
       console.log('Fetching organizations...');
-      const response = await fetch('/api/settings/organizations');
-      console.log('Response status:', response.status);
-      if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
-      const data = await response.json();
+      const data = await settingsService.getOrganizations();
       console.log('Data received:', data);
       const formattedData = Array.isArray(data)
         ? data.map((org: any, index: number) => ({
@@ -130,12 +128,7 @@ export const Organization = () => {
       const values = await viewForm.validateFields();
 
       if (viewingOrg) {
-        const response = await fetch(`/api/settings/organizations/${viewingOrg.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values),
-        });
-        if (!response.ok) throw new Error('Failed to update');
+        await settingsService.updateOrganization(viewingOrg.id, values);
         message.success('Organization updated successfully');
         setViewModalVisible(false);
         setIsViewModalEditing(false);
@@ -168,10 +161,7 @@ export const Organization = () => {
       okType: 'danger',
       onOk: async () => {
         try {
-          const response = await fetch(`/api/settings/organizations/${org.id}`, {
-            method: 'DELETE',
-          });
-          if (!response.ok) throw new Error('Failed to delete');
+          await settingsService.deleteOrganization(org.id);
           message.success(`Organization deleted successfully`);
           fetchOrganizations();
         } catch (error) {
@@ -186,20 +176,10 @@ export const Organization = () => {
       const values = await form.validateFields();
 
       if (editingOrg) {
-        const response = await fetch(`/api/settings/organizations/${editingOrg.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values),
-        });
-        if (!response.ok) throw new Error('Failed to update');
+        await settingsService.updateOrganization(editingOrg.id, values);
         message.success('Organization updated successfully');
       } else {
-        const response = await fetch('/api/settings/organizations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values),
-        });
-        if (!response.ok) throw new Error('Failed to create');
+        await settingsService.createOrganization(values);
         message.success('Organization created successfully');
       }
 

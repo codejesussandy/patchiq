@@ -1,6 +1,8 @@
 import { http, HttpResponse } from 'msw';
 import type { Agent, Command } from '../../types/agent.types';
 
+const API_BASE_URL = 'http://localhost:3000/v1';
+
 type AgentDownload = {
   os: 'Windows 11' | 'MacOS' | 'Linux';
   version: string;
@@ -155,12 +157,12 @@ const mockAgentDownloads: AgentDownload[] = [
 
 export const agentHandlers = [
   // Get all agents
-  http.get('/api/agents', () => {
+  http.get(`${API_BASE_URL}/agents`, () => {
     return HttpResponse.json(mockAgents);
   }),
 
   // Get single agent details
-  http.get('/api/agents/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/agents/:id`, ({ params }) => {
     const agent = mockAgents.find((a) => a.id === params.id);
     if (!agent) {
       return HttpResponse.json({ error: 'Agent not found' }, { status: 404 });
@@ -169,18 +171,18 @@ export const agentHandlers = [
   }),
 
   // Get agent commands
-  http.get('/api/agents/:id/commands', ({ params }) => {
+  http.get(`${API_BASE_URL}/agents/:id/commands`, ({ params }) => {
     const commands = mockCommands[params.id] || [];
     return HttpResponse.json(commands);
   }),
 
   // Get agent downloads
-  http.get('/api/agents/downloads', () => {
+  http.get(`${API_BASE_URL}/agents/downloads`, () => {
     return HttpResponse.json(mockAgentDownloads);
   }),
 
   // Delete agent
-  http.delete('/api/agents/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/agents/:id`, ({ params }) => {
     mockAgents = mockAgents.filter((agent) => agent.id !== params.id);
     return HttpResponse.json({ success: true });
   }),

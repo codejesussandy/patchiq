@@ -1,6 +1,8 @@
 import { http, HttpResponse } from 'msw';
 import type { Branch, User, Role, Policy } from '../../types/settings.types';
 
+const API_BASE_URL = 'http://localhost:3000/v1';
+
 // Mock data for branches
 let mockBranches: Branch[] = [
   {
@@ -230,48 +232,134 @@ let mockOrganizations: any[] = [
 // Mock data for departments
 let mockDepartments: any[] = [
   {
+    id: '0',
+    name: 'Global Department',
+    organization: 'Global Organization',
+    description: 'Default',
+    createdAt: '2024-01-10T10:00:00Z',
+  },
+  {
     id: '1',
-    name: 'IT Department',
-    organization: 'Acme Corporation',
-    description: 'Information Technology',
-    createdAt: '2024-01-15T10:00:00Z',
+    name: 'Accounts',
+    organization: 'Kogta Financial (I) Limited',
+    description: 'Accounts',
+    createdAt: '2025-11-08T10:20:45Z',
   },
   {
     id: '2',
-    name: 'HR Department',
-    organization: 'Acme Corporation',
-    description: 'Human Resources',
-    createdAt: '2024-01-20T10:00:00Z',
+    name: 'Administration',
+    organization: 'Kogta Financial (I) Limited',
+    description: '',
+    createdAt: '2025-11-08T12:15:33Z',
+  },
+  {
+    id: '3',
+    name: 'Audit',
+    organization: 'Kogta Financial (I) Limited',
+    description: 'Audit',
+    createdAt: '2025-11-08T12:20:46Z',
+  },
+  {
+    id: '4',
+    name: 'Branding',
+    organization: 'Kogta Financial (I) Limited',
+    description: 'Branding',
+    createdAt: '2025-11-08T12:21:28Z',
+  },
+  {
+    id: '5',
+    name: 'CMS & Banking',
+    organization: 'Kogta Financial (I) Limited',
+    description: 'CMS & Banking',
+    createdAt: '2025-11-08T12:21:28Z',
+  },
+  {
+    id: '6',
+    name: 'Collections',
+    organization: 'Kogta Financial (I) Limited',
+    description: 'Collections',
+    createdAt: '2025-11-08T12:21:13Z',
+  },
+  {
+    id: '7',
+    name: 'Credit',
+    organization: 'Kogta Financial (I) Limited',
+    description: 'Credit',
+    createdAt: '2025-11-08T12:21:21Z',
+  },
+  {
+    id: '8',
+    name: 'CRM',
+    organization: 'Kogta Financial (I) Limited',
+    description: '',
+    createdAt: '2025-11-08T12:20:58Z',
+  },
+  {
+    id: '9',
+    name: 'Finance',
+    organization: 'Kogta Financial (I) Limited',
+    description: 'Finance',
+    createdAt: '2025-11-08T12:21:26Z',
+  },
+  {
+    id: '10',
+    name: 'Human Resource',
+    organization: 'Kogta Financial (I) Limited',
+    description: 'Human Resource',
+    createdAt: '2025-11-08T12:21:43Z',
+  },
+  {
+    id: '11',
+    name: 'Insurance',
+    organization: 'Kogta Financial (I) Limited',
+    description: 'Insurance',
+    createdAt: '2025-11-08T12:21:04Z',
+  },
+  {
+    id: '12',
+    name: 'Legal',
+    organization: 'Kogta Financial (I) Limited',
+    description: 'Legal',
+    createdAt: '2025-11-08T12:22:00Z',
+  },
+  {
+    id: '13',
+    name: 'Management',
+    organization: 'Kogta Financial (I) Limited',
+    description: 'Management',
+    createdAt: '2025-11-08T12:28:58Z',
   },
 ];
 
 // Mock data for locations
 let mockLocations: any[] = [
   {
+    id: '0',
+    name: 'Default Location',
+    description: '',
+    createdAt: '2025-11-28T12:34:00Z',
+  },
+  {
     id: '1',
-    name: 'Gurugram Office',
-    address: '123 Tech Park, Sector 44',
-    city: 'Gurugram',
-    country: 'India',
-    createdAt: '2024-01-15T10:00:00Z',
+    name: 'Jaipur-Corp',
+    description: 'Rajasthan',
+    createdAt: '2025-11-28T12:34:00Z',
   },
   {
     id: '2',
-    name: 'Delhi Office',
-    address: '456 Business Street',
-    city: 'Delhi',
-    country: 'India',
-    createdAt: '2024-01-20T10:00:00Z',
+    name: 'Gurugram',
+    description: 'Haryana',
+    createdAt: '2025-11-28T12:34:36Z',
   },
 ];
 
 export const settingsHandlers = [
   // Branch APIs
-  http.get('/api/settings/branches', () => {
+  http.get(`${API_BASE_URL}/settings/branches`, () => {
     return HttpResponse.json(mockBranches);
   }),
 
-  http.get('/api/settings/branches/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/settings/branches/:id`, ({ params }) => {
     const { id } = params;
     const branch = mockBranches.find((b) => b.id === id);
     if (!branch) {
@@ -280,7 +368,7 @@ export const settingsHandlers = [
     return HttpResponse.json(branch);
   }),
 
-  http.post('/api/settings/branches', async ({ request }) => {
+  http.post(`${API_BASE_URL}/settings/branches`, async ({ request }) => {
     const data = (await request.json()) as any;
 
     // If marking as default, unset other defaults
@@ -299,7 +387,7 @@ export const settingsHandlers = [
     return HttpResponse.json(newBranch, { status: 201 });
   }),
 
-  http.put('/api/settings/branches/:id', async ({ params, request }) => {
+  http.put(`${API_BASE_URL}/settings/branches/:id`, async ({ params, request }) => {
     const { id } = params;
     const data = (await request.json()) as any;
 
@@ -321,7 +409,7 @@ export const settingsHandlers = [
     return HttpResponse.json(mockBranches[index]);
   }),
 
-  http.delete('/api/settings/branches/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/settings/branches/:id`, ({ params }) => {
     const { id } = params;
     const branch = mockBranches.find((b) => b.id === id);
     if (branch?.isDefault) {
@@ -332,11 +420,11 @@ export const settingsHandlers = [
   }),
 
   // User APIs
-  http.get('/api/settings/users', () => {
+  http.get(`${API_BASE_URL}/settings/users`, () => {
     return HttpResponse.json(mockUsers);
   }),
 
-  http.get('/api/settings/users/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/settings/users/:id`, ({ params }) => {
     const { id } = params;
     const user = mockUsers.find((u) => u.id === id);
     if (!user) {
@@ -345,7 +433,7 @@ export const settingsHandlers = [
     return HttpResponse.json(user);
   }),
 
-  http.post('/api/settings/users', async ({ request }) => {
+  http.post(`${API_BASE_URL}/settings/users`, async ({ request }) => {
     const data = (await request.json()) as any;
     const newUser: User = {
       id: String(Date.now()),
@@ -358,7 +446,7 @@ export const settingsHandlers = [
     return HttpResponse.json(newUser, { status: 201 });
   }),
 
-  http.put('/api/settings/users/:id', async ({ params, request }) => {
+  http.put(`${API_BASE_URL}/settings/users/:id`, async ({ params, request }) => {
     const { id } = params;
     const data = (await request.json()) as any;
     const index = mockUsers.findIndex((u) => u.id === id);
@@ -369,22 +457,22 @@ export const settingsHandlers = [
     return HttpResponse.json(mockUsers[index]);
   }),
 
-  http.delete('/api/settings/users/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/settings/users/:id`, ({ params }) => {
     const { id } = params;
     mockUsers = mockUsers.filter((u) => u.id !== id);
     return HttpResponse.json({ success: true });
   }),
 
-  http.post('/api/settings/users/invite', async ({ request }) => {
+  http.post(`${API_BASE_URL}/settings/users/invite`, async ({ request }) => {
     const data = (await request.json()) as any;
     return HttpResponse.json({ success: true, message: 'Invitation sent' });
   }),
 
-  http.post('/api/settings/users/:id/reset-password', ({ params }) => {
+  http.post(`${API_BASE_URL}/settings/users/:id/reset-password`, ({ params }) => {
     return HttpResponse.json({ success: true, message: 'Password reset email sent' });
   }),
 
-  http.post('/api/settings/users/:id/suspend', ({ params }) => {
+  http.post(`${API_BASE_URL}/settings/users/:id/suspend`, ({ params }) => {
     const { id } = params;
     const index = mockUsers.findIndex((u) => u.id === id);
     if (index !== -1) {
@@ -393,7 +481,7 @@ export const settingsHandlers = [
     return HttpResponse.json({ success: true });
   }),
 
-  http.get('/api/settings/users/:id/audit-log', ({ params }) => {
+  http.get(`${API_BASE_URL}/settings/users/:id/audit-log`, ({ params }) => {
     return HttpResponse.json([
       { action: 'Created', timestamp: '2024-01-15T10:00:00Z', by: 'System' },
       { action: 'Login', timestamp: '2024-03-05T09:45:00Z', by: 'User' },
@@ -401,11 +489,11 @@ export const settingsHandlers = [
   }),
 
   // Role APIs
-  http.get('/api/settings/roles', () => {
+  http.get(`${API_BASE_URL}/settings/roles`, () => {
     return HttpResponse.json(mockRoles);
   }),
 
-  http.get('/api/settings/roles/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/settings/roles/:id`, ({ params }) => {
     const { id } = params;
     const role = mockRoles.find((r) => r.id === id);
     if (!role) {
@@ -414,7 +502,7 @@ export const settingsHandlers = [
     return HttpResponse.json(role);
   }),
 
-  http.post('/api/settings/roles', async ({ request }) => {
+  http.post(`${API_BASE_URL}/settings/roles`, async ({ request }) => {
     const data = (await request.json()) as any;
     const newRole: Role = {
       id: String(Date.now()),
@@ -426,7 +514,7 @@ export const settingsHandlers = [
     return HttpResponse.json(newRole, { status: 201 });
   }),
 
-  http.put('/api/settings/roles/:id', async ({ params, request }) => {
+  http.put(`${API_BASE_URL}/settings/roles/:id`, async ({ params, request }) => {
     const { id } = params;
     const data = (await request.json()) as any;
     const index = mockRoles.findIndex((r) => r.id === id);
@@ -440,7 +528,7 @@ export const settingsHandlers = [
     return HttpResponse.json(mockRoles[index]);
   }),
 
-  http.delete('/api/settings/roles/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/settings/roles/:id`, ({ params }) => {
     const { id } = params;
     const role = mockRoles.find((r) => r.id === id);
     if (role?.isSystem) {
@@ -451,11 +539,11 @@ export const settingsHandlers = [
   }),
 
   // Policy APIs
-  http.get('/api/settings/policies', () => {
+  http.get(`${API_BASE_URL}/settings/policies`, () => {
     return HttpResponse.json(mockPolicies);
   }),
 
-  http.get('/api/settings/policies/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/settings/policies/:id`, ({ params }) => {
     const { id } = params;
     const policy = mockPolicies.find((p) => p.id === id);
     if (!policy) {
@@ -464,7 +552,7 @@ export const settingsHandlers = [
     return HttpResponse.json(policy);
   }),
 
-  http.post('/api/settings/policies', async ({ request }) => {
+  http.post(`${API_BASE_URL}/settings/policies`, async ({ request }) => {
     const data = (await request.json()) as any;
     const newPolicy: Policy = {
       id: String(Date.now()),
@@ -479,7 +567,7 @@ export const settingsHandlers = [
     return HttpResponse.json(newPolicy, { status: 201 });
   }),
 
-  http.put('/api/settings/policies/:id', async ({ params, request }) => {
+  http.put(`${API_BASE_URL}/settings/policies/:id`, async ({ params, request }) => {
     const { id } = params;
     const data = (await request.json()) as any;
     const index = mockPolicies.findIndex((p) => p.id === id);
@@ -494,13 +582,13 @@ export const settingsHandlers = [
     return HttpResponse.json(mockPolicies[index]);
   }),
 
-  http.delete('/api/settings/policies/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/settings/policies/:id`, ({ params }) => {
     const { id } = params;
     mockPolicies = mockPolicies.filter((p) => p.id !== id);
     return HttpResponse.json({ success: true });
   }),
 
-  http.post('/api/settings/policies/:id/clone', ({ params }) => {
+  http.post(`${API_BASE_URL}/settings/policies/:id/clone`, ({ params }) => {
     const { id } = params;
     const policy = mockPolicies.find((p) => p.id === id);
     if (!policy) {
@@ -517,7 +605,7 @@ export const settingsHandlers = [
     return HttpResponse.json(clonedPolicy, { status: 201 });
   }),
 
-  http.post('/api/settings/policies/:id/disable', ({ params }) => {
+  http.post(`${API_BASE_URL}/settings/policies/:id/disable`, ({ params }) => {
     const { id } = params;
     const index = mockPolicies.findIndex((p) => p.id === id);
     if (index !== -1) {
@@ -526,11 +614,11 @@ export const settingsHandlers = [
     return HttpResponse.json({ success: true });
   }),
 
-  http.get('/api/settings/policies/:id/affected-users', ({ params }) => {
+  http.get(`${API_BASE_URL}/settings/policies/:id/affected-users`, ({ params }) => {
     return HttpResponse.json(mockUsers.slice(0, 5));
   }),
 
-  http.get('/api/settings/policies/:id/audit', ({ params }) => {
+  http.get(`${API_BASE_URL}/settings/policies/:id/audit`, ({ params }) => {
     return HttpResponse.json([
       { action: 'Created', timestamp: '2024-01-15T10:00:00Z', by: 'Alice Johnson' },
       { action: 'Modified', timestamp: '2024-02-01T10:00:00Z', by: 'Alice Johnson' },
@@ -538,11 +626,11 @@ export const settingsHandlers = [
   }),
 
   // Organization APIs
-  http.get('/api/settings/organizations', () => {
+  http.get(`${API_BASE_URL}/settings/organizations`, () => {
     return HttpResponse.json(mockOrganizations);
   }),
 
-  http.get('/api/settings/organizations/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/settings/organizations/:id`, ({ params }) => {
     const { id } = params;
     const org = mockOrganizations.find((o) => o.id === id);
     if (!org) {
@@ -551,7 +639,7 @@ export const settingsHandlers = [
     return HttpResponse.json(org);
   }),
 
-  http.post('/api/settings/organizations', async ({ request }) => {
+  http.post(`${API_BASE_URL}/settings/organizations`, async ({ request }) => {
     const data = (await request.json()) as any;
     const newOrg = {
       id: String(Date.now()),
@@ -563,7 +651,7 @@ export const settingsHandlers = [
     return HttpResponse.json(newOrg, { status: 201 });
   }),
 
-  http.put('/api/settings/organizations/:id', async ({ params, request }) => {
+  http.put(`${API_BASE_URL}/settings/organizations/:id`, async ({ params, request }) => {
     const { id } = params;
     const data = (await request.json()) as any;
     const index = mockOrganizations.findIndex((o) => o.id === id);
@@ -578,18 +666,18 @@ export const settingsHandlers = [
     return HttpResponse.json(mockOrganizations[index]);
   }),
 
-  http.delete('/api/settings/organizations/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/settings/organizations/:id`, ({ params }) => {
     const { id } = params;
     mockOrganizations = mockOrganizations.filter((o) => o.id !== id);
     return HttpResponse.json({ success: true });
   }),
 
   // Department APIs
-  http.get('/api/settings/departments', () => {
+  http.get(`${API_BASE_URL}/settings/departments`, () => {
     return HttpResponse.json(mockDepartments);
   }),
 
-  http.get('/api/settings/departments/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/settings/departments/:id`, ({ params }) => {
     const { id } = params;
     const dept = mockDepartments.find((d) => d.id === id);
     if (!dept) {
@@ -598,7 +686,7 @@ export const settingsHandlers = [
     return HttpResponse.json(dept);
   }),
 
-  http.post('/api/settings/departments', async ({ request }) => {
+  http.post(`${API_BASE_URL}/settings/departments`, async ({ request }) => {
     const data = (await request.json()) as any;
     const newDept = {
       id: String(Date.now()),
@@ -609,7 +697,7 @@ export const settingsHandlers = [
     return HttpResponse.json(newDept, { status: 201 });
   }),
 
-  http.put('/api/settings/departments/:id', async ({ params, request }) => {
+  http.put(`${API_BASE_URL}/settings/departments/:id`, async ({ params, request }) => {
     const { id } = params;
     const data = (await request.json()) as any;
     const index = mockDepartments.findIndex((d) => d.id === id);
@@ -620,18 +708,18 @@ export const settingsHandlers = [
     return HttpResponse.json(mockDepartments[index]);
   }),
 
-  http.delete('/api/settings/departments/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/settings/departments/:id`, ({ params }) => {
     const { id } = params;
     mockDepartments = mockDepartments.filter((d) => d.id !== id);
     return HttpResponse.json({ success: true });
   }),
 
   // Location APIs
-  http.get('/api/settings/locations', () => {
+  http.get(`${API_BASE_URL}/settings/locations`, () => {
     return HttpResponse.json(mockLocations);
   }),
 
-  http.get('/api/settings/locations/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/settings/locations/:id`, ({ params }) => {
     const { id } = params;
     const location = mockLocations.find((l) => l.id === id);
     if (!location) {
@@ -640,7 +728,7 @@ export const settingsHandlers = [
     return HttpResponse.json(location);
   }),
 
-  http.post('/api/settings/locations', async ({ request }) => {
+  http.post(`${API_BASE_URL}/settings/locations`, async ({ request }) => {
     const data = (await request.json()) as any;
     const newLocation = {
       id: String(Date.now()),
@@ -651,7 +739,7 @@ export const settingsHandlers = [
     return HttpResponse.json(newLocation, { status: 201 });
   }),
 
-  http.put('/api/settings/locations/:id', async ({ params, request }) => {
+  http.put(`${API_BASE_URL}/settings/locations/:id`, async ({ params, request }) => {
     const { id } = params;
     const data = (await request.json()) as any;
     const index = mockLocations.findIndex((l) => l.id === id);
@@ -662,7 +750,7 @@ export const settingsHandlers = [
     return HttpResponse.json(mockLocations[index]);
   }),
 
-  http.delete('/api/settings/locations/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/settings/locations/:id`, ({ params }) => {
     const { id } = params;
     mockLocations = mockLocations.filter((l) => l.id !== id);
     return HttpResponse.json({ success: true });

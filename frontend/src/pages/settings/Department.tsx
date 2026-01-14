@@ -3,55 +3,103 @@ import {
   Table,
   Input,
   Button,
-  Dropdown,
   Typography,
   Modal,
   Form,
   message,
+  Space,
+  Tooltip,
+  DatePicker,
   Select,
 } from 'antd';
 import {
   SearchOutlined,
-  MoreOutlined,
-  TeamOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  DownloadOutlined,
+  FilterOutlined,
 } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
-import type { MenuProps } from 'antd';
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import type { Dayjs } from 'dayjs';
+import { settingsService } from '../../services/settings.service';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
+const { TextArea } = Input;
 
 interface Department {
   id: string;
   name: string;
-  organization?: string;
   description?: string;
+  organization?: string;
   createdAt?: string;
+}
+
+interface Organization {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+interface FilterState {
+  id: string;
+  name: string;
+  organization: string;
+  description: string;
+  dateRange: [Dayjs | null, Dayjs | null] | null;
 }
 
 export const Department = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
+  const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [isViewModalEditing, setIsViewModalEditing] = useState(false);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
+  const [viewingDept, setViewingDept] = useState<Department | null>(null);
+  const [filters, setFilters] = useState<FilterState>({
+    id: '',
+    name: '',
+    organization: '',
+    description: '',
+    dateRange: null,
+  });
   const [form] = Form.useForm();
+  const [viewForm] = Form.useForm();
+  const [filterForm] = Form.useForm();
+  const [pagination, setPagination] = useState<TablePaginationConfig>({
+    pageSize: 20,
+    current: 1,
+  });
 
   useEffect(() => {
     fetchDepartments();
+    fetchOrganizations();
   }, []);
 
   const fetchDepartments = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/settings/departments');
-      if (!response.ok) throw new Error('Failed to fetch');
-      const data = await response.json();
+      const data = await settingsService.getDepartments();
       setDepartments(Array.isArray(data) ? data : []);
     } catch (error) {
       message.error('Failed to fetch departments');
       setDepartments([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchOrganizations = async () => {
+    try {
+      const data = await settingsService.getOrganizations();
+      setOrganizations(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch organizations:', error);
     }
   };
 
@@ -71,19 +119,57 @@ export const Department = () => {
     setModalVisible(true);
   };
 
+  const handleViewDepartment = (dept: Department) => {
+    setViewingDept(dept);
+    setIsViewModalEditing(false);
+    viewForm.setFieldsValue({
+      name: dept.name,
+      organization: dept.organization,
+      description: dept.description,
+    });
+    setViewModalVisible(true);
+  };
+
+  const handleViewModalEdit = () => {
+    setIsViewModalEditing(true);
+  };
+
+  const handleViewModalSave = async () => {
+    try {
+      const values = await viewForm.validateFields();
+
+      if (viewingDept) {
+        await settingsService.updateDepartment(viewingDept.id, values);
+        message.success('Department updated successfully');
+        setViewModalVisible(false);
+        setIsViewModalEditing(false);
+        viewForm.resetFields();
+        fetchDepartments();
+      }
+    } catch (error) {
+      message.error('Failed to update department');
+    }
+  };
+
+  const handleViewModalCancel = () => {
+    setIsViewModalEditing(false);
+    viewForm.setFieldsValue({
+      name: viewingDept?.name,
+      organization: viewingDept?.organization,
+      description: viewingDept?.description,
+    });
+  };
+
   const handleDelete = (dept: Department) => {
     Modal.confirm({
       title: 'Delete Department',
-      content: `Are you sure you want to delete ${dept.name}?`,
+      content: `Are you sure you want to delete "${dept.name}"?`,
       okText: 'Delete',
       okType: 'danger',
       onOk: async () => {
         try {
-          const response = await fetch(`/api/settings/departments/${dept.id}`, {
-            method: 'DELETE',
-          });
-          if (!response.ok) throw new Error('Failed to delete');
-          message.success(`${dept.name} deleted successfully`);
+          await settingsService.deleteDepartment(dept.id);
+          message.success('Department deleted successfully');
           fetchDepartments();
         } catch (error) {
           message.error('Failed to delete department');
@@ -97,20 +183,10 @@ export const Department = () => {
       const values = await form.validateFields();
 
       if (editingDept) {
-        const response = await fetch(`/api/settings/departments/${editingDept.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values),
-        });
-        if (!response.ok) throw new Error('Failed to update');
+        await settingsService.updateDepartment(editingDept.id, values);
         message.success('Department updated successfully');
       } else {
-        const response = await fetch('/api/settings/departments', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values),
-        });
-        if (!response.ok) throw new Error('Failed to create');
+        await settingsService.createDepartment(values);
         message.success('Department created successfully');
       }
 
@@ -122,29 +198,106 @@ export const Department = () => {
     }
   };
 
-  const getActionMenuItems = (dept: Department): MenuProps['items'] => [
-    {
-      key: 'edit',
-      label: 'Edit',
-      onClick: () => handleEdit(dept),
-    },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'delete',
-      label: 'Delete',
-      danger: true,
-      onClick: () => handleDelete(dept),
-    },
-  ];
+  const handleOpenFilterModal = () => {
+    filterForm.setFieldsValue({
+      id: filters.id,
+      name: filters.name,
+      organization: filters.organization,
+      description: filters.description,
+      dateRange: filters.dateRange,
+    });
+    setFilterModalVisible(true);
+  };
+
+  const handleApplyFilters = async () => {
+    try {
+      const values = await filterForm.validateFields();
+      setFilters({
+        id: values.id || '',
+        name: values.name || '',
+        organization: values.organization || '',
+        description: values.description || '',
+        dateRange: values.dateRange || null,
+      });
+      setPagination({ ...pagination, current: 1 });
+      setFilterModalVisible(false);
+      message.success('Filters applied');
+    } catch (error) {
+      message.error('Please fill valid filter criteria');
+    }
+  };
+
+  const handleResetFilters = () => {
+    filterForm.resetFields();
+    setFilters({
+      id: '',
+      name: '',
+      organization: '',
+      description: '',
+      dateRange: null,
+    });
+    setPagination({ ...pagination, current: 1 });
+    message.success('Filters reset');
+  };
+
+  const hasActiveFilters = filters.id || filters.name || filters.organization || filters.description || filters.dateRange;
+
+  const handleExport = () => {
+    const csvContent = [
+      ['ID', 'Name', 'Description', 'Organization', 'Created On'],
+      ...filteredDepartments.map((dept) => [
+        dept.id,
+        dept.name,
+        dept.description || '',
+        dept.organization || '',
+        dept.createdAt || '',
+      ]),
+    ]
+      .map((row) => row.join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'departments.csv';
+    link.click();
+    window.URL.revokeObjectURL(url);
+    message.success('Departments exported successfully');
+  };
 
   const columns: ColumnsType<Department> = [
     {
-      title: 'Department Name',
+      title: 'ID',
+      dataIndex: 'id',
+      key: 'id',
+      width: 80,
+      sorter: (a, b) => {
+        const aNum = parseInt(a.id) || 0;
+        const bNum = parseInt(b.id) || 0;
+        return aNum - bNum;
+      },
+    },
+    {
+      title: 'Name',
       dataIndex: 'name',
       key: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
+      render: (text: string, record: Department) => (
+        <a href="#" onClick={(e) => {
+          e.preventDefault();
+          handleViewDepartment(record);
+        }}>
+          {text}
+        </a>
+      ),
+    },
+    {
+      title: 'Description',
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: true,
+      render: (text: string) => text || '—',
     },
     {
       title: 'Organization',
@@ -152,70 +305,161 @@ export const Department = () => {
       key: 'organization',
     },
     {
-      title: 'Description',
-      dataIndex: 'description',
-      key: 'description',
-      ellipsis: true,
+      title: 'Created On',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (text: string) => {
+        if (!text) return '—';
+        const date = new Date(text);
+        return date.toLocaleString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        });
+      },
     },
     {
-      title: '',
-      key: 'action',
-      width: 50,
+      title: 'Actions',
+      key: 'actions',
+      width: 100,
+      align: 'right',
       render: (_, record) => (
-        <Dropdown menu={{ items: getActionMenuItems(record) }} trigger={['click']}>
-          <Button type="text" icon={<MoreOutlined />} />
-        </Dropdown>
+        <Space>
+          <Tooltip title="Edit">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Delete">
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
+            />
+          </Tooltip>
+        </Space>
       ),
     },
   ];
 
-  const filteredDepts = departments.filter((dept) =>
-    dept.name.toLowerCase().includes(searchText.toLowerCase())
+  const filteredDepartments = departments.filter((dept) => {
+    // Search filter
+    const matchesSearch = dept.name.toLowerCase().includes(searchText.toLowerCase()) ||
+                         (dept.description && dept.description.toLowerCase().includes(searchText.toLowerCase())) ||
+                         (dept.organization && dept.organization.toLowerCase().includes(searchText.toLowerCase()));
+
+    // Advanced filters
+    const matchesId = !filters.id || dept.id.toLowerCase().includes(filters.id.toLowerCase());
+    const matchesName = !filters.name || dept.name.toLowerCase().includes(filters.name.toLowerCase());
+    const matchesOrganization = !filters.organization ||
+                                (dept.organization && dept.organization.toLowerCase().includes(filters.organization.toLowerCase()));
+    const matchesDescription = !filters.description ||
+                              (dept.description && dept.description.toLowerCase().includes(filters.description.toLowerCase()));
+
+    let matchesDateRange = true;
+    if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1] && dept.createdAt) {
+      const deptDate = new Date(dept.createdAt).getTime();
+      const fromDate = filters.dateRange[0].toDate().getTime();
+      const toDate = filters.dateRange[1].toDate().getTime();
+      matchesDateRange = deptDate >= fromDate && deptDate <= toDate;
+    }
+
+    return matchesSearch && matchesId && matchesName && matchesOrganization && matchesDescription && matchesDateRange;
+  });
+
+  const paginatedData = filteredDepartments.slice(
+    (pagination.current! - 1) * pagination.pageSize!,
+    pagination.current! * pagination.pageSize!
   );
 
   return (
-    <div>
-      <div style={{ marginBottom: '24px' }}>
-        <Title level={4}>Department Management</Title>
-        <Text type="secondary">Organize users into departments</Text>
+    <div style={{ padding: '24px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '32px' }}>
+        <Title level={2}>Department</Title>
       </div>
 
-      <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+      {/* Search and Action Controls */}
+      <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <Input
-          placeholder="Search departments"
+          placeholder="Search by name, description or organization"
           prefix={<SearchOutlined />}
-          style={{ width: 280 }}
+          style={{ flex: 1, maxWidth: '400px' }}
           value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
+          onChange={(e) => {
+            setSearchText(e.target.value);
+            setPagination({ ...pagination, current: 1 });
+          }}
         />
-        <div style={{ marginLeft: 'auto' }}>
-          <Button type="primary" icon={<TeamOutlined />} onClick={handleCreate}>
-            Add Department
+
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+          <Tooltip title="Refresh">
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => fetchDepartments()}
+              loading={loading}
+            />
+          </Tooltip>
+
+          <Tooltip title="Export">
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleExport}
+              disabled={departments.length === 0}
+            />
+          </Tooltip>
+
+          <Tooltip title={hasActiveFilters ? `${Object.values(filters).filter(v => v).length} filter(s) active` : 'Filter'}>
+            <Button
+              icon={<FilterOutlined />}
+              onClick={handleOpenFilterModal}
+              type={hasActiveFilters ? 'primary' : 'default'}
+            />
+          </Tooltip>
+
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleCreate}
+          >
+            Create
           </Button>
         </div>
       </div>
 
+      {/* Data Table */}
       <Table
         columns={columns}
-        dataSource={filteredDepts}
+        dataSource={paginatedData}
         rowKey="id"
         loading={loading}
-        pagination={false}
-        style={{ marginBottom: '16px' }}
+        pagination={{
+          pageSize: pagination.pageSize,
+          current: pagination.current,
+          total: filteredDepartments.length,
+          onChange: (page, pageSize) => {
+            setPagination({ current: page, pageSize });
+          },
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50', '100'],
+          showTotal: (total, range) =>
+            `showing ${range[0]}–${range[1]} of ${total} items`,
+        }}
+        style={{ marginBottom: '24px' }}
       />
-
-      <Text type="secondary">
-        Total {filteredDepts.length} Department{filteredDepts.length !== 1 ? 's' : ''} Found
-      </Text>
 
       {/* Create/Edit Modal */}
       <Modal
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <TeamOutlined style={{ color: '#1890ff' }} />
-            <span>{editingDept ? 'Edit' : 'Add'} Department</span>
-          </div>
-        }
+        title={editingDept ? 'Edit Department' : 'Create Department'}
         open={modalVisible}
         onCancel={() => {
           setModalVisible(false);
@@ -229,12 +473,13 @@ export const Department = () => {
               form.resetFields();
             }}
           >
-            Close
+            Cancel
           </Button>,
           <Button key="submit" type="primary" onClick={handleSubmit}>
             {editingDept ? 'Update' : 'Create'} Department
           </Button>,
         ]}
+        width={600}
       >
         <Form form={form} layout="vertical" style={{ marginTop: '24px' }}>
           <Form.Item
@@ -244,10 +489,10 @@ export const Department = () => {
           >
             <Select
               placeholder="Select Organization"
-              options={[
-                { value: 'org1', label: 'Organization 1' },
-                { value: 'org2', label: 'Organization 2' },
-              ]}
+              options={organizations.map((org) => ({
+                value: org.name,
+                label: org.name,
+              }))}
             />
           </Form.Item>
 
@@ -263,9 +508,175 @@ export const Department = () => {
             label="Description"
             name="description"
           >
-            <Input.TextArea rows={3} placeholder="Enter description" />
+            <TextArea rows={4} placeholder="Enter description (optional)" />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Filter Modal */}
+      <Modal
+        title="Filter Departments"
+        open={filterModalVisible}
+        onCancel={() => {
+          setFilterModalVisible(false);
+        }}
+        footer={[
+          <Button
+            key="reset"
+            onClick={handleResetFilters}
+            disabled={!hasActiveFilters}
+          >
+            Reset Filters
+          </Button>,
+          <Button
+            key="cancel"
+            onClick={() => {
+              setFilterModalVisible(false);
+            }}
+          >
+            Cancel
+          </Button>,
+          <Button
+            key="apply"
+            type="primary"
+            onClick={handleApplyFilters}
+          >
+            Apply Filters
+          </Button>,
+        ]}
+        width={600}
+      >
+        <Form form={filterForm} layout="vertical" style={{ marginTop: '24px' }}>
+          <Form.Item
+            label="ID"
+            name="id"
+          >
+            <Input placeholder="Filter by department ID" />
+          </Form.Item>
+
+          <Form.Item
+            label="Name"
+            name="name"
+          >
+            <Input placeholder="Filter by department name" />
+          </Form.Item>
+
+          <Form.Item
+            label="Organization"
+            name="organization"
+          >
+            <Select
+              placeholder="Filter by organization"
+              allowClear
+              options={organizations.map((org) => ({
+                value: org.name,
+                label: org.name,
+              }))}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Description"
+            name="description"
+          >
+            <Input placeholder="Filter by description" />
+          </Form.Item>
+
+          <Form.Item
+            label="Created On (Date Range)"
+            name="dateRange"
+          >
+            <DatePicker.RangePicker style={{ width: '100%' }} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* View Department Modal */}
+      <Modal
+        title="Department Details"
+        open={viewModalVisible}
+        onCancel={() => {
+          setViewModalVisible(false);
+          setViewingDept(null);
+          setIsViewModalEditing(false);
+          viewForm.resetFields();
+        }}
+        footer={[
+          <Button
+            key="close-or-cancel"
+            onClick={() => {
+              if (isViewModalEditing) {
+                handleViewModalCancel();
+              } else {
+                setViewModalVisible(false);
+                setViewingDept(null);
+                viewForm.resetFields();
+              }
+            }}
+          >
+            {isViewModalEditing ? 'Cancel' : 'Close'}
+          </Button>,
+          !isViewModalEditing && (
+            <Button
+              key="edit"
+              type="primary"
+              onClick={handleViewModalEdit}
+            >
+              Edit
+            </Button>
+          ),
+          isViewModalEditing && (
+            <Button
+              key="save"
+              type="primary"
+              onClick={handleViewModalSave}
+            >
+              Save
+            </Button>
+          ),
+        ]}
+        width={600}
+      >
+        {viewingDept && (
+          <Form form={viewForm} layout="vertical" style={{ marginTop: '24px' }}>
+            <Form.Item
+              label="Organization"
+              name="organization"
+              rules={[{ required: true, message: 'Please select an organization' }]}
+            >
+              <Select
+                placeholder="Select Organization"
+                disabled={!isViewModalEditing}
+                options={organizations.map((org) => ({
+                  value: org.name,
+                  label: org.name,
+                }))}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Department Name"
+              name="name"
+              rules={[{ required: true, message: 'Please enter department name' }]}
+            >
+              <Input
+                placeholder="Enter department name"
+                disabled={!isViewModalEditing}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Description"
+              name="description"
+            >
+              <TextArea
+                placeholder="Enter description (optional)"
+                disabled={!isViewModalEditing}
+                rows={4}
+              />
+            </Form.Item>
+          </Form>
+        )}
       </Modal>
     </div>
   );

@@ -15,6 +15,8 @@ import type { NetworkConfiguration } from '../../types/network.types';
 import type { PeripheralInventory } from '../../types/peripheral.types';
 import type { TelemetryPayload, TelemetryHistory, SystemErrors } from '../../types/telemetry.types';
 
+const API_BASE_URL = 'http://localhost:3000/v1';
+
 // Mock Assets Data
 const mockAssets: Asset[] = [
   {
@@ -1342,12 +1344,12 @@ const mockExpandedHardware: ExpandedHardware = {
 // MSW Handlers
 export const assetHandlers = [
   // Get all assets
-  http.get('/api/assets', () => {
+  http.get(`${API_BASE_URL}/assets`, () => {
     return HttpResponse.json(mockAssets);
   }),
 
   // Get single asset
-  http.get('/api/assets/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/assets/:id`, ({ params }) => {
     const asset = mockAssets.find((a) => a.id === params.id);
     if (!asset) {
       return HttpResponse.json({ error: 'Asset not found' }, { status: 404 });
@@ -1356,7 +1358,7 @@ export const assetHandlers = [
   }),
 
   // Create asset
-  http.post('/api/assets', async ({ request }) => {
+  http.post(`${API_BASE_URL}/assets`, async ({ request }) => {
     const data = await request.json();
     const newAsset: Asset = {
       ...(data as any),
@@ -1371,7 +1373,7 @@ export const assetHandlers = [
   }),
 
   // Update asset
-  http.put('/api/assets/:id', async ({ params, request }) => {
+  http.put(`${API_BASE_URL}/assets/:id`, async ({ params, request }) => {
     const data = await request.json();
     const index = mockAssets.findIndex((a) => a.id === params.id);
     if (index === -1) {
@@ -1382,7 +1384,7 @@ export const assetHandlers = [
   }),
 
   // Delete asset
-  http.delete('/api/assets/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/assets/:id`, ({ params }) => {
     const index = mockAssets.findIndex((a) => a.id === params.id);
     if (index === -1) {
       return HttpResponse.json({ error: 'Asset not found' }, { status: 404 });
@@ -1392,7 +1394,7 @@ export const assetHandlers = [
   }),
 
   // Bulk create assets
-  http.post('/api/assets/bulk', async ({ request }) => {
+  http.post(`${API_BASE_URL}/assets/bulk`, async ({ request }) => {
     const data = (await request.json()) as any[];
     const newAssets = data.map((item, i) => ({
       ...item,
@@ -1404,27 +1406,27 @@ export const assetHandlers = [
   }),
 
   // Get asset lifecycle
-  http.get('/api/assets/:id/lifecycle', () => {
+  http.get(`${API_BASE_URL}/assets/:id/lifecycle`, () => {
     return HttpResponse.json(mockAssetLifeCycle);
   }),
 
   // Get asset hardware
-  http.get('/api/assets/:id/hardware', () => {
+  http.get(`${API_BASE_URL}/assets/:id/hardware`, () => {
     return HttpResponse.json(mockHardware);
   }),
 
   // Get asset software
-  http.get('/api/assets/:id/software', () => {
+  http.get(`${API_BASE_URL}/assets/:id/software`, () => {
     return HttpResponse.json(mockSoftware);
   }),
 
   // Get asset audit log
-  http.get('/api/assets/:id/audit-log', () => {
+  http.get(`${API_BASE_URL}/assets/:id/audit-log`, () => {
     return HttpResponse.json(mockAuditLog);
   }),
 
   // Get asset patches (NEW)
-  http.get('/api/assets/:id/patches', ({ params }) => {
+  http.get(`${API_BASE_URL}/assets/:id/patches`, ({ params }) => {
     const asset = mockAssets.find((a) => a.id === params.id);
     if (!asset) {
       return HttpResponse.json({ error: 'Asset not found' }, { status: 404 });
@@ -1433,7 +1435,7 @@ export const assetHandlers = [
   }),
 
   // Get asset deployments (NEW)
-  http.get('/api/assets/:id/deployments', ({ params }) => {
+  http.get(`${API_BASE_URL}/assets/:id/deployments`, ({ params }) => {
     const asset = mockAssets.find((a) => a.id === params.id);
     if (!asset) {
       return HttpResponse.json({ error: 'Asset not found' }, { status: 404 });
@@ -1442,7 +1444,7 @@ export const assetHandlers = [
   }),
 
   // Get asset with full patch details (NEW)
-  http.get('/api/assets/:id/full', ({ params }) => {
+  http.get(`${API_BASE_URL}/assets/:id/full`, ({ params }) => {
     const asset = mockAssets.find((a) => a.id === params.id);
     if (!asset) {
       return HttpResponse.json({ error: 'Asset not found' }, { status: 404 });
@@ -1452,17 +1454,17 @@ export const assetHandlers = [
   }),
 
   // Upload asset attachment
-  http.post('/api/assets/:id/attachments', () => {
+  http.post(`${API_BASE_URL}/assets/:id/attachments`, () => {
     return HttpResponse.json({ success: true }, { status: 201 });
   }),
 
   // Get software inventory
-  http.get('/api/software-inventory', () => {
+  http.get(`${API_BASE_URL}/software-inventory`, () => {
     return HttpResponse.json(mockSoftwareInventory);
   }),
 
   // Get software inventory item
-  http.get('/api/software-inventory/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/software-inventory/:id`, ({ params }) => {
     const item = mockSoftwareInventory.find((s) => s.id === params.id);
     if (!item) {
       return HttpResponse.json({ error: 'Software not found' }, { status: 404 });
@@ -1471,17 +1473,17 @@ export const assetHandlers = [
   }),
 
   // Import software inventory
-  http.post('/api/software-inventory/import', () => {
+  http.post(`${API_BASE_URL}/software-inventory/import`, () => {
     return HttpResponse.json({ success: true, imported: 100 }, { status: 201 });
   }),
 
   // Get software licenses
-  http.get('/api/software-licenses', () => {
+  http.get(`${API_BASE_URL}/software-licenses`, () => {
     return HttpResponse.json(mockSoftwareLicenses);
   }),
 
   // Get software license
-  http.get('/api/software-licenses/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/software-licenses/:id`, ({ params }) => {
     const license = mockSoftwareLicenses.find((l) => l.id === params.id);
     if (!license) {
       return HttpResponse.json({ error: 'License not found' }, { status: 404 });
@@ -1490,7 +1492,7 @@ export const assetHandlers = [
   }),
 
   // Create software license
-  http.post('/api/software-licenses', async ({ request }) => {
+  http.post(`${API_BASE_URL}/software-licenses`, async ({ request }) => {
     const data = await request.json();
     const newLicense: SoftwareLicense = {
       ...(data as any),
@@ -1501,7 +1503,7 @@ export const assetHandlers = [
   }),
 
   // Update software license
-  http.put('/api/software-licenses/:id', async ({ params, request }) => {
+  http.put(`${API_BASE_URL}/software-licenses/:id`, async ({ params, request }) => {
     const data = await request.json();
     const index = mockSoftwareLicenses.findIndex((l) => l.id === params.id);
     if (index === -1) {
@@ -1512,7 +1514,7 @@ export const assetHandlers = [
   }),
 
   // Delete software license
-  http.delete('/api/software-licenses/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/software-licenses/:id`, ({ params }) => {
     const index = mockSoftwareLicenses.findIndex((l) => l.id === params.id);
     if (index === -1) {
       return HttpResponse.json({ error: 'License not found' }, { status: 404 });
@@ -1522,17 +1524,17 @@ export const assetHandlers = [
   }),
 
   // Import software licenses
-  http.post('/api/software-licenses/import', () => {
+  http.post(`${API_BASE_URL}/software-licenses/import`, () => {
     return HttpResponse.json({ success: true, imported: 50 }, { status: 201 });
   }),
 
   // Get OS licenses
-  http.get('/api/os-licenses', () => {
+  http.get(`${API_BASE_URL}/os-licenses`, () => {
     return HttpResponse.json(mockOSLicenses);
   }),
 
   // Get OS license
-  http.get('/api/os-licenses/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/os-licenses/:id`, ({ params }) => {
     const license = mockOSLicenses.find((l) => l.id === params.id);
     if (!license) {
       return HttpResponse.json({ error: 'OS License not found' }, { status: 404 });
@@ -1541,7 +1543,7 @@ export const assetHandlers = [
   }),
 
   // Create OS license
-  http.post('/api/os-licenses', async ({ request }) => {
+  http.post(`${API_BASE_URL}/os-licenses`, async ({ request }) => {
     const data = await request.json();
     const newLicense: OSLicense = {
       ...(data as any),
@@ -1552,7 +1554,7 @@ export const assetHandlers = [
   }),
 
   // Update OS license
-  http.put('/api/os-licenses/:id', async ({ params, request }) => {
+  http.put(`${API_BASE_URL}/os-licenses/:id`, async ({ params, request }) => {
     const data = await request.json();
     const index = mockOSLicenses.findIndex((l) => l.id === params.id);
     if (index === -1) {
@@ -1563,7 +1565,7 @@ export const assetHandlers = [
   }),
 
   // Delete OS license
-  http.delete('/api/os-licenses/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/os-licenses/:id`, ({ params }) => {
     const index = mockOSLicenses.findIndex((l) => l.id === params.id);
     if (index === -1) {
       return HttpResponse.json({ error: 'OS License not found' }, { status: 404 });
@@ -1573,12 +1575,12 @@ export const assetHandlers = [
   }),
 
   // Import OS licenses
-  http.post('/api/os-licenses/import', () => {
+  http.post(`${API_BASE_URL}/os-licenses/import`, () => {
     return HttpResponse.json({ success: true, imported: 20 }, { status: 201 });
   }),
 
   // Phase 4: Get asset security
-  http.get('/api/assets/:id/security', ({ params }) => {
+  http.get(`${API_BASE_URL}/assets/:id/security`, ({ params }) => {
     const asset = mockAssets.find((a) => a.id === params.id);
     if (!asset) {
       return HttpResponse.json({ error: 'Asset not found' }, { status: 404 });
@@ -1587,7 +1589,7 @@ export const assetHandlers = [
   }),
 
   // Phase 4: Get asset network
-  http.get('/api/assets/:id/network', ({ params }) => {
+  http.get(`${API_BASE_URL}/assets/:id/network`, ({ params }) => {
     const asset = mockAssets.find((a) => a.id === params.id);
     if (!asset) {
       return HttpResponse.json({ error: 'Asset not found' }, { status: 404 });
@@ -1596,7 +1598,7 @@ export const assetHandlers = [
   }),
 
   // Phase 4: Get asset peripherals
-  http.get('/api/assets/:id/peripherals', ({ params }) => {
+  http.get(`${API_BASE_URL}/assets/:id/peripherals`, ({ params }) => {
     const asset = mockAssets.find((a) => a.id === params.id);
     if (!asset) {
       return HttpResponse.json({ error: 'Asset not found' }, { status: 404 });
@@ -1605,7 +1607,7 @@ export const assetHandlers = [
   }),
 
   // Phase 4: Get asset telemetry (current)
-  http.get('/api/assets/:id/telemetry', ({ params }) => {
+  http.get(`${API_BASE_URL}/assets/:id/telemetry`, ({ params }) => {
     const asset = mockAssets.find((a) => a.id === params.id);
     if (!asset) {
       return HttpResponse.json({ error: 'Asset not found' }, { status: 404 });
@@ -1618,7 +1620,7 @@ export const assetHandlers = [
   }),
 
   // Phase 4: Get asset telemetry history
-  http.get('/api/assets/:id/telemetry/history', ({ params }) => {
+  http.get(`${API_BASE_URL}/assets/:id/telemetry/history`, ({ params }) => {
     const asset = mockAssets.find((a) => a.id === params.id);
     if (!asset) {
       return HttpResponse.json({ error: 'Asset not found' }, { status: 404 });
@@ -1628,7 +1630,7 @@ export const assetHandlers = [
   }),
 
   // Phase 4: Get asset errors
-  http.get('/api/assets/:id/errors', ({ params }) => {
+  http.get(`${API_BASE_URL}/assets/:id/errors`, ({ params }) => {
     const asset = mockAssets.find((a) => a.id === params.id);
     if (!asset) {
       return HttpResponse.json({ error: 'Asset not found' }, { status: 404 });
@@ -1637,7 +1639,7 @@ export const assetHandlers = [
   }),
 
   // Phase 4: Get asset expanded hardware
-  http.get('/api/assets/:id/hardware/expanded', ({ params }) => {
+  http.get(`${API_BASE_URL}/assets/:id/hardware/expanded`, ({ params }) => {
     const asset = mockAssets.find((a) => a.id === params.id);
     if (!asset) {
       return HttpResponse.json({ error: 'Asset not found' }, { status: 404 });

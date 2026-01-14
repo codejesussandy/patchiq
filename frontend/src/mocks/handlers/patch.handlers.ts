@@ -12,6 +12,8 @@ import type {
   Asset,
 } from '../../services/patch.service';
 
+const API_BASE_URL = 'http://localhost:3000/v1';
+
 let mockPatches: Patch[] = [
   {
     id: '1',
@@ -653,11 +655,11 @@ let mockZeroTouchConfigs: ZeroTouchConfig[] = [];
 
 export const patchHandlers = [
   // Patches
-  http.get('/api/patches', () => {
+  http.get(`${API_BASE_URL}/patches`, () => {
     return HttpResponse.json(mockPatches);
   }),
 
-  http.get('/api/patches/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/patches/:id`, ({ params }) => {
     const { id } = params;
     const patch = mockPatches.find((p) => p.id === id);
     if (!patch) {
@@ -666,7 +668,7 @@ export const patchHandlers = [
     return HttpResponse.json(patch);
   }),
 
-  http.post('/api/patches', async ({ request }) => {
+  http.post(`${API_BASE_URL}/patches`, async ({ request }) => {
     const newPatch = (await request.json()) as Partial<Patch>;
     const patch: Patch = {
       id: String(mockPatches.length + 1),
@@ -693,7 +695,7 @@ export const patchHandlers = [
     return HttpResponse.json(patch);
   }),
 
-  http.put('/api/patches/:id', async ({ params, request }) => {
+  http.put(`${API_BASE_URL}/patches/:id`, async ({ params, request }) => {
     const { id } = params;
     const updates = (await request.json()) as Partial<Patch>;
     const index = mockPatches.findIndex((p) => p.id === id);
@@ -704,34 +706,34 @@ export const patchHandlers = [
     return HttpResponse.json(mockPatches[index]);
   }),
 
-  http.delete('/api/patches/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/patches/:id`, ({ params }) => {
     const { id } = params;
     mockPatches = mockPatches.filter((p) => p.id !== id);
     return HttpResponse.json({ success: true });
   }),
 
-  http.get('/api/patches/:id/affected-softwares', () => {
+  http.get(`${API_BASE_URL}/patches/:id/affected-softwares`, () => {
     return HttpResponse.json(mockAffectedSoftwares);
   }),
 
-  http.post('/api/patches/:id/scan-endpoints', () => {
+  http.post(`${API_BASE_URL}/patches/:id/scan-endpoints`, () => {
     return HttpResponse.json({ success: true });
   }),
 
-  http.get('/api/patches/:id/file-details', () => {
+  http.get(`${API_BASE_URL}/patches/:id/file-details`, () => {
     return HttpResponse.json(mockFileDetails);
   }),
 
-  http.get('/api/patches/:id/vulnerabilities', () => {
+  http.get(`${API_BASE_URL}/patches/:id/vulnerabilities`, () => {
     return HttpResponse.json(mockVulnerabilities);
   }),
 
-  http.get('/api/patches/:id/endpoints', () => {
+  http.get(`${API_BASE_URL}/patches/:id/endpoints`, () => {
     return HttpResponse.json(mockEndpoints);
   }),
 
   // Endpoint Details
-  http.get('/api/endpoints/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/endpoints/:id`, ({ params }) => {
     const { id } = params;
     const endpointDetails = mockEndpointDetails[id as string];
     if (!endpointDetails) {
@@ -741,11 +743,11 @@ export const patchHandlers = [
   }),
 
   // Deployments
-  http.get('/api/deployments', () => {
+  http.get(`${API_BASE_URL}/deployments`, () => {
     return HttpResponse.json(mockDeployments);
   }),
 
-  http.get('/api/deployments/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/deployments/:id`, ({ params }) => {
     const { id } = params;
     const deployment = mockDeployments.find((d) => d.id === id);
     if (!deployment) {
@@ -754,7 +756,7 @@ export const patchHandlers = [
     return HttpResponse.json(deployment);
   }),
 
-  http.post('/api/deployments', async ({ request }) => {
+  http.post(`${API_BASE_URL}/deployments`, async ({ request }) => {
     const newDeployment = (await request.json()) as Partial<Deployment>;
     const deployment: Deployment = {
       id: String(mockDeployments.length + 1),
@@ -772,13 +774,13 @@ export const patchHandlers = [
     return HttpResponse.json(deployment);
   }),
 
-  http.delete('/api/deployments/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/deployments/:id`, ({ params }) => {
     const { id } = params;
     mockDeployments = mockDeployments.filter((d) => d.id !== id);
     return HttpResponse.json({ success: true });
   }),
 
-  http.get('/api/deployments/:id/preview', ({ params }) => {
+  http.get(`${API_BASE_URL}/deployments/:id/preview`, ({ params }) => {
     const { id } = params;
     return HttpResponse.json({
       deploymentId: id,
@@ -788,16 +790,16 @@ export const patchHandlers = [
     });
   }),
 
-  http.post('/api/deployments/:id/execute', () => {
+  http.post(`${API_BASE_URL}/deployments/:id/execute`, () => {
     return HttpResponse.json({ success: true });
   }),
 
   // Patch Tests
-  http.get('/api/patch-tests', () => {
+  http.get(`${API_BASE_URL}/patch-tests`, () => {
     return HttpResponse.json(mockPatchTests);
   }),
 
-  http.get('/api/patch-tests/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/patch-tests/:id`, ({ params }) => {
     const { id } = params;
     const test = mockPatchTests.find((t) => t.id === id);
     if (!test) {
@@ -806,7 +808,7 @@ export const patchHandlers = [
     return HttpResponse.json(test);
   }),
 
-  http.post('/api/patch-tests', async ({ request }) => {
+  http.post(`${API_BASE_URL}/patch-tests`, async ({ request }) => {
     const newTest = (await request.json()) as Partial<PatchTest>;
     const test: PatchTest = {
       id: String(mockPatchTests.length + 1),
@@ -825,7 +827,7 @@ export const patchHandlers = [
     return HttpResponse.json(test);
   }),
 
-  http.put('/api/patch-tests/:id/approve', ({ params }) => {
+  http.put(`${API_BASE_URL}/patch-tests/:id/approve`, ({ params }) => {
     const { id } = params;
     const index = mockPatchTests.findIndex((t) => t.id === id);
     if (index === -1) {
@@ -835,18 +837,18 @@ export const patchHandlers = [
     return HttpResponse.json(mockPatchTests[index]);
   }),
 
-  http.delete('/api/patch-tests/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/patch-tests/:id`, ({ params }) => {
     const { id } = params;
     mockPatchTests = mockPatchTests.filter((t) => t.id !== id);
     return HttpResponse.json({ success: true });
   }),
 
   // Zero Touch
-  http.get('/api/zero-touch-configs', () => {
+  http.get(`${API_BASE_URL}/zero-touch-configs`, () => {
     return HttpResponse.json(mockZeroTouchConfigs);
   }),
 
-  http.get('/api/zero-touch-configs/:id', ({ params }) => {
+  http.get(`${API_BASE_URL}/zero-touch-configs/:id`, ({ params }) => {
     const { id } = params;
     const config = mockZeroTouchConfigs.find((c) => c.id === id);
     if (!config) {
@@ -855,7 +857,7 @@ export const patchHandlers = [
     return HttpResponse.json(config);
   }),
 
-  http.post('/api/zero-touch-configs', async ({ request }) => {
+  http.post(`${API_BASE_URL}/zero-touch-configs`, async ({ request }) => {
     const newConfig = (await request.json()) as Partial<ZeroTouchConfig>;
     const config: ZeroTouchConfig = {
       id: String(mockZeroTouchConfigs.length + 1),
@@ -879,7 +881,7 @@ export const patchHandlers = [
     return HttpResponse.json(config);
   }),
 
-  http.put('/api/zero-touch-configs/:id', async ({ params, request }) => {
+  http.put(`${API_BASE_URL}/zero-touch-configs/:id`, async ({ params, request }) => {
     const { id } = params;
     const updates = (await request.json()) as Partial<ZeroTouchConfig>;
     const index = mockZeroTouchConfigs.findIndex((c) => c.id === id);
@@ -890,7 +892,7 @@ export const patchHandlers = [
     return HttpResponse.json(mockZeroTouchConfigs[index]);
   }),
 
-  http.delete('/api/zero-touch-configs/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/zero-touch-configs/:id`, ({ params }) => {
     const { id } = params;
     mockZeroTouchConfigs = mockZeroTouchConfigs.filter((c) => c.id !== id);
     return HttpResponse.json({ success: true });
