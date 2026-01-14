@@ -9,6 +9,7 @@ import {
   message,
   Space,
   Popconfirm,
+  DatePicker,
 } from 'antd';
 import {
   SearchOutlined,
@@ -20,6 +21,7 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import type { Dayjs } from 'dayjs';
 import { settingsService } from '../../services/settings.service';
 import './styles.css';
 
@@ -39,6 +41,13 @@ interface TableParams {
   sortOrder?: string;
 }
 
+interface FilterState {
+  id: string;
+  name: string;
+  description: string;
+  dateRange: [Dayjs | null, Dayjs | null] | null;
+}
+
 export const UserLocation = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,10 +55,18 @@ export const UserLocation = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [isViewModalEditing, setIsViewModalEditing] = useState(false);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [viewingLocation, setViewingLocation] = useState<Location | null>(null);
+  const [filters, setFilters] = useState<FilterState>({
+    id: '',
+    name: '',
+    description: '',
+    dateRange: null,
+  });
   const [form] = Form.useForm();
   const [viewForm] = Form.useForm();
+  const [filterForm] = Form.useForm();
   const [tableParams, setTableParams] = useState<TableParams>({
     pagination: {
       current: 1,
@@ -194,6 +211,47 @@ export const UserLocation = () => {
     }
   };
 
+  const handleOpenFilterModal = () => {
+    filterForm.setFieldsValue({
+      id: filters.id,
+      name: filters.name,
+      description: filters.description,
+      dateRange: filters.dateRange,
+    });
+    setFilterModalVisible(true);
+  };
+
+  const handleApplyFilters = async () => {
+    try {
+      const values = await filterForm.validateFields();
+      setFilters({
+        id: values.id || '',
+        name: values.name || '',
+        description: values.description || '',
+        dateRange: values.dateRange || null,
+      });
+      setTableParams({ ...tableParams, pagination: { ...tableParams.pagination, current: 1 } });
+      setFilterModalVisible(false);
+      message.success('Filters applied');
+    } catch (error) {
+      message.error('Please fill valid filter criteria');
+    }
+  };
+
+  const handleResetFilters = () => {
+    filterForm.resetFields();
+    setFilters({
+      id: '',
+      name: '',
+      description: '',
+      dateRange: null,
+    });
+    setTableParams({ ...tableParams, pagination: { ...tableParams.pagination, current: 1 } });
+    message.success('Filters reset');
+  };
+
+  const hasActiveFilters = filters.id || filters.name || filters.description || filters.dateRange;
+
   const formatDateTime = (dateString?: string): string => {
     if (!dateString) return '';
     try {
@@ -281,9 +339,27 @@ export const UserLocation = () => {
     },
   ];
 
-  const filteredLocations = locations.filter((location) =>
-    location.name.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const filteredLocations = locations.filter((location) => {
+    // Search filter
+    const matchesSearch = location.name.toLowerCase().includes(searchText.toLowerCase()) ||
+                         (location.description && location.description.toLowerCase().includes(searchText.toLowerCase()));
+
+    // Advanced filters
+    const matchesId = !filters.id || location.id.toLowerCase().includes(filters.id.toLowerCase());
+    const matchesName = !filters.name || location.name.toLowerCase().includes(filters.name.toLowerCase());
+    const matchesDescription = !filters.description ||
+                              (location.description && location.description.toLowerCase().includes(filters.description.toLowerCase()));
+
+    let matchesDateRange = true;
+    if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1] && location.createdAt) {
+      const locDate = new Date(location.createdAt).getTime();
+      const fromDate = filters.dateRange[0].toDate().getTime();
+      const toDate = filters.dateRange[1].toDate().getTime();
+      matchesDateRange = locDate >= fromDate && locDate <= toDate;
+    }
+
+    return matchesSearch && matchesId && matchesName && matchesDescription && matchesDateRange;
+  });
 
   const handleTableChange = (pagination: TablePaginationConfig) => {
     setTableParams({
@@ -358,9 +434,10 @@ export const UserLocation = () => {
             Create
           </Button>
           <Button
-            type="default"
+            type={hasActiveFilters ? 'primary' : 'default'}
             icon={<FilterOutlined />}
             style={{ display: 'flex', alignItems: 'center' }}
+            onClick={handleOpenFilterModal}
           />
         </div>
       </div>
@@ -465,6 +542,70 @@ export const UserLocation = () => {
             </Form.Item>
           </Form>
         )}
+      </Modal>
+
+      {/* Filter Modal */}
+      <Modal
+        title="Filter Locations"
+        open={filterModalVisible}
+        onCancel={() => {
+          setFilterModalVisible(false);
+        }}
+        footer={[
+          <Button
+            key="reset"
+            onClick={handleResetFilters}
+            disabled={!hasActiveFilters}
+          >
+            Reset Filters
+          </Button>,
+          <Button
+            key="cancel"
+            onClick={() => {
+              setFilterModalVisible(false);
+            }}
+          >
+            Cancel
+          </Button>,
+          <Button
+            key="apply"
+            type="primary"
+            onClick={handleApplyFilters}
+          >
+            Apply Filters
+          </Button>,
+        ]}
+        width={600}
+      >
+        <Form form={filterForm} layout="vertical" style={{ marginTop: '24px' }}>
+          <Form.Item
+            label="ID"
+            name="id"
+          >
+            <Input placeholder="Filter by location ID" />
+          </Form.Item>
+
+          <Form.Item
+            label="Name"
+            name="name"
+          >
+            <Input placeholder="Filter by location name" />
+          </Form.Item>
+
+          <Form.Item
+            label="Description"
+            name="description"
+          >
+            <Input placeholder="Filter by description" />
+          </Form.Item>
+
+          <Form.Item
+            label="Created On (Date Range)"
+            name="dateRange"
+          >
+            <DatePicker.RangePicker style={{ width: '100%' }} />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );
