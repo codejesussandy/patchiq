@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { AxiosInstance, AxiosError } from 'axios';
 import type { ApiError } from '../types/auth.types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 class ApiService {
   private api: AxiosInstance;

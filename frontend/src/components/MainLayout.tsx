@@ -45,6 +45,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [categoryManagementModalOpen, setCategoryManagementModalOpen] = useState(false);
   const [expandedAssetSections, setExpandedAssetSections] = useState<string[]>([]);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [selectedAssetTab, setSelectedAssetTab] = useState<string>('all-assets');
   const [selectedPatchTab, setSelectedPatchTab] = useState<string>('all-patches');
 
@@ -104,6 +105,20 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       setSelectedPatchTab(parentKey);
     }
   }, [location.pathname]);
+
+  // Auto-expand User Management menu when visiting its sub-pages
+  // Auto-navigate to organization if just /settings/user-management
+  useEffect(() => {
+    if (location.pathname.startsWith('/settings/user-management')) {
+      setExpandedMenus(['user-management']);
+      // If the path is exactly /settings/user-management (shouldn't happen due to redirect, but just in case)
+      if (location.pathname === '/settings/user-management') {
+        navigate('/settings/user-management/organization', { replace: true });
+      }
+    } else {
+      setExpandedMenus([]);
+    }
+  }, [location.pathname, navigate]);
 
   const handleCategoryManagementClose = () => {
     setCategoryManagementModalOpen(false);
@@ -195,19 +210,80 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
 
   const settingsMenuItems: MenuItem[] = [
     {
-      key: 'branch-location',
-      icon: <EnvironmentOutlined />,
-      label: 'Branch Location',
-    },
-    {
       key: 'user-management',
       icon: <UserOutlined />,
       label: 'User Management',
+      children: [
+        {
+          key: 'user-management-organization',
+          label: 'Organization',
+        },
+        {
+          key: 'user-management-department',
+          label: 'Department',
+        },
+        {
+          key: 'user-management-location',
+          label: 'Location',
+        },
+        {
+          key: 'user-management-roles',
+          label: 'User Roles',
+        },
+        {
+          key: 'user-management-users',
+          label: 'Users',
+        },
+        {
+          key: 'user-management-password-policies',
+          label: 'Password Policies',
+        },
+      ],
     },
     {
-      key: 'policies',
+      key: 'system-settings',
+      icon: <SettingOutlined />,
+      label: 'System Settings',
+    },
+    {
+      key: 'vulnerability-preference',
+      icon: <FileTextOutlined />,
+      label: 'Vulnerability Preference',
+    },
+    {
+      key: 'market-place',
+      icon: <FolderOutlined />,
+      label: 'Market Place',
+    },
+    {
+      key: 'agent-management',
+      icon: <DesktopOutlined />,
+      label: 'Agent Management',
+    },
+    {
+      key: 'deployment-policies',
+      icon: <WindowsOutlined />,
+      label: 'Deployment Policies',
+    },
+    {
+      key: 'patch-management',
+      icon: <EditOutlined />,
+      label: 'Patch Management',
+    },
+    {
+      key: 'policy-management',
       icon: <CreditCardOutlined />,
-      label: 'Policies',
+      label: 'Policy Management',
+    },
+    {
+      key: 'audit',
+      icon: <FileTextOutlined />,
+      label: 'Audit',
+    },
+    {
+      key: 'platform-license',
+      icon: <CreditCardOutlined />,
+      label: 'Platform License',
     },
   ];
 
@@ -243,10 +319,24 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     else if (key === 'ip-discovery') navigate('/discovery/ip-discovery');
     else if (key === 'device-credentials') navigate('/discovery/device-credentials');
     else if (key === 'agents') navigate('/discovery/agents');
+    // Settings - User Management sub-menus
+    else if (key === 'user-management-organization') navigate('/settings/user-management/organization');
+    else if (key === 'user-management-department') navigate('/settings/user-management/department');
+    else if (key === 'user-management-location') navigate('/settings/user-management/location');
+    else if (key === 'user-management-roles') navigate('/settings/user-management/roles');
+    else if (key === 'user-management-users') navigate('/settings/user-management/users');
+    else if (key === 'user-management-password-policies') navigate('/settings/user-management/password-policies');
     // Settings
-    else if (key === 'branch-location') navigate('/settings/branch-location');
-    else if (key === 'user-management') navigate('/settings/user-management');
-    else if (key === 'policies') navigate('/settings/policies');
+    else if (key === 'user-management') navigate('/settings/user-management/organization');
+    else if (key === 'system-settings') navigate('/settings/system-settings');
+    else if (key === 'vulnerability-preference') navigate('/settings/vulnerability-preference');
+    else if (key === 'market-place') navigate('/settings/market-place');
+    else if (key === 'agent-management') navigate('/settings/agent-management');
+    else if (key === 'deployment-policies') navigate('/settings/deployment-policies');
+    else if (key === 'patch-management') navigate('/settings/patch-management');
+    else if (key === 'policy-management') navigate('/settings/policy-management');
+    else if (key === 'audit') navigate('/settings/audit');
+    else if (key === 'platform-license') navigate('/settings/platform-license');
   };
 
   const handleAssetTabChange = (tab: string) => {
@@ -341,10 +431,23 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     if (location.pathname === '/discovery/ip-discovery') return ['ip-discovery'];
     if (location.pathname === '/discovery/device-credentials') return ['device-credentials'];
     if (location.pathname === '/discovery/agents') return ['agents'];
+    // Settings - User Management
+    if (location.pathname === '/settings/user-management/organization') return ['user-management-organization'];
+    if (location.pathname === '/settings/user-management/department') return ['user-management-department'];
+    if (location.pathname === '/settings/user-management/location') return ['user-management-location'];
+    if (location.pathname === '/settings/user-management/roles') return ['user-management-roles'];
+    if (location.pathname === '/settings/user-management/users') return ['user-management-users'];
+    if (location.pathname === '/settings/user-management/password-policies') return ['user-management-password-policies'];
     // Settings
-    if (location.pathname === '/settings/branch-location') return ['branch-location'];
-    if (location.pathname === '/settings/user-management') return ['user-management'];
-    if (location.pathname === '/settings/policies') return ['policies'];
+    if (location.pathname === '/settings/system-settings') return ['system-settings'];
+    if (location.pathname === '/settings/vulnerability-preference') return ['vulnerability-preference'];
+    if (location.pathname === '/settings/market-place') return ['market-place'];
+    if (location.pathname === '/settings/agent-management') return ['agent-management'];
+    if (location.pathname === '/settings/deployment-policies') return ['deployment-policies'];
+    if (location.pathname === '/settings/patch-management') return ['patch-management'];
+    if (location.pathname === '/settings/policy-management') return ['policy-management'];
+    if (location.pathname === '/settings/audit') return ['audit'];
+    if (location.pathname === '/settings/platform-license') return ['platform-license'];
     return [];
   };
 
@@ -619,10 +722,10 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                 <Menu
                   mode="inline"
                   selectedKeys={getSelectedSideMenu()}
-                  openKeys={expandedAssetSections}
+                  openKeys={expandedMenus}
                   items={sidebarConfig?.items as any}
                   onClick={({ key }) => handleSideMenuClick(key)}
-                  onOpenChange={(keys) => setExpandedAssetSections(keys as string[])}
+                  onOpenChange={(keys) => setExpandedMenus(keys as string[])}
                   style={{
                     background: 'transparent',
                     border: 'none',

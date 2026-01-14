@@ -209,6 +209,62 @@ let mockPolicies: Policy[] = [
   },
 ];
 
+// Mock data for organizations
+let mockOrganizations: any[] = [
+  {
+    id: '0',
+    name: 'Global Organization',
+    description: '',
+    createdAt: '',
+    updatedAt: '2024-01-15T10:00:00Z',
+  },
+  {
+    id: '1',
+    name: 'Kogta Financial (I) Limited',
+    description: 'Kogta Financial (I) Limited',
+    createdAt: '2025-11-27T17:52:56Z',
+    updatedAt: '2025-11-27T17:52:56Z',
+  },
+];
+
+// Mock data for departments
+let mockDepartments: any[] = [
+  {
+    id: '1',
+    name: 'IT Department',
+    organization: 'Acme Corporation',
+    description: 'Information Technology',
+    createdAt: '2024-01-15T10:00:00Z',
+  },
+  {
+    id: '2',
+    name: 'HR Department',
+    organization: 'Acme Corporation',
+    description: 'Human Resources',
+    createdAt: '2024-01-20T10:00:00Z',
+  },
+];
+
+// Mock data for locations
+let mockLocations: any[] = [
+  {
+    id: '1',
+    name: 'Gurugram Office',
+    address: '123 Tech Park, Sector 44',
+    city: 'Gurugram',
+    country: 'India',
+    createdAt: '2024-01-15T10:00:00Z',
+  },
+  {
+    id: '2',
+    name: 'Delhi Office',
+    address: '456 Business Street',
+    city: 'Delhi',
+    country: 'India',
+    createdAt: '2024-01-20T10:00:00Z',
+  },
+];
+
 export const settingsHandlers = [
   // Branch APIs
   http.get('/api/settings/branches', () => {
@@ -479,5 +535,136 @@ export const settingsHandlers = [
       { action: 'Created', timestamp: '2024-01-15T10:00:00Z', by: 'Alice Johnson' },
       { action: 'Modified', timestamp: '2024-02-01T10:00:00Z', by: 'Alice Johnson' },
     ]);
+  }),
+
+  // Organization APIs
+  http.get('/api/settings/organizations', () => {
+    return HttpResponse.json(mockOrganizations);
+  }),
+
+  http.get('/api/settings/organizations/:id', ({ params }) => {
+    const { id } = params;
+    const org = mockOrganizations.find((o) => o.id === id);
+    if (!org) {
+      return HttpResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+    return HttpResponse.json(org);
+  }),
+
+  http.post('/api/settings/organizations', async ({ request }) => {
+    const data = (await request.json()) as any;
+    const newOrg = {
+      id: String(Date.now()),
+      ...data,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    mockOrganizations.push(newOrg);
+    return HttpResponse.json(newOrg, { status: 201 });
+  }),
+
+  http.put('/api/settings/organizations/:id', async ({ params, request }) => {
+    const { id } = params;
+    const data = (await request.json()) as any;
+    const index = mockOrganizations.findIndex((o) => o.id === id);
+    if (index === -1) {
+      return HttpResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+    mockOrganizations[index] = {
+      ...mockOrganizations[index],
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+    return HttpResponse.json(mockOrganizations[index]);
+  }),
+
+  http.delete('/api/settings/organizations/:id', ({ params }) => {
+    const { id } = params;
+    mockOrganizations = mockOrganizations.filter((o) => o.id !== id);
+    return HttpResponse.json({ success: true });
+  }),
+
+  // Department APIs
+  http.get('/api/settings/departments', () => {
+    return HttpResponse.json(mockDepartments);
+  }),
+
+  http.get('/api/settings/departments/:id', ({ params }) => {
+    const { id } = params;
+    const dept = mockDepartments.find((d) => d.id === id);
+    if (!dept) {
+      return HttpResponse.json({ error: 'Department not found' }, { status: 404 });
+    }
+    return HttpResponse.json(dept);
+  }),
+
+  http.post('/api/settings/departments', async ({ request }) => {
+    const data = (await request.json()) as any;
+    const newDept = {
+      id: String(Date.now()),
+      ...data,
+      createdAt: new Date().toISOString(),
+    };
+    mockDepartments.push(newDept);
+    return HttpResponse.json(newDept, { status: 201 });
+  }),
+
+  http.put('/api/settings/departments/:id', async ({ params, request }) => {
+    const { id } = params;
+    const data = (await request.json()) as any;
+    const index = mockDepartments.findIndex((d) => d.id === id);
+    if (index === -1) {
+      return HttpResponse.json({ error: 'Department not found' }, { status: 404 });
+    }
+    mockDepartments[index] = { ...mockDepartments[index], ...data };
+    return HttpResponse.json(mockDepartments[index]);
+  }),
+
+  http.delete('/api/settings/departments/:id', ({ params }) => {
+    const { id } = params;
+    mockDepartments = mockDepartments.filter((d) => d.id !== id);
+    return HttpResponse.json({ success: true });
+  }),
+
+  // Location APIs
+  http.get('/api/settings/locations', () => {
+    return HttpResponse.json(mockLocations);
+  }),
+
+  http.get('/api/settings/locations/:id', ({ params }) => {
+    const { id } = params;
+    const location = mockLocations.find((l) => l.id === id);
+    if (!location) {
+      return HttpResponse.json({ error: 'Location not found' }, { status: 404 });
+    }
+    return HttpResponse.json(location);
+  }),
+
+  http.post('/api/settings/locations', async ({ request }) => {
+    const data = (await request.json()) as any;
+    const newLocation = {
+      id: String(Date.now()),
+      ...data,
+      createdAt: new Date().toISOString(),
+    };
+    mockLocations.push(newLocation);
+    return HttpResponse.json(newLocation, { status: 201 });
+  }),
+
+  http.put('/api/settings/locations/:id', async ({ params, request }) => {
+    const { id } = params;
+    const data = (await request.json()) as any;
+    const index = mockLocations.findIndex((l) => l.id === id);
+    if (index === -1) {
+      return HttpResponse.json({ error: 'Location not found' }, { status: 404 });
+    }
+    mockLocations[index] = { ...mockLocations[index], ...data };
+    return HttpResponse.json(mockLocations[index]);
+  }),
+
+  http.delete('/api/settings/locations/:id', ({ params }) => {
+    const { id } = params;
+    mockLocations = mockLocations.filter((l) => l.id !== id);
+    return HttpResponse.json({ success: true });
   }),
 ];

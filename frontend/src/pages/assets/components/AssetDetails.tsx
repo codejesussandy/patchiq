@@ -37,6 +37,7 @@ import { tagService } from '../../../services/tag.service';
 import { AddAssetModal } from './AddAssetModal';
 import TagSelector from './TagSelector';
 import TagDisplay from './TagDisplay';
+import { SecurityTab, NetworkTab, PeripheralsTab, TelemetryTab, PatchesTab } from './tabs';
 import type { MenuProps } from 'antd';
 
 const { Title, Text } = Typography;
@@ -1940,6 +1941,31 @@ export const AssetDetails = () => {
       key: 'vulnerabilities',
       label: 'Vulnerabilities',
       children: renderVulnerabilitiesTab(),
+    },
+    {
+      key: 'security',
+      label: 'Security',
+      children: id ? <SecurityTab assetId={id} /> : null,
+    },
+    {
+      key: 'network',
+      label: 'Network',
+      children: id ? <NetworkTab assetId={id} /> : null,
+    },
+    {
+      key: 'peripherals',
+      label: 'Peripherals',
+      children: id ? <PeripheralsTab assetId={id} /> : null,
+    },
+    {
+      key: 'telemetry',
+      label: 'Telemetry',
+      children: id ? <TelemetryTab assetId={id} /> : null,
+    },
+    {
+      key: 'patches',
+      label: 'Patches',
+      children: id ? <PatchesTab assetId={id} patchSummary={asset?.patchSummary} /> : null,
     },
   ];
 

@@ -1,7 +1,58 @@
 export type OperationalStatus = 'Connected' | 'Disconnected';
 export type AssetStatus = 'In Use' | 'Available' | 'Under Maintenance' | 'Retired';
-export type AssetType = 'Computer' | 'Server' | 'Mobile' | 'Printer' | 'Laptop' | 'Tablet';
+export type AssetType = 'Computer' | 'Server' | 'Mobile' | 'Printer' | 'Laptop' | 'Tablet' | 'Desktop' | 'Virtual Machine';
 export type OSType = 'Windows 11 Pro' | 'Windows 10' | 'MacOS' | 'Linux' | 'Android' | 'iOS';
+export type AgentStatus = 'Connected' | 'Disconnected' | 'Pending' | 'Error';
+export type AssetPatchStatus = 'Installed' | 'Missing' | 'Pending' | 'Failed';
+
+// Agent link for assets
+export type AgentLink = {
+  agentId: string;
+  agentName?: string;
+  agentVersion?: string;
+  agentStatus?: AgentStatus;
+  lastHeartbeat?: string;
+  lastHeartbeatRelative?: string;
+  registeredAt?: string;
+};
+
+// Patch summary for assets
+export type PatchSummary = {
+  total: number;
+  installed: number;
+  missing: number;
+  failed: number;
+  pending: number;
+  criticalMissing?: number;
+  securityMissing?: number;
+  lastScanDate: string;
+  lastScanRelative?: string;
+  compliancePercent?: number;
+};
+
+// Asset group membership
+export type AssetGroup = {
+  id: string;
+  name: string;
+};
+
+// Related patch for an asset
+export type AssetRelatedPatch = {
+  id: string;
+  name: string;
+  severity: 'CRITICAL' | 'High' | 'Medium' | 'Low' | 'UNSPECIFIED';
+  status: AssetPatchStatus;
+  kbNumber?: string;
+};
+
+// Deployment history for an asset
+export type AssetDeployment = {
+  id: string;
+  patchId: string;
+  patchName: string;
+  date: string;
+  status: 'Success' | 'Failed' | 'Pending';
+};
 
 // Category Types
 export type Category = {
@@ -170,6 +221,25 @@ export type Asset = {
   systemSKU?: string;
   diskSize?: string;
   mac?: string;
+
+  // Agent link (NEW)
+  agent?: AgentLink;
+
+  // Patch compliance (NEW)
+  patchSummary?: PatchSummary;
+
+  // Groups for deployment targeting (NEW)
+  groups?: AssetGroup[];
+
+  // Related patches for this asset (NEW)
+  relatedPatches?: AssetRelatedPatch[];
+
+  // Recent deployment history (NEW)
+  recentDeployments?: AssetDeployment[];
+
+  // Additional fields (NEW)
+  department?: string;
+  lastSeen?: string;
 };
 
 // Asset Life Cycle
@@ -270,6 +340,191 @@ export type Hardware = {
   memory: MemorySlot[];
   networkAdapters: NetworkAdapter[];
   battery?: Battery;
+};
+
+// Enhanced Hardware Types (Phase 4)
+// Based on contracts/schemas/hardware.schema.json
+
+// SMART Status Types
+export type SmartStatusLevel = 'OK' | 'Warning' | 'Critical' | 'Unknown';
+
+export type SmartStatus = {
+  healthy: boolean;
+  status: SmartStatusLevel;
+  temperature?: number;
+  powerOnHours?: number;
+  reallocatedSectors?: number;
+  pendingSectors?: number;
+  uncorrectableSectors?: number;
+  wearLevelingCount?: number;
+  mediaWearoutIndicator?: number;
+};
+
+// Partition Types
+export type FileSystemType =
+  | 'NTFS'
+  | 'FAT32'
+  | 'exFAT'
+  | 'ext4'
+  | 'APFS'
+  | 'HFS+'
+  | 'XFS'
+  | 'BTRFS'
+  | 'Unknown';
+
+export type EncryptionPartitionStatus =
+  | 'Encrypted'
+  | 'Decrypted'
+  | 'EncryptionInProgress'
+  | 'DecryptionInProgress'
+  | 'NotEncryptable'
+  | 'Unknown';
+
+export type Partition = {
+  mountPoint: string;
+  label?: string;
+  fileSystem?: FileSystemType;
+  capacityGB?: number;
+  freeSpaceGB?: number;
+  usagePercent?: number;
+  bitLockerStatus?: EncryptionPartitionStatus;
+  fileVaultStatus?: EncryptionPartitionStatus;
+  luksStatus?: 'Encrypted' | 'Decrypted' | 'Unknown';
+};
+
+// Expanded Storage Drive Types
+export type StorageDriveType = 'HDD' | 'SSD' | 'NVMe' | 'USB' | 'Network' | 'Unknown';
+export type StorageMediaType = 'Fixed' | 'Removable' | 'External';
+export type StorageInterfaceType = 'SATA' | 'NVMe' | 'USB' | 'SCSI' | 'IDE' | 'Unknown';
+
+export type ExpandedStorageDrive = {
+  name: string;
+  type: StorageDriveType;
+  mediaType?: StorageMediaType;
+  interfaceType?: StorageInterfaceType;
+  serialNumber?: string;
+  firmwareVersion?: string;
+  capacityGB: number;
+  freeSpaceGB?: number;
+  usedSpaceGB?: number;
+  usagePercent?: number;
+  partitions?: Partition[];
+  smartStatus?: SmartStatus;
+};
+
+// Expanded Memory Module Types
+export type MemoryModuleType = 'DDR3' | 'DDR4' | 'DDR5' | 'LPDDR4' | 'LPDDR5' | 'Unknown';
+export type MemoryFormFactor = 'DIMM' | 'SODIMM' | 'Onboard' | 'Unknown';
+
+export type ExpandedMemoryModule = {
+  slot: string;
+  manufacturer?: string;
+  partNumber?: string;
+  serialNumber?: string;
+  capacityGB: number;
+  type?: MemoryModuleType;
+  speedMHz?: number;
+  formFactor?: MemoryFormFactor;
+  bankLabel?: string;
+  configured?: boolean;
+};
+
+// Expanded Memory Summary
+export type ExpandedMemory = {
+  totalPhysicalGB: number;
+  availableGB?: number;
+  usedGB?: number;
+  usagePercent?: number;
+  totalSlots?: number;
+  usedSlots?: number;
+  modules: ExpandedMemoryModule[];
+  maxCapacityGB?: number;
+};
+
+// Expanded Processor Types
+export type ProcessorArchitecture = 'x64' | 'x86' | 'arm64' | 'arm';
+
+export type ExpandedProcessor = {
+  name: string;
+  manufacturer: string;
+  architecture: ProcessorArchitecture;
+  coreCount: number;
+  threadCount: number;
+  clockSpeedMHz: number;
+  maxClockSpeedMHz?: number;
+  socketType?: string;
+  cacheL1KB?: number;
+  cacheL2KB?: number;
+  cacheL3KB?: number;
+  virtualizationEnabled?: boolean;
+};
+
+// Graphics Card Types
+export type GraphicsCard = {
+  name: string;
+  manufacturer?: string;
+  driverVersion?: string;
+  driverDate?: string;
+  videoMemoryMB?: number;
+  currentResolution?: string;
+  refreshRate?: number;
+};
+
+// Expanded BIOS Types
+export type FirmwareType = 'BIOS' | 'UEFI';
+
+export type ExpandedBIOS = {
+  vendor: string;
+  version: string;
+  releaseDate?: string;
+  firmwareType?: FirmwareType;
+  secureBootEnabled?: boolean;
+  secureBootCapable?: boolean;
+  tpmVersion?: string;
+  tpmEnabled?: boolean;
+};
+
+// System Identity Types
+export type SystemIdentity = {
+  manufacturer: string;
+  model: string;
+  serialNumber: string;
+  uuid: string;
+  sku?: string;
+  assetTag?: string;
+};
+
+// Expanded Battery Types
+export type BatteryChemistry = 'Li-Ion' | 'Li-Poly' | 'NiMH' | 'NiCd' | 'Unknown';
+export type BatteryChargingStatus = 'Charging' | 'Discharging' | 'Full' | 'NotCharging' | 'Unknown';
+
+export type ExpandedBattery = {
+  name?: string;
+  manufacturer?: string;
+  chemistry?: BatteryChemistry;
+  designCapacityWh?: number;
+  fullChargeCapacityWh?: number;
+  healthPercent?: number;
+  cycleCount?: number;
+  chargeLevel?: number;
+  chargingStatus?: BatteryChargingStatus;
+  estimatedRuntimeMinutes?: number;
+  temperature?: number;
+  voltage?: number;
+  serialNumber?: string;
+};
+
+// Complete Expanded Hardware Inventory Type
+export type ExpandedHardware = {
+  collectedAt: string;
+  systemIdentity?: SystemIdentity;
+  bios?: ExpandedBIOS;
+  processor?: ExpandedProcessor;
+  memory?: ExpandedMemory;
+  storage?: ExpandedStorageDrive[];
+  battery?: ExpandedBattery;
+  baseBoard?: BaseBoard;
+  graphicsCards?: GraphicsCard[];
 };
 
 // Software

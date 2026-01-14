@@ -1,3 +1,5 @@
+import { User, UserFormData, InviteUserFormData } from './user.types';
+
 // Branch Location Types
 export type Branch = {
   id: string;
@@ -19,46 +21,8 @@ export type Branch = {
 
 export type BranchFormData = Omit<Branch, 'id' | 'users' | 'assets' | 'status'>;
 
-// User Management Types
-export type User = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  branch: string;
-  role: string;
-  status: 'Active' | 'Invite Sent' | 'New Account' | 'In Active';
-  lastLogin: string;
-  avatar?: string;
-  createdAt: string;
-  gender?: 'Male' | 'Female' | 'Others';
-  timezone?: string;
-  password?: string;
-  dashboard?: string;
-  orgUnit?: string;
-};
-
-export type UserFormData = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  branch: string;
-  role: string;
-  gender?: 'Male' | 'Female' | 'Others';
-  timezone?: string;
-  password?: string;
-  dashboard?: string;
-  orgUnit?: string;
-};
-
-export type InviteUserFormData = {
-  email: string;
-  role: string;
-  orgUnit: string;
-  dashboard?: string;
-};
+// Re-export User types for convenience
+export type { User, UserFormData, InviteUserFormData } from './user.types';
 
 export type Role = {
   id: string;

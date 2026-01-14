@@ -28,9 +28,21 @@ import { DeviceCredentials } from './pages/discovery/DeviceCredentials';
 import { Agents } from './pages/discovery/Agents';
 
 // Settings
-import { BranchLocation } from './pages/settings/BranchLocation';
-import { UserManagement } from './pages/settings/UserManagement';
-import { Policies } from './pages/settings/Policies';
+import { Organization } from './pages/settings/Organization';
+import { Department } from './pages/settings/Department';
+import { UserLocation } from './pages/settings/UserLocation';
+import { RolesAndPrivileges } from './pages/settings/RolesAndPrivileges';
+import { Users } from './pages/settings/Users';
+import { PasswordPolicies } from './pages/settings/PasswordPolicies';
+import { SystemSettings } from './pages/settings/SystemSettings';
+import { VulnerabilityPreference } from './pages/settings/VulnerabilityPreference';
+import { MarketPlace } from './pages/settings/MarketPlace';
+import { AgentManagement } from './pages/settings/AgentManagement';
+import { DeploymentPolicies } from './pages/settings/DeploymentPolicies';
+import { PatchManagement } from './pages/settings/PatchManagement';
+import { PolicyManagement } from './pages/settings/PolicyManagement';
+import { Audit } from './pages/settings/Audit';
+import { PlatformLicense } from './pages/settings/PlatformLicense';
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -245,40 +257,164 @@ function AppRoutes() {
         element={<Navigate to="/discovery/agents" replace />}
       />
 
-      {/* Settings */}
+      {/* Settings - User Management Sub-pages */}
       <Route
-        path="/settings/branch-location"
+        path="/settings/user-management/organization"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <BranchLocation />
+              <Organization />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-management/department"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Department />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-management/location"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <UserLocation />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-management/roles"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <RolesAndPrivileges />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-management/users"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Users />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-management/password-policies"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PasswordPolicies />
             </MainLayout>
           </ProtectedRoute>
         }
       />
       <Route
         path="/settings/user-management"
+        element={<Navigate to="/settings/user-management/organization" replace />}
+      />
+      <Route
+        path="/settings/system-settings"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <UserManagement />
+              <SystemSettings />
             </MainLayout>
           </ProtectedRoute>
         }
       />
       <Route
-        path="/settings/policies"
+        path="/settings/vulnerability-preference"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <Policies />
+              <VulnerabilityPreference />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/market-place"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <MarketPlace />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/agent-management"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <AgentManagement />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/deployment-policies"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <DeploymentPolicies />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/patch-management"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PatchManagement />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/policy-management"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PolicyManagement />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/audit"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Audit />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/platform-license"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PlatformLicense />
             </MainLayout>
           </ProtectedRoute>
         }
       />
       <Route
         path="/settings"
-        element={<Navigate to="/settings/branch-location" replace />}
+        element={<Navigate to="/settings/user-management/organization" replace />}
       />
 
       {/* Default route */}

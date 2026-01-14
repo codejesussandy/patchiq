@@ -9,6 +9,7 @@ import type {
   Deployment,
   PatchTest,
   ZeroTouchConfig,
+  Asset,
 } from '../../services/patch.service';
 
 let mockPatches: Patch[] = [
@@ -392,7 +393,11 @@ const mockEndpointDetails: Record<string, EndpointDetails> = {
       missing: 3,
       failed: 1,
       pending: 1,
+      criticalMissing: 1,
+      securityMissing: 2,
       lastScanDate: 'Dec 13, 2025 10:30 AM',
+      lastScanRelative: '1 day ago',
+      compliancePercent: 66.7,
     },
     relatedPatches: [
       {
@@ -480,7 +485,11 @@ const mockEndpointDetails: Record<string, EndpointDetails> = {
       missing: 1,
       failed: 0,
       pending: 0,
+      criticalMissing: 0,
+      securityMissing: 1,
       lastScanDate: 'Dec 14, 2025 8:15 AM',
+      lastScanRelative: '2 hours ago',
+      compliancePercent: 91.7,
     },
     relatedPatches: [
       {
@@ -546,7 +555,11 @@ const mockEndpointDetails: Record<string, EndpointDetails> = {
       missing: 5,
       failed: 0,
       pending: 1,
+      criticalMissing: 2,
+      securityMissing: 3,
       lastScanDate: 'Dec 12, 2025 6:00 PM',
+      lastScanRelative: '2 days ago',
+      compliancePercent: 70.0,
     },
     relatedPatches: [
       {

@@ -1,20 +1,11 @@
-export interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: 'admin' | 'user' | 'manager';
-  avatar?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { User } from './user.types';
 
-export interface LoginRequest {
+export type LoginRequest = {
   email: string;
   password: string;
-}
+};
 
-export interface LoginResponse {
+export type LoginResponse = {
   success: boolean;
   data: {
     user: User;
@@ -22,44 +13,44 @@ export interface LoginResponse {
     refreshToken: string;
   };
   message: string;
-}
+};
 
-export interface ForgotPasswordRequest {
+export type ForgotPasswordRequest = {
   email: string;
-}
+};
 
-export interface ForgotPasswordResponse {
+export type ForgotPasswordResponse = {
   success: boolean;
   message: string;
-}
+};
 
-export interface ResetPasswordRequest {
+export type ResetPasswordRequest = {
   token: string;
   password: string;
   confirmPassword: string;
-}
+};
 
-export interface ResetPasswordResponse {
+export type ResetPasswordResponse = {
   success: boolean;
   message: string;
-}
+};
 
-export interface OnboardingRequest {
+export type OnboardingRequest = {
   name: string;
   contactNumber: string;
   password: string;
   confirmPassword: string;
-}
+};
 
-export interface OnboardingResponse {
+export type OnboardingResponse = {
   success: boolean;
   data: {
     user: User;
   };
   message: string;
-}
+};
 
-export interface ApiError {
+export type ApiError = {
   success: false;
   error: {
     code: string;
@@ -69,9 +60,9 @@ export interface ApiError {
       message: string;
     }>;
   };
-}
+};
 
-export interface AuthContextType {
+export type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -80,4 +71,4 @@ export interface AuthContextType {
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, password: string, confirmPassword: string) => Promise<void>;
   completeOnboarding: (name: string, contactNumber: string, password: string, confirmPassword: string) => Promise<void>;
-}
+};
