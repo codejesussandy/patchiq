@@ -11,6 +11,9 @@ import {
   Tooltip,
   DatePicker,
   Select,
+  Checkbox,
+  Row,
+  Col,
 } from 'antd';
 import {
   SearchOutlined,
@@ -48,6 +51,11 @@ interface FilterState {
   organization: string;
   description: string;
   dateRange: [Dayjs | null, Dayjs | null] | null;
+  enableId: boolean;
+  enableName: boolean;
+  enableOrganization: boolean;
+  enableDescription: boolean;
+  enableDateRange: boolean;
 }
 
 export const Department = () => {
@@ -67,6 +75,11 @@ export const Department = () => {
     organization: '',
     description: '',
     dateRange: null,
+    enableId: false,
+    enableName: false,
+    enableOrganization: false,
+    enableDescription: false,
+    enableDateRange: false,
   });
   const [form] = Form.useForm();
   const [viewForm] = Form.useForm();
@@ -201,10 +214,15 @@ export const Department = () => {
   const handleOpenFilterModal = () => {
     filterForm.setFieldsValue({
       id: filters.id,
+      enableId: filters.enableId,
       name: filters.name,
+      enableName: filters.enableName,
       organization: filters.organization,
+      enableOrganization: filters.enableOrganization,
       description: filters.description,
+      enableDescription: filters.enableDescription,
       dateRange: filters.dateRange,
+      enableDateRange: filters.enableDateRange,
     });
     setFilterModalVisible(true);
   };
@@ -218,6 +236,11 @@ export const Department = () => {
         organization: values.organization || '',
         description: values.description || '',
         dateRange: values.dateRange || null,
+        enableId: values.enableId || false,
+        enableName: values.enableName || false,
+        enableOrganization: values.enableOrganization || false,
+        enableDescription: values.enableDescription || false,
+        enableDateRange: values.enableDateRange || false,
       });
       setPagination({ ...pagination, current: 1 });
       setFilterModalVisible(false);
@@ -235,12 +258,17 @@ export const Department = () => {
       organization: '',
       description: '',
       dateRange: null,
+      enableId: false,
+      enableName: false,
+      enableOrganization: false,
+      enableDescription: false,
+      enableDateRange: false,
     });
     setPagination({ ...pagination, current: 1 });
     message.success('Filters reset');
   };
 
-  const hasActiveFilters = filters.id || filters.name || filters.organization || filters.description || filters.dateRange;
+  const hasActiveFilters = filters.enableId || filters.enableName || filters.enableOrganization || filters.enableDescription || filters.enableDateRange;
 
   const handleExport = () => {
     const csvContent = [
@@ -357,16 +385,16 @@ export const Department = () => {
                          (dept.description && dept.description.toLowerCase().includes(searchText.toLowerCase())) ||
                          (dept.organization && dept.organization.toLowerCase().includes(searchText.toLowerCase()));
 
-    // Advanced filters
-    const matchesId = !filters.id || dept.id.toLowerCase().includes(filters.id.toLowerCase());
-    const matchesName = !filters.name || dept.name.toLowerCase().includes(filters.name.toLowerCase());
-    const matchesOrganization = !filters.organization ||
+    // Advanced filters (only apply if enabled)
+    const matchesId = !filters.enableId || !filters.id || dept.id.toLowerCase().includes(filters.id.toLowerCase());
+    const matchesName = !filters.enableName || !filters.name || dept.name.toLowerCase().includes(filters.name.toLowerCase());
+    const matchesOrganization = !filters.enableOrganization || !filters.organization ||
                                 (dept.organization && dept.organization.toLowerCase().includes(filters.organization.toLowerCase()));
-    const matchesDescription = !filters.description ||
+    const matchesDescription = !filters.enableDescription || !filters.description ||
                               (dept.description && dept.description.toLowerCase().includes(filters.description.toLowerCase()));
 
     let matchesDateRange = true;
-    if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1] && dept.createdAt) {
+    if (filters.enableDateRange && filters.dateRange && filters.dateRange[0] && filters.dateRange[1] && dept.createdAt) {
       const deptDate = new Date(dept.createdAt).getTime();
       const fromDate = filters.dateRange[0].toDate().getTime();
       const toDate = filters.dateRange[1].toDate().getTime();
@@ -547,47 +575,77 @@ export const Department = () => {
         width={600}
       >
         <Form form={filterForm} layout="vertical" style={{ marginTop: '24px' }}>
-          <Form.Item
-            label="ID"
-            name="id"
-          >
-            <Input placeholder="Filter by department ID" />
-          </Form.Item>
+          <Row gutter={[16, 0]} align="middle" style={{ marginBottom: '16px' }}>
+            <Col span={4}>
+              <Form.Item name="enableId" valuePropName="checked" style={{ margin: 0 }}>
+                <Checkbox />
+              </Form.Item>
+            </Col>
+            <Col span={20}>
+              <Form.Item name="id" style={{ margin: 0 }}>
+                <Input placeholder="Filter by department ID" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            label="Name"
-            name="name"
-          >
-            <Input placeholder="Filter by department name" />
-          </Form.Item>
+          <Row gutter={[16, 0]} align="middle" style={{ marginBottom: '16px' }}>
+            <Col span={4}>
+              <Form.Item name="enableName" valuePropName="checked" style={{ margin: 0 }}>
+                <Checkbox />
+              </Form.Item>
+            </Col>
+            <Col span={20}>
+              <Form.Item name="name" style={{ margin: 0 }}>
+                <Input placeholder="Filter by department name" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            label="Organization"
-            name="organization"
-          >
-            <Select
-              placeholder="Filter by organization"
-              allowClear
-              options={organizations.map((org) => ({
-                value: org.name,
-                label: org.name,
-              }))}
-            />
-          </Form.Item>
+          <Row gutter={[16, 0]} align="middle" style={{ marginBottom: '16px' }}>
+            <Col span={4}>
+              <Form.Item name="enableOrganization" valuePropName="checked" style={{ margin: 0 }}>
+                <Checkbox />
+              </Form.Item>
+            </Col>
+            <Col span={20}>
+              <Form.Item name="organization" style={{ margin: 0 }}>
+                <Select
+                  placeholder="Filter by organization"
+                  allowClear
+                  options={organizations.map((org) => ({
+                    value: org.name,
+                    label: org.name,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            label="Description"
-            name="description"
-          >
-            <Input placeholder="Filter by description" />
-          </Form.Item>
+          <Row gutter={[16, 0]} align="middle" style={{ marginBottom: '16px' }}>
+            <Col span={4}>
+              <Form.Item name="enableDescription" valuePropName="checked" style={{ margin: 0 }}>
+                <Checkbox />
+              </Form.Item>
+            </Col>
+            <Col span={20}>
+              <Form.Item name="description" style={{ margin: 0 }}>
+                <Input placeholder="Filter by description" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            label="Created On (Date Range)"
-            name="dateRange"
-          >
-            <DatePicker.RangePicker style={{ width: '100%' }} />
-          </Form.Item>
+          <Row gutter={[16, 0]} align="middle">
+            <Col span={4}>
+              <Form.Item name="enableDateRange" valuePropName="checked" style={{ margin: 0 }}>
+                <Checkbox />
+              </Form.Item>
+            </Col>
+            <Col span={20}>
+              <Form.Item name="dateRange" style={{ margin: 0 }}>
+                <DatePicker.RangePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
