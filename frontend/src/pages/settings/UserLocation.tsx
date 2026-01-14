@@ -9,7 +9,6 @@ import {
   message,
   Space,
   Popconfirm,
-  DatePicker,
   Checkbox,
 } from 'antd';
 import {
@@ -22,7 +21,6 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
-import type { Dayjs } from 'dayjs';
 import { settingsService } from '../../services/settings.service';
 import './styles.css';
 
@@ -43,10 +41,6 @@ interface TableParams {
 }
 
 interface FilterState {
-  id: string;
-  name: string;
-  description: string;
-  dateRange: [Dayjs | null, Dayjs | null] | null;
   enableId: boolean;
   enableName: boolean;
   enableDescription: boolean;
@@ -64,14 +58,10 @@ export const UserLocation = () => {
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [viewingLocation, setViewingLocation] = useState<Location | null>(null);
   const [filters, setFilters] = useState<FilterState>({
-    id: '',
-    name: '',
-    description: '',
-    dateRange: null,
-    enableId: false,
-    enableName: false,
-    enableDescription: false,
-    enableDateRange: false,
+    enableId: true,
+    enableName: true,
+    enableDescription: true,
+    enableDateRange: true,
   });
   const [form] = Form.useForm();
   const [viewForm] = Form.useForm();
@@ -222,13 +212,9 @@ export const UserLocation = () => {
 
   const handleOpenFilterModal = () => {
     filterForm.setFieldsValue({
-      id: filters.id,
       enableId: filters.enableId,
-      name: filters.name,
       enableName: filters.enableName,
-      description: filters.description,
       enableDescription: filters.enableDescription,
-      dateRange: filters.dateRange,
       enableDateRange: filters.enableDateRange,
     });
     setFilterModalVisible(true);
@@ -238,10 +224,6 @@ export const UserLocation = () => {
     try {
       const values = await filterForm.validateFields();
       setFilters({
-        id: values.id || '',
-        name: values.name || '',
-        description: values.description || '',
-        dateRange: values.dateRange || null,
         enableId: values.enableId || false,
         enableName: values.enableName || false,
         enableDescription: values.enableDescription || false,
@@ -251,21 +233,17 @@ export const UserLocation = () => {
       setFilterModalVisible(false);
       message.success('Filters applied');
     } catch (error) {
-      message.error('Please fill valid filter criteria');
+      console.error(error);
     }
   };
 
   const handleResetFilters = () => {
     filterForm.resetFields();
     setFilters({
-      id: '',
-      name: '',
-      description: '',
-      dateRange: null,
-      enableId: false,
-      enableName: false,
-      enableDescription: false,
-      enableDateRange: false,
+      enableId: true,
+      enableName: true,
+      enableDescription: true,
+      enableDateRange: true,
     });
     setTableParams({ ...tableParams, pagination: { ...tableParams.pagination, current: 1 } });
     message.success('Filters reset');
@@ -361,25 +339,17 @@ export const UserLocation = () => {
   ];
 
   const filteredLocations = locations.filter((location) => {
-    // Search filter
-    const matchesSearch = location.name.toLowerCase().includes(searchText.toLowerCase()) ||
-                         (location.description && location.description.toLowerCase().includes(searchText.toLowerCase()));
+    if (!searchText) return true;
 
-    // Advanced filters (only apply if enabled)
-    const matchesId = !filters.enableId || !filters.id || location.id.toLowerCase().includes(filters.id.toLowerCase());
-    const matchesName = !filters.enableName || !filters.name || location.name.toLowerCase().includes(filters.name.toLowerCase());
-    const matchesDescription = !filters.enableDescription || !filters.description ||
-                              (location.description && location.description.toLowerCase().includes(filters.description.toLowerCase()));
+    const searchLower = searchText.toLowerCase();
 
-    let matchesDateRange = true;
-    if (filters.enableDateRange && filters.dateRange && filters.dateRange[0] && filters.dateRange[1] && location.createdAt) {
-      const locDate = new Date(location.createdAt).getTime();
-      const fromDate = filters.dateRange[0].toDate().getTime();
-      const toDate = filters.dateRange[1].toDate().getTime();
-      matchesDateRange = locDate >= fromDate && locDate <= toDate;
-    }
+    // Only search in fields that are enabled in filters
+    let matches = false;
+    if (filters.enableId && location.id.toLowerCase().includes(searchLower)) matches = true;
+    if (filters.enableName && location.name.toLowerCase().includes(searchLower)) matches = true;
+    if (filters.enableDescription && location.description && location.description.toLowerCase().includes(searchLower)) matches = true;
 
-    return matchesSearch && matchesId && matchesName && matchesDescription && matchesDateRange;
+    return matches;
   });
 
   const handleTableChange = (pagination: TablePaginationConfig) => {
@@ -576,7 +546,6 @@ export const UserLocation = () => {
           <Button
             key="reset"
             onClick={handleResetFilters}
-            disabled={!hasActiveFilters}
           >
             Reset Filters
           </Button>,
@@ -596,55 +565,19 @@ export const UserLocation = () => {
             Apply Filters
           </Button>,
         ]}
-        width={600}
+        width={400}
       >
         <Form form={filterForm} layout="vertical" style={{ marginTop: '24px' }}>
-          <Form.Item style={{ marginBottom: '16px' }}>
-            <Form.Item name="enableId" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
-              <Checkbox>Filter by ID</Checkbox>
-            </Form.Item>
-            <Form.Item name="id" style={{ margin: 0 }}>
-              <Input
-                placeholder="Enter ID to filter"
-                disabled={!filterForm.getFieldValue('enableId')}
-              />
-            </Form.Item>
+          <Form.Item name="enableId" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Filter by ID</Checkbox>
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: '16px' }}>
-            <Form.Item name="enableName" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
-              <Checkbox>Filter by Name</Checkbox>
-            </Form.Item>
-            <Form.Item name="name" style={{ margin: 0 }}>
-              <Input
-                placeholder="Enter name to filter"
-                disabled={!filterForm.getFieldValue('enableName')}
-              />
-            </Form.Item>
+          <Form.Item name="enableName" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Filter by Name</Checkbox>
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: '16px' }}>
-            <Form.Item name="enableDescription" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
-              <Checkbox>Filter by Description</Checkbox>
-            </Form.Item>
-            <Form.Item name="description" style={{ margin: 0 }}>
-              <Input
-                placeholder="Enter description to filter"
-                disabled={!filterForm.getFieldValue('enableDescription')}
-              />
-            </Form.Item>
-          </Form.Item>
-
-          <Form.Item>
-            <Form.Item name="enableDateRange" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
-              <Checkbox>Filter by Date Range</Checkbox>
-            </Form.Item>
-            <Form.Item name="dateRange" style={{ margin: 0 }}>
-              <DatePicker.RangePicker
-                style={{ width: '100%' }}
-                disabled={!filterForm.getFieldValue('enableDateRange')}
-              />
-            </Form.Item>
+          <Form.Item name="enableDescription" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Filter by Description</Checkbox>
           </Form.Item>
         </Form>
       </Modal>

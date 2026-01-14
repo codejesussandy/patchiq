@@ -9,7 +9,6 @@ import {
   message,
   Space,
   Tooltip,
-  DatePicker,
   Select,
   Checkbox,
 } from 'antd';
@@ -23,7 +22,6 @@ import {
   FilterOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
-import type { Dayjs } from 'dayjs';
 import { settingsService } from '../../services/settings.service';
 
 const { Title } = Typography;
@@ -44,16 +42,10 @@ interface Organization {
 }
 
 interface FilterState {
-  id: string;
-  name: string;
-  organization: string;
-  description: string;
-  dateRange: [Dayjs | null, Dayjs | null] | null;
   enableId: boolean;
   enableName: boolean;
   enableOrganization: boolean;
   enableDescription: boolean;
-  enableDateRange: boolean;
 }
 
 export const Department = () => {
@@ -68,16 +60,10 @@ export const Department = () => {
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [viewingDept, setViewingDept] = useState<Department | null>(null);
   const [filters, setFilters] = useState<FilterState>({
-    id: '',
-    name: '',
-    organization: '',
-    description: '',
-    dateRange: null,
-    enableId: false,
-    enableName: false,
-    enableOrganization: false,
-    enableDescription: false,
-    enableDateRange: false,
+    enableId: true,
+    enableName: true,
+    enableOrganization: true,
+    enableDescription: true,
   });
   const [form] = Form.useForm();
   const [viewForm] = Form.useForm();
@@ -211,16 +197,10 @@ export const Department = () => {
 
   const handleOpenFilterModal = () => {
     filterForm.setFieldsValue({
-      id: filters.id,
       enableId: filters.enableId,
-      name: filters.name,
       enableName: filters.enableName,
-      organization: filters.organization,
       enableOrganization: filters.enableOrganization,
-      description: filters.description,
       enableDescription: filters.enableDescription,
-      dateRange: filters.dateRange,
-      enableDateRange: filters.enableDateRange,
     });
     setFilterModalVisible(true);
   };
@@ -229,44 +209,32 @@ export const Department = () => {
     try {
       const values = await filterForm.validateFields();
       setFilters({
-        id: values.id || '',
-        name: values.name || '',
-        organization: values.organization || '',
-        description: values.description || '',
-        dateRange: values.dateRange || null,
         enableId: values.enableId || false,
         enableName: values.enableName || false,
         enableOrganization: values.enableOrganization || false,
         enableDescription: values.enableDescription || false,
-        enableDateRange: values.enableDateRange || false,
       });
       setPagination({ ...pagination, current: 1 });
       setFilterModalVisible(false);
       message.success('Filters applied');
     } catch (error) {
-      message.error('Please fill valid filter criteria');
+      console.error(error);
     }
   };
 
   const handleResetFilters = () => {
     filterForm.resetFields();
     setFilters({
-      id: '',
-      name: '',
-      organization: '',
-      description: '',
-      dateRange: null,
-      enableId: false,
-      enableName: false,
-      enableOrganization: false,
-      enableDescription: false,
-      enableDateRange: false,
+      enableId: true,
+      enableName: true,
+      enableOrganization: true,
+      enableDescription: true,
     });
     setPagination({ ...pagination, current: 1 });
     message.success('Filters reset');
   };
 
-  const hasActiveFilters = filters.enableId || filters.enableName || filters.enableOrganization || filters.enableDescription || filters.enableDateRange;
+  const hasActiveFilters = filters.enableId || filters.enableName || filters.enableOrganization || filters.enableDescription;
 
   const handleExport = () => {
     const csvContent = [
@@ -378,28 +346,18 @@ export const Department = () => {
   ];
 
   const filteredDepartments = departments.filter((dept) => {
-    // Search filter
-    const matchesSearch = dept.name.toLowerCase().includes(searchText.toLowerCase()) ||
-                         (dept.description && dept.description.toLowerCase().includes(searchText.toLowerCase())) ||
-                         (dept.organization && dept.organization.toLowerCase().includes(searchText.toLowerCase()));
+    if (!searchText) return true;
 
-    // Advanced filters (only apply if enabled)
-    const matchesId = !filters.enableId || !filters.id || dept.id.toLowerCase().includes(filters.id.toLowerCase());
-    const matchesName = !filters.enableName || !filters.name || dept.name.toLowerCase().includes(filters.name.toLowerCase());
-    const matchesOrganization = !filters.enableOrganization || !filters.organization ||
-                                (dept.organization && dept.organization.toLowerCase().includes(filters.organization.toLowerCase()));
-    const matchesDescription = !filters.enableDescription || !filters.description ||
-                              (dept.description && dept.description.toLowerCase().includes(filters.description.toLowerCase()));
+    const searchLower = searchText.toLowerCase();
 
-    let matchesDateRange = true;
-    if (filters.enableDateRange && filters.dateRange && filters.dateRange[0] && filters.dateRange[1] && dept.createdAt) {
-      const deptDate = new Date(dept.createdAt).getTime();
-      const fromDate = filters.dateRange[0].toDate().getTime();
-      const toDate = filters.dateRange[1].toDate().getTime();
-      matchesDateRange = deptDate >= fromDate && deptDate <= toDate;
-    }
+    // Only search in fields that are enabled in filters
+    let matches = false;
+    if (filters.enableId && dept.id.toLowerCase().includes(searchLower)) matches = true;
+    if (filters.enableName && dept.name.toLowerCase().includes(searchLower)) matches = true;
+    if (filters.enableOrganization && dept.organization && dept.organization.toLowerCase().includes(searchLower)) matches = true;
+    if (filters.enableDescription && dept.description && dept.description.toLowerCase().includes(searchLower)) matches = true;
 
-    return matchesSearch && matchesId && matchesName && matchesOrganization && matchesDescription && matchesDateRange;
+    return matches;
   });
 
   const paginatedData = filteredDepartments.slice(
@@ -550,7 +508,6 @@ export const Department = () => {
           <Button
             key="reset"
             onClick={handleResetFilters}
-            disabled={!hasActiveFilters}
           >
             Reset Filters
           </Button>,
@@ -570,72 +527,23 @@ export const Department = () => {
             Apply Filters
           </Button>,
         ]}
-        width={600}
+        width={400}
       >
         <Form form={filterForm} layout="vertical" style={{ marginTop: '24px' }}>
-          <Form.Item style={{ marginBottom: '16px' }}>
-            <Form.Item name="enableId" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
-              <Checkbox>Filter by ID</Checkbox>
-            </Form.Item>
-            <Form.Item name="id" style={{ margin: 0 }}>
-              <Input
-                placeholder="Enter ID to filter"
-                disabled={!filterForm.getFieldValue('enableId')}
-              />
-            </Form.Item>
+          <Form.Item name="enableId" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Filter by ID</Checkbox>
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: '16px' }}>
-            <Form.Item name="enableName" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
-              <Checkbox>Filter by Name</Checkbox>
-            </Form.Item>
-            <Form.Item name="name" style={{ margin: 0 }}>
-              <Input
-                placeholder="Enter name to filter"
-                disabled={!filterForm.getFieldValue('enableName')}
-              />
-            </Form.Item>
+          <Form.Item name="enableName" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Filter by Name</Checkbox>
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: '16px' }}>
-            <Form.Item name="enableOrganization" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
-              <Checkbox>Filter by Organization</Checkbox>
-            </Form.Item>
-            <Form.Item name="organization" style={{ margin: 0 }}>
-              <Select
-                placeholder="Select organization to filter"
-                allowClear
-                disabled={!filterForm.getFieldValue('enableOrganization')}
-                options={organizations.map((org) => ({
-                  value: org.name,
-                  label: org.name,
-                }))}
-              />
-            </Form.Item>
+          <Form.Item name="enableOrganization" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Filter by Organization</Checkbox>
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: '16px' }}>
-            <Form.Item name="enableDescription" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
-              <Checkbox>Filter by Description</Checkbox>
-            </Form.Item>
-            <Form.Item name="description" style={{ margin: 0 }}>
-              <Input
-                placeholder="Enter description to filter"
-                disabled={!filterForm.getFieldValue('enableDescription')}
-              />
-            </Form.Item>
-          </Form.Item>
-
-          <Form.Item>
-            <Form.Item name="enableDateRange" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
-              <Checkbox>Filter by Date Range</Checkbox>
-            </Form.Item>
-            <Form.Item name="dateRange" style={{ margin: 0 }}>
-              <DatePicker.RangePicker
-                style={{ width: '100%' }}
-                disabled={!filterForm.getFieldValue('enableDateRange')}
-              />
-            </Form.Item>
+          <Form.Item name="enableDescription" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Filter by Description</Checkbox>
           </Form.Item>
         </Form>
       </Modal>

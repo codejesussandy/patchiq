@@ -9,7 +9,6 @@ import {
   message,
   Space,
   Tooltip,
-  DatePicker,
   Checkbox,
 } from 'antd';
 import {
@@ -22,7 +21,6 @@ import {
   FilterOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
-import type { Dayjs } from 'dayjs';
 import { settingsService } from '../../services/settings.service';
 
 const { Title, Text } = Typography;
@@ -37,14 +35,9 @@ interface Organization {
 }
 
 interface FilterState {
-  id: string;
-  name: string;
-  description: string;
-  dateRange: [Dayjs | null, Dayjs | null] | null;
   enableId: boolean;
   enableName: boolean;
   enableDescription: boolean;
-  enableDateRange: boolean;
 }
 
 export const Organization = () => {
@@ -58,14 +51,9 @@ export const Organization = () => {
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
   const [viewingOrg, setViewingOrg] = useState<Organization | null>(null);
   const [filters, setFilters] = useState<FilterState>({
-    id: '',
-    name: '',
-    description: '',
-    dateRange: null,
-    enableId: false,
-    enableName: false,
-    enableDescription: false,
-    enableDateRange: false,
+    enableId: true,
+    enableName: true,
+    enableDescription: true,
   });
   const [form] = Form.useForm();
   const [viewForm] = Form.useForm();
@@ -202,14 +190,9 @@ export const Organization = () => {
 
   const handleOpenFilterModal = () => {
     filterForm.setFieldsValue({
-      id: filters.id,
       enableId: filters.enableId,
-      name: filters.name,
       enableName: filters.enableName,
-      description: filters.description,
       enableDescription: filters.enableDescription,
-      dateRange: filters.dateRange,
-      enableDateRange: filters.enableDateRange,
     });
     setFilterModalVisible(true);
   };
@@ -218,40 +201,30 @@ export const Organization = () => {
     try {
       const values = await filterForm.validateFields();
       setFilters({
-        id: values.id || '',
-        name: values.name || '',
-        description: values.description || '',
-        dateRange: values.dateRange || null,
         enableId: values.enableId || false,
         enableName: values.enableName || false,
         enableDescription: values.enableDescription || false,
-        enableDateRange: values.enableDateRange || false,
       });
       setPagination({ ...pagination, current: 1 });
       setFilterModalVisible(false);
       message.success('Filters applied');
     } catch (error) {
-      message.error('Please fill valid filter criteria');
+      console.error(error);
     }
   };
 
   const handleResetFilters = () => {
     filterForm.resetFields();
     setFilters({
-      id: '',
-      name: '',
-      description: '',
-      dateRange: null,
-      enableId: false,
-      enableName: false,
-      enableDescription: false,
-      enableDateRange: false,
+      enableId: true,
+      enableName: true,
+      enableDescription: true,
     });
     setPagination({ ...pagination, current: 1 });
     message.success('Filters reset');
   };
 
-  const hasActiveFilters = filters.enableId || filters.enableName || filters.enableDescription || filters.enableDateRange;
+  const hasActiveFilters = filters.enableId || filters.enableName || filters.enableDescription;
 
   const handleExport = () => {
     const csvContent = [
@@ -358,25 +331,17 @@ export const Organization = () => {
   ];
 
   const filteredOrganizations = organizations.filter((org) => {
-    // Search filter
-    const matchesSearch = org.name.toLowerCase().includes(searchText.toLowerCase()) ||
-                         (org.description && org.description.toLowerCase().includes(searchText.toLowerCase()));
+    if (!searchText) return true;
 
-    // Advanced filters (only apply if enabled)
-    const matchesId = !filters.enableId || !filters.id || org.id.toLowerCase().includes(filters.id.toLowerCase());
-    const matchesName = !filters.enableName || !filters.name || org.name.toLowerCase().includes(filters.name.toLowerCase());
-    const matchesDescription = !filters.enableDescription || !filters.description ||
-                              (org.description && org.description.toLowerCase().includes(filters.description.toLowerCase()));
+    const searchLower = searchText.toLowerCase();
 
-    let matchesDateRange = true;
-    if (filters.enableDateRange && filters.dateRange && filters.dateRange[0] && filters.dateRange[1] && org.createdAt) {
-      const orgDate = new Date(org.createdAt).getTime();
-      const fromDate = filters.dateRange[0].toDate().getTime();
-      const toDate = filters.dateRange[1].toDate().getTime();
-      matchesDateRange = orgDate >= fromDate && orgDate <= toDate;
-    }
+    // Only search in fields that are enabled in filters
+    let matches = false;
+    if (filters.enableId && org.id.toLowerCase().includes(searchLower)) matches = true;
+    if (filters.enableName && org.name.toLowerCase().includes(searchLower)) matches = true;
+    if (filters.enableDescription && org.description && org.description.toLowerCase().includes(searchLower)) matches = true;
 
-    return matchesSearch && matchesId && matchesName && matchesDescription && matchesDateRange;
+    return matches;
   });
 
   const paginatedData = filteredOrganizations.slice(
@@ -612,7 +577,6 @@ export const Organization = () => {
           <Button
             key="reset"
             onClick={handleResetFilters}
-            disabled={!hasActiveFilters}
           >
             Reset Filters
           </Button>,
@@ -632,55 +596,19 @@ export const Organization = () => {
             Apply Filters
           </Button>,
         ]}
-        width={600}
+        width={400}
       >
         <Form form={filterForm} layout="vertical" style={{ marginTop: '24px' }}>
-          <Form.Item style={{ marginBottom: '16px' }}>
-            <Form.Item name="enableId" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
-              <Checkbox>Filter by ID</Checkbox>
-            </Form.Item>
-            <Form.Item name="id" style={{ margin: 0 }}>
-              <Input
-                placeholder="Enter ID to filter"
-                disabled={!filterForm.getFieldValue('enableId')}
-              />
-            </Form.Item>
+          <Form.Item name="enableId" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Filter by ID</Checkbox>
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: '16px' }}>
-            <Form.Item name="enableName" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
-              <Checkbox>Filter by Name</Checkbox>
-            </Form.Item>
-            <Form.Item name="name" style={{ margin: 0 }}>
-              <Input
-                placeholder="Enter name to filter"
-                disabled={!filterForm.getFieldValue('enableName')}
-              />
-            </Form.Item>
+          <Form.Item name="enableName" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Filter by Name</Checkbox>
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: '16px' }}>
-            <Form.Item name="enableDescription" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
-              <Checkbox>Filter by Description</Checkbox>
-            </Form.Item>
-            <Form.Item name="description" style={{ margin: 0 }}>
-              <Input
-                placeholder="Enter description to filter"
-                disabled={!filterForm.getFieldValue('enableDescription')}
-              />
-            </Form.Item>
-          </Form.Item>
-
-          <Form.Item>
-            <Form.Item name="enableDateRange" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
-              <Checkbox>Filter by Date Range</Checkbox>
-            </Form.Item>
-            <Form.Item name="dateRange" style={{ margin: 0 }}>
-              <DatePicker.RangePicker
-                style={{ width: '100%' }}
-                disabled={!filterForm.getFieldValue('enableDateRange')}
-              />
-            </Form.Item>
+          <Form.Item name="enableDescription" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Filter by Description</Checkbox>
           </Form.Item>
         </Form>
       </Modal>
