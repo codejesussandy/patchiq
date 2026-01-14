@@ -11,8 +11,6 @@ import {
   Tooltip,
   DatePicker,
   Checkbox,
-  Row,
-  Col,
 } from 'antd';
 import {
   SearchOutlined,
@@ -637,57 +635,53 @@ export const Organization = () => {
         width={600}
       >
         <Form form={filterForm} layout="vertical" style={{ marginTop: '24px' }}>
-          <Row gutter={[16, 0]} align="middle" style={{ marginBottom: '16px' }}>
-            <Col span={4}>
-              <Form.Item name="enableId" valuePropName="checked" style={{ margin: 0 }}>
-                <Checkbox />
-              </Form.Item>
-            </Col>
-            <Col span={20}>
-              <Form.Item name="id" style={{ margin: 0 }}>
-                <Input placeholder="Filter by organization ID" />
-              </Form.Item>
-            </Col>
-          </Row>
+          <Form.Item style={{ marginBottom: '16px' }}>
+            <Form.Item name="enableId" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
+              <Checkbox>Filter by ID</Checkbox>
+            </Form.Item>
+            <Form.Item name="id" style={{ margin: 0 }}>
+              <Input
+                placeholder="Enter ID to filter"
+                disabled={!filterForm.getFieldValue('enableId')}
+              />
+            </Form.Item>
+          </Form.Item>
 
-          <Row gutter={[16, 0]} align="middle" style={{ marginBottom: '16px' }}>
-            <Col span={4}>
-              <Form.Item name="enableName" valuePropName="checked" style={{ margin: 0 }}>
-                <Checkbox />
-              </Form.Item>
-            </Col>
-            <Col span={20}>
-              <Form.Item name="name" style={{ margin: 0 }}>
-                <Input placeholder="Filter by organization name" />
-              </Form.Item>
-            </Col>
-          </Row>
+          <Form.Item style={{ marginBottom: '16px' }}>
+            <Form.Item name="enableName" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
+              <Checkbox>Filter by Name</Checkbox>
+            </Form.Item>
+            <Form.Item name="name" style={{ margin: 0 }}>
+              <Input
+                placeholder="Enter name to filter"
+                disabled={!filterForm.getFieldValue('enableName')}
+              />
+            </Form.Item>
+          </Form.Item>
 
-          <Row gutter={[16, 0]} align="middle" style={{ marginBottom: '16px' }}>
-            <Col span={4}>
-              <Form.Item name="enableDescription" valuePropName="checked" style={{ margin: 0 }}>
-                <Checkbox />
-              </Form.Item>
-            </Col>
-            <Col span={20}>
-              <Form.Item name="description" style={{ margin: 0 }}>
-                <Input placeholder="Filter by description" />
-              </Form.Item>
-            </Col>
-          </Row>
+          <Form.Item style={{ marginBottom: '16px' }}>
+            <Form.Item name="enableDescription" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
+              <Checkbox>Filter by Description</Checkbox>
+            </Form.Item>
+            <Form.Item name="description" style={{ margin: 0 }}>
+              <Input
+                placeholder="Enter description to filter"
+                disabled={!filterForm.getFieldValue('enableDescription')}
+              />
+            </Form.Item>
+          </Form.Item>
 
-          <Row gutter={[16, 0]} align="middle">
-            <Col span={4}>
-              <Form.Item name="enableDateRange" valuePropName="checked" style={{ margin: 0 }}>
-                <Checkbox />
-              </Form.Item>
-            </Col>
-            <Col span={20}>
-              <Form.Item name="dateRange" style={{ margin: 0 }}>
-                <DatePicker.RangePicker style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
+          <Form.Item>
+            <Form.Item name="enableDateRange" valuePropName="checked" style={{ margin: 0, marginBottom: '8px' }}>
+              <Checkbox>Filter by Date Range</Checkbox>
+            </Form.Item>
+            <Form.Item name="dateRange" style={{ margin: 0 }}>
+              <DatePicker.RangePicker
+                style={{ width: '100%' }}
+                disabled={!filterForm.getFieldValue('enableDateRange')}
+              />
+            </Form.Item>
+          </Form.Item>
         </Form>
       </Modal>
     </div>
