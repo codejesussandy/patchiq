@@ -24,6 +24,7 @@ import { settingsService } from '../../services/settings.service';
 import './styles.css';
 
 const { Title } = Typography;
+const { TextArea } = Input;
 
 interface Location {
   id: string;
@@ -43,8 +44,12 @@ export const UserLocation = () => {
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
+  const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [isViewModalEditing, setIsViewModalEditing] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [viewingLocation, setViewingLocation] = useState<Location | null>(null);
   const [form] = Form.useForm();
+  const [viewForm] = Form.useForm();
   const [tableParams, setTableParams] = useState<TableParams>({
     pagination: {
       current: 1,
@@ -120,6 +125,45 @@ export const UserLocation = () => {
     setModalVisible(true);
   };
 
+  const handleViewLocation = (location: Location) => {
+    setViewingLocation(location);
+    setIsViewModalEditing(false);
+    viewForm.setFieldsValue({
+      name: location.name,
+      description: location.description || '',
+    });
+    setViewModalVisible(true);
+  };
+
+  const handleViewModalEdit = () => {
+    setIsViewModalEditing(true);
+  };
+
+  const handleViewModalSave = async () => {
+    try {
+      const values = await viewForm.validateFields();
+
+      if (viewingLocation) {
+        await settingsService.updateLocation(viewingLocation.id, values);
+        message.success('Location updated successfully');
+        setViewModalVisible(false);
+        setIsViewModalEditing(false);
+        viewForm.resetFields();
+        fetchLocations();
+      }
+    } catch (error) {
+      message.error('Failed to update location');
+    }
+  };
+
+  const handleViewModalCancel = () => {
+    setIsViewModalEditing(false);
+    viewForm.setFieldsValue({
+      name: viewingLocation?.name,
+      description: viewingLocation?.description,
+    });
+  };
+
   const handleDelete = async (location: Location) => {
     try {
       await settingsService.deleteLocation(location.id);
@@ -185,7 +229,18 @@ export const UserLocation = () => {
       dataIndex: 'name',
       key: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
-      render: (text: string) => <a style={{ color: '#1890ff' }}>{text}</a>,
+      render: (text: string, record: Location) => (
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            handleViewLocation(record);
+          }}
+          style={{ color: '#1890ff' }}
+        >
+          {text}
+        </a>
+      ),
     },
     {
       title: 'Description',
@@ -348,6 +403,68 @@ export const UserLocation = () => {
             <Input placeholder="Enter description" />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* View Location Modal */}
+      <Modal
+        title="Location Details"
+        open={viewModalVisible}
+        onCancel={() => {
+          setViewModalVisible(false);
+          setViewingLocation(null);
+          setIsViewModalEditing(false);
+          viewForm.resetFields();
+        }}
+        footer={[
+          <Button
+            key="close-or-cancel"
+            onClick={() => {
+              if (isViewModalEditing) {
+                handleViewModalCancel();
+              } else {
+                setViewModalVisible(false);
+                setViewingLocation(null);
+                viewForm.resetFields();
+              }
+            }}
+          >
+            {isViewModalEditing ? 'Cancel' : 'Close'}
+          </Button>,
+          !isViewModalEditing && (
+            <Button key="edit" type="primary" onClick={handleViewModalEdit}>
+              Edit
+            </Button>
+          ),
+          isViewModalEditing && (
+            <Button key="save" type="primary" onClick={handleViewModalSave}>
+              Save
+            </Button>
+          ),
+        ]}
+        width={600}
+      >
+        {viewingLocation && (
+          <Form form={viewForm} layout="vertical" style={{ marginTop: '24px' }}>
+            <Form.Item
+              label="Name"
+              name="name"
+              rules={[{ required: true, message: 'Please enter location name' }]}
+            >
+              <Input
+                placeholder="Enter location name"
+                disabled={!isViewModalEditing}
+              />
+            </Form.Item>
+
+            <Form.Item label="Description" name="description">
+              <TextArea
+                placeholder="Enter location description (optional)"
+                disabled={!isViewModalEditing}
+                rows={4}
+              />
+            </Form.Item>
+          </Form>
+        )}
       </Modal>
     </div>
   );
