@@ -9,6 +9,30 @@ import type {
   RoleFormData,
   Policy,
   PolicyFormData,
+  DeploymentPolicy,
+  DeploymentPolicyFormData,
+  MailServerConfig,
+  ProxyServerConfig,
+  LDAPServerConfig,
+  LDAPServerFormData,
+  RiskScore,
+  RiskScoreFormData,
+  RemoteDesktopSettings,
+  RemoteDesktopSettingsFormData,
+  ServerSettings,
+  ServerSettingsFormData,
+  Integration,
+  IntegrationFormData,
+  AgentApprovalSettings,
+  AgentApprovalSettingsFormData,
+  VulnerabilityPreference,
+  VulnerabilityPreferenceFormData,
+  AgentConfiguration,
+  AgentConfigurationFormData,
+  AgentApproval,
+  EnrollSecret,
+  EnrollSecretFormData,
+  RedHatAgentNomination,
 } from '../types/settings.types';
 
 export const settingsService = {
@@ -221,5 +245,329 @@ export const settingsService = {
 
   async deleteDepartment(id: string): Promise<void> {
     await api.delete(`/settings/departments/${id}`);
+  },
+
+  // Branding Management APIs
+  async getBrandingSettings(): Promise<any> {
+    const response = await api.get(`/settings/branding`);
+    return response.data;
+  },
+
+  async updateBrandingSettings(data: FormData): Promise<any> {
+    const response = await api.post(`/settings/branding`, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Mail Server Configuration APIs
+  async getMailServerConfig(): Promise<MailServerConfig> {
+    const response = await api.get(`/settings/mail-server`);
+    return response.data;
+  },
+
+  async updateMailServerConfig(data: MailServerConfig): Promise<MailServerConfig> {
+    const response = await api.put(`/settings/mail-server`, data);
+    return response.data;
+  },
+
+  async testMailServerConfig(data: MailServerConfig): Promise<any> {
+    const response = await api.post(`/settings/mail-server/test`, data);
+    return response.data;
+  },
+
+  // Proxy Server Configuration APIs
+  async getProxyServerConfig(): Promise<ProxyServerConfig> {
+    const response = await api.get(`/settings/proxy-server`);
+    return response.data;
+  },
+
+  async updateProxyServerConfig(data: ProxyServerConfig): Promise<ProxyServerConfig> {
+    const response = await api.put(`/settings/proxy-server`, data);
+    return response.data;
+  },
+
+  async testProxyServerConfig(data: ProxyServerConfig): Promise<any> {
+    const response = await api.post(`/settings/proxy-server/test`, data);
+    return response.data;
+  },
+
+  // Vendor Logo APIs
+  async getVendorLogos(): Promise<any[]> {
+    const response = await api.get(`/settings/vendor-logos`);
+    return response.data;
+  },
+
+  async getVendorLogo(id: string): Promise<any> {
+    const response = await api.get(`/settings/vendor-logos/${id}`);
+    return response.data;
+  },
+
+  async createVendorLogo(data: FormData): Promise<any> {
+    const response = await api.post(`/settings/vendor-logos`, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  async updateVendorLogo(id: string, data: FormData): Promise<any> {
+    const response = await api.put(`/settings/vendor-logos/${id}`, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  async deleteVendorLogo(id: string): Promise<void> {
+    await api.delete(`/settings/vendor-logos/${id}`);
+  },
+
+  // LDAP Server Configuration APIs
+  async getLDAPServerConfigs(): Promise<LDAPServerConfig[]> {
+    const response = await api.get(`/settings/ldap-configs`);
+    return response.data;
+  },
+
+  async getLDAPServerConfig(id: string): Promise<LDAPServerConfig> {
+    const response = await api.get(`/settings/ldap-configs/${id}`);
+    return response.data;
+  },
+
+  async createLDAPServerConfig(data: LDAPServerFormData): Promise<LDAPServerConfig> {
+    const response = await api.post(`/settings/ldap-configs`, data);
+    return response.data;
+  },
+
+  async updateLDAPServerConfig(id: string, data: Partial<LDAPServerFormData>): Promise<LDAPServerConfig> {
+    const response = await api.put(`/settings/ldap-configs/${id}`, data);
+    return response.data;
+  },
+
+  async deleteLDAPServerConfig(id: string): Promise<void> {
+    await api.delete(`/settings/ldap-configs/${id}`);
+  },
+
+  async testLDAPServerConfig(data: LDAPServerFormData): Promise<any> {
+    const response = await api.post(`/settings/ldap-configs/test`, data);
+    return response.data;
+  },
+
+  // Risk Score APIs
+  async getRiskScore(): Promise<RiskScore> {
+    const response = await api.get(`/settings/risk-score`);
+    return response.data;
+  },
+
+  async updateRiskScore(data: RiskScoreFormData): Promise<RiskScore> {
+    const response = await api.put(`/settings/risk-score`, data);
+    return response.data;
+  },
+
+  // Remote Desktop Settings APIs
+  async getRemoteDesktopSettings(): Promise<RemoteDesktopSettings> {
+    const response = await api.get(`/settings/remote-desktop`);
+    return response.data;
+  },
+
+  async updateRemoteDesktopSettings(data: RemoteDesktopSettingsFormData): Promise<RemoteDesktopSettings> {
+    const response = await api.put(`/settings/remote-desktop`, data);
+    return response.data;
+  },
+
+  async resetRemoteDesktopSettings(): Promise<void> {
+    await api.post(`/settings/remote-desktop/reset`);
+  },
+
+  // Server Settings APIs
+  async getServerSettings(): Promise<ServerSettings> {
+    const response = await api.get(`/settings/server`);
+    return response.data;
+  },
+
+  async updateServerSettings(data: ServerSettingsFormData): Promise<ServerSettings> {
+    const response = await api.put(`/settings/server`, data);
+    return response.data;
+  },
+
+  // Marketplace/Integration APIs
+  async getIntegrations(): Promise<Integration[]> {
+    const response = await api.get(`/settings/integrations`);
+    return response.data;
+  },
+
+  async getIntegration(id: string): Promise<Integration> {
+    const response = await api.get(`/settings/integrations/${id}`);
+    return response.data;
+  },
+
+  async createIntegration(data: IntegrationFormData): Promise<Integration> {
+    const response = await api.post(`/settings/integrations`, data);
+    return response.data;
+  },
+
+  async updateIntegration(id: string, data: Partial<IntegrationFormData>): Promise<Integration> {
+    const response = await api.put(`/settings/integrations/${id}`, data);
+    return response.data;
+  },
+
+  async toggleIntegrationStatus(id: string, status: boolean): Promise<Integration> {
+    const response = await api.patch(`/settings/integrations/${id}/status`, { status });
+    return response.data;
+  },
+
+  async deleteIntegration(id: string): Promise<void> {
+    await api.delete(`/settings/integrations/${id}`);
+  },
+
+  // Agent Approval Settings APIs
+  async getAgentApprovalSettings(): Promise<AgentApprovalSettings> {
+    const response = await api.get(`/settings/agent-approval`);
+    return response.data;
+  },
+
+  async updateAgentApprovalSettings(
+    data: AgentApprovalSettingsFormData
+  ): Promise<AgentApprovalSettings> {
+    const response = await api.put(`/settings/agent-approval`, data);
+    return response.data;
+  },
+
+  // Vulnerability Preference APIs
+  async getVulnerabilityPreference(): Promise<VulnerabilityPreference> {
+    const response = await api.get(`/settings/vulnerability-preference`);
+    return response.data;
+  },
+
+  async updateVulnerabilityPreference(
+    data: VulnerabilityPreferenceFormData
+  ): Promise<VulnerabilityPreference> {
+    const response = await api.put(`/settings/vulnerability-preference`, data);
+    return response.data;
+  },
+
+  async syncVulnerabilityDatabase(): Promise<{ message: string }> {
+    const response = await api.post(`/settings/vulnerability-preference/sync`);
+    return response.data;
+  },
+
+  // Agent Configuration APIs
+  async getAgentConfiguration(): Promise<AgentConfiguration> {
+    const response = await api.get(`/settings/agent-configuration`);
+    return response.data;
+  },
+
+  async updateAgentConfiguration(data: AgentConfigurationFormData): Promise<AgentConfiguration> {
+    const response = await api.put(`/settings/agent-configuration`, data);
+    return response.data;
+  },
+
+  // Agent Approval APIs
+  async getAgentApprovals(): Promise<AgentApproval[]> {
+    const response = await api.get(`/settings/agent-approvals`);
+    return response.data;
+  },
+
+  async approveAgent(id: string): Promise<AgentApproval> {
+    const response = await api.post(`/settings/agent-approvals/${id}/approve`);
+    return response.data;
+  },
+
+  async rejectAgent(id: string): Promise<AgentApproval> {
+    const response = await api.post(`/settings/agent-approvals/${id}/reject`);
+    return response.data;
+  },
+
+  async exportAgentApprovals(format: 'csv' | 'json'): Promise<Blob> {
+    const response = await api.get(`/settings/agent-approvals/export?format=${format}`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // Enroll Secret APIs
+  async getEnrollSecrets(): Promise<EnrollSecret[]> {
+    const response = await api.get(`/settings/enroll-secrets`);
+    return response.data;
+  },
+
+  async getEnrollSecret(id: string): Promise<EnrollSecret> {
+    const response = await api.get(`/settings/enroll-secrets/${id}`);
+    return response.data;
+  },
+
+  async createEnrollSecret(data: EnrollSecretFormData): Promise<EnrollSecret> {
+    const response = await api.post(`/settings/enroll-secrets`, data);
+    return response.data;
+  },
+
+  async updateEnrollSecret(
+    id: string,
+    data: Partial<EnrollSecretFormData>
+  ): Promise<EnrollSecret> {
+    const response = await api.put(`/settings/enroll-secrets/${id}`, data);
+    return response.data;
+  },
+
+  async deleteEnrollSecret(id: string): Promise<void> {
+    await api.delete(`/settings/enroll-secrets/${id}`);
+  },
+
+  // Deployment Policy APIs
+  async getDeploymentPolicies(): Promise<DeploymentPolicy[]> {
+    const response = await api.get(`/settings/deployment-policies`);
+    return response.data;
+  },
+
+  async getDeploymentPolicy(id: string): Promise<DeploymentPolicy> {
+    const response = await api.get(`/settings/deployment-policies/${id}`);
+    return response.data;
+  },
+
+  async createDeploymentPolicy(data: DeploymentPolicyFormData): Promise<DeploymentPolicy> {
+    const response = await api.post(`/settings/deployment-policies`, data);
+    return response.data;
+  },
+
+  async updateDeploymentPolicy(
+    id: string,
+    data: Partial<DeploymentPolicyFormData>
+  ): Promise<DeploymentPolicy> {
+    const response = await api.put(`/settings/deployment-policies/${id}`, data);
+    return response.data;
+  },
+
+  async deleteDeploymentPolicy(id: string): Promise<void> {
+    await api.delete(`/settings/deployment-policies/${id}`);
+  },
+
+  // Red Hat Agent Nomination APIs
+  async getRedHatAgentNominations(): Promise<RedHatAgentNomination[]> {
+    const response = await api.get(`/settings/red-hat-nominations`);
+    return response.data;
+  },
+
+  async getRedHatAgentNomination(id: string): Promise<RedHatAgentNomination> {
+    const response = await api.get(`/settings/red-hat-nominations/${id}`);
+    return response.data;
+  },
+
+  async updateRedHatAgentNomination(
+    id: string,
+    data: Partial<RedHatAgentNomination>
+  ): Promise<RedHatAgentNomination> {
+    const response = await api.put(`/settings/red-hat-nominations/${id}`, data);
+    return response.data;
+  },
+
+  async exportRedHatAgentNominations(format: 'csv' | 'json'): Promise<Blob> {
+    const response = await api.get(`/settings/red-hat-nominations/export?format=${format}`, {
+      responseType: 'blob',
+    });
+    return response.data;
   },
 };

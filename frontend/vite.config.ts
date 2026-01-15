@@ -7,6 +7,12 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0',
-    allowedHosts: ['ssh.skenzer.com'],
+    hmr: {
+      protocol: 'ws',
+      host: '192.168.1.2',
+      port: 3000,
+    },
+    allowedHosts: ['.'],
+    strictPort: false,
   },
 })

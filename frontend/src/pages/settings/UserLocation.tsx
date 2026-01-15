@@ -41,10 +41,10 @@ interface TableParams {
 }
 
 interface FilterState {
-  enableId: boolean;
-  enableName: boolean;
-  enableDescription: boolean;
-  enableDateRange: boolean;
+  showId: boolean;
+  showName: boolean;
+  showDescription: boolean;
+  showCreatedOn: boolean;
 }
 
 export const UserLocation = () => {
@@ -58,10 +58,10 @@ export const UserLocation = () => {
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [viewingLocation, setViewingLocation] = useState<Location | null>(null);
   const [filters, setFilters] = useState<FilterState>({
-    enableId: true,
-    enableName: true,
-    enableDescription: true,
-    enableDateRange: true,
+    showId: true,
+    showName: true,
+    showDescription: true,
+    showCreatedOn: true,
   });
   const [form] = Form.useForm();
   const [viewForm] = Form.useForm();
@@ -212,10 +212,10 @@ export const UserLocation = () => {
 
   const handleOpenFilterModal = () => {
     filterForm.setFieldsValue({
-      enableId: filters.enableId,
-      enableName: filters.enableName,
-      enableDescription: filters.enableDescription,
-      enableDateRange: filters.enableDateRange,
+      showId: filters.showId,
+      showName: filters.showName,
+      showDescription: filters.showDescription,
+      showCreatedOn: filters.showCreatedOn,
     });
     setFilterModalVisible(true);
   };
@@ -223,28 +223,29 @@ export const UserLocation = () => {
   const handleApplyFilters = () => {
     const values = filterForm.getFieldsValue();
     setFilters({
-      enableId: values.enableId !== undefined ? values.enableId : true,
-      enableName: values.enableName !== undefined ? values.enableName : true,
-      enableDescription: values.enableDescription !== undefined ? values.enableDescription : true,
+      showId: values.showId !== undefined ? values.showId : true,
+      showName: values.showName !== undefined ? values.showName : true,
+      showDescription: values.showDescription !== undefined ? values.showDescription : true,
+      showCreatedOn: values.showCreatedOn !== undefined ? values.showCreatedOn : true,
     });
     setTableParams({ ...tableParams, pagination: { ...tableParams.pagination, current: 1 } });
     setFilterModalVisible(false);
-    message.success('Filters applied');
+    message.success('Columns updated');
   };
 
   const handleResetFilters = () => {
     filterForm.resetFields();
     setFilters({
-      enableId: true,
-      enableName: true,
-      enableDescription: true,
-      enableDateRange: true,
+      showId: true,
+      showName: true,
+      showDescription: true,
+      showCreatedOn: true,
     });
     setTableParams({ ...tableParams, pagination: { ...tableParams.pagination, current: 1 } });
-    message.success('Filters reset');
+    message.success('All columns shown');
   };
 
-  const hasActiveFilters = filters.enableId || filters.enableName || filters.enableDescription || filters.enableDateRange;
+  const hasHiddenColumns = !filters.showId || !filters.showName || !filters.showDescription || !filters.showCreatedOn;
 
   const formatDateTime = (dateString?: string): string => {
     if (!dateString) return '';
@@ -264,7 +265,7 @@ export const UserLocation = () => {
     }
   };
 
-  const columns: ColumnsType<Location> = [
+  const allColumns: ColumnsType<Location> = [
     {
       title: 'ID',
       dataIndex: 'id',
@@ -333,21 +334,24 @@ export const UserLocation = () => {
     },
   ];
 
+  // Filter columns based on visibility settings
+  const columns = allColumns.filter((col) => {
+    if (col.key === 'id') return filters.showId;
+    if (col.key === 'name') return filters.showName;
+    if (col.key === 'description') return filters.showDescription;
+    if (col.key === 'createdAt') return filters.showCreatedOn;
+    return true; // Always show actions column
+  });
+
   const filteredLocations = locations.filter((location) => {
-    // If no search text, show all items
     if (!searchText) return true;
 
     const searchLower = searchText.toLowerCase();
-
-    // Only search in fields that are enabled in filters
-    if (!filters.enableId && !filters.enableName && !filters.enableDescription) return false;
-
-    let matches = false;
-    if (filters.enableId && location.id.toLowerCase().includes(searchLower)) matches = true;
-    if (filters.enableName && location.name.toLowerCase().includes(searchLower)) matches = true;
-    if (filters.enableDescription && location.description && location.description.toLowerCase().includes(searchLower)) matches = true;
-
-    return matches;
+    return (
+      location.id.toLowerCase().includes(searchLower) ||
+      location.name.toLowerCase().includes(searchLower) ||
+      (location.description && location.description.toLowerCase().includes(searchLower))
+    );
   });
 
   const handleTableChange = (pagination: TablePaginationConfig) => {
@@ -423,7 +427,7 @@ export const UserLocation = () => {
             Create
           </Button>
           <Button
-            type={hasActiveFilters ? 'primary' : 'default'}
+            type={hasHiddenColumns ? 'primary' : 'default'}
             icon={<FilterOutlined />}
             style={{ display: 'flex', alignItems: 'center' }}
             onClick={handleOpenFilterModal}
@@ -533,9 +537,9 @@ export const UserLocation = () => {
         )}
       </Modal>
 
-      {/* Filter Modal */}
+      {/* Column Visibility Modal */}
       <Modal
-        title="Filter Locations"
+        title="Show/Hide Columns"
         open={filterModalVisible}
         onCancel={() => {
           setFilterModalVisible(false);
@@ -545,7 +549,7 @@ export const UserLocation = () => {
             key="reset"
             onClick={handleResetFilters}
           >
-            Reset Filters
+            Show All
           </Button>,
           <Button
             key="cancel"
@@ -560,22 +564,26 @@ export const UserLocation = () => {
             type="primary"
             onClick={handleApplyFilters}
           >
-            Apply Filters
+            Apply
           </Button>,
         ]}
         width={400}
       >
         <Form form={filterForm} layout="vertical" style={{ marginTop: '24px' }}>
-          <Form.Item name="enableId" valuePropName="checked" style={{ marginBottom: '16px' }}>
-            <Checkbox>Filter by ID</Checkbox>
+          <Form.Item name="showId" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show ID</Checkbox>
           </Form.Item>
 
-          <Form.Item name="enableName" valuePropName="checked" style={{ marginBottom: '16px' }}>
-            <Checkbox>Filter by Name</Checkbox>
+          <Form.Item name="showName" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Name</Checkbox>
           </Form.Item>
 
-          <Form.Item name="enableDescription" valuePropName="checked" style={{ marginBottom: '16px' }}>
-            <Checkbox>Filter by Description</Checkbox>
+          <Form.Item name="showDescription" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Description</Checkbox>
+          </Form.Item>
+
+          <Form.Item name="showCreatedOn" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Created On</Checkbox>
           </Form.Item>
         </Form>
       </Modal>

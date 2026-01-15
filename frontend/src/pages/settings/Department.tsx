@@ -42,10 +42,10 @@ interface Organization {
 }
 
 interface FilterState {
-  enableId: boolean;
-  enableName: boolean;
-  enableOrganization: boolean;
-  enableDescription: boolean;
+  showId: boolean;
+  showName: boolean;
+  showOrganization: boolean;
+  showDescription: boolean;
 }
 
 export const Department = () => {
@@ -60,10 +60,10 @@ export const Department = () => {
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [viewingDept, setViewingDept] = useState<Department | null>(null);
   const [filters, setFilters] = useState<FilterState>({
-    enableId: true,
-    enableName: true,
-    enableOrganization: true,
-    enableDescription: true,
+    showId: true,
+    showName: true,
+    showOrganization: true,
+    showDescription: true,
   });
   const [form] = Form.useForm();
   const [viewForm] = Form.useForm();
@@ -197,10 +197,10 @@ export const Department = () => {
 
   const handleOpenFilterModal = () => {
     filterForm.setFieldsValue({
-      enableId: filters.enableId,
-      enableName: filters.enableName,
-      enableOrganization: filters.enableOrganization,
-      enableDescription: filters.enableDescription,
+      showId: filters.showId,
+      showName: filters.showName,
+      showOrganization: filters.showOrganization,
+      showDescription: filters.showDescription,
     });
     setFilterModalVisible(true);
   };
@@ -208,29 +208,29 @@ export const Department = () => {
   const handleApplyFilters = () => {
     const values = filterForm.getFieldsValue();
     setFilters({
-      enableId: values.enableId !== undefined ? values.enableId : true,
-      enableName: values.enableName !== undefined ? values.enableName : true,
-      enableOrganization: values.enableOrganization !== undefined ? values.enableOrganization : true,
-      enableDescription: values.enableDescription !== undefined ? values.enableDescription : true,
+      showId: values.showId !== undefined ? values.showId : true,
+      showName: values.showName !== undefined ? values.showName : true,
+      showOrganization: values.showOrganization !== undefined ? values.showOrganization : true,
+      showDescription: values.showDescription !== undefined ? values.showDescription : true,
     });
     setPagination({ ...pagination, current: 1 });
     setFilterModalVisible(false);
-    message.success('Filters applied');
+    message.success('Columns updated');
   };
 
   const handleResetFilters = () => {
     filterForm.resetFields();
     setFilters({
-      enableId: true,
-      enableName: true,
-      enableOrganization: true,
-      enableDescription: true,
+      showId: true,
+      showName: true,
+      showOrganization: true,
+      showDescription: true,
     });
     setPagination({ ...pagination, current: 1 });
-    message.success('Filters reset');
+    message.success('All columns shown');
   };
 
-  const hasActiveFilters = filters.enableId || filters.enableName || filters.enableOrganization || filters.enableDescription;
+  const hasHiddenColumns = !filters.showId || !filters.showName || !filters.showOrganization || !filters.showDescription;
 
   const handleExport = () => {
     const csvContent = [
@@ -256,7 +256,7 @@ export const Department = () => {
     message.success('Departments exported successfully');
   };
 
-  const columns: ColumnsType<Department> = [
+  const allColumns: ColumnsType<Department> = [
     {
       title: 'ID',
       dataIndex: 'id',
@@ -341,22 +341,24 @@ export const Department = () => {
     },
   ];
 
+  const columns = allColumns.filter((col) => {
+    if (col.key === 'id') return filters.showId;
+    if (col.key === 'name') return filters.showName;
+    if (col.key === 'organization') return filters.showOrganization;
+    if (col.key === 'description') return filters.showDescription;
+    return true; // Always show actions column
+  });
+
   const filteredDepartments = departments.filter((dept) => {
-    // If no search text, show all items
     if (!searchText) return true;
 
     const searchLower = searchText.toLowerCase();
-
-    // Only search in fields that are enabled in filters
-    if (!filters.enableId && !filters.enableName && !filters.enableOrganization && !filters.enableDescription) return false;
-
-    let matches = false;
-    if (filters.enableId && dept.id.toLowerCase().includes(searchLower)) matches = true;
-    if (filters.enableName && dept.name.toLowerCase().includes(searchLower)) matches = true;
-    if (filters.enableOrganization && dept.organization && dept.organization.toLowerCase().includes(searchLower)) matches = true;
-    if (filters.enableDescription && dept.description && dept.description.toLowerCase().includes(searchLower)) matches = true;
-
-    return matches;
+    return (
+      dept.id.toLowerCase().includes(searchLower) ||
+      dept.name.toLowerCase().includes(searchLower) ||
+      (dept.organization && dept.organization.toLowerCase().includes(searchLower)) ||
+      (dept.description && dept.description.toLowerCase().includes(searchLower))
+    );
   });
 
   const paginatedData = filteredDepartments.slice(
@@ -401,11 +403,11 @@ export const Department = () => {
             />
           </Tooltip>
 
-          <Tooltip title={hasActiveFilters ? `${Object.values(filters).filter(v => v).length} filter(s) active` : 'Filter'}>
+          <Tooltip title={hasHiddenColumns ? `${Object.values(filters).filter(v => v).length} filter(s) active` : 'Filter'}>
             <Button
               icon={<FilterOutlined />}
               onClick={handleOpenFilterModal}
-              type={hasActiveFilters ? 'primary' : 'default'}
+              type={hasHiddenColumns ? 'primary' : 'default'}
             />
           </Tooltip>
 
@@ -498,7 +500,7 @@ export const Department = () => {
 
       {/* Filter Modal */}
       <Modal
-        title="Filter Departments"
+        title="Show/Hide Columns"
         open={filterModalVisible}
         onCancel={() => {
           setFilterModalVisible(false);
@@ -508,7 +510,7 @@ export const Department = () => {
             key="reset"
             onClick={handleResetFilters}
           >
-            Reset Filters
+            Show All
           </Button>,
           <Button
             key="cancel"
@@ -523,26 +525,26 @@ export const Department = () => {
             type="primary"
             onClick={handleApplyFilters}
           >
-            Apply Filters
+            Apply
           </Button>,
         ]}
         width={400}
       >
         <Form form={filterForm} layout="vertical" style={{ marginTop: '24px' }}>
-          <Form.Item name="enableId" valuePropName="checked" style={{ marginBottom: '16px' }}>
-            <Checkbox>Filter by ID</Checkbox>
+          <Form.Item name="showId" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show ID</Checkbox>
           </Form.Item>
 
-          <Form.Item name="enableName" valuePropName="checked" style={{ marginBottom: '16px' }}>
-            <Checkbox>Filter by Name</Checkbox>
+          <Form.Item name="showName" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Name</Checkbox>
           </Form.Item>
 
-          <Form.Item name="enableOrganization" valuePropName="checked" style={{ marginBottom: '16px' }}>
-            <Checkbox>Filter by Organization</Checkbox>
+          <Form.Item name="showOrganization" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Organization</Checkbox>
           </Form.Item>
 
-          <Form.Item name="enableDescription" valuePropName="checked" style={{ marginBottom: '16px' }}>
-            <Checkbox>Filter by Description</Checkbox>
+          <Form.Item name="showDescription" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Description</Checkbox>
           </Form.Item>
         </Form>
       </Modal>

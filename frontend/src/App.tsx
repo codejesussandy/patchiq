@@ -31,6 +31,7 @@ import { Agents } from './pages/discovery/Agents';
 import { Organization } from './pages/settings/Organization';
 import { Department } from './pages/settings/Department';
 import { UserLocation } from './pages/settings/UserLocation';
+import { UserRoles } from './pages/settings/UserRoles';
 import { RolesAndPrivileges } from './pages/settings/RolesAndPrivileges';
 import { Users } from './pages/settings/Users';
 import { PasswordPolicies } from './pages/settings/PasswordPolicies';
@@ -284,6 +285,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <MainLayout>
               <UserLocation />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-management/user-roles"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <UserRoles />
             </MainLayout>
           </ProtectedRoute>
         }

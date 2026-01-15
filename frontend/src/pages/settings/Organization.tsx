@@ -35,9 +35,9 @@ interface Organization {
 }
 
 interface FilterState {
-  enableId: boolean;
-  enableName: boolean;
-  enableDescription: boolean;
+  showId: boolean;
+  showName: boolean;
+  showDescription: boolean;
 }
 
 export const Organization = () => {
@@ -51,9 +51,9 @@ export const Organization = () => {
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
   const [viewingOrg, setViewingOrg] = useState<Organization | null>(null);
   const [filters, setFilters] = useState<FilterState>({
-    enableId: true,
-    enableName: true,
-    enableDescription: true,
+    showId: true,
+    showName: true,
+    showDescription: true,
   });
   const [form] = Form.useForm();
   const [viewForm] = Form.useForm();
@@ -190,9 +190,9 @@ export const Organization = () => {
 
   const handleOpenFilterModal = () => {
     filterForm.setFieldsValue({
-      enableId: filters.enableId,
-      enableName: filters.enableName,
-      enableDescription: filters.enableDescription,
+      showId: filters.showId,
+      showName: filters.showName,
+      showDescription: filters.showDescription,
     });
     setFilterModalVisible(true);
   };
@@ -200,27 +200,27 @@ export const Organization = () => {
   const handleApplyFilters = () => {
     const values = filterForm.getFieldsValue();
     setFilters({
-      enableId: values.enableId !== undefined ? values.enableId : true,
-      enableName: values.enableName !== undefined ? values.enableName : true,
-      enableDescription: values.enableDescription !== undefined ? values.enableDescription : true,
+      showId: values.showId !== undefined ? values.showId : true,
+      showName: values.showName !== undefined ? values.showName : true,
+      showDescription: values.showDescription !== undefined ? values.showDescription : true,
     });
     setPagination({ ...pagination, current: 1 });
     setFilterModalVisible(false);
-    message.success('Filters applied');
+    message.success('Columns updated');
   };
 
   const handleResetFilters = () => {
     filterForm.resetFields();
     setFilters({
-      enableId: true,
-      enableName: true,
-      enableDescription: true,
+      showId: true,
+      showName: true,
+      showDescription: true,
     });
     setPagination({ ...pagination, current: 1 });
-    message.success('Filters reset');
+    message.success('All columns shown');
   };
 
-  const hasActiveFilters = filters.enableId || filters.enableName || filters.enableDescription;
+  const hasHiddenColumns = !filters.showId || !filters.showName || !filters.showDescription;
 
   const handleExport = () => {
     const csvContent = [
@@ -245,7 +245,7 @@ export const Organization = () => {
     message.success('Organizations exported successfully');
   };
 
-  const columns: ColumnsType<Organization> = [
+  const allColumns: ColumnsType<Organization> = [
     {
       title: 'ID',
       dataIndex: 'id',
@@ -326,21 +326,22 @@ export const Organization = () => {
     },
   ];
 
+  const columns = allColumns.filter((col) => {
+    if (col.key === 'id') return filters.showId;
+    if (col.key === 'name') return filters.showName;
+    if (col.key === 'description') return filters.showDescription;
+    return true; // Always show actions column
+  });
+
   const filteredOrganizations = organizations.filter((org) => {
-    // If no search text, show all items
     if (!searchText) return true;
 
     const searchLower = searchText.toLowerCase();
-
-    // Only search in fields that are enabled in filters
-    if (!filters.enableId && !filters.enableName && !filters.enableDescription) return false;
-
-    let matches = false;
-    if (filters.enableId && org.id.toLowerCase().includes(searchLower)) matches = true;
-    if (filters.enableName && org.name.toLowerCase().includes(searchLower)) matches = true;
-    if (filters.enableDescription && org.description && org.description.toLowerCase().includes(searchLower)) matches = true;
-
-    return matches;
+    return (
+      org.id.toLowerCase().includes(searchLower) ||
+      org.name.toLowerCase().includes(searchLower) ||
+      (org.description && org.description.toLowerCase().includes(searchLower))
+    );
   });
 
   const paginatedData = filteredOrganizations.slice(
@@ -385,11 +386,11 @@ export const Organization = () => {
             />
           </Tooltip>
 
-          <Tooltip title={hasActiveFilters ? `${Object.values(filters).filter(v => v).length} filter(s) active` : 'Filter'}>
+          <Tooltip title={hasHiddenColumns ? `${Object.values(filters).filter(v => v).length} filter(s) active` : 'Filter'}>
             <Button
               icon={<FilterOutlined />}
               onClick={handleOpenFilterModal}
-              type={hasActiveFilters ? 'primary' : 'default'}
+              type={hasHiddenColumns ? 'primary' : 'default'}
             />
           </Tooltip>
 
@@ -567,7 +568,7 @@ export const Organization = () => {
 
       {/* Filter Modal */}
       <Modal
-        title="Filter Organizations"
+        title="Show/Hide Columns"
         open={filterModalVisible}
         onCancel={() => {
           setFilterModalVisible(false);
@@ -577,7 +578,7 @@ export const Organization = () => {
             key="reset"
             onClick={handleResetFilters}
           >
-            Reset Filters
+            Show All
           </Button>,
           <Button
             key="cancel"
@@ -592,22 +593,22 @@ export const Organization = () => {
             type="primary"
             onClick={handleApplyFilters}
           >
-            Apply Filters
+            Apply
           </Button>,
         ]}
         width={400}
       >
         <Form form={filterForm} layout="vertical" style={{ marginTop: '24px' }}>
-          <Form.Item name="enableId" valuePropName="checked" style={{ marginBottom: '16px' }}>
-            <Checkbox>Filter by ID</Checkbox>
+          <Form.Item name="showId" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show ID</Checkbox>
           </Form.Item>
 
-          <Form.Item name="enableName" valuePropName="checked" style={{ marginBottom: '16px' }}>
-            <Checkbox>Filter by Name</Checkbox>
+          <Form.Item name="showName" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Name</Checkbox>
           </Form.Item>
 
-          <Form.Item name="enableDescription" valuePropName="checked" style={{ marginBottom: '16px' }}>
-            <Checkbox>Filter by Description</Checkbox>
+          <Form.Item name="showDescription" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Description</Checkbox>
           </Form.Item>
         </Form>
       </Modal>
