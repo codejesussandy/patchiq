@@ -205,21 +205,17 @@ export const Department = () => {
     setFilterModalVisible(true);
   };
 
-  const handleApplyFilters = async () => {
-    try {
-      const values = await filterForm.validateFields();
-      setFilters({
-        enableId: values.enableId || false,
-        enableName: values.enableName || false,
-        enableOrganization: values.enableOrganization || false,
-        enableDescription: values.enableDescription || false,
-      });
-      setPagination({ ...pagination, current: 1 });
-      setFilterModalVisible(false);
-      message.success('Filters applied');
-    } catch (error) {
-      console.error(error);
-    }
+  const handleApplyFilters = () => {
+    const values = filterForm.getFieldsValue();
+    setFilters({
+      enableId: values.enableId !== undefined ? values.enableId : true,
+      enableName: values.enableName !== undefined ? values.enableName : true,
+      enableOrganization: values.enableOrganization !== undefined ? values.enableOrganization : true,
+      enableDescription: values.enableDescription !== undefined ? values.enableDescription : true,
+    });
+    setPagination({ ...pagination, current: 1 });
+    setFilterModalVisible(false);
+    message.success('Filters applied');
   };
 
   const handleResetFilters = () => {
