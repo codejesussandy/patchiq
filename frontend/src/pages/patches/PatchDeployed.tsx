@@ -21,9 +21,7 @@ import {
   FilterOutlined,
   EyeOutlined,
   PlusOutlined,
-  DeleteOutlined,
   MoreOutlined,
-  EditOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
@@ -81,50 +79,12 @@ export const PatchDeployed = () => {
     message.info(`Viewing deployment: ${deployment.name}`);
   };
 
-  const handleEditDeployment = (deployment: Deployment) => {
-    message.info(`Editing deployment: ${deployment.name}`);
-  };
-
-  const handleDeleteDeployment = (deployment: Deployment) => {
-    Modal.confirm({
-      title: 'Delete Deployment',
-      content: `Are you sure you want to delete ${deployment.name}?`,
-      okText: 'Delete',
-      okType: 'danger',
-      onOk: async () => {
-        try {
-          await patchService.deleteDeployment(deployment.id);
-          message.success('Deployment deleted successfully');
-          fetchDeployments();
-        } catch (error) {
-          message.error('Failed to delete deployment');
-        }
-      },
-    });
-  };
-
   const getActionMenuItems = (deployment: Deployment): MenuProps['items'] => [
     {
       key: 'view',
       label: 'View Details',
       icon: <EyeOutlined />,
       onClick: () => handleViewDeployment(deployment),
-    },
-    {
-      key: 'edit',
-      label: 'Edit',
-      icon: <EditOutlined />,
-      onClick: () => handleEditDeployment(deployment),
-    },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'delete',
-      label: 'Delete',
-      icon: <DeleteOutlined />,
-      danger: true,
-      onClick: () => handleDeleteDeployment(deployment),
     },
   ];
 

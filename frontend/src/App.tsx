@@ -27,6 +27,12 @@ import { IPDiscovery } from './pages/discovery/IPDiscovery';
 import { DeviceCredentials } from './pages/discovery/DeviceCredentials';
 import { Agents } from './pages/discovery/Agents';
 
+// Jobs
+import { SoftwareJobs } from './pages/jobs/SoftwareJobs';
+import { ConfigurationJobs } from './pages/jobs/ConfigurationJobs';
+import { PatchJobs } from './pages/jobs/PatchJobs';
+import { VulnerabilityJobs } from './pages/jobs/VulnerabilityJobs';
+
 // Settings
 import { BranchLocation } from './pages/settings/BranchLocation';
 import { UserManagement } from './pages/settings/UserManagement';
@@ -243,6 +249,52 @@ function AppRoutes() {
       <Route
         path="/discovery"
         element={<Navigate to="/discovery/agents" replace />}
+      />
+
+      {/* Jobs */}
+      <Route
+        path="/jobs/software-jobs/*"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <SoftwareJobs />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/jobs/configuration-jobs"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ConfigurationJobs />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/jobs/patch-jobs"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PatchJobs />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/jobs/vulnerability-jobs"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <VulnerabilityJobs />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/jobs"
+        element={<Navigate to="/jobs/software-jobs/catalog" replace />}
       />
 
       {/* Settings */}

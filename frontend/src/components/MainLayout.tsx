@@ -15,6 +15,9 @@ import {
   DesktopOutlined,
   WindowsOutlined,
   AppleOutlined,
+  AppstoreOutlined,
+  SafetyOutlined,
+  BugOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Logo } from './Logo';
@@ -115,6 +118,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     { key: '/patches', label: 'Patches' },
     { key: '/assets', label: 'Assets' },
     { key: '/discovery', label: 'Discovery' },
+    { key: '/jobs', label: 'Jobs' },
     { key: '/reports', label: 'Reports' },
   ];
 
@@ -193,6 +197,29 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     },
   ];
 
+  const jobsMenuItems: MenuItem[] = [
+    {
+      key: 'software-jobs',
+      icon: <AppstoreOutlined />,
+      label: 'Software Jobs',
+    },
+    {
+      key: 'configuration-jobs',
+      icon: <SettingOutlined />,
+      label: 'Configuration Jobs',
+    },
+    {
+      key: 'patch-jobs',
+      icon: <SafetyOutlined />,
+      label: 'Patch Jobs',
+    },
+    {
+      key: 'vulnerability-jobs',
+      icon: <BugOutlined />,
+      label: 'Vulnerability Jobs',
+    },
+  ];
+
   const settingsMenuItems: MenuItem[] = [
     {
       key: 'branch-location',
@@ -243,6 +270,11 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     else if (key === 'ip-discovery') navigate('/discovery/ip-discovery');
     else if (key === 'device-credentials') navigate('/discovery/device-credentials');
     else if (key === 'agents') navigate('/discovery/agents');
+    // Jobs
+    else if (key === 'software-jobs') navigate('/jobs/software-jobs/catalog');
+    else if (key === 'configuration-jobs') navigate('/jobs/configuration-jobs');
+    else if (key === 'patch-jobs') navigate('/jobs/patch-jobs');
+    else if (key === 'vulnerability-jobs') navigate('/jobs/vulnerability-jobs');
     // Settings
     else if (key === 'branch-location') navigate('/settings/branch-location');
     else if (key === 'user-management') navigate('/settings/user-management');
@@ -310,6 +342,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     if (location.pathname.startsWith('/patches')) return ['/patches'];
     if (location.pathname.startsWith('/assets')) return ['/assets'];
     if (location.pathname.startsWith('/discovery')) return ['/discovery'];
+    if (location.pathname.startsWith('/jobs')) return ['/jobs'];
     if (location.pathname.startsWith('/settings')) return ['/settings'];
     return [location.pathname];
   };
@@ -341,6 +374,11 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     if (location.pathname === '/discovery/ip-discovery') return ['ip-discovery'];
     if (location.pathname === '/discovery/device-credentials') return ['device-credentials'];
     if (location.pathname === '/discovery/agents') return ['agents'];
+    // Jobs
+    if (location.pathname.startsWith('/jobs/software-jobs')) return ['software-jobs'];
+    if (location.pathname === '/jobs/configuration-jobs') return ['configuration-jobs'];
+    if (location.pathname === '/jobs/patch-jobs') return ['patch-jobs'];
+    if (location.pathname === '/jobs/vulnerability-jobs') return ['vulnerability-jobs'];
     // Settings
     if (location.pathname === '/settings/branch-location') return ['branch-location'];
     if (location.pathname === '/settings/user-management') return ['user-management'];
@@ -358,6 +396,9 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     }
     if (location.pathname.startsWith('/discovery')) {
       return { title: 'Discovery', items: discoveryMenuItems };
+    }
+    if (location.pathname.startsWith('/jobs')) {
+      return { title: 'Jobs', items: jobsMenuItems };
     }
     if (location.pathname.startsWith('/settings')) {
       return { title: 'Settings', items: settingsMenuItems };
