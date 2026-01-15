@@ -108,6 +108,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
 
   // Auto-expand User Management menu when visiting its sub-pages
   // Auto-navigate to organization if just /settings/user-management
+  // Auto-expand System Settings menu when visiting its sub-pages
+  // Auto-expand Discovery menu when visiting discovery routes
   useEffect(() => {
     if (location.pathname.startsWith('/settings/user-management')) {
       setExpandedMenus(['user-management']);
@@ -115,6 +117,10 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       if (location.pathname === '/settings/user-management') {
         navigate('/settings/user-management/organization', { replace: true });
       }
+    } else if (location.pathname.startsWith('/settings/system-settings')) {
+      setExpandedMenus(['system-settings']);
+    } else if (location.pathname.startsWith('/discovery')) {
+      setExpandedMenus(['discovery']);
     } else {
       setExpandedMenus([]);
     }
@@ -129,7 +135,6 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     { key: '/dashboard', label: 'Dashboard' },
     { key: '/patches', label: 'Patches' },
     { key: '/assets', label: 'Assets' },
-    { key: '/discovery', label: 'Discovery' },
     { key: '/reports', label: 'Reports' },
   ];
 
@@ -190,24 +195,6 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     }));
   };
 
-  const discoveryMenuItems: MenuItem[] = [
-    {
-      key: 'ip-discovery',
-      icon: <UserOutlined />,
-      label: 'IP Discovery',
-    },
-    {
-      key: 'device-credentials',
-      icon: <CreditCardOutlined />,
-      label: 'Device Credentials',
-    },
-    {
-      key: 'agents',
-      icon: <EnvironmentOutlined />,
-      label: 'Agents',
-    },
-  ];
-
   const settingsMenuItems: MenuItem[] = [
     {
       key: 'user-management',
@@ -244,6 +231,40 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       key: 'system-settings',
       icon: <SettingOutlined />,
       label: 'System Settings',
+      children: [
+        {
+          key: 'system-settings-branding',
+          label: 'Branding',
+        },
+        {
+          key: 'system-settings-vendor-logo',
+          label: 'Vendor Logo',
+        },
+        {
+          key: 'system-settings-mail-server',
+          label: 'Mail Server Configurations',
+        },
+        {
+          key: 'system-settings-proxy-server',
+          label: 'Proxy Server Configurations',
+        },
+        {
+          key: 'system-settings-ldap-server',
+          label: 'LDAP Server Configurations',
+        },
+        {
+          key: 'system-settings-risk-score',
+          label: 'Risk Score Settings',
+        },
+        {
+          key: 'system-settings-remote-desktop',
+          label: 'Remote Desktop Settings',
+        },
+        {
+          key: 'system-settings-server',
+          label: 'Server Settings',
+        },
+      ],
     },
     {
       key: 'vulnerability-preference',
@@ -254,6 +275,25 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       key: 'market-place',
       icon: <FolderOutlined />,
       label: 'Market Place',
+    },
+    {
+      key: 'discovery',
+      icon: <UserOutlined />,
+      label: 'Discovery',
+      children: [
+        {
+          key: 'discovery-ip-discovery',
+          label: 'IP Discovery',
+        },
+        {
+          key: 'discovery-device-credentials',
+          label: 'Device Credentials',
+        },
+        {
+          key: 'discovery-agents',
+          label: 'Agents',
+        },
+      ],
     },
     {
       key: 'agent-management',
@@ -315,22 +355,32 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         setTimeout(() => setSearchParams({ category: parts[1], subcategory: parts[2] }), 0);
       }
     }
-    // Discovery
-    else if (key === 'ip-discovery') navigate('/discovery/ip-discovery');
-    else if (key === 'device-credentials') navigate('/discovery/device-credentials');
-    else if (key === 'agents') navigate('/discovery/agents');
+    // Discovery - now under Settings
+    else if (key === 'discovery-ip-discovery') navigate('/discovery/ip-discovery');
+    else if (key === 'discovery-device-credentials') navigate('/discovery/device-credentials');
+    else if (key === 'discovery-agents') navigate('/discovery/agents');
     // Settings - User Management sub-menus
     else if (key === 'user-management-organization') navigate('/settings/user-management/organization');
     else if (key === 'user-management-department') navigate('/settings/user-management/department');
     else if (key === 'user-management-location') navigate('/settings/user-management/location');
-    else if (key === 'user-management-roles') navigate('/settings/user-management/roles');
+    else if (key === 'user-management-roles') navigate('/settings/user-management/user-roles');
     else if (key === 'user-management-users') navigate('/settings/user-management/users');
     else if (key === 'user-management-password-policies') navigate('/settings/user-management/password-policies');
+    // Settings - System Settings sub-menus
+    else if (key === 'system-settings-branding') navigate('/settings/system-settings/branding');
+    else if (key === 'system-settings-vendor-logo') navigate('/settings/system-settings/vendor-logo');
+    else if (key === 'system-settings-mail-server') navigate('/settings/system-settings/mail-server');
+    else if (key === 'system-settings-proxy-server') navigate('/settings/system-settings/proxy-server');
+    else if (key === 'system-settings-ldap-server') navigate('/settings/system-settings/ldap-server');
+    else if (key === 'system-settings-risk-score') navigate('/settings/system-settings/risk-score');
+    else if (key === 'system-settings-remote-desktop') navigate('/settings/system-settings/remote-desktop');
+    else if (key === 'system-settings-server') navigate('/settings/system-settings/server');
     // Settings
     else if (key === 'user-management') navigate('/settings/user-management/organization');
-    else if (key === 'system-settings') navigate('/settings/system-settings');
+    else if (key === 'system-settings') navigate('/settings/system-settings/branding');
     else if (key === 'vulnerability-preference') navigate('/settings/vulnerability-preference');
     else if (key === 'market-place') navigate('/settings/market-place');
+    else if (key === 'discovery') navigate('/discovery/agents');
     else if (key === 'agent-management') navigate('/settings/agent-management');
     else if (key === 'deployment-policies') navigate('/settings/deployment-policies');
     else if (key === 'patch-management') navigate('/settings/patch-management');
@@ -427,10 +477,10 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       if (categoryId) return [`cat-${categoryId}`];
       return [];
     }
-    // Discovery
-    if (location.pathname === '/discovery/ip-discovery') return ['ip-discovery'];
-    if (location.pathname === '/discovery/device-credentials') return ['device-credentials'];
-    if (location.pathname === '/discovery/agents') return ['agents'];
+    // Discovery - now under Settings
+    if (location.pathname === '/discovery/ip-discovery') return ['discovery-ip-discovery'];
+    if (location.pathname === '/discovery/device-credentials') return ['discovery-device-credentials'];
+    if (location.pathname === '/discovery/agents') return ['discovery-agents'];
     // Settings - User Management
     if (location.pathname === '/settings/user-management/organization') return ['user-management-organization'];
     if (location.pathname === '/settings/user-management/department') return ['user-management-department'];
@@ -438,6 +488,15 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     if (location.pathname === '/settings/user-management/roles') return ['user-management-roles'];
     if (location.pathname === '/settings/user-management/users') return ['user-management-users'];
     if (location.pathname === '/settings/user-management/password-policies') return ['user-management-password-policies'];
+    // Settings - System Settings
+    if (location.pathname === '/settings/system-settings/branding') return ['system-settings-branding'];
+    if (location.pathname === '/settings/system-settings/vendor-logo') return ['system-settings-vendor-logo'];
+    if (location.pathname === '/settings/system-settings/mail-server') return ['system-settings-mail-server'];
+    if (location.pathname === '/settings/system-settings/proxy-server') return ['system-settings-proxy-server'];
+    if (location.pathname === '/settings/system-settings/ldap-server') return ['system-settings-ldap-server'];
+    if (location.pathname === '/settings/system-settings/risk-score') return ['system-settings-risk-score'];
+    if (location.pathname === '/settings/system-settings/remote-desktop') return ['system-settings-remote-desktop'];
+    if (location.pathname === '/settings/system-settings/server') return ['system-settings-server'];
     // Settings
     if (location.pathname === '/settings/system-settings') return ['system-settings'];
     if (location.pathname === '/settings/vulnerability-preference') return ['vulnerability-preference'];
@@ -459,10 +518,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     if (location.pathname.startsWith('/assets')) {
       return { title: 'Assets', items: [] }; // Items not needed for Assets (using separate tabs and categories)
     }
-    if (location.pathname.startsWith('/discovery')) {
-      return { title: 'Discovery', items: discoveryMenuItems };
-    }
-    if (location.pathname.startsWith('/settings')) {
+    if (location.pathname.startsWith('/discovery') || location.pathname.startsWith('/settings')) {
       return { title: 'Settings', items: settingsMenuItems };
     }
     return null;
