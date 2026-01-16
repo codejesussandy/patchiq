@@ -23,13 +23,21 @@ import { SoftwareInventory } from './pages/assets/SoftwareInventory';
 import { SoftwareLicense } from './pages/assets/SoftwareLicense';
 import { OSLicenses } from './pages/assets/OSLicenses';
 
-// Vulnerabilities
+// Vulnerability
+import { ZeroDayVulnerabilities } from './pages/vulnerability/ZeroDayVulnerabilities';
 import { Vulnerabilities } from './pages/vulnerability/Vulnerabilities';
+import { ManageException } from './pages/vulnerability/ManageException';
 
 // Discovery
 import { IPDiscovery } from './pages/discovery/IPDiscovery';
 import { DeviceCredentials } from './pages/discovery/DeviceCredentials';
 import { Agents } from './pages/discovery/Agents';
+
+// Jobs
+import { SoftwareJobs } from './pages/jobs/SoftwareJobs';
+import { ConfigurationJobs } from './pages/jobs/ConfigurationJobs';
+import { PatchJobs } from './pages/jobs/PatchJobs';
+import { VulnerabilityJobs } from './pages/jobs/VulnerabilityJobs';
 
 // Settings
 import { Organization } from './pages/settings/Organization';
@@ -39,10 +47,8 @@ import { UserRoles } from './pages/settings/UserRoles';
 import { RolesAndPrivileges } from './pages/settings/RolesAndPrivileges';
 import { Users } from './pages/settings/Users';
 import { PasswordPolicies } from './pages/settings/PasswordPolicies';
-import { SystemSettings } from './pages/settings/SystemSettings';
 import { VulnerabilityPreference } from './pages/settings/VulnerabilityPreference';
 import { MarketPlace } from './pages/settings/MarketPlace';
-import { AgentManagement } from './pages/settings/AgentManagement';
 import { AgentApprovals } from './pages/settings/AgentApprovals';
 import { AgentApprovalSettings } from './pages/settings/AgentApprovalSettings';
 import { AgentVersions } from './pages/settings/AgentVersions';
@@ -253,9 +259,19 @@ function AppRoutes() {
         }
       />
 
-      {/* Vulnerabilities */}
+      {/* Vulnerability */}
       <Route
-        path="/vulnerabilities"
+        path="/vulnerability/zero-day-vulnerabilities"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ZeroDayVulnerabilities />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vulnerability/vulnerabilities"
         element={
           <ProtectedRoute>
             <MainLayout>
@@ -265,24 +281,18 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/vulnerabilities/endpoints"
+        path="/vulnerability/manage-exception"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <Vulnerabilities />
+              <ManageException />
             </MainLayout>
           </ProtectedRoute>
         }
       />
       <Route
-        path="/vulnerabilities/network"
-        element={
-          <ProtectedRoute>
-            <MainLayout>
-              <Vulnerabilities />
-            </MainLayout>
-          </ProtectedRoute>
-        }
+        path="/vulnerability"
+        element={<Navigate to="/vulnerability/zero-day-vulnerabilities" replace />}
       />
 
       {/* Discovery */}
@@ -319,6 +329,52 @@ function AppRoutes() {
       <Route
         path="/discovery"
         element={<Navigate to="/discovery/ip-discovery" replace />}
+      />
+
+      {/* Jobs */}
+      <Route
+        path="/jobs/software-jobs/*"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <SoftwareJobs />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/jobs/configuration-jobs/*"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ConfigurationJobs />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/jobs/patch-jobs"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PatchJobs />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/jobs/vulnerability-jobs/*"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <VulnerabilityJobs />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/jobs"
+        element={<Navigate to="/jobs/software-jobs/catalog" replace />}
       />
 
       {/* Settings - User Management Sub-pages */}

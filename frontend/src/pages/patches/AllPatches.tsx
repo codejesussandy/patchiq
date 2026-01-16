@@ -110,8 +110,10 @@ export const AllPatches = () => {
 
   const handleEditPatch = (patch: Patch) => {
     setEditingPatch(patch);
-    editForm.setFieldsValue({
-      name: patch.software,
+    setCurrentStep(0);
+    // Pre-fill the create patch form with patch details
+    form.setFieldsValue({
+      software: patch.software,
       platform: patch.platform,
       description: patch.description,
       category: patch.category,
@@ -119,14 +121,14 @@ export const AllPatches = () => {
       bulletinId: patch.bulletinId,
       kbNumber: patch.kbNumber,
       releaseDate: patch.releaseDate ? dayjs(patch.releaseDate) : null,
-      rebootRequired: patch.rebootRequired,
+      rebootRequired: patch.rebootRequired === true ? true : patch.rebootRequired === false ? false : 'maybe',
       supportUninstallation: patch.supportUninstallation,
       architecture: patch.architecture,
       referenceUrl: patch.referenceUrl,
-      languagesSupported: patch.languagesSupported,
-      tags: patch.tags,
+      languagesSupported: patch.languagesSupported || [],
+      tags: patch.tags || [],
     });
-    setEditModalVisible(true);
+    setCreateModalVisible(true);
   };
 
   const handleEditPatchSubmit = async () => {
@@ -400,14 +402,26 @@ export const AllPatches = () => {
     } else {
       try {
         const values = form.getFieldsValue();
-        await patchService.createPatch(values);
-        message.success('Patch created successfully');
+        if (editingPatch) {
+          // Update existing patch
+          await patchService.updatePatch(editingPatch.id, {
+            ...editingPatch,
+            ...values,
+            releaseDate: values.releaseDate?.format('YYYY-MM-DD') || editingPatch.releaseDate,
+          });
+          message.success('Patch updated successfully');
+        } else {
+          // Create new patch
+          await patchService.createPatch(values);
+          message.success('Patch created successfully');
+        }
         setCreateModalVisible(false);
         setCurrentStep(0);
         form.resetFields();
+        setEditingPatch(null);
         fetchPatches();
       } catch (error) {
-        message.error('Failed to create patch');
+        message.error(editingPatch ? 'Failed to update patch' : 'Failed to create patch');
       }
     }
   };
@@ -636,7 +650,12 @@ export const AllPatches = () => {
         </Title>
         <Space>
           <Button onClick={() => setBulkAddModalVisible(true)}>Bulk Add</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => {
+            setEditingPatch(null);
+            setCurrentStep(0);
+            form.resetFields();
+            setCreateModalVisible(true);
+          }}>
             Create Patch
           </Button>
         </Space>
@@ -699,12 +718,13 @@ export const AllPatches = () => {
 
       {/* Create Patch Modal */}
       <Modal
-        title="Add New Patch"
+        title={editingPatch ? "Edit Patch" : "Add New Patch"}
         open={createModalVisible}
         onCancel={() => {
           setCreateModalVisible(false);
           setCurrentStep(0);
           form.resetFields();
+          setEditingPatch(null);
         }}
         width={800}
         footer={
@@ -717,11 +737,12 @@ export const AllPatches = () => {
                 setCreateModalVisible(false);
                 setCurrentStep(0);
                 form.resetFields();
+                setEditingPatch(null);
               }}>
                 Cancel
               </Button>
               <Button type="primary" onClick={handleCreatePatch} style={{ marginLeft: 8 }}>
-                {currentStep === 0 ? 'Next' : 'Submit Patch'}
+                {currentStep === 0 ? 'Next' : (editingPatch ? 'Update Patch' : 'Submit Patch')}
               </Button>
             </div>
           </div>

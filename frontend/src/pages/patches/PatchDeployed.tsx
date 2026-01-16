@@ -21,10 +21,12 @@ import {
   FilterOutlined,
   EyeOutlined,
   PlusOutlined,
-  DeleteOutlined,
   MoreOutlined,
-  EditOutlined,
+  ReloadOutlined,
+  ExportOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
+import { OSIcon } from '../../components/patches';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import { patchService, type Deployment, type Patch } from '../../services/patch.service';
@@ -50,6 +52,14 @@ export const PatchDeployed = () => {
   // Patches for step 2
   const [patches, setPatches] = useState<Patch[]>([]);
   const [selectedPatches, setSelectedPatches] = useState<string[]>([]);
+
+  // Tasks Modal
+  const [tasksModalVisible, setTasksModalVisible] = useState(false);
+  const [selectedDeployment, setSelectedDeployment] = useState<Deployment | null>(null);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [tasksSearchText, setTasksSearchText] = useState('');
+  const [tasksFilter, setTasksFilter] = useState<string>('All');
 
   useEffect(() => {
     fetchDeployments();
@@ -77,31 +87,179 @@ export const PatchDeployed = () => {
     }
   };
 
+  // Task type for deployment tasks
+  type DeploymentTask = {
+    id: number;
+    endpoint: {
+      name: string;
+      os: 'Windows' | 'MacOS' | 'Ubuntu' | 'Linux';
+      status: string;
+    };
+    name: string;
+    status: 'SUCCESS' | 'FAILED' | 'PENDING' | 'IN_PROGRESS';
+    createdBy: string;
+    lastUpdated: string;
+    createdOn: string;
+  };
+
+  const fetchTasks = async (deploymentId: string) => {
+    setTasksLoading(true);
+    try {
+      // In real implementation, fetch tasks from API
+      // For now, using mock data
+      const mockTasks: DeploymentTask[] = [
+        {
+          id: 855,
+          endpoint: { name: 'DESKTOP-7CC6ETJ', os: 'Ubuntu', status: 'Online' },
+          name: 'ubuntu-drivers-cc',
+          status: 'SUCCESS',
+          createdBy: 'Admin',
+          lastUpdated: '2026/01/12 02:02:08 PM',
+          createdOn: '2026/01/12 02:01:36 PM',
+        },
+        {
+          id: 854,
+          endpoint: { name: 'DESKTOP-7CC6ETJ', os: 'Ubuntu', status: 'Online' },
+          name: 'gir1.2-nm-1.0',
+          status: 'SUCCESS',
+          createdBy: 'Admin',
+          lastUpdated: '2026/01/12 02:01:46 PM',
+          createdOn: '2026/01/12 02:01:29 PM',
+        },
+        {
+          id: 853,
+          endpoint: { name: 'DESKTOP-7CC6ETJ', os: 'Ubuntu', status: 'Online' },
+          name: 'libnm0',
+          status: 'SUCCESS',
+          createdBy: 'Admin',
+          lastUpdated: '2026/01/12 02:01:36 PM',
+          createdOn: '2026/01/12 02:01:23 PM',
+        },
+        {
+          id: 852,
+          endpoint: { name: 'DESKTOP-7CC6ETJ', os: 'Ubuntu', status: 'Online' },
+          name: 'network-manager',
+          status: 'SUCCESS',
+          createdBy: 'Admin',
+          lastUpdated: '2026/01/12 02:01:27 PM',
+          createdOn: '2026/01/12 02:00:54 PM',
+        },
+        {
+          id: 851,
+          endpoint: { name: 'DESKTOP-7CC6ETJ', os: 'Ubuntu', status: 'Online' },
+          name: 'network-manager',
+          status: 'SUCCESS',
+          createdBy: 'Admin',
+          lastUpdated: '2026/01/12 02:01:09 PM',
+          createdOn: '2026/01/12 02:00:27 PM',
+        },
+        {
+          id: 850,
+          endpoint: { name: 'DESKTOP-7CC6ETJ', os: 'Ubuntu', status: 'Online' },
+          name: 'snapd',
+          status: 'SUCCESS',
+          createdBy: 'Admin',
+          lastUpdated: '2026/01/12 02:01:05 PM',
+          createdOn: '2026/01/12 02:00:00 PM',
+        },
+      ];
+      setTasks(mockTasks);
+      // await patchService.getDeploymentTasks(deploymentId);
+    } catch (error) {
+      message.error('Failed to fetch tasks');
+    } finally {
+      setTasksLoading(false);
+    }
+  };
+
   const handleViewDeployment = (deployment: Deployment) => {
-    message.info(`Viewing deployment: ${deployment.name}`);
+    setSelectedDeployment(deployment);
+    setTasksSearchText('');
+    setTasksFilter('All');
+    fetchTasks(deployment.id);
+    setTasksModalVisible(true);
   };
 
-  const handleEditDeployment = (deployment: Deployment) => {
-    message.info(`Editing deployment: ${deployment.name}`);
+  const handleTasksRefresh = () => {
+    if (selectedDeployment) {
+      fetchTasks(selectedDeployment.id);
+    }
   };
 
-  const handleDeleteDeployment = (deployment: Deployment) => {
-    Modal.confirm({
-      title: 'Delete Deployment',
-      content: `Are you sure you want to delete ${deployment.name}?`,
-      okText: 'Delete',
-      okType: 'danger',
-      onOk: async () => {
-        try {
-          await patchService.deleteDeployment(deployment.id);
-          message.success('Deployment deleted successfully');
-          fetchDeployments();
-        } catch (error) {
-          message.error('Failed to delete deployment');
-        }
-      },
-    });
+  const handleTasksExport = () => {
+    try {
+      const dataToExport = filteredTasks.length > 0 ? filteredTasks : tasks;
+      
+      if (dataToExport.length === 0) {
+        message.warning('No data to export');
+        return;
+      }
+
+      const exportData = dataToExport.map((item) => ({
+        Id: item.id,
+        Endpoint: item.endpoint.name,
+        Name: item.name,
+        Status: item.status,
+        'Created By': item.createdBy,
+        'Last Updated': item.lastUpdated,
+        'Created On': item.createdOn,
+      }));
+
+      const headers = Object.keys(exportData[0] || {});
+      const csvContent = [
+        headers.join(','),
+        ...exportData.map((row) =>
+          headers.map((header) => {
+            const value = row[header as keyof typeof row] || '';
+            if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          }).join(',')
+        ),
+      ].join('\n');
+
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `deployment_tasks_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      message.success('Tasks exported successfully');
+    } catch (error) {
+      message.error('Failed to export data');
+      console.error('Export error:', error);
+    }
   };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'SUCCESS':
+        return 'success';
+      case 'FAILED':
+        return 'error';
+      case 'PENDING':
+        return 'warning';
+      case 'IN_PROGRESS':
+        return 'processing';
+      default:
+        return 'default';
+    }
+  };
+
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch = 
+      task.id.toString().includes(tasksSearchText.toLowerCase()) ||
+      task.name.toLowerCase().includes(tasksSearchText.toLowerCase()) ||
+      task.endpoint.name.toLowerCase().includes(tasksSearchText.toLowerCase());
+    
+    const matchesFilter = tasksFilter === 'All' || task.status === tasksFilter.toUpperCase();
+    
+    return matchesSearch && matchesFilter;
+  });
 
   const getActionMenuItems = (deployment: Deployment): MenuProps['items'] => [
     {
@@ -109,22 +267,6 @@ export const PatchDeployed = () => {
       label: 'View Details',
       icon: <EyeOutlined />,
       onClick: () => handleViewDeployment(deployment),
-    },
-    {
-      key: 'edit',
-      label: 'Edit',
-      icon: <EditOutlined />,
-      onClick: () => handleEditDeployment(deployment),
-    },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'delete',
-      label: 'Delete',
-      icon: <DeleteOutlined />,
-      danger: true,
-      onClick: () => handleDeleteDeployment(deployment),
     },
   ];
 
@@ -470,6 +612,164 @@ export const PatchDeployed = () => {
             </Card>
           </div>
         )}
+      </Modal>
+
+      {/* Tasks Modal */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Button
+                type="text"
+                icon={<CloseOutlined />}
+                onClick={() => {
+                  setTasksModalVisible(false);
+                  setTasksSearchText('');
+                  setTasksFilter('All');
+                }}
+                style={{ padding: 0, marginRight: 8 }}
+              />
+              <Title level={4} style={{ margin: 0 }}>Tasks.</Title>
+            </div>
+          </div>
+        }
+        open={tasksModalVisible}
+        onCancel={() => {
+          setTasksModalVisible(false);
+          setTasksSearchText('');
+          setTasksFilter('All');
+        }}
+        width={1200}
+        footer={null}
+        closeIcon={null}
+      >
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Input
+            placeholder="Search..."
+            prefix={<SearchOutlined />}
+            suffix={<SearchOutlined style={{ color: 'rgba(0, 0, 0, 0.25)' }} />}
+            value={tasksSearchText}
+            onChange={(e) => setTasksSearchText(e.target.value)}
+            style={{ width: 300 }}
+          />
+          <Space>
+            <Select
+              value={tasksFilter}
+              onChange={setTasksFilter}
+              style={{ width: 120 }}
+            >
+              <Option value="All">All</Option>
+              <Option value="SUCCESS">Success</Option>
+              <Option value="FAILED">Failed</Option>
+              <Option value="PENDING">Pending</Option>
+              <Option value="IN_PROGRESS">In Progress</Option>
+            </Select>
+            <Button icon={<ReloadOutlined />} onClick={handleTasksRefresh} loading={tasksLoading}>
+              Refresh
+            </Button>
+            <Button icon={<ExportOutlined />} onClick={handleTasksExport}>
+              Export
+            </Button>
+          </Space>
+        </div>
+
+        <Table<DeploymentTask>
+          dataSource={filteredTasks}
+          rowKey="id"
+          loading={tasksLoading}
+          pagination={{
+            pageSize: 20,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            showTotal: (total, range) =>
+              `showing ${range[0]}-${range[1]} of ${total} items`,
+          }}
+          columns={[
+            {
+              title: 'Id',
+              dataIndex: 'id',
+              key: 'id',
+              sorter: (a, b) => a.id - b.id,
+            },
+            {
+              title: 'Endpoint',
+              dataIndex: 'endpoint',
+              key: 'endpoint',
+              sorter: (a, b) => a.endpoint.name.localeCompare(b.endpoint.name),
+              render: (endpoint: DeploymentTask['endpoint']) => (
+                <Space>
+                  <OSIcon os={endpoint.os} />
+                  <Text>{endpoint.name}</Text>
+                </Space>
+              ),
+            },
+            {
+              title: 'Name',
+              dataIndex: 'name',
+              key: 'name',
+              sorter: (a, b) => a.name.localeCompare(b.name),
+              render: (name: string) => (
+                <Space>
+                  <span style={{ 
+                    width: 24, 
+                    height: 24, 
+                    borderRadius: '50%', 
+                    backgroundColor: '#1890ff', 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: 12
+                  }}>
+                    {name.charAt(0).toUpperCase()}
+                  </span>
+                  <Text>{name}</Text>
+                </Space>
+              ),
+            },
+            {
+              title: 'Status',
+              dataIndex: 'status',
+              key: 'status',
+              sorter: (a, b) => a.status.localeCompare(b.status),
+              render: (status: string) => (
+                <Tag color={getStatusColor(status)}>{status}</Tag>
+              ),
+            },
+            {
+              title: 'Created By',
+              dataIndex: 'createdBy',
+              key: 'createdBy',
+              sorter: (a, b) => a.createdBy.localeCompare(b.createdBy),
+            },
+            {
+              title: 'Last Updated',
+              dataIndex: 'lastUpdated',
+              key: 'lastUpdated',
+              sorter: (a, b) => new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime(),
+              render: (text: string) => (
+                <div>
+                  <div>{text.split(', ')[0]}</div>
+                  <div style={{ fontSize: 12, color: '#8c8c8c' }}>{text.split(', ')[1]}</div>
+                </div>
+              ),
+            },
+            {
+              title: 'Created On',
+              dataIndex: 'createdOn',
+              key: 'createdOn',
+              sorter: (a, b) => new Date(a.createdOn).getTime() - new Date(b.createdOn).getTime(),
+              render: (text: string) => (
+                <div>
+                  <div>{text.split(', ')[0]}</div>
+                  <div style={{ fontSize: 12, color: '#8c8c8c' }}>{text.split(', ')[1]}</div>
+                </div>
+              ),
+            },
+          ]}
+          scroll={{ x: 'max-content' }}
+        />
       </Modal>
     </div>
   );
