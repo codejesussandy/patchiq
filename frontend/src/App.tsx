@@ -24,7 +24,7 @@ import { SoftwareLicense } from './pages/assets/SoftwareLicense';
 import { OSLicenses } from './pages/assets/OSLicenses';
 
 // Vulnerabilities
-import { EndpointsVulnerabilities, NetworkVulnerabilities } from './pages/vulnerabilities';
+import { Vulnerabilities } from './pages/vulnerability/Vulnerabilities';
 
 // Discovery
 import { IPDiscovery } from './pages/discovery/IPDiscovery';
@@ -259,7 +259,7 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MainLayout>
-              <EndpointsVulnerabilities />
+              <Vulnerabilities />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -269,7 +269,7 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MainLayout>
-              <EndpointsVulnerabilities />
+              <Vulnerabilities />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -279,7 +279,7 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MainLayout>
-              <NetworkVulnerabilities />
+              <Vulnerabilities />
             </MainLayout>
           </ProtectedRoute>
         }
