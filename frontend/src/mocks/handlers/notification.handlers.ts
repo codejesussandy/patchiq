@@ -1,6 +1,8 @@
 import { http, HttpResponse } from 'msw';
 import type { Notification } from '../../services/notification.service';
 
+const API_BASE_URL = '/v1';
+
 let mockNotifications: Notification[] = [
   {
     id: '1',
@@ -50,18 +52,18 @@ let mockNotifications: Notification[] = [
 
 export const notificationHandlers = [
   // Get all notifications
-  http.get('/api/notifications', () => {
+  http.get(`${API_BASE_URL}/notifications`, () => {
     return HttpResponse.json(mockNotifications);
   }),
 
   // Get unread count
-  http.get('/api/notifications/unread-count', () => {
+  http.get(`${API_BASE_URL}/notifications/unread-count`, () => {
     const count = mockNotifications.filter((n) => !n.read).length;
     return HttpResponse.json({ count });
   }),
 
   // Mark single notification as read
-  http.put('/api/notifications/:id/read', ({ params }) => {
+  http.put(`${API_BASE_URL}/notifications/:id/read`, ({ params }) => {
     const { id } = params;
     const notification = mockNotifications.find((n) => n.id === id);
     if (notification) {
@@ -71,7 +73,7 @@ export const notificationHandlers = [
   }),
 
   // Mark all as read
-  http.put('/api/notifications/mark-all-read', () => {
+  http.put(`${API_BASE_URL}/notifications/mark-all-read`, () => {
     mockNotifications.forEach((n) => {
       n.read = true;
     });
@@ -79,14 +81,14 @@ export const notificationHandlers = [
   }),
 
   // Delete single notification
-  http.delete('/api/notifications/:id', ({ params }) => {
+  http.delete(`${API_BASE_URL}/notifications/:id`, ({ params }) => {
     const { id } = params;
     mockNotifications = mockNotifications.filter((n) => n.id !== id);
     return HttpResponse.json({ success: true });
   }),
 
   // Clear all notifications
-  http.delete('/api/notifications', () => {
+  http.delete(`${API_BASE_URL}/notifications`, () => {
     mockNotifications = [];
     return HttpResponse.json({ success: true });
   }),

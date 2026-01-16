@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import type { Tag, AssetTag } from '../../types/asset.types';
 
-const API_BASE_URL = 'http://localhost:3000/v1';
+const API_BASE_URL = '/v1';
 
 // Mock tags with rich metadata
 let tags: Tag[] = [

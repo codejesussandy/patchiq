@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { api } from './api.service';
 
 export type NotificationType = 'info' | 'success' | 'warning' | 'error';
 
@@ -12,32 +12,30 @@ export type Notification = {
   link?: string;
 };
 
-const API_BASE_URL = '/api';
-
 export const notificationService = {
   async getNotifications(): Promise<Notification[]> {
-    const response = await axios.get(`${API_BASE_URL}/notifications`);
+    const response = await api.get(`/notifications`);
     return response.data;
   },
 
   async getUnreadCount(): Promise<number> {
-    const response = await axios.get(`${API_BASE_URL}/notifications/unread-count`);
+    const response = await api.get(`/notifications/unread-count`);
     return response.data.count;
   },
 
   async markAsRead(id: string): Promise<void> {
-    await axios.put(`${API_BASE_URL}/notifications/${id}/read`);
+    await api.put(`/notifications/${id}/read`);
   },
 
   async markAllAsRead(): Promise<void> {
-    await axios.put(`${API_BASE_URL}/notifications/mark-all-read`);
+    await api.put(`/notifications/mark-all-read`);
   },
 
   async deleteNotification(id: string): Promise<void> {
-    await axios.delete(`${API_BASE_URL}/notifications/${id}`);
+    await api.delete(`/notifications/${id}`);
   },
 
   async clearAll(): Promise<void> {
-    await axios.delete(`${API_BASE_URL}/notifications`);
+    await api.delete(`/notifications`);
   },
 };

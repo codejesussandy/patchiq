@@ -29,7 +29,7 @@ import {
   LinkOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { patchService, type EndpointDetails, type EndpointRelatedPatch } from '../../services/patch.service';
+import { patchService, type EndpointDetails, type AssetRelatedPatch, type PatchSummary, type AssetGroup } from '../../services/patch.service';
 import { SeverityBadge } from './SeverityBadge';
 
 const { Title, Text } = Typography;
@@ -394,7 +394,7 @@ export const EndpointDetailsDrawer = ({
         dataIndex: 'severity',
         key: 'severity',
         width: 100,
-        render: (severity: EndpointRelatedPatch['severity']) => (
+        render: (severity: AssetRelatedPatch['severity']) => (
           <SeverityBadge severity={severity} />
         ),
       },

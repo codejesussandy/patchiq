@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Table,
   Input,
@@ -17,21 +18,15 @@ import {
   DownloadOutlined,
   WindowsOutlined,
   AppleOutlined,
+  LinkOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import { agentService } from '../../services/agent.service';
+import type { Agent } from '../../types/agent.types';
+import { AgentDetailsDrawer } from '../../components/agents/AgentDetailsDrawer';
 
 const { Title, Text } = Typography;
-
-type Agent = {
-  id: string;
-  name: string;
-  status: 'Connected' | 'Disconnected';
-  lastConnectedTime: string;
-  os: string;
-  version: string;
-};
 
 type AgentDownload = {
   os: 'Windows 11' | 'MacOS' | 'Linux';
@@ -41,11 +36,14 @@ type AgentDownload = {
 };
 
 export const Agents = () => {
+  const navigate = useNavigate();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [downloadModalVisible, setDownloadModalVisible] = useState(false);
   const [agentDownloads, setAgentDownloads] = useState<AgentDownload[]>([]);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     fetchAgents();
@@ -74,7 +72,8 @@ export const Agents = () => {
   };
 
   const handleView = (agent: Agent) => {
-    message.info(`Viewing details for ${agent.name}`);
+    setSelectedAgent(agent);
+    setDrawerOpen(true);
   };
 
   const handleEdit = (agent: Agent) => {
@@ -127,6 +126,21 @@ export const Agents = () => {
     },
   ];
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Connected':
+        return 'success';
+      case 'Disconnected':
+        return 'default';
+      case 'Pending':
+        return 'processing';
+      case 'Error':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
   const columns: ColumnsType<Agent> = [
     {
       title: 'Agent Name',
@@ -138,38 +152,96 @@ export const Agents = () => {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
+      width: 100,
       render: (status: string) => (
-        <Tag color={status === 'Connected' ? 'success' : 'default'}>
+        <Tag color={getStatusColor(status)}>
           {status}
         </Tag>
       ),
       filters: [
         { text: 'Connected', value: 'Connected' },
         { text: 'Disconnected', value: 'Disconnected' },
+        { text: 'Pending', value: 'Pending' },
+        { text: 'Error', value: 'Error' },
       ],
       onFilter: (value, record) => record.status === value,
     },
     {
-      title: 'Last Connected Time',
-      dataIndex: 'lastConnectedTime',
-      key: 'lastConnectedTime',
-      sorter: (a, b) => a.lastConnectedTime.localeCompare(b.lastConnectedTime),
+      title: 'Last Heartbeat',
+      dataIndex: 'lastHeartbeatRelative',
+      key: 'lastHeartbeatRelative',
+      width: 120,
+      sorter: (a, b) => new Date(a.lastHeartbeat).getTime() - new Date(b.lastHeartbeat).getTime(),
+    },
+    {
+      title: 'IP Address',
+      dataIndex: 'ipAddress',
+      key: 'ipAddress',
+      width: 130,
+      render: (ip?: string) => ip ? <Text copyable>{ip}</Text> : '—',
+    },
+    {
+      title: 'Hostname',
+      dataIndex: 'hostname',
+      key: 'hostname',
+      width: 150,
+      render: (hostname?: string) => hostname || '—',
     },
     {
       title: 'OS',
       dataIndex: 'os',
       key: 'os',
+      width: 100,
       filters: [
+        { text: 'Windows', value: 'Windows' },
         { text: 'MacOS', value: 'MacOS' },
-        { text: 'Windows', value: 'Win' },
         { text: 'Linux', value: 'Linux' },
       ],
       onFilter: (value, record) => record.os === value,
     },
     {
-      title: 'Agent Version',
-      dataIndex: 'version',
-      key: 'version',
+      title: 'Version',
+      dataIndex: 'agentVersion',
+      key: 'agentVersion',
+      width: 100,
+    },
+    {
+      title: 'Groups',
+      dataIndex: 'groups',
+      key: 'groups',
+      width: 180,
+      render: (groups?: Array<{ id: string; name: string }>) => {
+        if (!groups || groups.length === 0) return '—';
+        return (
+          <Space size="small" wrap>
+            {groups.slice(0, 2).map((group) => (
+              <Tag key={group.id} color="cyan" style={{ margin: 0 }}>
+                {group.name}
+              </Tag>
+            ))}
+            {groups.length > 2 && <Text type="secondary">+{groups.length - 2} more</Text>}
+          </Space>
+        );
+      },
+    },
+    {
+      title: 'Asset',
+      dataIndex: 'assetId',
+      key: 'assetId',
+      width: 120,
+      render: (assetId?: string) => {
+        if (!assetId) return '—';
+        return (
+          <Button
+            type="link"
+            size="small"
+            icon={<LinkOutlined />}
+            onClick={() => navigate(`/assets/${assetId}`)}
+          >
+            View
+          </Button>
+        );
+      },
     },
     {
       title: '',
@@ -267,6 +339,13 @@ export const Agents = () => {
           ))}
         </Space>
       </Modal>
+
+      {/* Agent Details Drawer */}
+      <AgentDetailsDrawer
+        agent={selectedAgent}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
     </div>
   );
 };

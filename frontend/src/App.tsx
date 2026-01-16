@@ -6,6 +6,7 @@ import { ForgotPassword } from './pages/ForgotPassword';
 import { UserOnboarding } from './pages/UserOnboarding';
 import { Dashboard } from './pages/Dashboard';
 import { Reports } from './pages/Reports';
+import { CreateReport } from './pages/reports/CreateReport';
 import { MainLayout } from './components/MainLayout';
 
 // Patches
@@ -22,15 +23,48 @@ import { SoftwareInventory } from './pages/assets/SoftwareInventory';
 import { SoftwareLicense } from './pages/assets/SoftwareLicense';
 import { OSLicenses } from './pages/assets/OSLicenses';
 
+// Vulnerabilities
+import { Vulnerabilities } from './pages/vulnerability/Vulnerabilities';
+
 // Discovery
 import { IPDiscovery } from './pages/discovery/IPDiscovery';
 import { DeviceCredentials } from './pages/discovery/DeviceCredentials';
 import { Agents } from './pages/discovery/Agents';
 
 // Settings
-import { BranchLocation } from './pages/settings/BranchLocation';
-import { UserManagement } from './pages/settings/UserManagement';
-import { Policies } from './pages/settings/Policies';
+import { Organization } from './pages/settings/Organization';
+import { Department } from './pages/settings/Department';
+import { UserLocation } from './pages/settings/UserLocation';
+import { UserRoles } from './pages/settings/UserRoles';
+import { RolesAndPrivileges } from './pages/settings/RolesAndPrivileges';
+import { Users } from './pages/settings/Users';
+import { PasswordPolicies } from './pages/settings/PasswordPolicies';
+import { SystemSettings } from './pages/settings/SystemSettings';
+import { VulnerabilityPreference } from './pages/settings/VulnerabilityPreference';
+import { MarketPlace } from './pages/settings/MarketPlace';
+import { AgentManagement } from './pages/settings/AgentManagement';
+import { AgentApprovals } from './pages/settings/AgentApprovals';
+import { AgentApprovalSettings } from './pages/settings/AgentApprovalSettings';
+import { AgentVersions } from './pages/settings/AgentVersions';
+import { AgentConfiguration } from './pages/settings/AgentConfiguration';
+import { EnrollSecret } from './pages/settings/EnrollSecret';
+import { RedHatAgentNomination } from './pages/settings/RedHatAgentNomination';
+import { DeploymentPolicies } from './pages/settings/DeploymentPolicies';
+import { PatchManagement } from './pages/settings/PatchManagement';
+import { PolicyManagement } from './pages/settings/PolicyManagement';
+import { Audit } from './pages/settings/Audit';
+import { PlatformLicense } from './pages/settings/PlatformLicense';
+import { Branding } from './pages/settings/Branding';
+import { VendorLogo } from './pages/settings/VendorLogo';
+import { MailServerConfiguration } from './pages/settings/MailServerConfiguration';
+import { ProxyServerConfiguration } from './pages/settings/ProxyServerConfiguration';
+import { LDAPServerConfiguration } from './pages/settings/LDAPServerConfiguration';
+import { RiskScoreSettings } from './pages/settings/RiskScoreSettings';
+import { RemoteDesktopSettings } from './pages/settings/RemoteDesktopSettings';
+import { ServerSettings } from './pages/settings/ServerSettings';
+import { ComputerGroups } from './pages/settings/ComputerGroups';
+import { PatchPreferences } from './pages/settings/PatchPreferences';
+import { DistributionServer } from './pages/settings/DistributionServer';
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -100,6 +134,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <MainLayout>
               <Reports />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports/create"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <CreateReport />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -209,6 +253,38 @@ function AppRoutes() {
         }
       />
 
+      {/* Vulnerabilities */}
+      <Route
+        path="/vulnerabilities"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Vulnerabilities />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vulnerabilities/endpoints"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Vulnerabilities />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vulnerabilities/network"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Vulnerabilities />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
       {/* Discovery */}
       <Route
         path="/discovery/ip-discovery"
@@ -242,43 +318,335 @@ function AppRoutes() {
       />
       <Route
         path="/discovery"
-        element={<Navigate to="/discovery/agents" replace />}
+        element={<Navigate to="/discovery/ip-discovery" replace />}
       />
 
-      {/* Settings */}
+      {/* Settings - User Management Sub-pages */}
       <Route
-        path="/settings/branch-location"
+        path="/settings/user-management/organization"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <BranchLocation />
+              <Organization />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-management/department"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Department />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-management/location"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <UserLocation />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-management/user-roles"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <UserRoles />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-management/roles"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <RolesAndPrivileges />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-management/users"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Users />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-management/password-policies"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PasswordPolicies />
             </MainLayout>
           </ProtectedRoute>
         }
       />
       <Route
         path="/settings/user-management"
+        element={<Navigate to="/settings/user-management/organization" replace />}
+      />
+      <Route
+        path="/settings/system-settings/branding"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <UserManagement />
+              <Branding />
             </MainLayout>
           </ProtectedRoute>
         }
       />
       <Route
-        path="/settings/policies"
+        path="/settings/system-settings/vendor-logo"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <Policies />
+              <VendorLogo />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings/mail-server"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <MailServerConfiguration />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings/proxy-server"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ProxyServerConfiguration />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings/ldap-server"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <LDAPServerConfiguration />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings/risk-score"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <RiskScoreSettings />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings/remote-desktop"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <RemoteDesktopSettings />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings/server-settings"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ServerSettings />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings"
+        element={<Navigate to="/settings/system-settings/branding" replace />}
+      />
+      <Route
+        path="/settings/vulnerability-preference"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <VulnerabilityPreference />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/market-place"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <MarketPlace />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/agent-management/approvals"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <AgentApprovals />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/agent-management/approval-settings"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <AgentApprovalSettings />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/agent-management/versions"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <AgentVersions />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/agent-management/configuration"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <AgentConfiguration />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/agent-management/enroll-secret"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <EnrollSecret />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/agent-management/red-hat-nomination"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <RedHatAgentNomination />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/agent-management"
+        element={<Navigate to="/settings/agent-management/approval-settings" replace />}
+      />
+      <Route
+        path="/settings/jobs"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <DeploymentPolicies />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/patch-management/computer-groups"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ComputerGroups />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/patch-management/patch-preferences"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PatchPreferences />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/patch-management/distribution-server"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <DistributionServer />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/patch-management"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PatchManagement />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/policy-management"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PolicyManagement />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/audit"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Audit />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/platform-license"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PlatformLicense />
             </MainLayout>
           </ProtectedRoute>
         }
       />
       <Route
         path="/settings"
-        element={<Navigate to="/settings/branch-location" replace />}
+        element={<Navigate to="/settings/user-management/organization" replace />}
       />
 
       {/* Default route */}

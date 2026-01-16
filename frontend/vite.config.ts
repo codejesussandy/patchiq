@@ -6,7 +6,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-    host: '0.0.0.0',
-    allowedHosts: ['ssh.skenzer.com'],
+    host: 'localhost',
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: 3000,
+    },
+    strictPort: false,
   },
 })
