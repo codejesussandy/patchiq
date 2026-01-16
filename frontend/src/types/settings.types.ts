@@ -331,3 +331,69 @@ export type RedHatAgentNomination = {
   updatedBy: string;
   updatedAt: string; // ISO 8601 format
 };
+
+// Computer Group Types
+export type ComputerGroup = {
+  id: string;
+  name: string;
+  description: string;
+  endpoints: string[]; // Array of endpoint IDs or names
+  endpointCount: number; // Calculated field
+  createdBy: string;
+  createdAt: string;
+  updatedAt?: string;
+};
+
+export type ComputerGroupFormData = {
+  name: string;
+  description: string;
+  endpoints: string[]; // Multi-select dropdown
+};
+
+// Endpoint option for dropdown
+export type EndpointOption = {
+  id: string;
+  name: string;
+  ipAddress?: string;
+  status?: 'Online' | 'Offline';
+};
+
+// Patch Preferences Types
+export type PatchPreference = {
+  id: string;
+  enablePatching: boolean;
+  corridorOnlyApprovedPatch: boolean;
+  patchSyncForOS: string[]; // e.g., ["Windows", "Ubuntu"]
+  patchApprovalPolicy: 'PreApproved' | 'ManuallyApproves' | 'TestAndApprove';
+  enableThirdPartyPatching: boolean;
+  patchApprovalScheduleTime: string; // Time in HH:mm:ss format
+  scheduleTime: string; // Time in HH:mm:ss format
+  zeroTouchDeploymentScheduleTime: string; // Time in HH:mm:ss format
+  lastSyncedAt: string; // ISO 8601 format
+  createdAt: string;
+  updatedAt?: string;
+};
+
+export type PatchPreferenceFormData = {
+  enablePatching: boolean;
+  corridorOnlyApprovedPatch: boolean;
+  patchSyncForOS: string[];
+  patchApprovalPolicy: 'PreApproved' | 'ManuallyApproves' | 'TestAndApprove';
+  enableThirdPartyPatching: boolean;
+  patchApprovalScheduleTime: string;
+  scheduleTime: string;
+  zeroTouchDeploymentScheduleTime: string;
+};
+
+// Distribution Server Types
+export type DistributionServer = {
+  id: string;
+  name: string;
+  description: string;
+  location: string;
+  url: string;
+  version: string;
+  createdOn: string; // ISO 8601 format
+};
+
+export type DistributionServerFormData = Omit<DistributionServer, 'id' | 'createdOn'>;

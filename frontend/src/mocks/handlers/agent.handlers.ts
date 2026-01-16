@@ -236,4 +236,27 @@ export const agentHandlers = [
   http.get(`${API_BASE_URL}/agent-versions`, () => {
     return HttpResponse.json(mockAgentVersions);
   }),
+
+  // Download specific agent version
+  http.get(`${API_BASE_URL}/agent-versions/:id/download`, ({ params }) => {
+    const version = mockAgentVersions.find((v) => v.id === params.id);
+    if (!version) {
+      return HttpResponse.json({ error: 'Version not found' }, { status: 404 });
+    }
+
+    // Create mock binary content
+    const binaryContent = new ArrayBuffer(1024); // 1KB mock file
+    const view = new Uint8Array(binaryContent);
+    for (let i = 0; i < view.length; i++) {
+      view[i] = Math.floor(Math.random() * 256);
+    }
+
+    return new HttpResponse(binaryContent, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': `attachment; filename="agent-${version.platform.toLowerCase()}-${version.architecture}-v${version.version}"`,
+      },
+    });
+  }),
 ];

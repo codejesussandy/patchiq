@@ -6,6 +6,7 @@ import { ForgotPassword } from './pages/ForgotPassword';
 import { UserOnboarding } from './pages/UserOnboarding';
 import { Dashboard } from './pages/Dashboard';
 import { Reports } from './pages/Reports';
+import { CreateReport } from './pages/reports/CreateReport';
 import { MainLayout } from './components/MainLayout';
 
 // Patches
@@ -21,6 +22,9 @@ import { AssetDetails } from './pages/assets/components/AssetDetails';
 import { SoftwareInventory } from './pages/assets/SoftwareInventory';
 import { SoftwareLicense } from './pages/assets/SoftwareLicense';
 import { OSLicenses } from './pages/assets/OSLicenses';
+
+// Vulnerabilities
+import { EndpointsVulnerabilities, NetworkVulnerabilities } from './pages/vulnerabilities';
 
 // Discovery
 import { IPDiscovery } from './pages/discovery/IPDiscovery';
@@ -58,6 +62,9 @@ import { LDAPServerConfiguration } from './pages/settings/LDAPServerConfiguratio
 import { RiskScoreSettings } from './pages/settings/RiskScoreSettings';
 import { RemoteDesktopSettings } from './pages/settings/RemoteDesktopSettings';
 import { ServerSettings } from './pages/settings/ServerSettings';
+import { ComputerGroups } from './pages/settings/ComputerGroups';
+import { PatchPreferences } from './pages/settings/PatchPreferences';
+import { DistributionServer } from './pages/settings/DistributionServer';
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -127,6 +134,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <MainLayout>
               <Reports />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports/create"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <CreateReport />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -236,6 +253,38 @@ function AppRoutes() {
         }
       />
 
+      {/* Vulnerabilities */}
+      <Route
+        path="/vulnerabilities"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <EndpointsVulnerabilities />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vulnerabilities/endpoints"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <EndpointsVulnerabilities />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vulnerabilities/network"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <NetworkVulnerabilities />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
       {/* Discovery */}
       <Route
         path="/discovery/ip-discovery"
@@ -269,7 +318,7 @@ function AppRoutes() {
       />
       <Route
         path="/discovery"
-        element={<Navigate to="/discovery/agents" replace />}
+        element={<Navigate to="/discovery/ip-discovery" replace />}
       />
 
       {/* Settings - User Management Sub-pages */}
@@ -516,11 +565,41 @@ function AppRoutes() {
         element={<Navigate to="/settings/agent-management/approval-settings" replace />}
       />
       <Route
-        path="/settings/deployment-policies"
+        path="/settings/jobs"
         element={
           <ProtectedRoute>
             <MainLayout>
               <DeploymentPolicies />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/patch-management/computer-groups"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ComputerGroups />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/patch-management/patch-preferences"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PatchPreferences />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/patch-management/distribution-server"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <DistributionServer />
             </MainLayout>
           </ProtectedRoute>
         }

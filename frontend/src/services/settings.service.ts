@@ -33,6 +33,13 @@ import type {
   EnrollSecret,
   EnrollSecretFormData,
   RedHatAgentNomination,
+  ComputerGroup,
+  ComputerGroupFormData,
+  EndpointOption,
+  PatchPreference,
+  PatchPreferenceFormData,
+  DistributionServer,
+  DistributionServerFormData,
 } from '../types/settings.types';
 
 export const settingsService = {
@@ -517,6 +524,13 @@ export const settingsService = {
     await api.delete(`/settings/enroll-secrets/${id}`);
   },
 
+  async exportEnrollSecrets(format: 'csv' | 'json'): Promise<Blob> {
+    const response = await api.get(`/settings/enroll-secrets/export?format=${format}`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
   // Deployment Policy APIs
   async getDeploymentPolicies(): Promise<DeploymentPolicy[]> {
     const response = await api.get(`/settings/deployment-policies`);
@@ -566,6 +580,120 @@ export const settingsService = {
 
   async exportRedHatAgentNominations(format: 'csv' | 'json'): Promise<Blob> {
     const response = await api.get(`/settings/red-hat-nominations/export?format=${format}`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // Computer Group APIs
+  async getComputerGroups(): Promise<ComputerGroup[]> {
+    const response = await api.get(`/settings/computer-groups`);
+    return response.data;
+  },
+
+  async getComputerGroup(id: string): Promise<ComputerGroup> {
+    const response = await api.get(`/settings/computer-groups/${id}`);
+    return response.data;
+  },
+
+  async createComputerGroup(data: ComputerGroupFormData): Promise<ComputerGroup> {
+    const response = await api.post(`/settings/computer-groups`, data);
+    return response.data;
+  },
+
+  async updateComputerGroup(id: string, data: Partial<ComputerGroupFormData>): Promise<ComputerGroup> {
+    const response = await api.put(`/settings/computer-groups/${id}`, data);
+    return response.data;
+  },
+
+  async deleteComputerGroup(id: string): Promise<void> {
+    await api.delete(`/settings/computer-groups/${id}`);
+  },
+
+  async getAvailableEndpoints(): Promise<EndpointOption[]> {
+    const response = await api.get(`/settings/computer-groups/available-endpoints`);
+    return response.data;
+  },
+
+  // Patch Preferences APIs
+  async getPatchPreference(): Promise<PatchPreference> {
+    const response = await api.get(`/settings/patch-preferences`);
+    return response.data;
+  },
+
+  async updatePatchPreference(data: PatchPreferenceFormData): Promise<PatchPreference> {
+    const response = await api.put(`/settings/patch-preferences`, data);
+    return response.data;
+  },
+
+  async syncPatchNow(): Promise<{ message: string }> {
+    const response = await api.post(`/settings/patch-preferences/sync`);
+    return response.data;
+  },
+
+  // Audit Log APIs
+  async getAuditLogs(): Promise<any[]> {
+    const response = await api.get(`/settings/audit-logs`);
+    return response.data;
+  },
+
+  async getAuditFilterOptions(): Promise<{
+    modules: string[];
+    users: string[];
+    operations: string[];
+  }> {
+    const response = await api.get(`/settings/audit-logs/filter-options`);
+    return response.data;
+  },
+
+  // Platform License APIs
+  async getPlatformLicense(): Promise<any> {
+    const response = await api.get(`/settings/platform-license`);
+    return response.data;
+  },
+
+  async updatePlatformLicense(data: { licenseCode: string }): Promise<any> {
+    const response = await api.put(`/settings/platform-license`, data);
+    return response.data;
+  },
+
+  // Distribution Server APIs
+  async getDistributionServers(): Promise<DistributionServer[]> {
+    const response = await api.get(`/settings/distribution-servers`);
+    return response.data;
+  },
+
+  async getDistributionServer(id: string): Promise<DistributionServer> {
+    const response = await api.get(`/settings/distribution-servers/${id}`);
+    return response.data;
+  },
+
+  async createDistributionServer(data: DistributionServerFormData): Promise<DistributionServer> {
+    const response = await api.post(`/settings/distribution-servers`, data);
+    return response.data;
+  },
+
+  async updateDistributionServer(
+    id: string,
+    data: Partial<DistributionServerFormData>
+  ): Promise<DistributionServer> {
+    const response = await api.put(`/settings/distribution-servers/${id}`, data);
+    return response.data;
+  },
+
+  async deleteDistributionServer(id: string): Promise<void> {
+    await api.delete(`/settings/distribution-servers/${id}`);
+  },
+
+  async exportDistributionServers(format: 'csv' | 'json'): Promise<Blob> {
+    const response = await api.get(`/settings/distribution-servers/export?format=${format}`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  async downloadDistributionServer(): Promise<Blob> {
+    const response = await api.get(`/settings/distribution-servers/download`, {
       responseType: 'blob',
     });
     return response.data;

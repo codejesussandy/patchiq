@@ -73,8 +73,8 @@ export const DeploymentPolicies = () => {
         : [];
       setPolicies(formattedData);
     } catch (error) {
-      console.error('Error fetching deployment policies:', error);
-      message.error('Failed to fetch deployment policies');
+      console.error('Error fetching jobs:', error);
+      message.error('Failed to fetch jobs');
       setPolicies([]);
     } finally {
       setLoading(false);
@@ -122,17 +122,17 @@ export const DeploymentPolicies = () => {
 
   const handleDelete = (policy: DeploymentPolicy) => {
     Modal.confirm({
-      title: 'Delete Deployment Policy',
+      title: 'Delete Job',
       content: `Are you sure you want to delete "${policy.name}"?`,
       okText: 'Delete',
       okType: 'danger',
       onOk: async () => {
         try {
           await settingsService.deleteDeploymentPolicy(policy.id);
-          message.success('Deployment policy deleted successfully');
+          message.success('Job deleted successfully');
           fetchPolicies();
         } catch (error) {
-          message.error('Failed to delete deployment policy');
+          message.error('Failed to delete job');
         }
       },
     });
@@ -144,16 +144,16 @@ export const DeploymentPolicies = () => {
 
       if (editingPolicy && drawerMode === 'edit') {
         await settingsService.updateDeploymentPolicy(editingPolicy.id, values);
-        message.success('Deployment policy updated successfully');
+        message.success('Job updated successfully');
       } else if (drawerMode === 'create') {
         await settingsService.createDeploymentPolicy(values);
-        message.success('Deployment policy created successfully');
+        message.success('Job created successfully');
       }
 
       handleDrawerClose();
       fetchPolicies();
     } catch (error) {
-      message.error(`Failed to ${editingPolicy && drawerMode === 'edit' ? 'update' : 'create'} deployment policy`);
+      message.error(`Failed to ${editingPolicy && drawerMode === 'edit' ? 'update' : 'create'} job`);
     }
   };
 
@@ -213,10 +213,10 @@ export const DeploymentPolicies = () => {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'deployment-policies.csv';
+    link.download = 'jobs.csv';
     link.click();
     window.URL.revokeObjectURL(url);
-    message.success('Deployment policies exported successfully');
+    message.success('Jobs exported successfully');
   };
 
   const allColumns: ColumnsType<DeploymentPolicy> = [
@@ -357,7 +357,7 @@ export const DeploymentPolicies = () => {
     <div style={{ padding: '24px' }}>
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
-        <Title level={2}>Deployment Policies</Title>
+        <Title level={2}>Jobs</Title>
       </div>
 
       {/* Search and Action Controls */}
@@ -431,7 +431,7 @@ export const DeploymentPolicies = () => {
 
       {/* Create/Edit Modal */}
       <Modal
-        title={drawerMode === 'create' ? 'Create Deployment Policy' : drawerMode === 'edit' ? 'Edit Deployment Policy' : 'View Deployment Policy'}
+        title={drawerMode === 'create' ? 'Create Job' : drawerMode === 'edit' ? 'Edit Job' : 'View Job'}
         open={drawerVisible}
         onCancel={handleDrawerClose}
         width={600}
@@ -445,7 +445,7 @@ export const DeploymentPolicies = () => {
               type="primary"
               onClick={handleDrawerSubmit}
             >
-              {drawerMode === 'create' ? 'Create' : 'Update'} Policy
+              {drawerMode === 'create' ? 'Create' : 'Update'} Job
             </Button>,
           ] : [
             <Button key="close" onClick={handleDrawerClose}>
@@ -469,12 +469,12 @@ export const DeploymentPolicies = () => {
           autoComplete="off"
         >
           <Form.Item
-            label="Policy Name"
+            label="Job Name"
             name="name"
-            rules={[{ required: true, message: 'Please enter policy name' }]}
+            rules={[{ required: true, message: 'Please enter job name' }]}
           >
             <Input
-              placeholder="Policy Name"
+              placeholder="Job Name"
               disabled={drawerMode === 'view'}
             />
           </Form.Item>

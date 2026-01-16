@@ -110,6 +110,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   // Auto-navigate to organization if just /settings/user-management
   // Auto-expand System Settings menu when visiting its sub-pages
   // Auto-expand Agent Management menu when visiting its sub-pages
+  // Auto-expand Patch Management menu when visiting its sub-pages
   // Auto-expand Discovery menu when visiting discovery routes
   useEffect(() => {
     if (location.pathname.startsWith('/settings/user-management')) {
@@ -122,6 +123,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       setExpandedMenus(['system-settings']);
     } else if (location.pathname.startsWith('/settings/agent-management')) {
       setExpandedMenus(['agent-management']);
+    } else if (location.pathname.startsWith('/settings/patch-management')) {
+      setExpandedMenus(['patch-management']);
     } else if (location.pathname.startsWith('/discovery')) {
       setExpandedMenus(['discovery']);
     } else {
@@ -138,6 +141,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     { key: '/dashboard', label: 'Dashboard' },
     { key: '/patches', label: 'Patches' },
     { key: '/assets', label: 'Assets' },
+    { key: '/vulnerabilities', label: 'Vulnerabilities' },
     { key: '/reports', label: 'Reports' },
   ];
 
@@ -292,10 +296,6 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
           key: 'discovery-device-credentials',
           label: 'Device Credentials',
         },
-        {
-          key: 'discovery-agents',
-          label: 'Agents',
-        },
       ],
     },
     {
@@ -330,19 +330,33 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       ],
     },
     {
-      key: 'deployment-policies',
+      key: 'jobs',
       icon: <WindowsOutlined />,
-      label: 'Deployment Policies',
+      label: 'Jobs',
     },
     {
       key: 'patch-management',
       icon: <EditOutlined />,
       label: 'Patch Management',
+      children: [
+        {
+          key: 'patch-management-computer-groups',
+          label: 'Computer Groups',
+        },
+        {
+          key: 'patch-management-patch-preferences',
+          label: 'Patch Preferences',
+        },
+        {
+          key: 'patch-management-distribution-server',
+          label: 'Distribution Server',
+        },
+      ],
     },
     {
       key: 'policy-management',
       icon: <CreditCardOutlined />,
-      label: 'Policy Management',
+      label: 'Alert Management',
     },
     {
       key: 'audit',
@@ -387,7 +401,6 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     // Discovery - now under Settings
     else if (key === 'discovery-ip-discovery') navigate('/discovery/ip-discovery');
     else if (key === 'discovery-device-credentials') navigate('/discovery/device-credentials');
-    else if (key === 'discovery-agents') navigate('/discovery/agents');
     // Settings - User Management sub-menus
     else if (key === 'user-management-organization') navigate('/settings/user-management/organization');
     else if (key === 'user-management-department') navigate('/settings/user-management/department');
@@ -411,14 +424,18 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     else if (key === 'agent-management-approvals') navigate('/settings/agent-management/approvals');
     else if (key === 'agent-management-enroll-secret') navigate('/settings/agent-management/enroll-secret');
     else if (key === 'agent-management-red-hat-nomination') navigate('/settings/agent-management/red-hat-nomination');
+    // Settings - Patch Management sub-menus
+    else if (key === 'patch-management-computer-groups') navigate('/settings/patch-management/computer-groups');
+    else if (key === 'patch-management-patch-preferences') navigate('/settings/patch-management/patch-preferences');
+    else if (key === 'patch-management-distribution-server') navigate('/settings/patch-management/distribution-server');
     // Settings
     else if (key === 'user-management') navigate('/settings/user-management/organization');
     else if (key === 'system-settings') navigate('/settings/system-settings/branding');
     else if (key === 'vulnerability-preference') navigate('/settings/vulnerability-preference');
     else if (key === 'market-place') navigate('/settings/market-place');
-    else if (key === 'discovery') navigate('/discovery/agents');
+    else if (key === 'discovery') navigate('/discovery/ip-discovery');
     else if (key === 'agent-management') navigate('/settings/agent-management/approval-settings');
-    else if (key === 'deployment-policies') navigate('/settings/deployment-policies');
+    else if (key === 'jobs') navigate('/settings/jobs');
     else if (key === 'patch-management') navigate('/settings/patch-management');
     else if (key === 'policy-management') navigate('/settings/policy-management');
     else if (key === 'audit') navigate('/settings/audit');
@@ -516,7 +533,6 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     // Discovery - now under Settings
     if (location.pathname === '/discovery/ip-discovery') return ['discovery-ip-discovery'];
     if (location.pathname === '/discovery/device-credentials') return ['discovery-device-credentials'];
-    if (location.pathname === '/discovery/agents') return ['discovery-agents'];
     // Settings - User Management
     if (location.pathname === '/settings/user-management/organization') return ['user-management-organization'];
     if (location.pathname === '/settings/user-management/department') return ['user-management-department'];
@@ -540,11 +556,15 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     if (location.pathname === '/settings/agent-management/approvals') return ['agent-management-approvals'];
     if (location.pathname === '/settings/agent-management/enroll-secret') return ['agent-management-enroll-secret'];
     if (location.pathname === '/settings/agent-management/red-hat-nomination') return ['agent-management-red-hat-nomination'];
+    // Settings - Patch Management
+    if (location.pathname === '/settings/patch-management/computer-groups') return ['patch-management-computer-groups'];
+    if (location.pathname === '/settings/patch-management/patch-preferences') return ['patch-management-patch-preferences'];
+    if (location.pathname === '/settings/patch-management/distribution-server') return ['patch-management-distribution-server'];
     // Settings
     if (location.pathname === '/settings/system-settings') return ['system-settings'];
     if (location.pathname === '/settings/vulnerability-preference') return ['vulnerability-preference'];
     if (location.pathname === '/settings/market-place') return ['market-place'];
-    if (location.pathname === '/settings/deployment-policies') return ['deployment-policies'];
+    if (location.pathname === '/settings/jobs') return ['jobs'];
     if (location.pathname === '/settings/patch-management') return ['patch-management'];
     if (location.pathname === '/settings/policy-management') return ['policy-management'];
     if (location.pathname === '/settings/audit') return ['audit'];

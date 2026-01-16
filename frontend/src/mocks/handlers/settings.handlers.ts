@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import type { Branch, User, Role, Policy, DeploymentPolicy, MailServerConfig, ProxyServerConfig, LDAPServerConfig, RiskScore, RemoteDesktopSettings, ServerSettings, Integration, IntegrationFormData, AgentApprovalSettings, AgentApprovalSettingsFormData, VulnerabilityPreference, VulnerabilityPreferenceFormData, AgentConfiguration, AgentConfigurationFormData, AgentApproval, EnrollSecret, EnrollSecretFormData, RedHatAgentNomination } from '../../types/settings.types';
+import type { Branch, User, Role, Policy, DeploymentPolicy, MailServerConfig, ProxyServerConfig, LDAPServerConfig, RiskScore, RemoteDesktopSettings, ServerSettings, Integration, IntegrationFormData, AgentApprovalSettings, AgentApprovalSettingsFormData, VulnerabilityPreference, VulnerabilityPreferenceFormData, AgentConfiguration, AgentConfigurationFormData, AgentApproval, EnrollSecret, EnrollSecretFormData, RedHatAgentNomination, ComputerGroup, ComputerGroupFormData, EndpointOption, PatchPreference, PatchPreferenceFormData, DistributionServer, DistributionServerFormData } from '../../types/settings.types';
 
 const API_BASE_URL = '/v1';
 
@@ -257,6 +257,55 @@ let mockPolicies: Policy[] = [
     createdBy: 'Alice Johnson',
     createdAt: '2024-01-15T10:00:00Z',
     updatedAt: '2024-01-15T10:00:00Z',
+  },
+];
+
+// Mock data for alert configurations
+let mockAlertConfigurations: any[] = [
+  {
+    id: '1',
+    name: 'Critical Patch Alert',
+    type: 'Email',
+    channel: 'SMTP',
+    recipients: 'admin@company.com, security@company.com',
+    enabled: true,
+    createdAt: '2025-01-10T08:30:00Z',
+  },
+  {
+    id: '2',
+    name: 'Patch Deployment Failed',
+    type: 'Email',
+    channel: 'SMTP',
+    recipients: 'ops@company.com',
+    enabled: true,
+    createdAt: '2025-01-12T10:15:00Z',
+  },
+  {
+    id: '3',
+    name: 'Slack Notification',
+    type: 'Slack',
+    channel: 'Webhook',
+    recipients: '#patches-channel',
+    enabled: true,
+    createdAt: '2025-01-08T14:45:00Z',
+  },
+  {
+    id: '4',
+    name: 'SMS Alert',
+    type: 'SMS',
+    channel: 'AWS SNS',
+    recipients: '+1-555-0123',
+    enabled: false,
+    createdAt: '2025-01-05T09:20:00Z',
+  },
+  {
+    id: '5',
+    name: 'Webhook Alert',
+    type: 'Webhook',
+    channel: 'HTTP',
+    recipients: 'https://api.company.com/alerts',
+    enabled: true,
+    createdAt: '2025-01-15T16:00:00Z',
   },
 ];
 
@@ -702,6 +751,24 @@ let mockVulnerabilityPreference: VulnerabilityPreference = {
   createdAt: '2024-01-15T10:00:00Z',
 };
 
+// Mock data for patch preferences
+let mockPatchPreference: PatchPreference = {
+  id: '1',
+  enablePatching: true,
+  corridorOnlyApprovedPatch: false,
+  patchSyncForOS: ['Windows', 'Ubuntu'],
+  patchApprovalPolicy: 'PreApproved',
+  enableThirdPartyPatching: true,
+  patchApprovalScheduleTime: '03:00:00',
+  scheduleTime: '00:00:00',
+  zeroTouchDeploymentScheduleTime: '14:00:00',
+  lastSyncedAt: '2025/01/16 06:00:07 AM',
+  createdAt: '2024-01-15T10:00:00Z',
+};
+
+// Mock data for distribution servers
+let mockDistributionServers: DistributionServer[] = [];
+
 // Mock data for agent configuration
 let mockAgentConfiguration: AgentConfiguration = {
   id: '1',
@@ -1117,53 +1184,49 @@ export const settingsHandlers = [
     return HttpResponse.json({ success: true });
   }),
 
-  // Policy APIs
+  // Policy APIs - Returns Alert Configurations
   http.get(`${API_BASE_URL}/settings/policies`, () => {
-    return HttpResponse.json(mockPolicies);
+    return HttpResponse.json(mockAlertConfigurations);
   }),
 
   http.get(`${API_BASE_URL}/settings/policies/:id`, ({ params }) => {
     const { id } = params;
-    const policy = mockPolicies.find((p) => p.id === id);
-    if (!policy) {
-      return HttpResponse.json({ error: 'Policy not found' }, { status: 404 });
+    const alert = mockAlertConfigurations.find((a) => a.id === id);
+    if (!alert) {
+      return HttpResponse.json({ error: 'Alert configuration not found' }, { status: 404 });
     }
-    return HttpResponse.json(policy);
+    return HttpResponse.json(alert);
   }),
 
   http.post(`${API_BASE_URL}/settings/policies`, async ({ request }) => {
     const data = (await request.json()) as any;
-    const newPolicy: Policy = {
-      id: String(mockPolicies.length),
+    const newId = String(Math.max(...mockAlertConfigurations.map((a) => parseInt(a.id) || 0), 0) + 1);
+    const newAlert = {
+      id: newId,
       ...data,
-      users: 0,
-      status: 'Active',
-      createdBy: 'Current User',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
-    mockPolicies.push(newPolicy);
-    return HttpResponse.json(newPolicy, { status: 201 });
+    mockAlertConfigurations.push(newAlert);
+    return HttpResponse.json(newAlert, { status: 201 });
   }),
 
   http.put(`${API_BASE_URL}/settings/policies/:id`, async ({ params, request }) => {
     const { id } = params;
     const data = (await request.json()) as any;
-    const index = mockPolicies.findIndex((p) => p.id === id);
+    const index = mockAlertConfigurations.findIndex((a) => a.id === id);
     if (index === -1) {
-      return HttpResponse.json({ error: 'Policy not found' }, { status: 404 });
+      return HttpResponse.json({ error: 'Alert configuration not found' }, { status: 404 });
     }
-    mockPolicies[index] = {
-      ...mockPolicies[index],
+    mockAlertConfigurations[index] = {
+      ...mockAlertConfigurations[index],
       ...data,
-      updatedAt: new Date().toISOString(),
     };
-    return HttpResponse.json(mockPolicies[index]);
+    return HttpResponse.json(mockAlertConfigurations[index]);
   }),
 
   http.delete(`${API_BASE_URL}/settings/policies/:id`, ({ params }) => {
     const { id } = params;
-    mockPolicies = mockPolicies.filter((p) => p.id !== id);
+    mockAlertConfigurations = mockAlertConfigurations.filter((a) => a.id !== id);
     return HttpResponse.json({ success: true });
   }),
 
@@ -1855,6 +1918,30 @@ export const settingsHandlers = [
     return HttpResponse.json({ success: true });
   }),
 
+  // Export endpoint must come before :id route
+  http.get(`${API_BASE_URL}/settings/enroll-secrets/export`, async ({ request }) => {
+    const url = new URL(request.url);
+    const format = url.searchParams.get('format') || 'csv';
+
+    let content = '';
+    if (format === 'csv') {
+      content = 'Name,Secret,Organization,Department,Created On\n';
+      mockEnrollSecrets.forEach((secret) => {
+        content += `"${secret.name}","${secret.secret}","${secret.organization}","${secret.department}","${new Date(secret.createdOn).toLocaleString()}"\n`;
+      });
+    } else {
+      content = JSON.stringify(mockEnrollSecrets, null, 2);
+    }
+
+    const blob = new Blob([content], { type: format === 'csv' ? 'text/csv' : 'application/json' });
+    return HttpResponse.arrayBuffer(await blob.arrayBuffer(), {
+      headers: {
+        'Content-Type': format === 'csv' ? 'text/csv' : 'application/json',
+        'Content-Disposition': `attachment; filename="enroll-secrets.${format}"`,
+      },
+    });
+  }),
+
   // Deployment Policy APIs
   http.get(`${API_BASE_URL}/settings/deployment-policies`, () => {
     return HttpResponse.json(mockDeploymentPolicies);
@@ -1908,6 +1995,30 @@ export const settingsHandlers = [
     return HttpResponse.json(mockRedHatNominations);
   }),
 
+  // Export endpoint must come before :id route to avoid matching /:id with /export
+  http.get(`${API_BASE_URL}/settings/red-hat-nominations/export`, async ({ request }) => {
+    const url = new URL(request.url);
+    const format = url.searchParams.get('format') || 'csv';
+
+    let content = '';
+    if (format === 'csv') {
+      content = 'Name,Status,Endpoint,Last Sync Time,Updated By,Updated At\n';
+      mockRedHatNominations.forEach((nomination) => {
+        content += `"${nomination.name}","${nomination.status}","${nomination.endpoint}","${nomination.lastSyncTime}","${nomination.updatedBy}","${nomination.updatedAt}"\n`;
+      });
+    } else {
+      content = JSON.stringify(mockRedHatNominations, null, 2);
+    }
+
+    const blob = new Blob([content], { type: format === 'csv' ? 'text/csv' : 'application/json' });
+    return HttpResponse.arrayBuffer(await blob.arrayBuffer(), {
+      headers: {
+        'Content-Type': format === 'csv' ? 'text/csv' : 'application/json',
+        'Content-Disposition': `attachment; filename="red-hat-nominations.${format}"`,
+      },
+    });
+  }),
+
   http.get(`${API_BASE_URL}/settings/red-hat-nominations/:id`, ({ params }) => {
     const { id } = params;
     const nomination = mockRedHatNominations.find((n) => n.id === id);
@@ -1932,25 +2043,485 @@ export const settingsHandlers = [
     return HttpResponse.json(mockRedHatNominations[index]);
   }),
 
-  http.get(`${API_BASE_URL}/settings/red-hat-nominations/export`, async ({ request }) => {
+  // Computer Group APIs - Mock data
+  http.get(`${API_BASE_URL}/settings/computer-groups`, () => {
+    const mockComputerGroups: ComputerGroup[] = [
+      {
+        id: '1',
+        name: 'Production Servers',
+        description: 'All production environment servers',
+        endpoints: ['endpoint-1', 'endpoint-2', 'endpoint-3'],
+        endpointCount: 3,
+        createdBy: 'admin@infraon.com',
+        createdAt: '2024-01-15T10:00:00Z',
+      },
+      {
+        id: '2',
+        name: 'Development Workstations',
+        description: 'Developer machines',
+        endpoints: ['endpoint-4', 'endpoint-5'],
+        endpointCount: 2,
+        createdBy: 'admin@infraon.com',
+        createdAt: '2024-01-20T14:30:00Z',
+      },
+    ];
+    return HttpResponse.json(mockComputerGroups);
+  }),
+
+  http.get(`${API_BASE_URL}/settings/computer-groups/available-endpoints`, () => {
+    const mockEndpoints: EndpointOption[] = [
+      { id: 'endpoint-1', name: 'SERVER-PROD-01', ipAddress: '192.168.1.10', status: 'Online' },
+      { id: 'endpoint-2', name: 'SERVER-PROD-02', ipAddress: '192.168.1.11', status: 'Online' },
+      { id: 'endpoint-3', name: 'SERVER-PROD-03', ipAddress: '192.168.1.12', status: 'Offline' },
+      { id: 'endpoint-4', name: 'DEV-WORK-01', ipAddress: '192.168.2.10', status: 'Online' },
+      { id: 'endpoint-5', name: 'DEV-WORK-02', ipAddress: '192.168.2.11', status: 'Online' },
+      { id: 'endpoint-6', name: 'SERVER-TEST-01', ipAddress: '192.168.3.10', status: 'Online' },
+    ];
+    return HttpResponse.json(mockEndpoints);
+  }),
+
+  http.get(`${API_BASE_URL}/settings/computer-groups/:id`, ({ params }) => {
+    const { id } = params;
+    const mockComputerGroups: ComputerGroup[] = [
+      {
+        id: '1',
+        name: 'Production Servers',
+        description: 'All production environment servers',
+        endpoints: ['endpoint-1', 'endpoint-2', 'endpoint-3'],
+        endpointCount: 3,
+        createdBy: 'admin@infraon.com',
+        createdAt: '2024-01-15T10:00:00Z',
+      },
+      {
+        id: '2',
+        name: 'Development Workstations',
+        description: 'Developer machines',
+        endpoints: ['endpoint-4', 'endpoint-5'],
+        endpointCount: 2,
+        createdBy: 'admin@infraon.com',
+        createdAt: '2024-01-20T14:30:00Z',
+      },
+    ];
+    const group = mockComputerGroups.find((g) => g.id === id);
+    if (!group) {
+      return HttpResponse.json({ error: 'Computer group not found' }, { status: 404 });
+    }
+    return HttpResponse.json(group);
+  }),
+
+  http.post(`${API_BASE_URL}/settings/computer-groups`, async ({ request }) => {
+    const data = (await request.json()) as ComputerGroupFormData;
+    const newGroup: ComputerGroup = {
+      id: String(Date.now()),
+      ...data,
+      endpointCount: data.endpoints.length,
+      createdBy: 'admin@infraon.com',
+      createdAt: new Date().toISOString(),
+    };
+    return HttpResponse.json(newGroup, { status: 201 });
+  }),
+
+  http.put(`${API_BASE_URL}/settings/computer-groups/:id`, async ({ params, request }) => {
+    const { id } = params;
+    const data = (await request.json()) as Partial<ComputerGroupFormData>;
+    const mockComputerGroups: ComputerGroup[] = [
+      {
+        id: '1',
+        name: 'Production Servers',
+        description: 'All production environment servers',
+        endpoints: ['endpoint-1', 'endpoint-2', 'endpoint-3'],
+        endpointCount: 3,
+        createdBy: 'admin@infraon.com',
+        createdAt: '2024-01-15T10:00:00Z',
+      },
+      {
+        id: '2',
+        name: 'Development Workstations',
+        description: 'Developer machines',
+        endpoints: ['endpoint-4', 'endpoint-5'],
+        endpointCount: 2,
+        createdBy: 'admin@infraon.com',
+        createdAt: '2024-01-20T14:30:00Z',
+      },
+    ];
+    const index = mockComputerGroups.findIndex((g) => g.id === id);
+    if (index === -1) {
+      return HttpResponse.json({ error: 'Computer group not found' }, { status: 404 });
+    }
+    const updatedGroup: ComputerGroup = {
+      ...mockComputerGroups[index],
+      ...data,
+      endpointCount: data.endpoints ? data.endpoints.length : mockComputerGroups[index].endpointCount,
+      updatedAt: new Date().toISOString(),
+    };
+    return HttpResponse.json(updatedGroup);
+  }),
+
+  http.delete(`${API_BASE_URL}/settings/computer-groups/:id`, ({ params }) => {
+    const { id } = params;
+    // Simulate deletion
+    if (id === '999') {
+      return HttpResponse.json({ error: 'Computer group not found' }, { status: 404 });
+    }
+    return HttpResponse.json({ success: true });
+  }),
+
+  // Patch Preferences APIs
+  http.get(`${API_BASE_URL}/settings/patch-preferences`, () => {
+    return HttpResponse.json(mockPatchPreference);
+  }),
+
+  http.put(`${API_BASE_URL}/settings/patch-preferences`, async ({ request }) => {
+    const data = (await request.json()) as PatchPreferenceFormData;
+    mockPatchPreference = {
+      ...mockPatchPreference,
+      ...data,
+      lastSyncedAt: mockPatchPreference.lastSyncedAt,
+      updatedAt: new Date().toISOString(),
+    };
+    return HttpResponse.json(mockPatchPreference);
+  }),
+
+  http.post(`${API_BASE_URL}/settings/patch-preferences/sync`, () => {
+    mockPatchPreference = {
+      ...mockPatchPreference,
+      lastSyncedAt: new Date().toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      }),
+    };
+    return HttpResponse.json({ message: 'Patch sync initiated successfully' });
+  }),
+
+  // Audit Logs APIs
+  http.get(`${API_BASE_URL}/settings/audit-logs`, () => {
+    const mockAuditLogs = [
+      {
+        id: '1',
+        module: 'User',
+        operation: 'Login',
+        user: 'admin',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '2',
+        module: 'User',
+        operation: 'Login',
+        user: 'admin',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '3',
+        module: 'User',
+        operation: 'Login',
+        user: 'admin',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '4',
+        module: 'User',
+        operation: 'Login',
+        user: 'admin',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '5',
+        module: 'Patch-Performance',
+        operation: 'Updates',
+        user: 'admin',
+        status: 'success',
+        message: 'Patch-Performance modified (1 %)',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '6',
+        module: 'User',
+        operation: 'Login',
+        user: 'admin',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '7',
+        module: 'User',
+        operation: 'Login',
+        user: 'admin',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '8',
+        module: 'User',
+        operation: 'Login',
+        user: 'admin',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '9',
+        module: 'User',
+        operation: 'Login',
+        user: 'admin',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '10',
+        module: 'Admin',
+        operation: 'Patch-Performance-modified',
+        user: 'admin',
+        status: 'success',
+        message: 'Infra Computer Group Infra',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '11',
+        module: 'Admin',
+        operation: 'Patch-Performance-modified',
+        user: 'admin',
+        status: 'success',
+        message: 'Failed to update test Computer',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '12',
+        module: 'User',
+        operation: 'Login',
+        user: 'admin',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '13',
+        module: 'User',
+        operation: 'Login',
+        user: 'admin',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '14',
+        module: 'User',
+        operation: 'Login',
+        user: 'admin',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '15',
+        module: 'User',
+        operation: 'Login',
+        user: 'admin',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '16',
+        module: 'User',
+        operation: 'Login',
+        user: 'ADMIN',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '17',
+        module: 'User',
+        operation: 'Login',
+        user: 'ADMIN',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '18',
+        module: 'User',
+        operation: 'Login',
+        user: 'ADMIN',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '19',
+        module: 'User',
+        operation: 'Login',
+        user: 'ADMIN',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+      {
+        id: '20',
+        module: 'User',
+        operation: 'Login',
+        user: 'ADMIN',
+        status: 'success',
+        message: 'User logged in from the machine',
+        createdAt: '2026/01/16 08:10 PM',
+      },
+    ];
+    return HttpResponse.json(mockAuditLogs);
+  }),
+
+  http.get(`${API_BASE_URL}/settings/audit-logs/filter-options`, () => {
+    return HttpResponse.json({
+      modules: ['User', 'Admin', 'Patch-Performance', 'Policy', 'System', 'Agent', 'Patch', 'Computer Group'],
+      users: ['admin', 'ADMIN', 'zirozen', 'user1', 'user2'],
+      operations: ['Login', 'Create', 'Update', 'Delete', 'Export', 'Import', 'Updates', 'Patch-Performance-modified'],
+    });
+  }),
+
+  // Platform License APIs
+  http.get(`${API_BASE_URL}/settings/platform-license`, () => {
+    const mockLicense = {
+      licenseTo: 'EverestIMS',
+      productCode: 'Infraon Patch Plus',
+      licenseType: 'FREE',
+      productVersion: '5.0.8',
+      poNumber: '—',
+      invoiceNumber: '—',
+      email: '—',
+      partner: '—',
+      issueDate: '2026/01/12 12:05:20 PM',
+      expiresOn: '2026/04/12 11:59:59 PM',
+      numberOfEndpoints: 100,
+      usedEndpoints: 11,
+      activationCode: 'oqD2PCBF3DDo5wT06Xz/NaY04U4uA7MeOwn6e4o5Ek46gV7koPG3vW2gxyN4+idd',
+      remainingDays: 86,
+      remainingEndpoints: 89,
+    };
+    return HttpResponse.json(mockLicense);
+  }),
+
+  http.put(`${API_BASE_URL}/settings/platform-license`, async ({ request }) => {
+    const data = (await request.json()) as { licenseCode: string };
+    const mockLicense = {
+      licenseTo: 'EverestIMS',
+      productCode: 'Infraon Patch Plus',
+      licenseType: 'PROFESSIONAL',
+      productVersion: '5.0.8',
+      poNumber: 'PO-2024-001',
+      invoiceNumber: 'INV-2024-001',
+      email: 'info@everestims.com',
+      partner: 'Infraon Partner',
+      issueDate: '2026/01/12 12:05:20 PM',
+      expiresOn: '2027/01/12 11:59:59 PM',
+      numberOfEndpoints: 500,
+      usedEndpoints: 11,
+      activationCode: 'oqD2PCBF3DDo5wT06Xz/NaY04U4uA7MeOwn6e4o5Ek46gV7koPG3vW2gxyN4+idd',
+      remainingDays: 365,
+      remainingEndpoints: 489,
+      licenseCode: data.licenseCode,
+    };
+    return HttpResponse.json(mockLicense);
+  }),
+
+  // Distribution Server APIs
+  http.get(`${API_BASE_URL}/settings/distribution-servers`, () => {
+    return HttpResponse.json(mockDistributionServers);
+  }),
+
+  http.get(`${API_BASE_URL}/settings/distribution-servers/:id`, ({ params }) => {
+    const { id } = params;
+    const server = mockDistributionServers.find(s => s.id === id);
+    if (!server) {
+      return HttpResponse.json({ error: 'Distribution server not found' }, { status: 404 });
+    }
+    return HttpResponse.json(server);
+  }),
+
+  http.post(`${API_BASE_URL}/settings/distribution-servers`, async ({ request }) => {
+    const data = (await request.json()) as DistributionServerFormData;
+    const newServer: DistributionServer = {
+      id: String(Date.now()),
+      ...data,
+      createdOn: new Date().toISOString(),
+    };
+    mockDistributionServers.push(newServer);
+    return HttpResponse.json(newServer, { status: 201 });
+  }),
+
+  http.put(`${API_BASE_URL}/settings/distribution-servers/:id`, async ({ params, request }) => {
+    const { id } = params;
+    const data = (await request.json()) as Partial<DistributionServerFormData>;
+    const index = mockDistributionServers.findIndex(s => s.id === id);
+    if (index === -1) {
+      return HttpResponse.json({ error: 'Distribution server not found' }, { status: 404 });
+    }
+    mockDistributionServers[index] = {
+      ...mockDistributionServers[index],
+      ...data,
+    };
+    return HttpResponse.json(mockDistributionServers[index]);
+  }),
+
+  http.delete(`${API_BASE_URL}/settings/distribution-servers/:id`, ({ params }) => {
+    const { id } = params;
+    const index = mockDistributionServers.findIndex(s => s.id === id);
+    if (index === -1) {
+      return HttpResponse.json({ error: 'Distribution server not found' }, { status: 404 });
+    }
+    mockDistributionServers.splice(index, 1);
+    return HttpResponse.json({ success: true });
+  }),
+
+  // Export endpoint must come before :id route
+  http.get(`${API_BASE_URL}/settings/distribution-servers/export`, async ({ request }) => {
     const url = new URL(request.url);
     const format = url.searchParams.get('format') || 'csv';
 
     let content = '';
     if (format === 'csv') {
-      content = 'Name,Status,Endpoint,Last Sync Time,Updated By,Updated At\n';
-      mockRedHatNominations.forEach((nomination) => {
-        content += `"${nomination.name}","${nomination.status}","${nomination.endpoint}","${nomination.lastSyncTime}","${nomination.updatedBy}","${nomination.updatedAt}"\n`;
+      content = 'Name,Description,Location,URL,Version,Created On\n';
+      mockDistributionServers.forEach((server) => {
+        content += `"${server.name}","${server.description}","${server.location}","${server.url}","${server.version}","${new Date(server.createdOn).toLocaleString()}"\n`;
       });
     } else {
-      content = JSON.stringify(mockRedHatNominations, null, 2);
+      content = JSON.stringify(mockDistributionServers, null, 2);
     }
 
     const blob = new Blob([content], { type: format === 'csv' ? 'text/csv' : 'application/json' });
     return HttpResponse.arrayBuffer(await blob.arrayBuffer(), {
       headers: {
         'Content-Type': format === 'csv' ? 'text/csv' : 'application/json',
-        'Content-Disposition': `attachment; filename="red-hat-nominations.${format}"`,
+        'Content-Disposition': `attachment; filename="distribution-servers.${format}"`,
+      },
+    });
+  }),
+
+  // Download Distribution Server
+  http.get(`${API_BASE_URL}/settings/distribution-servers/download`, async () => {
+    const content = mockDistributionServers.length > 0
+      ? JSON.stringify(mockDistributionServers, null, 2)
+      : '';
+
+    const blob = new Blob([content], { type: 'application/json' });
+    return HttpResponse.arrayBuffer(await blob.arrayBuffer(), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Disposition': 'attachment; filename="distribution-server.json"',
       },
     });
   }),

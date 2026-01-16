@@ -65,7 +65,7 @@ export const EnrollSecret = () => {
     try {
       const data = await settingsService.getEnrollSecrets();
       const formattedData = Array.isArray(data)
-        ? data.map((secret: EnrollSecret) => ({
+        ? data.map((secret: EnrollSecretType) => ({
             ...secret,
             key: secret.id,
           }))
@@ -85,7 +85,40 @@ export const EnrollSecret = () => {
   };
 
   const handleExport = () => {
-    message.info('Export functionality coming soon');
+    if (filteredSecrets.length === 0) {
+      message.warning('No data to export');
+      return;
+    }
+
+    // Prepare CSV headers
+    const headers = ['Name', 'Secret', 'Organization', 'Department', 'Created On'];
+
+    // Prepare CSV rows
+    const rows = filteredSecrets.map((secret) => [
+      secret.name,
+      secret.secret,
+      secret.organization,
+      secret.department,
+      new Date(secret.createdOn).toLocaleString(),
+    ]);
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `enroll-secrets-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    message.success('Enroll secrets exported successfully');
   };
 
   const handleOpenCreateModal = () => {

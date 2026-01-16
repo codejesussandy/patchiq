@@ -3,6 +3,7 @@ export type User = {
   // Core fields
   id: string;
   email: string;
+  username?: string;
   firstName: string;
   lastName: string;
   role: 'admin' | 'user' | 'manager' | string; // Support both enum and string
@@ -35,6 +36,7 @@ export type UserFormData = {
   firstName: string;
   lastName: string;
   email: string;
+  username?: string;
   phone?: string;
   branch?: string;
   role: string;
@@ -47,6 +49,7 @@ export type UserFormData = {
 
 export type InviteUserFormData = {
   email: string;
+  username?: string;
   role: string;
   orgUnit: string;
   dashboard?: string;

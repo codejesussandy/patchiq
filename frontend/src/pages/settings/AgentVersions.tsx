@@ -80,7 +80,69 @@ export const AgentVersions = () => {
   };
 
   const handleExport = () => {
-    message.info('Export functionality coming soon');
+    if (filteredVersions.length === 0) {
+      message.warning('No data to export');
+      return;
+    }
+
+    // Prepare CSV headers
+    const headers = ['Platform', 'Architecture', 'Version', 'Last Updated At'];
+
+    // Prepare CSV rows
+    const rows = filteredVersions.map((version) => [
+      version.platform,
+      version.architecture,
+      version.version,
+      new Date(version.lastUpdatedAt).toLocaleString(),
+    ]);
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `agent-versions-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    message.success('Agent versions exported successfully');
+  };
+
+  const handleDownload = async (record: AgentVersion) => {
+    try {
+      // Construct a download URL based on platform and architecture
+      const downloadFileName = `agent-${record.platform.toLowerCase()}-${record.architecture}-v${record.version}`;
+      const fileExtension = record.platform === 'Windows' ? '.exe' : record.platform === 'Mac' ? '.dmg' : '.deb';
+
+      // For now, we'll create a mock download by triggering a blob download
+      // In production, this would be a real API endpoint
+      const response = await fetch(`/v1/agent-versions/${record.id}/download`);
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `${downloadFileName}${fileExtension}`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        message.success('Download started');
+      } else {
+        message.error('Failed to download agent version');
+      }
+    } catch (error) {
+      console.error('Error downloading agent version:', error);
+      message.error('Failed to download agent version');
+    }
   };
 
   const filteredVersions = versions.filter((version) =>
@@ -133,14 +195,12 @@ export const AgentVersions = () => {
       title: 'Actions',
       key: 'actions',
       width: 100,
-      render: (_text: any, _record: AgentVersion) => (
+      render: (_text: any, record: AgentVersion) => (
         <Tooltip title="Download">
           <Button
             type="text"
             icon={<DownloadOutlined />}
-            onClick={() => {
-              message.info('Download functionality coming soon');
-            }}
+            onClick={() => handleDownload(record)}
           />
         </Tooltip>
       ),
