@@ -25,6 +25,8 @@ tags:
     description: Role and privilege management endpoints
   - name: Policies
     description: Policy management endpoints
+  - name: Audit
+    description: Audit log management endpoints
 
 paths:
   # ==================== BRANCH ENDPOINTS ====================
@@ -585,6 +587,134 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  # ==================== AUDIT LOGS ENDPOINTS ====================
+  /settings/audit-logs:
+    get:
+      tags:
+        - Audit
+      summary: Get all audit logs
+      description: Retrieve all audit logs with optional filtering and pagination
+      parameters:
+        - name: module
+          in: query
+          required: false
+          description: Filter by module name
+          schema:
+            type: string
+            example: "User"
+        - name: operation
+          in: query
+          required: false
+          description: Filter by operation type
+          schema:
+            type: string
+            example: "Login"
+        - name: user
+          in: query
+          required: false
+          description: Filter by user
+          schema:
+            type: string
+            example: "admin"
+        - name: status
+          in: query
+          required: false
+          description: Filter by status
+          schema:
+            type: string
+            enum: [success, fail]
+        - name: startDate
+          in: query
+          required: false
+          description: Start date for date range filter
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          required: false
+          description: End date for date range filter
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          required: false
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          description: Number of items per page
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Successful response with audit logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLog'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+                      totalPages:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /settings/audit-logs/filter-options:
+    get:
+      tags:
+        - Audit
+      summary: Get audit log filter options
+      description: Retrieve available filter options for audit logs
+      responses:
+        '200':
+          description: Successful response with filter options
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  modules:
+                    type: array
+                    items:
+                      type: string
+                    example: ["User", "Policy", "System", "Agent", "Patch"]
+                  users:
+                    type: array
+                    items:
+                      type: string
+                    example: ["admin", "user1", "user2"]
+                  operations:
+                    type: array
+                    items:
+                      type: string
+                    example: ["Login", "Create", "Update", "Delete", "Export", "Import"]
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 # ==================== COMPONENTS ====================
 components:
   parameters:
@@ -1040,6 +1170,50 @@ components:
         details:
           type: object
           additionalProperties: true
+
+    AuditLog:
+      type: object
+      required:
+        - id
+        - module
+        - operation
+        - user
+        - status
+        - message
+        - createdAt
+      properties:
+        id:
+          type: string
+          description: Unique audit log ID
+          example: "1"
+        module:
+          type: string
+          description: Module where the action was performed
+          example: "User"
+          enum: ["User", "Policy", "System", "Agent", "Patch"]
+        operation:
+          type: string
+          description: Operation performed
+          example: "Login"
+          enum: ["Login", "Create", "Update", "Delete", "Export", "Import"]
+        user:
+          type: string
+          description: User who performed the action
+          example: "admin"
+        status:
+          type: string
+          description: Status of the operation
+          example: "success"
+          enum: ["success", "fail"]
+        message:
+          type: string
+          description: Message describing the action or error
+          example: "User logged in from the machine"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the action was performed
+          example: "2026/01/16 13:10:00 PM"
 
     Error:
       type: object
