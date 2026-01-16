@@ -30,7 +30,17 @@ import {
   CopyOutlined,
   UploadOutlined,
   ArrowLeftOutlined,
+  SearchOutlined,
+  ReloadOutlined,
+  ExportOutlined,
+  CalendarOutlined,
+  AppstoreOutlined,
+  UnorderedListOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
+import { SeverityBadge, OSIcon } from '../../../components/patches';
+import { Checkbox } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import type { Asset, AssetLifeCycle, Hardware, Software } from '../../../types/asset.types';
 import { assetService } from '../../../services/asset.service';
 import { tagService } from '../../../services/tag.service';
@@ -60,6 +70,18 @@ export const AssetDetails = () => {
   const [editingTags, setEditingTags] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [locatingAsset, setLocatingAsset] = useState(false);
+
+  // Patches tab state
+  const [patchesTab, setPatchesTab] = useState<'missing' | 'installed' | 'exception'>('missing');
+  const [patchesSearchText, setPatchesSearchText] = useState('');
+  const [patchesLoading, setPatchesLoading] = useState(false);
+  const [selectedPatchIds, setSelectedPatchIds] = useState<React.Key[]>([]);
+  const [lastScanTime, setLastScanTime] = useState<string>('2026/01/16 02:37:39 PM');
+
+  // Alerts tab state
+  const [alertsSearchText, setAlertsSearchText] = useState('');
+  const [alertsLoading, setAlertsLoading] = useState(false);
+  const [alertsViewMode, setAlertsViewMode] = useState<'list' | 'grid'>('list');
 
   useEffect(() => {
     if (id) {
@@ -1177,6 +1199,493 @@ export const AssetDetails = () => {
   };
 
 
+  // Render Patches Tab
+  const renderPatchesTab = () => {
+    type PatchItem = {
+      id: string;
+      patchId: string;
+      title: string;
+      severity: 'LOW' | 'MODERATE' | 'IMPORTANT' | 'CRITICAL';
+      platform: 'Windows' | 'MacOS' | 'Ubuntu' | 'Linux';
+      releaseDate: string;
+      rollback: 'SUPPORTED' | 'NOT SUPPORTED';
+      category: string;
+      kbId?: string;
+    };
+
+    const mockPatches: PatchItem[] = [
+      {
+        id: '1',
+        patchId: 'ZPH-U-7401',
+        title: 'wireless-regdb',
+        severity: 'LOW',
+        platform: 'Ubuntu',
+        releaseDate: '2025/09/18 03:26:55 AM',
+        rollback: 'NOT SUPPORTED',
+        category: 'Security updates',
+      },
+      {
+        id: '2',
+        patchId: 'ZPH-U-3479',
+        title: 'LibreOffice vulnerability',
+        severity: 'LOW',
+        platform: 'Ubuntu',
+        releaseDate: '2025/05/08 06:05:27 PM',
+        rollback: 'NOT SUPPORTED',
+        category: 'Security updates',
+      },
+      {
+        id: '3',
+        patchId: 'ZPH-U-3478',
+        title: 'libgpgmepp6',
+        severity: 'LOW',
+        platform: 'Ubuntu',
+        releaseDate: '2023/10/14 12:04:05 PM',
+        rollback: 'NOT SUPPORTED',
+        category: 'Security updates',
+      },
+      {
+        id: '4',
+        patchId: 'ZPH-U-3477',
+        title: 'gnome-shell-common',
+        severity: 'LOW',
+        platform: 'Ubuntu',
+        releaseDate: '2024/11/15 11:26:41 PM',
+        rollback: 'NOT SUPPORTED',
+        category: 'Security updates',
+      },
+      {
+        id: '5',
+        patchId: 'ZPH-U-3476',
+        title: 'nano vulnerability',
+        severity: 'MODERATE',
+        platform: 'Ubuntu',
+        releaseDate: '2024/10/15 05:59:19 PM',
+        rollback: 'NOT SUPPORTED',
+        category: 'Security updates',
+      },
+      {
+        id: '6',
+        patchId: 'ZPH-U-3475',
+        title: 'shadow vulnerability',
+        severity: 'IMPORTANT',
+        platform: 'Ubuntu',
+        releaseDate: '2024/02/15 11:35:16 PM',
+        rollback: 'NOT SUPPORTED',
+        category: 'Security updates',
+      },
+      {
+        id: '7',
+        patchId: 'ZPH-U-3474',
+        title: 'Libxslt vulnerability',
+        severity: 'LOW',
+        platform: 'Ubuntu',
+        releaseDate: '2025/03/20 05:27:31 PM',
+        rollback: 'NOT SUPPORTED',
+        category: 'Security updates',
+      },
+      {
+        id: '8',
+        patchId: 'ZPH-U-3473',
+        title: 'LibreOffice vulnerability',
+        severity: 'LOW',
+        platform: 'Ubuntu',
+        releaseDate: '2025/05/08 06:05:27 PM',
+        rollback: 'NOT SUPPORTED',
+        category: 'Security updates',
+      },
+      {
+        id: '9',
+        patchId: 'ZPH-U-3472',
+        title: 'Netplan regression',
+        severity: 'IMPORTANT',
+        platform: 'Ubuntu',
+        releaseDate: '2024/06/29 12:44:48 AM',
+        rollback: 'NOT SUPPORTED',
+        category: 'Security updates',
+      },
+    ];
+
+    const getPatchSeverityColor = (severity: string) => {
+      switch (severity) {
+        case 'LOW':
+          return 'green';
+        case 'MODERATE':
+          return 'orange';
+        case 'IMPORTANT':
+          return 'red';
+        case 'CRITICAL':
+          return 'red';
+        default:
+          return 'default';
+      }
+    };
+
+    const getFilteredPatches = () => {
+      let filtered = mockPatches;
+      
+      if (patchesTab === 'missing') {
+        filtered = mockPatches; // All missing patches
+      } else if (patchesTab === 'installed') {
+        filtered = []; // Empty for now
+      } else if (patchesTab === 'exception') {
+        filtered = []; // Empty for now
+      }
+
+      if (patchesSearchText) {
+        filtered = filtered.filter(p =>
+          p.patchId.toLowerCase().includes(patchesSearchText.toLowerCase()) ||
+          p.title.toLowerCase().includes(patchesSearchText.toLowerCase()) ||
+          p.category.toLowerCase().includes(patchesSearchText.toLowerCase())
+        );
+      }
+
+      return filtered;
+    };
+
+    const patchesColumns: ColumnsType<PatchItem> = [
+      {
+        title: 'ID',
+        dataIndex: 'patchId',
+        key: 'patchId',
+        sorter: (a, b) => a.patchId.localeCompare(b.patchId),
+      },
+      {
+        title: 'Title',
+        dataIndex: 'title',
+        key: 'title',
+        sorter: (a, b) => a.title.localeCompare(b.title),
+      },
+      {
+        title: 'Severity',
+        dataIndex: 'severity',
+        key: 'severity',
+        sorter: (a, b) => a.severity.localeCompare(b.severity),
+        render: (severity: string) => (
+          <Tag color={getPatchSeverityColor(severity)}>{severity}</Tag>
+        ),
+      },
+      {
+        title: 'Platform',
+        dataIndex: 'platform',
+        key: 'platform',
+        sorter: (a, b) => a.platform.localeCompare(b.platform),
+        render: (platform: string) => <OSIcon os={platform as any} />,
+      },
+      {
+        title: 'Release Date',
+        dataIndex: 'releaseDate',
+        key: 'releaseDate',
+        sorter: (a, b) => new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime(),
+      },
+      {
+        title: 'Rollback',
+        dataIndex: 'rollback',
+        key: 'rollback',
+        sorter: (a, b) => a.rollback.localeCompare(b.rollback),
+        render: (rollback: string) => (
+          <Tag color={rollback === 'SUPPORTED' ? 'green' : 'red'}>{rollback}</Tag>
+        ),
+      },
+      {
+        title: 'Category',
+        dataIndex: 'category',
+        key: 'category',
+        sorter: (a, b) => a.category.localeCompare(b.category),
+      },
+      {
+        title: 'KBID',
+        dataIndex: 'kbId',
+        key: 'kbId',
+        sorter: (a, b) => (a.kbId || '').localeCompare(b.kbId || ''),
+        render: (kbId?: string) => kbId || '-',
+      },
+      {
+        title: '',
+        key: 'action',
+        width: 150,
+        render: () => (
+          <Button type="link" size="small">
+            Add Exceptions
+          </Button>
+        ),
+      },
+    ];
+
+    const filteredPatches = getFilteredPatches();
+
+    return (
+      <div style={{ display: 'flex', gap: 16 }}>
+        {/* Sidebar */}
+        <div style={{ width: 200, borderRight: '1px solid #f0f0f0', paddingRight: 16 }}>
+          <div
+            style={{
+              padding: '8px 12px',
+              cursor: 'pointer',
+              backgroundColor: patchesTab === 'missing' ? '#e6f7ff' : 'transparent',
+              borderRadius: 4,
+              marginBottom: 4,
+              border: patchesTab === 'missing' ? '1px solid #1890ff' : '1px solid transparent',
+            }}
+            onClick={() => setPatchesTab('missing')}
+          >
+            <Text strong={patchesTab === 'missing'}>Missing ({filteredPatches.length})</Text>
+          </div>
+          <div
+            style={{
+              padding: '8px 12px',
+              cursor: 'pointer',
+              backgroundColor: patchesTab === 'installed' ? '#e6f7ff' : 'transparent',
+              borderRadius: 4,
+              marginBottom: 4,
+              border: patchesTab === 'installed' ? '1px solid #1890ff' : '1px solid transparent',
+            }}
+            onClick={() => setPatchesTab('installed')}
+          >
+            <Text strong={patchesTab === 'installed'}>Installed</Text>
+          </div>
+          <div
+            style={{
+              padding: '8px 12px',
+              cursor: 'pointer',
+              backgroundColor: patchesTab === 'exception' ? '#e6f7ff' : 'transparent',
+              borderRadius: 4,
+              marginBottom: 4,
+              border: patchesTab === 'exception' ? '1px solid #1890ff' : '1px solid transparent',
+            }}
+            onClick={() => setPatchesTab('exception')}
+          >
+            <Text strong={patchesTab === 'exception'}>Exception</Text>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div style={{ flex: 1 }}>
+          {/* Top Controls */}
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Space>
+              <Input
+                placeholder="Search..."
+                prefix={<SearchOutlined />}
+                value={patchesSearchText}
+                onChange={(e) => setPatchesSearchText(e.target.value)}
+                style={{ width: 300 }}
+              />
+              <Text type="secondary">Last scan at : {lastScanTime}</Text>
+            </Space>
+            <Space>
+              <Button>Scan History</Button>
+              <Button type="primary">Scan Now</Button>
+              <Button icon={<ReloadOutlined />} onClick={() => message.info('Refreshing...')}>
+                Refresh
+              </Button>
+              <Button icon={<ExportOutlined />} onClick={() => message.info('Exporting...')}>
+                Export
+              </Button>
+              <Button icon={<FilterOutlined />} />
+            </Space>
+          </div>
+
+          {/* Patches Table */}
+          <Table
+            rowSelection={{
+              selectedRowKeys: selectedPatchIds,
+              onChange: setSelectedPatchIds,
+            }}
+            columns={patchesColumns}
+            dataSource={filteredPatches}
+            rowKey="id"
+            loading={patchesLoading}
+            pagination={{
+              pageSize: 20,
+              showSizeChanger: true,
+              pageSizeOptions: ['10', '20', '50', '100'],
+              showTotal: (total, range) =>
+                `showing ${range[0]}-${range[1]} of ${total} items`,
+            }}
+            scroll={{ x: 'max-content' }}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  // Render Alerts Tab
+  const renderAlertsTab = () => {
+    type AlertItem = {
+      id: string;
+      alert: string;
+      severity: 'CRITICAL' | 'CLEAR' | 'WARNING' | 'INFO';
+      module: string;
+      attribute: string;
+      value: string;
+      message: string;
+      createdOn: string;
+    };
+
+    const mockAlerts: AlertItem[] = [
+      {
+        id: '1',
+        alert: 'Memory Policy',
+        severity: 'CRITICAL',
+        module: 'Endpoint',
+        attribute: 'Memory Utilization (%)',
+        value: '63.0',
+        message: 'KFILKHAROPS001 : M...',
+        createdOn: '2026/01/16 10:04:08 AM',
+      },
+      {
+        id: '2',
+        alert: 'Memory Policy',
+        severity: 'CLEAR',
+        module: 'Endpoint',
+        attribute: 'Memory Utilization (%)',
+        value: '48.0',
+        message: 'KFILKHAROPS001 : M...',
+        createdOn: '2026/01/16 08:54:03 AM',
+      },
+      {
+        id: '3',
+        alert: 'Memory Policy',
+        severity: 'CRITICAL',
+        module: 'Endpoint',
+        attribute: 'Memory Utilization (%)',
+        value: '68.0',
+        message: 'KFILKHAROPS001 : M...',
+        createdOn: '2026/01/16 08:49:03 AM',
+      },
+    ];
+
+    const getAlertSeverityColor = (severity: string) => {
+      switch (severity) {
+        case 'CRITICAL':
+          return 'red';
+        case 'CLEAR':
+          return 'green';
+        case 'WARNING':
+          return 'orange';
+        case 'INFO':
+          return 'blue';
+        default:
+          return 'default';
+      }
+    };
+
+    const filteredAlerts = mockAlerts.filter(alert =>
+      alert.alert.toLowerCase().includes(alertsSearchText.toLowerCase()) ||
+      alert.module.toLowerCase().includes(alertsSearchText.toLowerCase()) ||
+      alert.attribute.toLowerCase().includes(alertsSearchText.toLowerCase()) ||
+      alert.message.toLowerCase().includes(alertsSearchText.toLowerCase())
+    );
+
+    const alertsColumns: ColumnsType<AlertItem> = [
+      {
+        title: 'Alert',
+        dataIndex: 'alert',
+        key: 'alert',
+        sorter: (a, b) => a.alert.localeCompare(b.alert),
+      },
+      {
+        title: 'Severity',
+        dataIndex: 'severity',
+        key: 'severity',
+        sorter: (a, b) => a.severity.localeCompare(b.severity),
+        render: (severity: string) => (
+          <Tag color={getAlertSeverityColor(severity)}>{severity}</Tag>
+        ),
+      },
+      {
+        title: 'Module',
+        dataIndex: 'module',
+        key: 'module',
+        sorter: (a, b) => a.module.localeCompare(b.module),
+      },
+      {
+        title: 'Attribute',
+        dataIndex: 'attribute',
+        key: 'attribute',
+        sorter: (a, b) => a.attribute.localeCompare(b.attribute),
+      },
+      {
+        title: 'Value',
+        dataIndex: 'value',
+        key: 'value',
+        sorter: (a, b) => parseFloat(a.value) - parseFloat(b.value),
+      },
+      {
+        title: 'Message',
+        dataIndex: 'message',
+        key: 'message',
+        sorter: (a, b) => a.message.localeCompare(b.message),
+        render: (text: string) => (
+          <Text ellipsis style={{ maxWidth: 200 }}>
+            {text}
+          </Text>
+        ),
+      },
+      {
+        title: 'Created On',
+        dataIndex: 'createdOn',
+        key: 'createdOn',
+        sorter: (a, b) => new Date(a.createdOn).getTime() - new Date(b.createdOn).getTime(),
+      },
+    ];
+
+    return (
+      <div>
+        {/* Top Controls */}
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Input
+            placeholder="Search..."
+            prefix={<SearchOutlined />}
+            value={alertsSearchText}
+            onChange={(e) => setAlertsSearchText(e.target.value)}
+            style={{ width: 300 }}
+          />
+          <Space>
+            <Button icon={<CalendarOutlined />}>Timeline</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => message.info('Refreshing...')}>
+              Refresh
+            </Button>
+            <Button icon={<ExportOutlined />} onClick={() => message.info('Exporting...')}>
+              Export
+            </Button>
+            <Button>Configure Alert</Button>
+            <Space>
+              <Button
+                type={alertsViewMode === 'list' ? 'primary' : 'default'}
+                icon={<UnorderedListOutlined />}
+                onClick={() => setAlertsViewMode('list')}
+              />
+              <Button
+                type={alertsViewMode === 'grid' ? 'primary' : 'default'}
+                icon={<AppstoreOutlined />}
+                onClick={() => setAlertsViewMode('grid')}
+              />
+              <Button icon={<SettingOutlined />} />
+            </Space>
+          </Space>
+        </div>
+
+        {/* Alerts Table */}
+        <Table
+          columns={alertsColumns}
+          dataSource={filteredAlerts}
+          rowKey="id"
+          loading={alertsLoading}
+          pagination={{
+            pageSize: 30,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '30', '50', '100'],
+            showTotal: (total, range) =>
+              `showing ${range[0]}-${range[1]} of ${total} items`,
+          }}
+          scroll={{ x: 'max-content' }}
+        />
+      </div>
+    );
+  };
+
   const renderVulnerabilitiesTab = () => {
     if (loadingVulnerabilities) return <Spin />;
 
@@ -1940,6 +2449,16 @@ export const AssetDetails = () => {
       key: 'vulnerabilities',
       label: 'Vulnerabilities',
       children: renderVulnerabilitiesTab(),
+    },
+    {
+      key: 'patches',
+      label: 'Patches',
+      children: renderPatchesTab(),
+    },
+    {
+      key: 'alerts',
+      label: 'Alerts',
+      children: renderAlertsTab(),
     },
   ];
 
