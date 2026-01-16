@@ -22,10 +22,10 @@ import { SoftwareInventory } from './pages/assets/SoftwareInventory';
 import { SoftwareLicense } from './pages/assets/SoftwareLicense';
 import { OSLicenses } from './pages/assets/OSLicenses';
 
-// Discovery
-import { IPDiscovery } from './pages/discovery/IPDiscovery';
-import { DeviceCredentials } from './pages/discovery/DeviceCredentials';
-import { Agents } from './pages/discovery/Agents';
+// Vulnerability
+import { ZeroDayVulnerabilities } from './pages/vulnerability/ZeroDayVulnerabilities';
+import { Vulnerabilities } from './pages/vulnerability/Vulnerabilities';
+import { ManageException } from './pages/vulnerability/ManageException';
 
 // Jobs
 import { SoftwareJobs } from './pages/jobs/SoftwareJobs';
@@ -215,40 +215,40 @@ function AppRoutes() {
         }
       />
 
-      {/* Discovery */}
+      {/* Vulnerability */}
       <Route
-        path="/discovery/ip-discovery"
+        path="/vulnerability/zero-day-vulnerabilities"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <IPDiscovery />
+              <ZeroDayVulnerabilities />
             </MainLayout>
           </ProtectedRoute>
         }
       />
       <Route
-        path="/discovery/device-credentials"
+        path="/vulnerability/vulnerabilities"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <DeviceCredentials />
+              <Vulnerabilities />
             </MainLayout>
           </ProtectedRoute>
         }
       />
       <Route
-        path="/discovery/agents"
+        path="/vulnerability/manage-exception"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <Agents />
+              <ManageException />
             </MainLayout>
           </ProtectedRoute>
         }
       />
       <Route
-        path="/discovery"
-        element={<Navigate to="/discovery/agents" replace />}
+        path="/vulnerability"
+        element={<Navigate to="/vulnerability/zero-day-vulnerabilities" replace />}
       />
 
       {/* Jobs */}
@@ -263,7 +263,7 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/jobs/configuration-jobs"
+        path="/jobs/configuration-jobs/*"
         element={
           <ProtectedRoute>
             <MainLayout>
@@ -283,7 +283,7 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/jobs/vulnerability-jobs"
+        path="/jobs/vulnerability-jobs/*"
         element={
           <ProtectedRoute>
             <MainLayout>

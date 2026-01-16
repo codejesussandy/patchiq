@@ -18,6 +18,9 @@ import {
   AppstoreOutlined,
   SafetyOutlined,
   BugOutlined,
+  SecurityScanOutlined,
+  WarningOutlined,
+  ExceptionOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Logo } from './Logo';
@@ -117,7 +120,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     { key: '/dashboard', label: 'Dashboard' },
     { key: '/patches', label: 'Patches' },
     { key: '/assets', label: 'Assets' },
-    { key: '/discovery', label: 'Discovery' },
+    { key: '/vulnerability', label: 'Vulnerability' },
     { key: '/jobs', label: 'Jobs' },
     { key: '/reports', label: 'Reports' },
   ];
@@ -179,21 +182,21 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     }));
   };
 
-  const discoveryMenuItems: MenuItem[] = [
+  const vulnerabilityMenuItems: MenuItem[] = [
     {
-      key: 'ip-discovery',
-      icon: <UserOutlined />,
-      label: 'IP Discovery',
+      key: 'zero-day-vulnerabilities',
+      icon: <SecurityScanOutlined />,
+      label: 'Zero Day Vulnerabilities',
     },
     {
-      key: 'device-credentials',
-      icon: <CreditCardOutlined />,
-      label: 'Device Credentials',
+      key: 'vulnerabilities',
+      icon: <WarningOutlined />,
+      label: 'Vulnerabilities',
     },
     {
-      key: 'agents',
-      icon: <EnvironmentOutlined />,
-      label: 'Agents',
+      key: 'manage-exception',
+      icon: <ExceptionOutlined />,
+      label: 'Manage Exception',
     },
   ];
 
@@ -266,13 +269,13 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         setTimeout(() => setSearchParams({ category: parts[1], subcategory: parts[2] }), 0);
       }
     }
-    // Discovery
-    else if (key === 'ip-discovery') navigate('/discovery/ip-discovery');
-    else if (key === 'device-credentials') navigate('/discovery/device-credentials');
-    else if (key === 'agents') navigate('/discovery/agents');
+    // Vulnerability
+    else if (key === 'zero-day-vulnerabilities') navigate('/vulnerability/zero-day-vulnerabilities');
+    else if (key === 'vulnerabilities') navigate('/vulnerability/vulnerabilities');
+    else if (key === 'manage-exception') navigate('/vulnerability/manage-exception');
     // Jobs
     else if (key === 'software-jobs') navigate('/jobs/software-jobs/catalog');
-    else if (key === 'configuration-jobs') navigate('/jobs/configuration-jobs');
+    else if (key === 'configuration-jobs') navigate('/jobs/configuration-jobs/catalog');
     else if (key === 'patch-jobs') navigate('/jobs/patch-jobs');
     else if (key === 'vulnerability-jobs') navigate('/jobs/vulnerability-jobs');
     // Settings
@@ -341,7 +344,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const getSelectedTopMenu = () => {
     if (location.pathname.startsWith('/patches')) return ['/patches'];
     if (location.pathname.startsWith('/assets')) return ['/assets'];
-    if (location.pathname.startsWith('/discovery')) return ['/discovery'];
+    if (location.pathname.startsWith('/vulnerability')) return ['/vulnerability'];
     if (location.pathname.startsWith('/jobs')) return ['/jobs'];
     if (location.pathname.startsWith('/settings')) return ['/settings'];
     return [location.pathname];
@@ -370,13 +373,13 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       if (categoryId) return [`cat-${categoryId}`];
       return [];
     }
-    // Discovery
-    if (location.pathname === '/discovery/ip-discovery') return ['ip-discovery'];
-    if (location.pathname === '/discovery/device-credentials') return ['device-credentials'];
-    if (location.pathname === '/discovery/agents') return ['agents'];
+    // Vulnerability
+    if (location.pathname.startsWith('/vulnerability/zero-day-vulnerabilities')) return ['zero-day-vulnerabilities'];
+    if (location.pathname.startsWith('/vulnerability/vulnerabilities')) return ['vulnerabilities'];
+    if (location.pathname.startsWith('/vulnerability/manage-exception')) return ['manage-exception'];
     // Jobs
     if (location.pathname.startsWith('/jobs/software-jobs')) return ['software-jobs'];
-    if (location.pathname === '/jobs/configuration-jobs') return ['configuration-jobs'];
+    if (location.pathname.startsWith('/jobs/configuration-jobs')) return ['configuration-jobs'];
     if (location.pathname === '/jobs/patch-jobs') return ['patch-jobs'];
     if (location.pathname === '/jobs/vulnerability-jobs') return ['vulnerability-jobs'];
     // Settings
@@ -394,8 +397,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     if (location.pathname.startsWith('/assets')) {
       return { title: 'Assets', items: [] }; // Items not needed for Assets (using separate tabs and categories)
     }
-    if (location.pathname.startsWith('/discovery')) {
-      return { title: 'Discovery', items: discoveryMenuItems };
+    if (location.pathname.startsWith('/vulnerability')) {
+      return { title: 'Vulnerability', items: vulnerabilityMenuItems };
     }
     if (location.pathname.startsWith('/jobs')) {
       return { title: 'Jobs', items: jobsMenuItems };
@@ -654,7 +657,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
               </>
             )}
 
-            {/* Other Sections (Discovery, Settings): Show regular menu */}
+            {/* Other Sections (Vulnerability, Jobs, Settings): Show regular menu */}
             {sidebarConfig?.title !== 'Assets' && sidebarConfig?.title !== 'Patches' && (
               <div style={{ flex: 1, overflow: 'auto' }}>
                 <Menu

@@ -28,6 +28,8 @@ import {
   LinuxOutlined,
   RightOutlined,
   LeftOutlined,
+  DesktopOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -60,6 +62,18 @@ type BundleItem = {
   bundleId: string;
   name: string;
   os: string[];
+};
+
+type TaskItem = {
+  id: number;
+  endpointId: string;
+  endpointName: string;
+  endpointOS: 'Windows' | 'Mac' | 'Linux';
+  name: string;
+  status: 'SUCCESS' | 'FAILED' | 'PENDING' | 'IN_PROGRESS';
+  createdBy: string;
+  lastUpdated: string;
+  createdOn: string;
 };
 
 const mockDeployedItems: DeployedItem[] = [
@@ -155,6 +169,24 @@ const mockBundles: BundleItem[] = [
   { key: 'b5', bundleId: 'BND-005', name: 'Communication Tools', os: ['Windows', 'Mac'] },
 ];
 
+// Mock tasks for deployments - these would come from API
+const getMockTasksForDeployment = (deploymentId: string): TaskItem[] => {
+  return [
+    {
+      id: 62,
+      endpointId: 'EP-001',
+      endpointName: 'K TightVNC',
+      endpointOS: 'Windows',
+      name: 'TightVNC Installation',
+      status: 'SUCCESS',
+      createdBy: 'Abhijeet Tiwari',
+      lastUpdated: '2025/12/02 11:13:56 AM',
+      createdOn: '2025/12/02 11:13:44 AM',
+    },
+    // Add more mock tasks as needed
+  ];
+};
+
 export const SoftwareJobsDeployed = () => {
   const [searchText, setSearchText] = useState('');
   const [deployedItems, setDeployedItems] = useState<DeployedItem[]>(mockDeployedItems);
@@ -168,9 +200,20 @@ export const SoftwareJobsDeployed = () => {
   const [selectedSearch, setSelectedSearch] = useState('');
   const [selectedAvailableKeys, setSelectedAvailableKeys] = useState<string[]>([]);
   const [selectedSelectedKeys, setSelectedSelectedKeys] = useState<string[]>([]);
+  const [tasksModalVisible, setTasksModalVisible] = useState(false);
+  const [selectedDeployment, setSelectedDeployment] = useState<DeployedItem | null>(null);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [tasksSearchText, setTasksSearchText] = useState('');
+  const [tasksFilter, setTasksFilter] = useState('All');
 
   const handleView = (record: DeployedItem) => {
-    message.info(`Viewing deployment: ${record.name}`);
+    setSelectedDeployment(record);
+    // Fetch tasks for this deployment
+    const deploymentTasks = getMockTasksForDeployment(record.deploymentId);
+    setTasks(deploymentTasks);
+    setTasksModalVisible(true);
+    setTasksSearchText('');
+    setTasksFilter('All');
   };
 
   const handleRefresh = async () => {
@@ -594,6 +637,132 @@ export const SoftwareJobsDeployed = () => {
       item.createdBy.toLowerCase().includes(searchText.toLowerCase())
   );
 
+  // Filter tasks
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch = 
+      task.endpointName.toLowerCase().includes(tasksSearchText.toLowerCase()) ||
+      task.name.toLowerCase().includes(tasksSearchText.toLowerCase()) ||
+      task.id.toString().includes(tasksSearchText);
+    
+    const matchesFilter = tasksFilter === 'All' || task.status === tasksFilter.toUpperCase();
+    
+    return matchesSearch && matchesFilter;
+  });
+
+  // Task table columns
+  const taskColumns: ColumnsType<TaskItem> = [
+    {
+      title: 'Id',
+      dataIndex: 'id',
+      key: 'id',
+      sorter: (a, b) => a.id - b.id,
+    },
+    {
+      title: 'Endpoint',
+      key: 'endpoint',
+      render: (_: any, record: TaskItem) => (
+        <Space>
+          <DesktopOutlined style={{ color: '#ff4d4f' }} />
+          {record.endpointOS === 'Windows' && <WindowsOutlined style={{ color: '#1890ff' }} />}
+          {record.endpointOS === 'Mac' && <AppleOutlined />}
+          {record.endpointOS === 'Linux' && <LinuxOutlined />}
+          <Text>{record.endpointName}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: (a, b) => a.name.localeCompare(b.name),
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => {
+        const colors: Record<string, string> = {
+          SUCCESS: 'green',
+          FAILED: 'red',
+          PENDING: 'orange',
+          IN_PROGRESS: 'blue',
+        };
+        return <Tag color={colors[status] || 'default'}>{status}</Tag>;
+      },
+    },
+    {
+      title: 'Created By',
+      dataIndex: 'createdBy',
+      key: 'createdBy',
+      render: (createdBy: string) => (
+        <Space>
+          <EyeOutlined />
+          <Text>{createdBy}</Text>
+        </Space>
+      ),
+      sorter: (a, b) => a.createdBy.localeCompare(b.createdBy),
+    },
+    {
+      title: 'Last Updated',
+      dataIndex: 'lastUpdated',
+      key: 'lastUpdated',
+      sorter: (a, b) => new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime(),
+    },
+    {
+      title: 'Created On',
+      dataIndex: 'createdOn',
+      key: 'createdOn',
+      sorter: (a, b) => new Date(a.createdOn).getTime() - new Date(b.createdOn).getTime(),
+    },
+  ];
+
+  const handleTasksExport = () => {
+    try {
+      if (filteredTasks.length === 0) {
+        message.warning('No data to export');
+        return;
+      }
+
+      const exportData = filteredTasks.map((task) => ({
+        Id: task.id,
+        Endpoint: task.endpointName,
+        Name: task.name,
+        Status: task.status,
+        'Created By': task.createdBy,
+        'Last Updated': task.lastUpdated,
+        'Created On': task.createdOn,
+      }));
+
+      const headers = Object.keys(exportData[0] || {});
+      const csvContent = [
+        headers.join(','),
+        ...exportData.map((row) =>
+          headers.map((header) => {
+            const value = row[header as keyof typeof row] || '';
+            if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          }).join(',')
+        ),
+      ].join('\n');
+
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `tasks_${selectedDeployment?.deploymentId || 'export'}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      message.success('Tasks exported successfully');
+    } catch (error) {
+      message.error('Failed to export data');
+      console.error('Export error:', error);
+    }
+  };
+
   return (
     <div>
       {/* Top Controls */}
@@ -849,6 +1018,94 @@ export const SoftwareJobsDeployed = () => {
             </Select>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Tasks Status Modal */}
+      <Modal
+        title={
+          <Space>
+            <Button
+              type="text"
+              icon={<CloseOutlined />}
+              onClick={() => setTasksModalVisible(false)}
+              style={{ marginLeft: -16, marginRight: -8 }}
+            />
+            <Text strong style={{ fontSize: 16 }}>Tasks</Text>
+          </Space>
+        }
+        open={tasksModalVisible}
+        onCancel={() => setTasksModalVisible(false)}
+        width={1200}
+        footer={null}
+        closable={false}
+      >
+        {/* Tasks Controls */}
+        <div
+          style={{
+            marginBottom: 16,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', flex: 1 }}>
+            <Input
+              placeholder="Search..."
+              prefix={<SearchOutlined />}
+              style={{ width: 300 }}
+              value={tasksSearchText}
+              onChange={(e) => setTasksSearchText(e.target.value)}
+            />
+            <Dropdown
+              menu={{
+                items: [
+                  { key: 'All', label: 'All' },
+                  { key: 'SUCCESS', label: 'SUCCESS' },
+                  { key: 'FAILED', label: 'FAILED' },
+                  { key: 'PENDING', label: 'PENDING' },
+                  { key: 'IN_PROGRESS', label: 'IN_PROGRESS' },
+                ],
+                onClick: ({ key }) => setTasksFilter(key),
+              }}
+              trigger={['click']}
+            >
+              <Button>
+                {tasksFilter} <span style={{ marginLeft: 4 }}>▼</span>
+              </Button>
+            </Dropdown>
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Button icon={<ReloadOutlined />} onClick={() => {
+              if (selectedDeployment) {
+                const deploymentTasks = getMockTasksForDeployment(selectedDeployment.deploymentId);
+                setTasks(deploymentTasks);
+                message.success('Tasks refreshed successfully');
+              }
+            }}>
+              Refresh
+            </Button>
+            <Button icon={<ExportOutlined />} onClick={handleTasksExport}>
+              Export
+            </Button>
+          </div>
+        </div>
+
+        {/* Tasks Table */}
+        <Table
+          columns={taskColumns}
+          dataSource={filteredTasks}
+          rowKey="id"
+          pagination={{
+            pageSize: 20,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            showTotal: (total, range) =>
+              `showing ${range[0]}-${range[1]} of ${total} items`,
+          }}
+          scroll={{ x: 'max-content' }}
+        />
       </Modal>
     </div>
   );
