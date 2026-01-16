@@ -54,3 +54,11 @@ export type Command = {
   executedAt?: string;
   result?: string;
 };
+
+export type AgentVersion = {
+  id: string;
+  platform: 'Linux' | 'Windows' | 'Mac';
+  architecture: string;
+  version: string;
+  lastUpdatedAt: string;
+};

@@ -1,0 +1,363 @@
+openapi: 3.0.3
+info:
+  title: Patch Manager - Agent Configuration API
+  description: API endpoints for configuring agent behavior and refresh cycles
+  version: 1.0.0
+  contact:
+    name: Backend Team
+    email: backend@patchmanager.com
+
+servers:
+  - url: http://localhost:3000/api
+    description: Development server
+  - url: https://api.patchmanager.com/api
+    description: Production server
+
+tags:
+  - name: Agent Configuration
+    description: Operations related to agent configuration settings
+
+paths:
+  /settings/agent-configuration:
+    get:
+      tags:
+        - Agent Configuration
+      summary: Get agent configuration
+      description: Retrieves the current agent configuration settings including all refresh cycle intervals
+      operationId: getAgentConfiguration
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved agent configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentConfiguration'
+              example:
+                id: "1"
+                allowedBandwidth: 0
+                agentRefreshCycle: 10
+                systemActionRefreshCycle: 10
+                endpointVlanRefreshCycle: 10
+                patchScanningRefreshCycle: 2160
+                ssdmRefreshCycle: 300
+                processRefreshCycle: 300
+                networkRefreshCycle: 300
+                certificateRefreshCycle: 300
+                startupItemsRefreshCycle: 300
+                usersRefreshCycle: 300
+                systemResourcesRefreshCycle: 300
+                systemServicesRefreshCycle: 300
+                fimEventsRefreshCycle: 300
+                softwareMeterRefreshCycle: 300
+                createdAt: "2024-01-15T10:00:00Z"
+                updatedAt: "2025-01-16T12:30:00Z"
+        '401':
+          description: Unauthorized - Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Authentication required"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+
+    put:
+      tags:
+        - Agent Configuration
+      summary: Update agent configuration
+      description: Updates the agent configuration settings. All fields are optional for partial updates.
+      operationId: updateAgentConfiguration
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentConfigurationFormData'
+            example:
+              allowedBandwidth: 10
+              agentRefreshCycle: 15
+              systemActionRefreshCycle: 15
+              endpointVlanRefreshCycle: 15
+              patchScanningRefreshCycle: 2400
+              ssdmRefreshCycle: 350
+              processRefreshCycle: 350
+              networkRefreshCycle: 350
+              certificateRefreshCycle: 350
+              startupItemsRefreshCycle: 350
+              usersRefreshCycle: 350
+              systemResourcesRefreshCycle: 350
+              systemServicesRefreshCycle: 350
+              fimEventsRefreshCycle: 350
+              softwareMeterRefreshCycle: 350
+      responses:
+        '200':
+          description: Successfully updated agent configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentConfiguration'
+              example:
+                id: "1"
+                allowedBandwidth: 10
+                agentRefreshCycle: 15
+                systemActionRefreshCycle: 15
+                endpointVlanRefreshCycle: 15
+                patchScanningRefreshCycle: 2400
+                ssdmRefreshCycle: 350
+                processRefreshCycle: 350
+                networkRefreshCycle: 350
+                certificateRefreshCycle: 350
+                startupItemsRefreshCycle: 350
+                usersRefreshCycle: 350
+                systemResourcesRefreshCycle: 350
+                systemServicesRefreshCycle: 350
+                fimEventsRefreshCycle: 350
+                softwareMeterRefreshCycle: 350
+                createdAt: "2024-01-15T10:00:00Z"
+                updatedAt: "2025-01-16T14:30:00Z"
+        '400':
+          description: Bad request - Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Invalid input: all values must be non-negative integers"
+        '401':
+          description: Unauthorized - Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Authentication required"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT bearer token for API authentication
+
+  schemas:
+    AgentConfiguration:
+      type: object
+      required:
+        - id
+        - allowedBandwidth
+        - agentRefreshCycle
+        - systemActionRefreshCycle
+        - endpointVlanRefreshCycle
+        - patchScanningRefreshCycle
+        - ssdmRefreshCycle
+        - processRefreshCycle
+        - networkRefreshCycle
+        - certificateRefreshCycle
+        - startupItemsRefreshCycle
+        - usersRefreshCycle
+        - systemResourcesRefreshCycle
+        - systemServicesRefreshCycle
+        - fimEventsRefreshCycle
+        - softwareMeterRefreshCycle
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the agent configuration
+          example: "1"
+        allowedBandwidth:
+          type: integer
+          minimum: 0
+          description: Allowed bandwidth for agent operations in Mbps
+          example: 0
+        agentRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Agent refresh cycle interval in seconds
+          example: 10
+        systemActionRefreshCycle:
+          type: integer
+          minimum: 0
+          description: System action refresh cycle interval in seconds
+          example: 10
+        endpointVlanRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Endpoint VLAN refresh cycle interval in seconds
+          example: 10
+        patchScanningRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Patch scanning refresh cycle interval in seconds
+          example: 2160
+        ssdmRefreshCycle:
+          type: integer
+          minimum: 0
+          description: SSDM refresh cycle interval in seconds
+          example: 300
+        processRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Process refresh cycle interval in seconds
+          example: 300
+        networkRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Network refresh cycle interval in seconds
+          example: 300
+        certificateRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Certificate refresh cycle interval in seconds
+          example: 300
+        startupItemsRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Startup items refresh cycle interval in seconds
+          example: 300
+        usersRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Users refresh cycle interval in seconds
+          example: 300
+        systemResourcesRefreshCycle:
+          type: integer
+          minimum: 0
+          description: System resources refresh cycle interval in seconds
+          example: 300
+        systemServicesRefreshCycle:
+          type: integer
+          minimum: 0
+          description: System services refresh cycle interval in seconds
+          example: 300
+        fimEventsRefreshCycle:
+          type: integer
+          minimum: 0
+          description: FIM (File Integrity Monitoring) events refresh cycle interval in seconds
+          example: 300
+        softwareMeterRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Software meter refresh cycle interval in seconds
+          example: 300
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the configuration was created
+          example: "2024-01-15T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the configuration was last updated
+          example: "2025-01-16T12:30:00Z"
+
+    AgentConfigurationFormData:
+      type: object
+      description: Request body for updating agent configuration
+      properties:
+        allowedBandwidth:
+          type: integer
+          minimum: 0
+          description: Allowed bandwidth for agent operations in Mbps
+          example: 10
+        agentRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Agent refresh cycle interval in seconds
+          example: 15
+        systemActionRefreshCycle:
+          type: integer
+          minimum: 0
+          description: System action refresh cycle interval in seconds
+          example: 15
+        endpointVlanRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Endpoint VLAN refresh cycle interval in seconds
+          example: 15
+        patchScanningRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Patch scanning refresh cycle interval in seconds
+          example: 2400
+        ssdmRefreshCycle:
+          type: integer
+          minimum: 0
+          description: SSDM refresh cycle interval in seconds
+          example: 350
+        processRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Process refresh cycle interval in seconds
+          example: 350
+        networkRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Network refresh cycle interval in seconds
+          example: 350
+        certificateRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Certificate refresh cycle interval in seconds
+          example: 350
+        startupItemsRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Startup items refresh cycle interval in seconds
+          example: 350
+        usersRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Users refresh cycle interval in seconds
+          example: 350
+        systemResourcesRefreshCycle:
+          type: integer
+          minimum: 0
+          description: System resources refresh cycle interval in seconds
+          example: 350
+        systemServicesRefreshCycle:
+          type: integer
+          minimum: 0
+          description: System services refresh cycle interval in seconds
+          example: 350
+        fimEventsRefreshCycle:
+          type: integer
+          minimum: 0
+          description: FIM (File Integrity Monitoring) events refresh cycle interval in seconds
+          example: 350
+        softwareMeterRefreshCycle:
+          type: integer
+          minimum: 0
+          description: Software meter refresh cycle interval in seconds
+          example: 350
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Authentication required"

@@ -39,11 +39,25 @@ import { SystemSettings } from './pages/settings/SystemSettings';
 import { VulnerabilityPreference } from './pages/settings/VulnerabilityPreference';
 import { MarketPlace } from './pages/settings/MarketPlace';
 import { AgentManagement } from './pages/settings/AgentManagement';
+import { AgentApprovals } from './pages/settings/AgentApprovals';
+import { AgentApprovalSettings } from './pages/settings/AgentApprovalSettings';
+import { AgentVersions } from './pages/settings/AgentVersions';
+import { AgentConfiguration } from './pages/settings/AgentConfiguration';
+import { EnrollSecret } from './pages/settings/EnrollSecret';
+import { RedHatAgentNomination } from './pages/settings/RedHatAgentNomination';
 import { DeploymentPolicies } from './pages/settings/DeploymentPolicies';
 import { PatchManagement } from './pages/settings/PatchManagement';
 import { PolicyManagement } from './pages/settings/PolicyManagement';
 import { Audit } from './pages/settings/Audit';
 import { PlatformLicense } from './pages/settings/PlatformLicense';
+import { Branding } from './pages/settings/Branding';
+import { VendorLogo } from './pages/settings/VendorLogo';
+import { MailServerConfiguration } from './pages/settings/MailServerConfiguration';
+import { ProxyServerConfiguration } from './pages/settings/ProxyServerConfiguration';
+import { LDAPServerConfiguration } from './pages/settings/LDAPServerConfiguration';
+import { RiskScoreSettings } from './pages/settings/RiskScoreSettings';
+import { RemoteDesktopSettings } from './pages/settings/RemoteDesktopSettings';
+import { ServerSettings } from './pages/settings/ServerSettings';
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -334,14 +348,88 @@ function AppRoutes() {
         element={<Navigate to="/settings/user-management/organization" replace />}
       />
       <Route
-        path="/settings/system-settings"
+        path="/settings/system-settings/branding"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <SystemSettings />
+              <Branding />
             </MainLayout>
           </ProtectedRoute>
         }
+      />
+      <Route
+        path="/settings/system-settings/vendor-logo"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <VendorLogo />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings/mail-server"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <MailServerConfiguration />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings/proxy-server"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ProxyServerConfiguration />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings/ldap-server"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <LDAPServerConfiguration />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings/risk-score"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <RiskScoreSettings />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings/remote-desktop"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <RemoteDesktopSettings />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings/server-settings"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ServerSettings />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/system-settings"
+        element={<Navigate to="/settings/system-settings/branding" replace />}
       />
       <Route
         path="/settings/vulnerability-preference"
@@ -364,14 +452,68 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/settings/agent-management"
+        path="/settings/agent-management/approvals"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <AgentManagement />
+              <AgentApprovals />
             </MainLayout>
           </ProtectedRoute>
         }
+      />
+      <Route
+        path="/settings/agent-management/approval-settings"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <AgentApprovalSettings />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/agent-management/versions"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <AgentVersions />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/agent-management/configuration"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <AgentConfiguration />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/agent-management/enroll-secret"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <EnrollSecret />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/agent-management/red-hat-nomination"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <RedHatAgentNomination />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/agent-management"
+        element={<Navigate to="/settings/agent-management/approval-settings" replace />}
       />
       <Route
         path="/settings/deployment-policies"

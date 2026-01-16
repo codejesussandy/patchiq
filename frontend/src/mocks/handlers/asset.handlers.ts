@@ -15,7 +15,7 @@ import type { NetworkConfiguration } from '../../types/network.types';
 import type { PeripheralInventory } from '../../types/peripheral.types';
 import type { TelemetryPayload, TelemetryHistory, SystemErrors } from '../../types/telemetry.types';
 
-const API_BASE_URL = 'http://localhost:3000/v1';
+const API_BASE_URL = '/v1';
 
 // Mock Assets Data
 const mockAssets: Asset[] = [

@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
-import type { Agent, Command } from '../../types/agent.types';
+import type { Agent, Command, AgentVersion } from '../../types/agent.types';
 
-const API_BASE_URL = 'http://localhost:3000/v1';
+const API_BASE_URL = '/v1';
 
 type AgentDownload = {
   os: 'Windows 11' | 'MacOS' | 'Linux';
@@ -155,6 +155,51 @@ const mockAgentDownloads: AgentDownload[] = [
   },
 ];
 
+const mockAgentVersions: AgentVersion[] = [
+  {
+    id: '1',
+    platform: 'Linux',
+    architecture: 'x86',
+    version: '5.0.12',
+    lastUpdatedAt: '2024-01-15T14:30:00Z',
+  },
+  {
+    id: '2',
+    platform: 'Linux',
+    architecture: 'amd64',
+    version: '5.0.12',
+    lastUpdatedAt: '2024-01-15T14:30:00Z',
+  },
+  {
+    id: '3',
+    platform: 'Windows',
+    architecture: 'x86',
+    version: '5.0.12',
+    lastUpdatedAt: '2024-01-15T14:30:00Z',
+  },
+  {
+    id: '4',
+    platform: 'Windows',
+    architecture: 'amd64',
+    version: '5.0.12',
+    lastUpdatedAt: '2024-01-15T14:30:00Z',
+  },
+  {
+    id: '5',
+    platform: 'Mac',
+    architecture: 'x86',
+    version: '5.0.12',
+    lastUpdatedAt: '2024-01-15T14:30:00Z',
+  },
+  {
+    id: '6',
+    platform: 'Mac',
+    architecture: 'amd64',
+    version: '5.0.12',
+    lastUpdatedAt: '2024-01-15T14:30:00Z',
+  },
+];
+
 export const agentHandlers = [
   // Get all agents
   http.get(`${API_BASE_URL}/agents`, () => {
@@ -185,5 +230,10 @@ export const agentHandlers = [
   http.delete(`${API_BASE_URL}/agents/:id`, ({ params }) => {
     mockAgents = mockAgents.filter((agent) => agent.id !== params.id);
     return HttpResponse.json({ success: true });
+  }),
+
+  // Get agent versions
+  http.get(`${API_BASE_URL}/agent-versions`, () => {
+    return HttpResponse.json(mockAgentVersions);
   }),
 ];

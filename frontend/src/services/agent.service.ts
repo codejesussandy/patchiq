@@ -1,7 +1,7 @@
 import { api } from './api.service';
-import type { Agent, AgentDownload, Command } from '../types/agent.types';
+import type { Agent, AgentDownload, Command, AgentVersion } from '../types/agent.types';
 
-export type { Agent, AgentDownload, Command } from '../types/agent.types';
+export type { Agent, AgentDownload, Command, AgentVersion } from '../types/agent.types';
 
 export const agentService = {
   async getAgents(): Promise<Agent[]> {
@@ -25,6 +25,11 @@ export const agentService = {
 
   async getAgentCommands(id: string): Promise<Command[]> {
     const response = await api.get(`/agents/${id}/commands`);
+    return response.data;
+  },
+
+  async getAgentVersions(): Promise<AgentVersion[]> {
+    const response = await api.get('/agent-versions');
     return response.data;
   },
 };

@@ -6,6 +6,7 @@ import { settingsHandlers } from './settings.handlers';
 import { categoryHandlers } from './category.handlers';
 import { tagHandlers } from './tag.handlers';
 import { notificationHandlers } from './notification.handlers';
+import { discoveryHandlers } from './discovery.handlers';
 
 // Combine all handlers
 export const handlers = [
@@ -14,6 +15,7 @@ export const handlers = [
   ...patchHandlers,
   ...assetHandlers,
   ...settingsHandlers,
+  ...discoveryHandlers,
   ...categoryHandlers,
   ...tagHandlers,
   ...notificationHandlers,

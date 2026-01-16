@@ -109,6 +109,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   // Auto-expand User Management menu when visiting its sub-pages
   // Auto-navigate to organization if just /settings/user-management
   // Auto-expand System Settings menu when visiting its sub-pages
+  // Auto-expand Agent Management menu when visiting its sub-pages
   // Auto-expand Discovery menu when visiting discovery routes
   useEffect(() => {
     if (location.pathname.startsWith('/settings/user-management')) {
@@ -119,6 +120,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       }
     } else if (location.pathname.startsWith('/settings/system-settings')) {
       setExpandedMenus(['system-settings']);
+    } else if (location.pathname.startsWith('/settings/agent-management')) {
+      setExpandedMenus(['agent-management']);
     } else if (location.pathname.startsWith('/discovery')) {
       setExpandedMenus(['discovery']);
     } else {
@@ -299,6 +302,32 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       key: 'agent-management',
       icon: <DesktopOutlined />,
       label: 'Agent Management',
+      children: [
+        {
+          key: 'agent-management-approval-settings',
+          label: 'Agent Approval Settings',
+        },
+        {
+          key: 'agent-management-versions',
+          label: 'Agent Versions',
+        },
+        {
+          key: 'agent-management-configuration',
+          label: 'Agent Configuration',
+        },
+        {
+          key: 'agent-management-approvals',
+          label: 'Agent Approvals',
+        },
+        {
+          key: 'agent-management-enroll-secret',
+          label: 'Enroll Secret',
+        },
+        {
+          key: 'agent-management-red-hat-nomination',
+          label: 'Red Hat Agent Nomination',
+        },
+      ],
     },
     {
       key: 'deployment-policies',
@@ -374,14 +403,21 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     else if (key === 'system-settings-ldap-server') navigate('/settings/system-settings/ldap-server');
     else if (key === 'system-settings-risk-score') navigate('/settings/system-settings/risk-score');
     else if (key === 'system-settings-remote-desktop') navigate('/settings/system-settings/remote-desktop');
-    else if (key === 'system-settings-server') navigate('/settings/system-settings/server');
+    else if (key === 'system-settings-server') navigate('/settings/system-settings/server-settings');
+    // Settings - Agent Management sub-menus
+    else if (key === 'agent-management-approval-settings') navigate('/settings/agent-management/approval-settings');
+    else if (key === 'agent-management-versions') navigate('/settings/agent-management/versions');
+    else if (key === 'agent-management-configuration') navigate('/settings/agent-management/configuration');
+    else if (key === 'agent-management-approvals') navigate('/settings/agent-management/approvals');
+    else if (key === 'agent-management-enroll-secret') navigate('/settings/agent-management/enroll-secret');
+    else if (key === 'agent-management-red-hat-nomination') navigate('/settings/agent-management/red-hat-nomination');
     // Settings
     else if (key === 'user-management') navigate('/settings/user-management/organization');
     else if (key === 'system-settings') navigate('/settings/system-settings/branding');
     else if (key === 'vulnerability-preference') navigate('/settings/vulnerability-preference');
     else if (key === 'market-place') navigate('/settings/market-place');
     else if (key === 'discovery') navigate('/discovery/agents');
-    else if (key === 'agent-management') navigate('/settings/agent-management');
+    else if (key === 'agent-management') navigate('/settings/agent-management/approval-settings');
     else if (key === 'deployment-policies') navigate('/settings/deployment-policies');
     else if (key === 'patch-management') navigate('/settings/patch-management');
     else if (key === 'policy-management') navigate('/settings/policy-management');
@@ -496,12 +532,18 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     if (location.pathname === '/settings/system-settings/ldap-server') return ['system-settings-ldap-server'];
     if (location.pathname === '/settings/system-settings/risk-score') return ['system-settings-risk-score'];
     if (location.pathname === '/settings/system-settings/remote-desktop') return ['system-settings-remote-desktop'];
-    if (location.pathname === '/settings/system-settings/server') return ['system-settings-server'];
+    if (location.pathname === '/settings/system-settings/server-settings') return ['system-settings-server'];
+    // Settings - Agent Management
+    if (location.pathname === '/settings/agent-management/approval-settings') return ['agent-management-approval-settings'];
+    if (location.pathname === '/settings/agent-management/versions') return ['agent-management-versions'];
+    if (location.pathname === '/settings/agent-management/configuration') return ['agent-management-configuration'];
+    if (location.pathname === '/settings/agent-management/approvals') return ['agent-management-approvals'];
+    if (location.pathname === '/settings/agent-management/enroll-secret') return ['agent-management-enroll-secret'];
+    if (location.pathname === '/settings/agent-management/red-hat-nomination') return ['agent-management-red-hat-nomination'];
     // Settings
     if (location.pathname === '/settings/system-settings') return ['system-settings'];
     if (location.pathname === '/settings/vulnerability-preference') return ['vulnerability-preference'];
     if (location.pathname === '/settings/market-place') return ['market-place'];
-    if (location.pathname === '/settings/agent-management') return ['agent-management'];
     if (location.pathname === '/settings/deployment-policies') return ['deployment-policies'];
     if (location.pathname === '/settings/patch-management') return ['patch-management'];
     if (location.pathname === '/settings/policy-management') return ['policy-management'];
