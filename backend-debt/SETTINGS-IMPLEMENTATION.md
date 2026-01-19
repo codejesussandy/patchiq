@@ -81,7 +81,7 @@ Feature: Create Branch
 
 Scenario: Successfully create a branch
   Given I am authenticated as an admin
-  When I POST to /api/settings/branches with:
+  When I POST to /v1/settings/branches with:
     ```json
     {
       "name": "Mumbai Office",
@@ -113,7 +113,7 @@ Scenario: Successfully create a branch
 ```gherkin
 Scenario: Create new default branch when one already exists
   Given a default branch "Gurugram" exists with isDefault=true
-  When I POST to /api/settings/branches with:
+  When I POST to /v1/settings/branches with:
     ```json
     {
       "name": "Delhi Office",
@@ -131,7 +131,7 @@ Scenario: Create new default branch when one already exists
 ```gherkin
 Scenario: Attempt to delete default branch
   Given a branch "Gurugram" exists with isDefault=true
-  When I DELETE to /api/settings/branches/{gurugram-id}
+  When I DELETE to /v1/settings/branches/{gurugram-id}
   Then the response status should be 400
   And the response should contain:
     ```json
@@ -148,7 +148,7 @@ Scenario: Attempt to delete default branch
 Scenario: Successfully delete a non-default branch
   Given a branch "Delhi" exists with isDefault=false
   And the branch has 0 users assigned
-  When I DELETE to /api/settings/branches/{delhi-id}
+  When I DELETE to /v1/settings/branches/{delhi-id}
   Then the response status should be 204
   And the branch should be soft-deleted (deleted_at set)
   And an audit log entry should be created
@@ -160,7 +160,7 @@ Scenario: Get branches with accurate user counts
   Given branch "Gurugram" exists
   And 5 users are assigned to "Gurugram"
   And 3 users are assigned to "Delhi"
-  When I GET /api/settings/branches
+  When I GET /v1/settings/branches
   Then the response should include:
     ```json
     [
@@ -232,7 +232,7 @@ CREATE INDEX idx_users_status ON users(status);
 ```gherkin
 Scenario: Create a new user account
   Given I am authenticated as an admin
-  When I POST to /api/settings/users with:
+  When I POST to /v1/settings/users with:
     ```json
     {
       "firstName": "Priya",
@@ -259,7 +259,7 @@ Scenario: Create a new user account
 ```gherkin
 Scenario: Attempt to create user with existing email
   Given a user exists with email "existing@patchify.com"
-  When I POST to /api/settings/users with email "existing@patchify.com"
+  When I POST to /v1/settings/users with email "existing@patchify.com"
   Then the response status should be 400
   And the response should contain:
     ```json
@@ -274,7 +274,7 @@ Scenario: Attempt to create user with existing email
 ```gherkin
 Scenario: Send user invitation
   Given I am authenticated as an admin
-  When I POST to /api/settings/users/invite with:
+  When I POST to /v1/settings/users/invite with:
     ```json
     {
       "email": "new.user@patchify.com",
@@ -298,7 +298,7 @@ Scenario: Send user invitation
 ```gherkin
 Scenario: Admin resets user password
   Given a user "john@patchify.com" exists with status "Active"
-  When I POST to /api/settings/users/{john-id}/reset-password
+  When I POST to /v1/settings/users/{john-id}/reset-password
   Then the response status should be 200
   And a password reset token should be generated
   And an email should be sent to "john@patchify.com" with reset link
@@ -310,7 +310,7 @@ Scenario: Admin resets user password
 ```gherkin
 Scenario: Suspend an active user
   Given a user "john@patchify.com" exists with status "Active"
-  When I POST to /api/settings/users/{john-id}/suspend
+  When I POST to /v1/settings/users/{john-id}/suspend
   Then the response status should be 200
   And the user status should be changed to "In Active"
   And the user should not be able to login
@@ -321,12 +321,12 @@ Scenario: Suspend an active user
 ```gherkin
 Scenario: Delete a user account
   Given a user "old.employee@patchify.com" exists
-  When I DELETE /api/settings/users/{user-id}
+  When I DELETE /v1/settings/users/{user-id}
   Then the response status should be 204
   And the user should be soft-deleted (deleted_at set)
   And an audit log entry should be created
   And the user's data should still exist for audit purposes
-  And the user should not appear in GET /api/settings/users
+  And the user should not appear in GET /v1/settings/users
 ```
 
 #### Scenario 2.7: Get User Audit Log
@@ -337,7 +337,7 @@ Scenario: View user audit history
     - User created by admin@patchify.com at 2025-01-01 10:00
     - Password reset by admin@patchify.com at 2025-01-05 14:30
     - User suspended by admin@patchify.com at 2025-01-10 09:15
-  When I GET /api/settings/users/{john-id}/audit-log
+  When I GET /v1/settings/users/{john-id}/audit-log
   Then the response status should be 200
   And the response should contain all 3 audit entries in reverse chronological order
   And each entry should include: action, performedBy, timestamp, details
@@ -394,7 +394,7 @@ INSERT INTO roles (id, name, description, branch_id, is_system) VALUES
 ```gherkin
 Scenario: Create a new custom role
   Given I am authenticated as an admin
-  When I POST to /api/settings/roles with:
+  When I POST to /v1/settings/roles with:
     ```json
     {
       "name": "Patch Reviewer",
@@ -417,7 +417,7 @@ Scenario: Create a new custom role
 ```gherkin
 Scenario: Attempt to delete a system role
   Given a role "Admin" exists with isSystem=true
-  When I DELETE /api/settings/roles/{admin-id}
+  When I DELETE /v1/settings/roles/{admin-id}
   Then the response status should be 400
   And the response should contain:
     ```json
@@ -435,7 +435,7 @@ Scenario: Update permissions for a custom role
   Given a custom role "Patch Reviewer" exists with permissions:
     - patches: [view, edit]
     - assets: [view]
-  When I PUT to /api/settings/roles/{reviewer-id} with:
+  When I PUT to /v1/settings/roles/{reviewer-id} with:
     ```json
     {
       "name": "Patch Reviewer",
@@ -462,7 +462,7 @@ Scenario: Get all roles with accurate user counts
     - Team Manager (5 users)
     - Employee (20 users)
     - Patch Reviewer (2 users)
-  When I GET /api/settings/roles
+  When I GET /v1/settings/roles
   Then the response status should be 200
   And each role should include the correct users count
   And system roles should be marked with isSystem=true
@@ -472,7 +472,7 @@ Scenario: Get all roles with accurate user counts
 ```gherkin
 Scenario: Attempt to change system role name
   Given a role "Admin" exists with isSystem=true
-  When I PUT to /api/settings/roles/{admin-id} with name "Super Admin"
+  When I PUT to /v1/settings/roles/{admin-id} with name "Super Admin"
   Then the response status should be 400
   And the response should contain:
     ```json
@@ -530,7 +530,7 @@ CREATE INDEX idx_policies_configuration ON policies USING GIN (configuration);
 ```gherkin
 Scenario: Create a password policy
   Given I am authenticated as an admin
-  When I POST to /api/settings/policies with:
+  When I POST to /v1/settings/policies with:
     ```json
     {
       "name": "Strong Password Policy",
@@ -561,7 +561,7 @@ Scenario: Create a password policy
 ```gherkin
 Scenario: Create a security policy requiring 2FA
   Given I am authenticated as an admin
-  When I POST to /api/settings/policies with:
+  When I POST to /v1/settings/policies with:
     ```json
     {
       "name": "Admin 2FA Requirement",
@@ -587,7 +587,7 @@ Scenario: Create a security policy requiring 2FA
 ```gherkin
 Scenario: Clone an existing policy
   Given a policy "Strong Password Policy" exists
-  When I POST to /api/settings/policies/{policy-id}/clone
+  When I POST to /v1/settings/policies/{policy-id}/clone
   Then the response status should be 201
   And a new policy should be created with:
     - name: "Strong Password Policy (Copy)"
@@ -605,7 +605,7 @@ Scenario: View users affected by a policy
   And 3 users have role "Admin"
   And 5 users have role "Team Manager"
   And 20 users have role "Employee"
-  When I GET /api/settings/policies/{policy-id}/affected-users
+  When I GET /v1/settings/policies/{policy-id}/affected-users
   Then the response status should be 200
   And the response should contain 8 users (3 + 5)
   And users with role "Employee" should NOT be included
@@ -615,7 +615,7 @@ Scenario: View users affected by a policy
 ```gherkin
 Scenario: Disable an active policy
   Given a policy "Strong Password Policy" exists with status "Active"
-  When I POST to /api/settings/policies/{policy-id}/disable
+  When I POST to /v1/settings/policies/{policy-id}/disable
   Then the response status should be 200
   And the policy status should be changed to "Inactive"
   And the policy should no longer be enforced
@@ -626,7 +626,7 @@ Scenario: Disable an active policy
 ```gherkin
 Scenario: Reject invalid configuration for policy type
   Given I am authenticated as an admin
-  When I POST to /api/settings/policies with:
+  When I POST to /v1/settings/policies with:
     ```json
     {
       "name": "Invalid Password Policy",
@@ -650,7 +650,7 @@ Scenario: View policy audit history
     - Updated minLength from 8 to 12 at 2025-01-15
     - Disabled by admin@patchify.com at 2025-01-20
     - Re-enabled by admin@patchify.com at 2025-01-22
-  When I GET /api/settings/policies/{policy-id}/audit
+  When I GET /v1/settings/policies/{policy-id}/audit
   Then the response status should be 200
   And all 4 audit entries should be returned in reverse chronological order
   And each entry should show the delta (what changed)
@@ -762,7 +762,7 @@ function authorize(requiredPermissions) {
 
 // 3. Usage example
 app.post(
-  '/api/settings/users',
+  '/v1/settings/users',
   authenticate,
   authorize({ module: 'settings', action: 'add' }),
   createUser
@@ -774,7 +774,7 @@ app.post(
 #### Scenario 6.1: Unauthorized Access
 ```gherkin
 Scenario: Access endpoint without authentication
-  When I POST to /api/settings/branches without Authorization header
+  When I POST to /v1/settings/branches without Authorization header
   Then the response status should be 401
   And the response should contain:
     ```json
@@ -790,7 +790,7 @@ Scenario: Access endpoint without authentication
 Scenario: User without settings permissions tries to create branch
   Given I am authenticated as a user with role "Employee"
   And "Employee" role has no "settings" module permissions
-  When I POST to /api/settings/branches
+  When I POST to /v1/settings/branches
   Then the response status should be 403
   And the response should contain:
     ```json

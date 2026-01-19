@@ -34,31 +34,31 @@ export const categoryService = {
   // Get all sub-categories
   async getSubCategories(categoryId?: string): Promise<SubCategory[]> {
     const params = categoryId ? { categoryId } : {};
-    const response = await api.get('/sub-categories', { params });
+    const response = await api.get('/subcategories', { params });
     return response.data;
   },
 
   // Get single sub-category
   async getSubCategory(subCategoryId: string): Promise<SubCategory> {
-    const response = await api.get(`/sub-categories/${subCategoryId}`);
+    const response = await api.get(`/subcategories/${subCategoryId}`);
     return response.data;
   },
 
   // Create new sub-category
   async createSubCategory(subCategory: Omit<SubCategory, 'id'>): Promise<SubCategory> {
-    const response = await api.post('/sub-categories', subCategory);
+    const response = await api.post('/subcategories', subCategory);
     return response.data;
   },
 
   // Update sub-category
   async updateSubCategory(subCategoryId: string, updates: Partial<SubCategory>): Promise<SubCategory> {
-    const response = await api.put(`/sub-categories/${subCategoryId}`, updates);
+    const response = await api.put(`/subcategories/${subCategoryId}`, updates);
     return response.data;
   },
 
   // Delete sub-category
   async deleteSubCategory(subCategoryId: string): Promise<void> {
-    await api.delete(`/sub-categories/${subCategoryId}`);
+    await api.delete(`/subcategories/${subCategoryId}`);
   },
 
   // Get assets in a category
@@ -69,7 +69,7 @@ export const categoryService = {
 
   // Get assets in a sub-category
   async getAssetsBySubCategory(subCategoryId: string): Promise<any[]> {
-    const response = await api.get(`/sub-categories/${subCategoryId}/assets`);
+    const response = await api.get(`/subcategories/${subCategoryId}/assets`);
     return response.data;
   },
 };

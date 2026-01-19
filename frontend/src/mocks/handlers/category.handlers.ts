@@ -178,7 +178,7 @@ export const categoryHandlers = [
   }),
 
   // Get all sub-categories
-  http.get(`${API_BASE_URL}/sub-categories`, ({ request }) => {
+  http.get(`${API_BASE_URL}/subcategories`, ({ request }) => {
     const url = new URL(request.url);
     const categoryId = url.searchParams.get('categoryId');
     if (categoryId) {
@@ -188,7 +188,7 @@ export const categoryHandlers = [
   }),
 
   // Get single sub-category
-  http.get(`${API_BASE_URL}/sub-categories/:subCategoryId`, ({ params }) => {
+  http.get(`${API_BASE_URL}/subcategories/:subCategoryId`, ({ params }) => {
     const subCategory = subCategories.find((s) => s.id === params.subCategoryId);
     if (!subCategory) {
       return HttpResponse.json({ error: 'Sub-category not found' }, { status: 404 });
@@ -197,7 +197,7 @@ export const categoryHandlers = [
   }),
 
   // Create sub-category
-  http.post(`${API_BASE_URL}/sub-categories`, async ({ request }) => {
+  http.post(`${API_BASE_URL}/subcategories`, async ({ request }) => {
     const body: any = await request.json();
     const newSubCategory: SubCategory = {
       id: `subcat-${Date.now()}`,
@@ -214,7 +214,7 @@ export const categoryHandlers = [
   }),
 
   // Update sub-category
-  http.put(`${API_BASE_URL}/sub-categories/:subCategoryId`, async ({ params, request }) => {
+  http.put(`${API_BASE_URL}/subcategories/:subCategoryId`, async ({ params, request }) => {
     const subCategory = subCategories.find((s) => s.id === params.subCategoryId);
     if (!subCategory) {
       return HttpResponse.json({ error: 'Sub-category not found' }, { status: 404 });
@@ -227,7 +227,7 @@ export const categoryHandlers = [
   }),
 
   // Delete sub-category
-  http.delete(`${API_BASE_URL}/sub-categories/:subCategoryId`, ({ params }) => {
+  http.delete(`${API_BASE_URL}/subcategories/:subCategoryId`, ({ params }) => {
     subCategories = subCategories.filter((s) => s.id !== params.subCategoryId);
     return HttpResponse.json({ success: true }, { status: 204 });
   }),
@@ -239,7 +239,7 @@ export const categoryHandlers = [
   }),
 
   // Get assets by sub-category
-  http.get(`${API_BASE_URL}/sub-categories/:subCategoryId/assets`, () => {
+  http.get(`${API_BASE_URL}/subcategories/:subCategoryId/assets`, () => {
     // This would return filtered assets - for now returning empty array
     return HttpResponse.json([]);
   }),

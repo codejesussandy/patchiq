@@ -10,6 +10,7 @@ import { discoveryHandlers } from './discovery.handlers';
 import { vulnerabilityHandlers } from './vulnerability.handlers';
 import { reportHandlers } from './reports.handlers';
 import { dashboardHandlers } from './dashboard.handlers';
+import { jobsHandlers } from './jobs.handlers';
 
 // Combine all handlers
 export const handlers = [
@@ -25,4 +26,5 @@ export const handlers = [
   ...vulnerabilityHandlers,
   ...reportHandlers,
   ...dashboardHandlers,
+  ...jobsHandlers,
 ];

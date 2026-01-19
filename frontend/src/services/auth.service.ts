@@ -13,15 +13,22 @@ import type {
 
 export const authService = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-    const response = await api.post<LoginResponse>('/auth/login', credentials);
+    const response = await api.post<{ accessToken: string; refreshToken: string; user: User }>('/auth/login', credentials);
 
     // Store tokens in localStorage
-    if (response.data.success) {
-      localStorage.setItem('accessToken', response.data.data.accessToken);
-      localStorage.setItem('refreshToken', response.data.data.refreshToken);
-    }
+    localStorage.setItem('accessToken', response.data.accessToken);
+    localStorage.setItem('refreshToken', response.data.refreshToken);
 
-    return response.data;
+    // Transform to expected format
+    return {
+      success: true,
+      data: {
+        accessToken: response.data.accessToken,
+        refreshToken: response.data.refreshToken,
+        user: response.data.user,
+      },
+      message: 'Login successful',
+    };
   },
 
   logout: async (): Promise<void> => {
@@ -41,8 +48,8 @@ export const authService = {
   },
 
   getCurrentUser: async (): Promise<User> => {
-    const response = await api.get<{ success: boolean; data: User }>('/user/me');
-    return response.data.data;
+    const response = await api.get<User>('/user/me');
+    return response.data;
   },
 
   completeOnboarding: async (data: OnboardingRequest): Promise<OnboardingResponse> => {

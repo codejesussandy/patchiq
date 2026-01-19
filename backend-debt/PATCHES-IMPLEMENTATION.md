@@ -164,7 +164,7 @@ CREATE TABLE endpoints (
 ## Module 1: Patches CRUD Operations
 
 ### Test Scenario 1.1: Create Patch
-**Endpoint**: `POST /api/patches`
+**Endpoint**: `POST /v1/patches`
 
 **Given**: User is authenticated
 **When**: User submits valid patch data
@@ -176,7 +176,7 @@ CREATE TABLE endpoints (
 
 **Test Cases**:
 ```typescript
-describe('POST /api/patches', () => {
+describe('POST /v1/patches', () => {
   it('should create a new patch with valid data', async () => {
     const patchData = {
       software: '2025-08 Cumulative Update for Windows 10',
@@ -195,7 +195,7 @@ describe('POST /api/patches', () => {
     };
 
     const response = await request(app)
-      .post('/api/patches')
+      .post('/v1/patches')
       .set('Authorization', `Bearer ${validToken}`)
       .send(patchData)
       .expect(201);
@@ -207,7 +207,7 @@ describe('POST /api/patches', () => {
 
   it('should return 400 for missing required fields', async () => {
     const response = await request(app)
-      .post('/api/patches')
+      .post('/v1/patches')
       .set('Authorization', `Bearer ${validToken}`)
       .send({ software: 'Test' })
       .expect(400);
@@ -217,7 +217,7 @@ describe('POST /api/patches', () => {
 
   it('should return 401 for unauthenticated requests', async () => {
     await request(app)
-      .post('/api/patches')
+      .post('/v1/patches')
       .send({})
       .expect(401);
   });
@@ -225,11 +225,11 @@ describe('POST /api/patches', () => {
 ```
 
 ### Test Scenario 1.2: Get All Patches with Filtering
-**Endpoint**: `GET /api/patches`
+**Endpoint**: `GET /v1/patches`
 
 **Test Cases**:
 ```typescript
-describe('GET /api/patches', () => {
+describe('GET /v1/patches', () => {
   beforeEach(async () => {
     // Seed database with test patches
     await createTestPatches();
@@ -237,7 +237,7 @@ describe('GET /api/patches', () => {
 
   it('should return all patches', async () => {
     const response = await request(app)
-      .get('/api/patches')
+      .get('/v1/patches')
       .set('Authorization', `Bearer ${validToken}`)
       .expect(200);
 
@@ -247,7 +247,7 @@ describe('GET /api/patches', () => {
 
   it('should filter patches by severity', async () => {
     const response = await request(app)
-      .get('/api/patches?severity=CRITICAL')
+      .get('/v1/patches?severity=CRITICAL')
       .set('Authorization', `Bearer ${validToken}`)
       .expect(200);
 
@@ -256,7 +256,7 @@ describe('GET /api/patches', () => {
 
   it('should filter patches by OS', async () => {
     const response = await request(app)
-      .get('/api/patches?os=Windows')
+      .get('/v1/patches?os=Windows')
       .set('Authorization', `Bearer ${validToken}`)
       .expect(200);
 
@@ -265,7 +265,7 @@ describe('GET /api/patches', () => {
 
   it('should search patches by software name', async () => {
     const response = await request(app)
-      .get('/api/patches?search=Windows')
+      .get('/v1/patches?search=Windows')
       .set('Authorization', `Bearer ${validToken}`)
       .expect(200);
 
@@ -276,7 +276,7 @@ describe('GET /api/patches', () => {
 
   it('should paginate results', async () => {
     const response = await request(app)
-      .get('/api/patches?page=1&limit=5')
+      .get('/v1/patches?page=1&limit=5')
       .set('Authorization', `Bearer ${validToken}`)
       .expect(200);
 
@@ -286,11 +286,11 @@ describe('GET /api/patches', () => {
 ```
 
 ### Test Scenario 1.3: Update Patch
-**Endpoint**: `PUT /api/patches/:id`
+**Endpoint**: `PUT /v1/patches/:id`
 
 **Test Cases**:
 ```typescript
-describe('PUT /api/patches/:id', () => {
+describe('PUT /v1/patches/:id', () => {
   let patchId: string;
 
   beforeEach(async () => {
@@ -306,7 +306,7 @@ describe('PUT /api/patches/:id', () => {
     };
 
     const response = await request(app)
-      .put(`/api/patches/${patchId}`)
+      .put(`/v1/patches/${patchId}`)
       .set('Authorization', `Bearer ${validToken}`)
       .send(updateData)
       .expect(200);
@@ -317,7 +317,7 @@ describe('PUT /api/patches/:id', () => {
 
   it('should return 404 for non-existent patch', async () => {
     await request(app)
-      .put(`/api/patches/00000000-0000-0000-0000-000000000000`)
+      .put(`/v1/patches/00000000-0000-0000-0000-000000000000`)
       .set('Authorization', `Bearer ${validToken}`)
       .send({ severity: 'Low' })
       .expect(404);
@@ -326,17 +326,17 @@ describe('PUT /api/patches/:id', () => {
 ```
 
 ### Test Scenario 1.4: Delete Patch
-**Endpoint**: `DELETE /api/patches/:id`
+**Endpoint**: `DELETE /v1/patches/:id`
 
 **Test Cases**:
 ```typescript
-describe('DELETE /api/patches/:id', () => {
+describe('DELETE /v1/patches/:id', () => {
   it('should delete patch and cascade related data', async () => {
     const patch = await createTestPatch();
     await createAffectedProducts(patch.id);
 
     await request(app)
-      .delete(`/api/patches/${patch.id}`)
+      .delete(`/v1/patches/${patch.id}`)
       .set('Authorization', `Bearer ${validToken}`)
       .expect(204);
 
@@ -346,7 +346,7 @@ describe('DELETE /api/patches/:id', () => {
 
   it('should return 404 for non-existent patch', async () => {
     await request(app)
-      .delete(`/api/patches/00000000-0000-0000-0000-000000000000`)
+      .delete(`/v1/patches/00000000-0000-0000-0000-000000000000`)
       .set('Authorization', `Bearer ${validToken}`)
       .expect(404);
   });
@@ -358,17 +358,17 @@ describe('DELETE /api/patches/:id', () => {
 ## Module 2: Patch Related Data
 
 ### Test Scenario 2.1: Get Affected Products
-**Endpoint**: `GET /api/patches/:id/affected-products`
+**Endpoint**: `GET /v1/patches/:id/affected-products`
 
 **Test Cases**:
 ```typescript
-describe('GET /api/patches/:id/affected-products', () => {
+describe('GET /v1/patches/:id/affected-products', () => {
   it('should return affected products for patch', async () => {
     const patch = await createTestPatch();
     await createAffectedProducts(patch.id, 3);
 
     const response = await request(app)
-      .get(`/api/patches/${patch.id}/affected-products`)
+      .get(`/v1/patches/${patch.id}/affected-products`)
       .set('Authorization', `Bearer ${validToken}`)
       .expect(200);
 
@@ -381,7 +381,7 @@ describe('GET /api/patches/:id/affected-products', () => {
     const patch = await createTestPatch();
 
     const response = await request(app)
-      .get(`/api/patches/${patch.id}/affected-products`)
+      .get(`/v1/patches/${patch.id}/affected-products`)
       .set('Authorization', `Bearer ${validToken}`)
       .expect(200);
 
@@ -391,11 +391,11 @@ describe('GET /api/patches/:id/affected-products', () => {
 ```
 
 ### Test Scenario 2.2: Scan Endpoints
-**Endpoint**: `POST /api/patches/:id/scan-endpoints`
+**Endpoint**: `POST /v1/patches/:id/scan-endpoints`
 
 **Test Cases**:
 ```typescript
-describe('POST /api/patches/:id/scan-endpoints', () => {
+describe('POST /v1/patches/:id/scan-endpoints', () => {
   it('should initiate endpoint scan', async () => {
     const patch = await createTestPatch();
     const scanRequest = {
@@ -404,7 +404,7 @@ describe('POST /api/patches/:id/scan-endpoints', () => {
     };
 
     const response = await request(app)
-      .post(`/api/patches/${patch.id}/scan-endpoints`)
+      .post(`/v1/patches/${patch.id}/scan-endpoints`)
       .set('Authorization', `Bearer ${validToken}`)
       .send(scanRequest)
       .expect(202);
@@ -421,7 +421,7 @@ describe('POST /api/patches/:id/scan-endpoints', () => {
     };
 
     await request(app)
-      .post(`/api/patches/${patch.id}/scan-endpoints`)
+      .post(`/v1/patches/${patch.id}/scan-endpoints`)
       .set('Authorization', `Bearer ${validToken}`)
       .send(scanRequest)
       .expect(202);
@@ -434,11 +434,11 @@ describe('POST /api/patches/:id/scan-endpoints', () => {
 ## Module 3: Deployments
 
 ### Test Scenario 3.1: Create Deployment
-**Endpoint**: `POST /api/deployments`
+**Endpoint**: `POST /v1/deployments`
 
 **Test Cases**:
 ```typescript
-describe('POST /api/deployments', () => {
+describe('POST /v1/deployments', () => {
   it('should create deployment with patches', async () => {
     const patches = await createTestPatches(3);
     const deploymentData = {
@@ -451,7 +451,7 @@ describe('POST /api/deployments', () => {
     };
 
     const response = await request(app)
-      .post('/api/deployments')
+      .post('/v1/deployments')
       .set('Authorization', `Bearer ${validToken}`)
       .send(deploymentData)
       .expect(201);
@@ -469,7 +469,7 @@ describe('POST /api/deployments', () => {
     };
 
     const response = await request(app)
-      .post('/api/deployments')
+      .post('/v1/deployments')
       .set('Authorization', `Bearer ${validToken}`)
       .send(deploymentData)
       .expect(201);
@@ -480,16 +480,16 @@ describe('POST /api/deployments', () => {
 ```
 
 ### Test Scenario 3.2: Execute Deployment
-**Endpoint**: `POST /api/deployments/:id/execute`
+**Endpoint**: `POST /v1/deployments/:id/execute`
 
 **Test Cases**:
 ```typescript
-describe('POST /api/deployments/:id/execute', () => {
+describe('POST /v1/deployments/:id/execute', () => {
   it('should execute deployment and update status', async () => {
     const deployment = await createTestDeployment();
 
     const response = await request(app)
-      .post(`/api/deployments/${deployment.id}/execute`)
+      .post(`/v1/deployments/${deployment.id}/execute`)
       .set('Authorization', `Bearer ${validToken}`)
       .expect(202);
 
@@ -507,11 +507,11 @@ describe('POST /api/deployments/:id/execute', () => {
 ## Module 4: Patch Tests
 
 ### Test Scenario 4.1: Create Patch Test
-**Endpoint**: `POST /api/patch-tests`
+**Endpoint**: `POST /v1/patch-tests`
 
 **Test Cases**:
 ```typescript
-describe('POST /api/patch-tests', () => {
+describe('POST /v1/patch-tests', () => {
   it('should create patch test configuration', async () => {
     const testData = {
       name: 'Engineering Dept Test',
@@ -522,7 +522,7 @@ describe('POST /api/patch-tests', () => {
     };
 
     const response = await request(app)
-      .post('/api/patch-tests')
+      .post('/v1/patch-tests')
       .set('Authorization', `Bearer ${validToken}`)
       .send(testData)
       .expect(201);
@@ -540,7 +540,7 @@ describe('POST /api/patch-tests', () => {
     };
 
     await request(app)
-      .post('/api/patch-tests')
+      .post('/v1/patch-tests')
       .set('Authorization', `Bearer ${validToken}`)
       .send(invalidData)
       .expect(400);
@@ -549,16 +549,16 @@ describe('POST /api/patch-tests', () => {
 ```
 
 ### Test Scenario 4.2: Approve Patch Test
-**Endpoint**: `PUT /api/patch-tests/:id/approve`
+**Endpoint**: `PUT /v1/patch-tests/:id/approve`
 
 **Test Cases**:
 ```typescript
-describe('PUT /api/patch-tests/:id/approve', () => {
+describe('PUT /v1/patch-tests/:id/approve', () => {
   it('should approve patch test', async () => {
     const test = await createTestPatchTest();
 
     const response = await request(app)
-      .put(`/api/patch-tests/${test.id}/approve`)
+      .put(`/v1/patch-tests/${test.id}/approve`)
       .set('Authorization', `Bearer ${validToken}`)
       .expect(200);
 
@@ -569,7 +569,7 @@ describe('PUT /api/patch-tests/:id/approve', () => {
     const test = await createTestPatchTest();
 
     await request(app)
-      .put(`/api/patch-tests/${test.id}/approve`)
+      .put(`/v1/patch-tests/${test.id}/approve`)
       .set('Authorization', `Bearer ${unauthorizedToken}`)
       .expect(403);
   });
@@ -581,11 +581,11 @@ describe('PUT /api/patch-tests/:id/approve', () => {
 ## Module 5: Zero Touch Configurations
 
 ### Test Scenario 5.1: Create Zero Touch Config
-**Endpoint**: `POST /api/zero-touch-configs`
+**Endpoint**: `POST /v1/zero-touch-configs`
 
 **Test Cases**:
 ```typescript
-describe('POST /api/zero-touch-configs', () => {
+describe('POST /v1/zero-touch-configs', () => {
   it('should create zero-touch configuration', async () => {
     const configData = {
       name: 'Auto-Deploy Critical Patches',
@@ -600,7 +600,7 @@ describe('POST /api/zero-touch-configs', () => {
     };
 
     const response = await request(app)
-      .post('/api/zero-touch-configs')
+      .post('/v1/zero-touch-configs')
       .set('Authorization', `Bearer ${validToken}`)
       .send(configData)
       .expect(201);
@@ -619,7 +619,7 @@ describe('POST /api/zero-touch-configs', () => {
     };
 
     await request(app)
-      .post('/api/zero-touch-configs')
+      .post('/v1/zero-touch-configs')
       .set('Authorization', `Bearer ${validToken}`)
       .send(invalidConfig)
       .expect(400);
@@ -636,7 +636,7 @@ describe('POST /api/zero-touch-configs', () => {
 describe('Validation Errors', () => {
   it('should return 400 for invalid severity value', async () => {
     const response = await request(app)
-      .post('/api/patches')
+      .post('/v1/patches')
       .set('Authorization', `Bearer ${validToken}`)
       .send({ severity: 'INVALID' })
       .expect(400);
@@ -648,7 +648,7 @@ describe('Validation Errors', () => {
 
   it('should return 400 for invalid date format', async () => {
     await request(app)
-      .post('/api/patches')
+      .post('/v1/patches')
       .set('Authorization', `Bearer ${validToken}`)
       .send({ releaseDate: 'invalid-date' })
       .expect(400);
@@ -663,13 +663,280 @@ describe('Database Errors', () => {
     await createTestPatch({ patchId: 'ZPH-W-1234' });
 
     await request(app)
-      .post('/api/patches')
+      .post('/v1/patches')
       .set('Authorization', `Bearer ${validToken}`)
       .send({ patchId: 'ZPH-W-1234', /* other fields */ })
       .expect(409);
   });
 });
 ```
+
+---
+
+---
+
+## Module 6: Patch Test & Approval Workflow (Individual Patches)
+
+### Additional Endpoints for Individual Patch Approval
+
+These endpoints supplement the batch patch test configurations and allow for individual patch management:
+
+**Endpoint**: `GET /v1/patches/test-approve`
+Returns patches that are pending test or approval.
+
+**Test Cases**:
+```typescript
+describe('GET /v1/patches/test-approve', () => {
+  it('should return patches pending test', async () => {
+    const response = await request(app)
+      .get('/v1/patches/test-approve?status=pending-test')
+      .set('Authorization', `Bearer ${validToken}`)
+      .expect(200);
+
+    expect(response.body.every(p => p.testStatus === 'Not Tested')).toBe(true);
+  });
+
+  it('should return patches pending approval', async () => {
+    const response = await request(app)
+      .get('/v1/patches/test-approve?status=pending-approval')
+      .set('Authorization', `Bearer ${validToken}`)
+      .expect(200);
+
+    expect(response.body.every(p =>
+      p.testStatus === 'Tested' && p.approvalStatus === 'Pending'
+    )).toBe(true);
+  });
+});
+```
+
+**Endpoint**: `POST /v1/patches/:id/test`
+Mark an individual patch as tested (pass/fail).
+
+**Test Cases**:
+```typescript
+describe('POST /v1/patches/:id/test', () => {
+  it('should mark patch as tested with pass', async () => {
+    const patch = await createTestPatch({ testStatus: 'Not Tested' });
+
+    const response = await request(app)
+      .post(`/v1/patches/${patch.id}/test`)
+      .set('Authorization', `Bearer ${validToken}`)
+      .send({
+        status: 'passed',
+        notes: 'Tested on 5 machines successfully',
+        testEnvironment: 'Windows 10 22H2'
+      })
+      .expect(200);
+
+    expect(response.body.testStatus).toBe('Tested');
+    expect(response.body.testResult).toBe('passed');
+    expect(response.body.testedBy).toBeTruthy();
+    expect(response.body.testedAt).toBeTruthy();
+  });
+
+  it('should mark patch as tested with fail', async () => {
+    const patch = await createTestPatch({ testStatus: 'Not Tested' });
+
+    const response = await request(app)
+      .post(`/v1/patches/${patch.id}/test`)
+      .set('Authorization', `Bearer ${validToken}`)
+      .send({
+        status: 'failed',
+        notes: 'Causes BSOD on certain configurations',
+        testEnvironment: 'Windows Server 2019'
+      })
+      .expect(200);
+
+    expect(response.body.testStatus).toBe('Test Failed');
+    expect(response.body.testResult).toBe('failed');
+  });
+});
+```
+
+**Endpoint**: `POST /v1/patches/:id/approve`
+Approve a tested patch for deployment.
+
+**Test Cases**:
+```typescript
+describe('POST /v1/patches/:id/approve', () => {
+  it('should approve a tested patch', async () => {
+    const patch = await createTestPatch({
+      testStatus: 'Tested',
+      testResult: 'passed',
+      approvalStatus: 'Pending'
+    });
+
+    const response = await request(app)
+      .post(`/v1/patches/${patch.id}/approve`)
+      .set('Authorization', `Bearer ${validToken}`)
+      .expect(200);
+
+    expect(response.body.approvalStatus).toBe('Approved');
+    expect(response.body.approvedBy).toBeTruthy();
+    expect(response.body.approvedAt).toBeTruthy();
+  });
+
+  it('should reject approving untested patch', async () => {
+    const patch = await createTestPatch({ testStatus: 'Not Tested' });
+
+    await request(app)
+      .post(`/v1/patches/${patch.id}/approve`)
+      .set('Authorization', `Bearer ${validToken}`)
+      .expect(400);
+  });
+
+  it('should reject approving failed test patch', async () => {
+    const patch = await createTestPatch({
+      testStatus: 'Test Failed',
+      testResult: 'failed'
+    });
+
+    await request(app)
+      .post(`/v1/patches/${patch.id}/approve`)
+      .set('Authorization', `Bearer ${validToken}`)
+      .expect(400);
+  });
+});
+```
+
+**Endpoint**: `POST /v1/patches/:id/reject`
+Reject a patch with reason.
+
+**Test Cases**:
+```typescript
+describe('POST /v1/patches/:id/reject', () => {
+  it('should reject a patch with reason', async () => {
+    const patch = await createTestPatch({ approvalStatus: 'Pending' });
+
+    const response = await request(app)
+      .post(`/v1/patches/${patch.id}/reject`)
+      .set('Authorization', `Bearer ${validToken}`)
+      .send({
+        reason: 'Known compatibility issues with our software',
+        notes: 'Will re-evaluate after vendor fix'
+      })
+      .expect(200);
+
+    expect(response.body.approvalStatus).toBe('Rejected');
+    expect(response.body.rejectionReason).toBe('Known compatibility issues with our software');
+    expect(response.body.rejectedBy).toBeTruthy();
+    expect(response.body.rejectedAt).toBeTruthy();
+  });
+
+  it('should require rejection reason', async () => {
+    const patch = await createTestPatch({ approvalStatus: 'Pending' });
+
+    await request(app)
+      .post(`/v1/patches/${patch.id}/reject`)
+      .set('Authorization', `Bearer ${validToken}`)
+      .send({})
+      .expect(400);
+  });
+});
+```
+
+### Additional Fields for Patch Model
+
+```sql
+ALTER TABLE patches ADD COLUMN test_result VARCHAR(20) CHECK (test_result IN ('passed', 'failed'));
+ALTER TABLE patches ADD COLUMN tested_by VARCHAR(100);
+ALTER TABLE patches ADD COLUMN tested_at TIMESTAMP;
+ALTER TABLE patches ADD COLUMN test_notes TEXT;
+ALTER TABLE patches ADD COLUMN test_environment VARCHAR(200);
+ALTER TABLE patches ADD COLUMN approved_by VARCHAR(100);
+ALTER TABLE patches ADD COLUMN approved_at TIMESTAMP;
+ALTER TABLE patches ADD COLUMN rejected_by VARCHAR(100);
+ALTER TABLE patches ADD COLUMN rejected_at TIMESTAMP;
+ALTER TABLE patches ADD COLUMN rejection_reason TEXT;
+ALTER TABLE patches ADD COLUMN rejection_notes TEXT;
+
+CREATE INDEX idx_patches_test_status ON patches(test_status);
+CREATE INDEX idx_patches_approval_status ON patches(approval_status);
+```
+
+### Business Rules
+
+1. **Test Workflow**:
+   - Patches start with `testStatus = 'Not Tested'`
+   - After testing: `testStatus = 'Tested'` or `testStatus = 'Test Failed'`
+   - Test result and notes are required when marking tested
+
+2. **Approval Workflow**:
+   - Only patches with `testStatus = 'Tested'` and `testResult = 'passed'` can be approved
+   - Patches with `testStatus = 'Test Failed'` cannot be approved (must be rejected or retested)
+   - Approved patches have `approvalStatus = 'Approved'`
+   - Only approved patches can be included in deployments
+
+3. **Rejection Workflow**:
+   - Rejection reason is required
+   - Rejected patches have `approvalStatus = 'Rejected'`
+   - Rejected patches cannot be deployed
+   - Rejected patches can be re-tested and re-approved later
+
+4. **Audit Trail**:
+   - All test/approve/reject actions are logged with user, timestamp, and details
+   - History is preserved even if status changes later
+
+---
+
+## Module 7: Zero Touch Deployment Configuration
+
+### Enhanced Zero Touch Config Model
+
+```typescript
+interface ZeroTouchConfig {
+  id: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+
+  // Schedule
+  scheduleTime: string;           // HH:mm:ss format
+  daysOfWeek?: number[];          // 0-6 for Sunday-Saturday
+  maintenanceWindow?: {
+    startTime: string;
+    endTime: string;
+  };
+
+  // Target Selection
+  scope: 'ALL_COMPUTERS' | 'SCOPE' | 'SPECIFIC_GROUPS';
+  targetGroups?: string[];
+  excludedGroups?: string[];
+
+  // Patch Selection
+  severityFilter: ('CRITICAL' | 'High' | 'Medium' | 'Low')[];
+  categoryFilter?: string[];
+  autoApprove: boolean;
+  excludedPatches?: string[];
+
+  // Deployment Options
+  autoReboot: boolean;
+  rebootDelay?: number;           // minutes before reboot
+  notifyUsers: boolean;
+  notificationMessage?: string;
+
+  // Status
+  status: 'Active' | 'Inactive' | 'Draft';
+  lastExecution?: string;
+  nextExecution?: string;
+
+  createdBy: string;
+  createdOn: string;
+}
+```
+
+### Zero Touch Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/zero-touch-configs` | GET | List all zero touch configurations |
+| `/v1/zero-touch-configs` | POST | Create new configuration |
+| `/v1/zero-touch-configs/:id` | GET | Get configuration details |
+| `/v1/zero-touch-configs/:id` | PUT | Update configuration |
+| `/v1/zero-touch-configs/:id` | DELETE | Delete configuration |
+| `/v1/zero-touch-configs/:id/enable` | POST | Enable configuration |
+| `/v1/zero-touch-configs/:id/disable` | POST | Disable configuration |
+| `/v1/zero-touch-configs/:id/execute` | POST | Manually trigger execution |
 
 ---
 
@@ -682,43 +949,43 @@ describe('Database Errors', () => {
 - [ ] Set up indexes for performance
 
 ### Phase 2: Core Patches API
-- [ ] Implement POST /api/patches
-- [ ] Implement GET /api/patches with filtering
-- [ ] Implement GET /api/patches/:id
-- [ ] Implement PUT /api/patches/:id
-- [ ] Implement DELETE /api/patches/:id
+- [ ] Implement POST /v1/patches
+- [ ] Implement GET /v1/patches with filtering
+- [ ] Implement GET /v1/patches/:id
+- [ ] Implement PUT /v1/patches/:id
+- [ ] Implement DELETE /v1/patches/:id
 - [ ] Write unit tests for all endpoints
 - [ ] Write integration tests
 
 ### Phase 3: Patch Related Data
-- [ ] Implement GET /api/patches/:id/affected-products
-- [ ] Implement POST /api/patches/:id/scan-endpoints
-- [ ] Implement GET /api/patches/:id/file-details
-- [ ] Implement GET /api/patches/:id/vulnerabilities
-- [ ] Implement GET /api/patches/:id/endpoints
+- [ ] Implement GET /v1/patches/:id/affected-products
+- [ ] Implement POST /v1/patches/:id/scan-endpoints
+- [ ] Implement GET /v1/patches/:id/file-details
+- [ ] Implement GET /v1/patches/:id/vulnerabilities
+- [ ] Implement GET /v1/patches/:id/endpoints
 
 ### Phase 4: Deployments API
-- [ ] Implement POST /api/deployments
-- [ ] Implement GET /api/deployments
-- [ ] Implement GET /api/deployments/:id
-- [ ] Implement DELETE /api/deployments/:id
-- [ ] Implement GET /api/deployments/:id/preview
-- [ ] Implement POST /api/deployments/:id/execute
+- [ ] Implement POST /v1/deployments
+- [ ] Implement GET /v1/deployments
+- [ ] Implement GET /v1/deployments/:id
+- [ ] Implement DELETE /v1/deployments/:id
+- [ ] Implement GET /v1/deployments/:id/preview
+- [ ] Implement POST /v1/deployments/:id/execute
 - [ ] Create background job for deployment execution
 
 ### Phase 5: Patch Tests API
-- [ ] Implement POST /api/patch-tests
-- [ ] Implement GET /api/patch-tests
-- [ ] Implement GET /api/patch-tests/:id
-- [ ] Implement PUT /api/patch-tests/:id/approve
-- [ ] Implement DELETE /api/patch-tests/:id
+- [ ] Implement POST /v1/patch-tests
+- [ ] Implement GET /v1/patch-tests
+- [ ] Implement GET /v1/patch-tests/:id
+- [ ] Implement PUT /v1/patch-tests/:id/approve
+- [ ] Implement DELETE /v1/patch-tests/:id
 
 ### Phase 6: Zero Touch API
-- [ ] Implement POST /api/zero-touch-configs
-- [ ] Implement GET /api/zero-touch-configs
-- [ ] Implement GET /api/zero-touch-configs/:id
-- [ ] Implement PUT /api/zero-touch-configs/:id
-- [ ] Implement DELETE /api/zero-touch-configs/:id
+- [ ] Implement POST /v1/zero-touch-configs
+- [ ] Implement GET /v1/zero-touch-configs
+- [ ] Implement GET /v1/zero-touch-configs/:id
+- [ ] Implement PUT /v1/zero-touch-configs/:id
+- [ ] Implement DELETE /v1/zero-touch-configs/:id
 - [ ] Create scheduler for auto-deployments
 
 ### Phase 7: Integration & Performance
@@ -747,7 +1014,7 @@ describe('Database Errors', () => {
    - Monitor slow queries and optimize
 
 2. **Caching Strategy**
-   - Cache GET /api/patches results (TTL: 5 minutes)
+   - Cache GET /v1/patches results (TTL: 5 minutes)
    - Invalidate cache on POST/PUT/DELETE operations
    - Use Redis for distributed caching
 
@@ -824,7 +1091,7 @@ describe('Database Errors', () => {
 
 3. **Health Check Endpoint**
    ```
-   GET /api/health
+   GET /v1/health
    Response: { status: 'ok', database: 'connected', redis: 'connected' }
    ```
 
