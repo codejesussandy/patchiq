@@ -9,10 +9,9 @@ import type {
   Deployment,
   PatchTest,
   ZeroTouchConfig,
-  Asset,
 } from '../../services/patch.service';
 
-const API_BASE_URL = 'http://localhost:3000/v1';
+const API_BASE_URL = '/v1';
 
 let mockPatches: Patch[] = [
   {

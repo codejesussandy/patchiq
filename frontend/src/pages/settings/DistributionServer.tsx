@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Table, Input, Button, Typography, Space, message, Tooltip, Popconfirm } from 'antd';
+import { Table, Input, Button, Typography, Space, message, Tooltip } from 'antd';
 import { ReloadOutlined, DownloadOutlined, SettingOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { settingsService } from '../../services/settings.service';
-import type { DistributionServer } from '../../types/settings.types';
+import type { DistributionServer as DistributionServerType } from '../../types/settings.types';
 
 const { Title } = Typography;
 
 export const DistributionServer = () => {
-  const [data, setData] = useState<DistributionServer[]>([]);
+  const [data, setData] = useState<DistributionServerType[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [filteredData, setFilteredData] = useState<DistributionServer[]>([]);
+  const [filteredData, setFilteredData] = useState<DistributionServerType[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -81,7 +81,7 @@ export const DistributionServer = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const _handleDelete = async (id: string) => {
     try {
       await settingsService.deleteDistributionServer(id);
       message.success('Distribution server deleted successfully');
@@ -90,8 +90,9 @@ export const DistributionServer = () => {
       message.error('Failed to delete distribution server');
     }
   };
+  void _handleDelete; // Reserved for future use
 
-  const columns: ColumnsType<DistributionServer> = [
+  const columns: ColumnsType<DistributionServerType> = [
     {
       title: 'Name',
       dataIndex: 'name',

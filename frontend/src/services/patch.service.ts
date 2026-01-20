@@ -9,19 +9,16 @@ import type {
   Deployment,
   PatchTest,
   ZeroTouchConfig,
-  // New unified types from asset.types
   Asset,
   AssetPatchStatus,
   AssetRelatedPatch,
   AssetDeployment,
-  AssetGroup,
-  PatchSummary,
-  AgentLink,
 } from '../types/patch.types';
 
 // Re-export types for backward compatibility
 export type {
   Patch,
+  AffectedProduct,
   AffectedSoftware,
   FileDetail,
   Vulnerability,
@@ -30,7 +27,6 @@ export type {
   Deployment,
   PatchTest,
   ZeroTouchConfig,
-  // New unified types
   Asset,
   AssetPatchStatus,
   AssetRelatedPatch,
@@ -49,7 +45,8 @@ export const patchService = {
   // Patches
   async getPatches(): Promise<Patch[]> {
     const response = await api.get(`/patches`);
-    return response.data;
+    // Backend returns paginated response { data, total, page, limit, totalPages }
+    return response.data.data || [];
   },
 
   async getPatch(id: string): Promise<Patch> {
@@ -112,7 +109,8 @@ export const patchService = {
   // Deployments
   async getDeployments(): Promise<Deployment[]> {
     const response = await api.get(`/deployments`);
-    return response.data;
+    // Backend returns paginated response { data, total, page, limit, totalPages }
+    return response.data.data || [];
   },
 
   async getDeployment(id: string): Promise<Deployment> {
@@ -141,7 +139,8 @@ export const patchService = {
   // Patch Tests
   async getPatchTests(): Promise<PatchTest[]> {
     const response = await api.get(`/patch-tests`);
-    return response.data;
+    // Backend returns paginated response { data, total, page, limit, totalPages }
+    return response.data.data || [];
   },
 
   async getPatchTest(id: string): Promise<PatchTest> {
@@ -165,7 +164,8 @@ export const patchService = {
   // Zero Touch
   async getZeroTouchConfigs(): Promise<ZeroTouchConfig[]> {
     const response = await api.get(`/zero-touch-configs`);
-    return response.data;
+    // Backend returns paginated response { data, total, page, limit, totalPages }
+    return response.data.data || [];
   },
 
   async getZeroTouchConfig(id: string): Promise<ZeroTouchConfig> {

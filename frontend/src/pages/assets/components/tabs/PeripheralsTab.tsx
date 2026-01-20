@@ -10,7 +10,6 @@ import {
   Spin,
   Empty,
   Badge,
-  Tooltip,
   Progress,
   Collapse,
 } from 'antd';
@@ -22,8 +21,6 @@ import {
   VideoCameraOutlined,
   WifiOutlined,
   AppstoreOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type {

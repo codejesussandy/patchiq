@@ -23,7 +23,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { settingsService } from '../../services/settings.service';
-import type { DeploymentPolicy, DeploymentPolicyFormData } from '../../types/settings.types';
+import type { DeploymentPolicy } from '../../types/settings.types';
 
 const { Title } = Typography;
 

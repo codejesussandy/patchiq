@@ -3,7 +3,6 @@ import {
   Card,
   Row,
   Col,
-  Tag,
   Table,
   Typography,
   Space,
@@ -12,7 +11,6 @@ import {
   Progress,
   Statistic,
   Badge,
-  Tooltip,
   Divider,
   Alert,
 } from 'antd';
@@ -22,7 +20,6 @@ import {
   WifiOutlined,
   ThunderboltOutlined,
   ClockCircleOutlined,
-  WarningOutlined,
   ReloadOutlined,
   BugOutlined,
 } from '@ant-design/icons';
@@ -48,7 +45,7 @@ import type {
 } from '../../../../types/telemetry.types';
 import { assetService } from '../../../../services/asset.service';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface TelemetryTabProps {
   assetId: string;
@@ -378,7 +375,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
                   <XAxis dataKey="time" tick={{ fontSize: 10 }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
                   <RechartsTooltip
-                    formatter={(value: number) => [`${value.toFixed(1)}%`, 'CPU']}
+                    formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(1)}%`, 'CPU']}
                   />
                   <Area
                     type="monotone"
@@ -413,7 +410,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
                   <XAxis dataKey="time" tick={{ fontSize: 10 }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
                   <RechartsTooltip
-                    formatter={(value: number) => [`${value.toFixed(1)}%`, 'Memory']}
+                    formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(1)}%`, 'Memory']}
                   />
                   <Area
                     type="monotone"
@@ -449,8 +446,8 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
               <XAxis dataKey="time" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={(value) => formatBytes(value)} />
               <RechartsTooltip
-                formatter={(value: number, name: string) => [
-                  formatBytesPerSec(value),
+                formatter={(value: number | undefined, name: string | undefined) => [
+                  formatBytesPerSec(value ?? 0),
                   name === 'in' ? 'Received' : 'Sent',
                 ]}
               />
@@ -618,7 +615,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
           {/* Last Crash Info */}
           {errors.lastCrash && (
             <>
-              <Divider orientation="left" style={{ marginTop: 16 }}>Last Application Crash</Divider>
+              <Divider titlePlacement="left" style={{ marginTop: 16 }}>Last Application Crash</Divider>
               <Row gutter={16}>
                 <Col span={8}>
                   <Text type="secondary">Application</Text>
@@ -645,7 +642,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
           {/* Last BSOD Info */}
           {errors.lastBsod && (
             <>
-              <Divider orientation="left">Last Blue Screen</Divider>
+              <Divider titlePlacement="left">Last Blue Screen</Divider>
               <Row gutter={16}>
                 <Col span={8}>
                   <Text type="secondary">Stop Code</Text>

@@ -12,7 +12,8 @@ export const discoveryService = {
   // Agent APIs
   async getAgents(): Promise<Agent[]> {
     const response = await api.get(`/discovery/agents`);
-    return response.data;
+    // Backend returns paginated response { data, total, page, limit, totalPages }
+    return response.data.data || [];
   },
 
   async getAgent(id: string): Promise<Agent> {
@@ -37,7 +38,8 @@ export const discoveryService = {
   // IP Range APIs
   async getIPRanges(): Promise<IPRange[]> {
     const response = await api.get(`/discovery/ip-ranges`);
-    return response.data;
+    // Backend returns paginated response { data, total, page, limit, totalPages }
+    return response.data.data || [];
   },
 
   async getIPRange(id: string): Promise<IPRange> {
@@ -67,7 +69,8 @@ export const discoveryService = {
   // Device Credential APIs
   async getCredentials(): Promise<DeviceCredential[]> {
     const response = await api.get(`/discovery/credentials`);
-    return response.data;
+    // Backend returns paginated response { data, total, page, limit, totalPages }
+    return response.data.data || [];
   },
 
   async getCredential(id: string): Promise<DeviceCredential> {

@@ -4,9 +4,7 @@ import {
   Button,
   Table,
   Space,
-  Tag,
   Typography,
-  Dropdown,
   Modal,
   Form,
   Select,
@@ -18,7 +16,6 @@ import {
   Checkbox,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import type { MenuProps } from 'antd';
 import {
   SearchOutlined,
   ReloadOutlined,
@@ -29,7 +26,6 @@ import {
   AppleOutlined,
   LinuxOutlined,
   ExportOutlined,
-  FilterOutlined,
   RightOutlined,
   LeftOutlined,
   CloseOutlined,
@@ -511,11 +507,6 @@ export const ConfigurationJobsBundle = () => {
       setSelectedRowKeys(selectedKeys);
     },
   };
-
-  const filterMenuItems: MenuProps['items'] = [
-    { key: '1', label: 'Filter Option 1' },
-    { key: '2', label: 'Filter Option 2' },
-  ];
 
   return (
     <div>

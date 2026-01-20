@@ -19,7 +19,30 @@ import type {
   RefreshResponse,
   UserMeResponse,
   OnboardingResponse,
+  UserPublic,
 } from './auth.types';
+import type { User } from '@prisma/client';
+
+// Helper to transform DB user to frontend-compatible format
+function toUserPublic(user: User): UserPublic {
+  const nameParts = (user.name || '').split(' ');
+  const firstName = nameParts[0] || user.email.split('@')[0];
+  const lastName = nameParts.slice(1).join(' ') || '';
+
+  return {
+    id: user.id,
+    email: user.email,
+    firstName,
+    lastName,
+    role: user.role,
+    isOnboarded: user.isOnboarded,
+    organizationId: user.organizationId,
+    departmentId: user.departmentId,
+    locationId: user.locationId,
+    createdAt: user.createdAt.toISOString(),
+    updatedAt: user.updatedAt.toISOString(),
+  };
+}
 
 export class AuthService {
   /**
@@ -78,16 +101,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isOnboarded: user.isOnboarded,
-        organizationId: user.organizationId,
-        departmentId: user.departmentId,
-        locationId: user.locationId,
-      },
+      user: toUserPublic(user),
     };
   }
 
@@ -293,8 +307,9 @@ export class AuthService {
 
   /**
    * Get user by ID
+   * Returns UserPublic format matching frontend expectations
    */
-  async getUserById(userId: string): Promise<UserMeResponse> {
+  async getUserById(userId: string): Promise<UserPublic> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -308,18 +323,7 @@ export class AuthService {
       throw new NotFoundError('User not found');
     }
 
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      contactNumber: user.contactNumber,
-      role: user.role,
-      organizationId: user.organizationId,
-      departmentId: user.departmentId,
-      locationId: user.locationId,
-      isOnboarded: user.isOnboarded,
-      createdAt: user.createdAt.toISOString(),
-    };
+    return toUserPublic(user);
   }
 }
 

@@ -7,7 +7,6 @@ import {
   message,
   Space,
   Tooltip,
-  Select,
 } from 'antd';
 import {
   SearchOutlined,

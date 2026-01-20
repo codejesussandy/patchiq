@@ -29,6 +29,17 @@ export type User = {
   // Metadata
   createdAt: string;
   updatedAt: string;
+
+  // Settings page fields (for user management)
+  organization?: string;
+  department?: string;
+  loginAllowed?: boolean;
+  endpointAssignmentAllowed?: boolean;
+  isOnboarded?: boolean;
+  organizationId?: string;
+  departmentId?: string;
+  locationId?: string;
+  name?: string;
 };
 
 // Form data types

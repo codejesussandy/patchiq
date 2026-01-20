@@ -505,6 +505,32 @@ export class AgentsService {
         },
       });
     }
+
+    // Store software data if provided
+    if (inventory.software) {
+      // First, delete existing software entries for this asset
+      await prisma.assetSoftware.deleteMany({
+        where: { assetId: agent.assetId },
+      });
+
+      // Extract applications from software object
+      const softwareData = inventory.software as Record<string, unknown>;
+      const applications = (softwareData.applications as Array<Record<string, unknown>>) || [];
+
+      // Insert new software entries
+      if (applications.length > 0) {
+        await prisma.assetSoftware.createMany({
+          data: applications.map((app) => ({
+            assetId: agent.assetId!,
+            name: (app.name as string) || 'Unknown',
+            version: app.version as string | undefined,
+            vendor: app.vendor as string | undefined,
+            installPath: app.path as string | undefined,
+            isSystem: app.installSource === 'Pre-installed',
+          })),
+        });
+      }
+    }
   }
 
   /**
@@ -539,9 +565,37 @@ export class AgentsService {
    * Refresh agent token
    */
   async refreshAgentToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
-    // TODO: Implement proper token refresh with validation
-    // For now, this is a placeholder
-    throw new NotFoundError('Token refresh not implemented');
+    // Verify the refresh token
+    const { verifyToken } = await import('@shared/utils/jwt');
+
+    let decoded;
+    try {
+      decoded = verifyToken(refreshToken);
+    } catch {
+      throw new NotFoundError('Invalid or expired refresh token');
+    }
+
+    if (decoded.type !== 'refresh' || decoded.role !== 'agent') {
+      throw new NotFoundError('Invalid token type');
+    }
+
+    // Find the agent (userId in token is actually agentId for agents)
+    const agent = await prisma.agent.findUnique({
+      where: { id: decoded.userId },
+    });
+
+    if (!agent) {
+      throw new NotFoundError('Agent not found');
+    }
+
+    // Generate new tokens
+    const tokens = generateTokenPair({
+      userId: agent.id,
+      email: agent.machineId,
+      role: 'agent',
+    });
+
+    return tokens;
   }
 }
 

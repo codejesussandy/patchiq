@@ -46,7 +46,8 @@ export const settingsService = {
   // Branch Location APIs
   async getBranches(): Promise<Branch[]> {
     const response = await api.get(`/settings/branches`);
-    return response.data;
+    // Backend may return paginated response { data, total, page, limit, totalPages }
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getBranch(id: string): Promise<Branch> {
@@ -71,7 +72,8 @@ export const settingsService = {
   // User Management APIs
   async getUsers(): Promise<User[]> {
     const response = await api.get(`/settings/users`);
-    return response.data;
+    // Backend returns paginated response { data, total, page, limit, totalPages }
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getUser(id: string): Promise<User> {
@@ -113,7 +115,8 @@ export const settingsService = {
   // Role Management APIs
   async getRoles(): Promise<Role[]> {
     const response = await api.get(`/settings/roles`);
-    return response.data;
+    // Backend returns paginated response { data, total, page, limit, totalPages }
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getRole(id: string): Promise<Role> {
@@ -138,7 +141,8 @@ export const settingsService = {
   // Policy Management APIs
   async getPolicies(): Promise<Policy[]> {
     const response = await api.get(`/settings/policies`);
-    return response.data;
+    // Backend returns paginated response { data, total, page, limit, totalPages }
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getPolicy(id: string): Promise<Policy> {
@@ -182,7 +186,7 @@ export const settingsService = {
   // Organization Management APIs
   async getOrganizations(): Promise<any[]> {
     const response = await api.get(`/settings/organizations`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getOrganization(id: string): Promise<any> {
@@ -207,7 +211,7 @@ export const settingsService = {
   // Location Management APIs
   async getLocations(): Promise<any[]> {
     const response = await api.get(`/settings/locations`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getLocation(id: string): Promise<any> {
@@ -232,7 +236,7 @@ export const settingsService = {
   // Department Management APIs
   async getDepartments(): Promise<any[]> {
     const response = await api.get(`/settings/departments`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getDepartment(id: string): Promise<any> {
@@ -304,7 +308,7 @@ export const settingsService = {
   // Vendor Logo APIs
   async getVendorLogos(): Promise<any[]> {
     const response = await api.get(`/settings/vendor-logos`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getVendorLogo(id: string): Promise<any> {
@@ -337,7 +341,7 @@ export const settingsService = {
   // LDAP Server Configuration APIs
   async getLDAPServerConfigs(): Promise<LDAPServerConfig[]> {
     const response = await api.get(`/settings/ldap-configs`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getLDAPServerConfig(id: string): Promise<LDAPServerConfig> {
@@ -404,7 +408,7 @@ export const settingsService = {
   // Marketplace/Integration APIs
   async getIntegrations(): Promise<Integration[]> {
     const response = await api.get(`/settings/integrations`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getIntegration(id: string): Promise<Integration> {
@@ -476,7 +480,7 @@ export const settingsService = {
   // Agent Approval APIs
   async getAgentApprovals(): Promise<AgentApproval[]> {
     const response = await api.get(`/settings/agent-approvals`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async approveAgent(id: string): Promise<AgentApproval> {
@@ -499,7 +503,7 @@ export const settingsService = {
   // Enroll Secret APIs
   async getEnrollSecrets(): Promise<EnrollSecret[]> {
     const response = await api.get(`/settings/enroll-secrets`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getEnrollSecret(id: string): Promise<EnrollSecret> {
@@ -534,7 +538,7 @@ export const settingsService = {
   // Deployment Policy APIs
   async getDeploymentPolicies(): Promise<DeploymentPolicy[]> {
     const response = await api.get(`/settings/deployment-policies`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getDeploymentPolicy(id: string): Promise<DeploymentPolicy> {
@@ -562,7 +566,7 @@ export const settingsService = {
   // Red Hat Agent Nomination APIs
   async getRedHatAgentNominations(): Promise<RedHatAgentNomination[]> {
     const response = await api.get(`/settings/red-hat-nominations`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getRedHatAgentNomination(id: string): Promise<RedHatAgentNomination> {
@@ -588,7 +592,7 @@ export const settingsService = {
   // Computer Group APIs
   async getComputerGroups(): Promise<ComputerGroup[]> {
     const response = await api.get(`/settings/computer-groups`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getComputerGroup(id: string): Promise<ComputerGroup> {
@@ -612,7 +616,7 @@ export const settingsService = {
 
   async getAvailableEndpoints(): Promise<EndpointOption[]> {
     const response = await api.get(`/settings/computer-groups/available-endpoints`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   // Patch Preferences APIs
@@ -634,7 +638,7 @@ export const settingsService = {
   // Audit Log APIs
   async getAuditLogs(): Promise<any[]> {
     const response = await api.get(`/settings/audit-logs`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getAuditFilterOptions(): Promise<{
@@ -660,7 +664,7 @@ export const settingsService = {
   // Distribution Server APIs
   async getDistributionServers(): Promise<DistributionServer[]> {
     const response = await api.get(`/settings/distribution-servers`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getDistributionServer(id: string): Promise<DistributionServer> {

@@ -399,7 +399,8 @@ describe('AuthService', () => {
 
       expect(result.id).toBe('user-1');
       expect(result.email).toBe('user@example.com');
-      expect(result.name).toBe('Test User');
+      expect(result.firstName).toBe('Test');
+      expect(result.lastName).toBe('User');
       expect(result.role).toBe('user');
       expect(result.isOnboarded).toBe(true);
       expect(result.createdAt).toBe('2024-01-01T00:00:00.000Z');

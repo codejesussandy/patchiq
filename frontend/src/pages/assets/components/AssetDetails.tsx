@@ -38,8 +38,7 @@ import {
   UnorderedListOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
-import { SeverityBadge, OSIcon } from '../../../components/patches';
-import { Checkbox } from 'antd';
+import { OSIcon } from '../../../components/patches';
 import type { ColumnsType } from 'antd/es/table';
 import type { Asset, AssetLifeCycle, Hardware, Software } from '../../../types/asset.types';
 import { assetService } from '../../../services/asset.service';
@@ -74,13 +73,13 @@ export const AssetDetails = () => {
   // Patches tab state
   const [patchesTab, setPatchesTab] = useState<'missing' | 'installed' | 'exception'>('missing');
   const [patchesSearchText, setPatchesSearchText] = useState('');
-  const [patchesLoading, setPatchesLoading] = useState(false);
+  const [patchesLoading] = useState(false);
   const [selectedPatchIds, setSelectedPatchIds] = useState<React.Key[]>([]);
-  const [lastScanTime, setLastScanTime] = useState<string>('2026/01/16 02:37:39 PM');
+  const [lastScanTime] = useState<string>('2026/01/16 02:37:39 PM');
 
   // Alerts tab state
   const [alertsSearchText, setAlertsSearchText] = useState('');
-  const [alertsLoading, setAlertsLoading] = useState(false);
+  const [alertsLoading] = useState(false);
   const [alertsViewMode, setAlertsViewMode] = useState<'list' | 'grid'>('list');
 
   useEffect(() => {

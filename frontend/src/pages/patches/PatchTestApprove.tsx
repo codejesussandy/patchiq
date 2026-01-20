@@ -13,8 +13,6 @@ import {
   Select,
   Radio,
   Empty,
-  Card,
-  Checkbox,
 } from 'antd';
 import {
   SearchOutlined,
@@ -336,7 +334,7 @@ export const PatchTestApprove = () => {
                       placeholder="Search and select computers"
                       showSearch
                       filterOption={(input, option) =>
-                        (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+                        String(option?.label ?? option?.value ?? '').toLowerCase().includes(input.toLowerCase())
                       }
                     >
                       <Option value="DESKTOP-7CC6ETJ">DESKTOP-7CC6ETJ</Option>
@@ -515,7 +513,7 @@ export const PatchTestApprove = () => {
                     placeholder="Search and select computers"
                     showSearch
                     filterOption={(input, option) =>
-                      (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+                      String(option?.label ?? option?.value ?? '').toLowerCase().includes(input.toLowerCase())
                     }
                   >
                     <Option value="DESKTOP-7CC6ETJ">DESKTOP-7CC6ETJ</Option>

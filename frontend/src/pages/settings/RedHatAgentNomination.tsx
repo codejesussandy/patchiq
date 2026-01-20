@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Table, Button, Space, Input, Tag, message, Spin, Modal, Form, Select, Tooltip } from 'antd';
 import { ReloadOutlined, DownloadOutlined, SearchOutlined, EditOutlined } from '@ant-design/icons';
 import { settingsService } from '../../services/settings.service';
-import type { RedHatAgentNomination } from '../../types/settings.types';
+import type { RedHatAgentNomination as RedHatAgentNominationType } from '../../types/settings.types';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 
 const statusColors: Record<string, string> = {
@@ -12,17 +12,17 @@ const statusColors: Record<string, string> = {
 };
 
 export const RedHatAgentNomination = () => {
-  const [nominations, setNominations] = useState<RedHatAgentNomination[]>([]);
+  const [nominations, setNominations] = useState<RedHatAgentNominationType[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [filteredData, setFilteredData] = useState<RedHatAgentNomination[]>([]);
+  const [filteredData, setFilteredData] = useState<RedHatAgentNominationType[]>([]);
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
     pageSize: 10,
     total: 0,
   });
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingNomination, setEditingNomination] = useState<RedHatAgentNomination | null>(null);
+  const [editingNomination, setEditingNomination] = useState<RedHatAgentNominationType | null>(null);
   const [editForm] = Form.useForm();
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export const RedHatAgentNomination = () => {
     }
   };
 
-  const handleEdit = (nomination: RedHatAgentNomination) => {
+  const handleEdit = (nomination: RedHatAgentNominationType) => {
     setEditingNomination(nomination);
     editForm.setFieldsValue({
       name: nomination.name,
@@ -126,7 +126,7 @@ export const RedHatAgentNomination = () => {
     }
   };
 
-  const columns: ColumnsType<RedHatAgentNomination> = [
+  const columns: ColumnsType<RedHatAgentNominationType> = [
     {
       title: 'Name',
       dataIndex: 'name',
@@ -225,7 +225,7 @@ export const RedHatAgentNomination = () => {
       </div>
 
       <Spin spinning={loading}>
-        <Table<RedHatAgentNomination>
+        <Table<RedHatAgentNominationType>
           columns={columns}
           dataSource={paginatedData}
           rowKey="id"

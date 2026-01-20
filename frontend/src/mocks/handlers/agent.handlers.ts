@@ -217,7 +217,8 @@ export const agentHandlers = [
 
   // Get agent commands
   http.get(`${API_BASE_URL}/agents/:id/commands`, ({ params }) => {
-    const commands = mockCommands[params.id] || [];
+    const agentId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const commands = agentId ? mockCommands[agentId] || [] : [];
     return HttpResponse.json(commands);
   }),
 

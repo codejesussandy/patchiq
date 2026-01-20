@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Input,
   Button,
@@ -170,7 +170,7 @@ const mockBundles: BundleItem[] = [
 ];
 
 // Mock tasks for deployments - these would come from API
-const getMockTasksForDeployment = (deploymentId: string): TaskItem[] => {
+const getMockTasksForDeployment = (_deploymentId: string): TaskItem[] => {
   return [
     {
       id: 62,

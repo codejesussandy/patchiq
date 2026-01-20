@@ -33,6 +33,13 @@ export type Patch = {
   supersedes?: string[];
 };
 
+export type AffectedProduct = {
+  id: string;
+  name: string;
+  vendor: string;
+  version: string;
+};
+
 export type AffectedSoftware = {
   id: string;
   softwareName: string;

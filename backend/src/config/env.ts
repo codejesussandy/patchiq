@@ -50,8 +50,41 @@ const envSchema = z.object({
     .transform((v) => v === 'true')
     .default('true'),
 
-  // Optional: NIST NVD API
+  // NIST NVD API
   NIST_NVD_API_KEY: z.string().optional(),
+  NVD_API_URL: z.string().url().optional().default('https://services.nvd.nist.gov/rest/json/cves/2.0'),
+
+  // MITRE CVE
+  MITRE_CVE_URL: z.string().url().optional().default('https://cveawg.mitre.org/api/cve'),
+  MITRE_CVE_GITHUB_URL: z.string().url().optional().default('https://raw.githubusercontent.com/CVEProject/cvelistV5/main'),
+
+  // CISA KEV (Known Exploited Vulnerabilities)
+  CISA_KEV_URL: z.string().url().optional().default('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'),
+
+  // EPSS (Exploit Prediction Scoring System)
+  FIRST_EPSS_URL: z.string().url().optional().default('https://api.first.org/data/v1/epss'),
+
+  // OVAL Repositories
+  OVAL_CIS_URL: z.string().optional().default('https://oval.cisecurity.org'),
+  OVAL_REDHAT_URL: z.string().optional().default('https://www.redhat.com/security/data/oval/v2'),
+  OVAL_UBUNTU_URL: z.string().optional().default('https://security-metadata.canonical.com/oval'),
+  OVAL_DEBIAN_URL: z.string().optional().default('https://www.debian.org/security/oval'),
+  OVAL_SUSE_URL: z.string().optional().default('http://ftp.suse.com/pub/projects/security/oval'),
+  OVAL_ORACLE_URL: z.string().optional().default('https://linux.oracle.com/security/oval'),
+  OVAL_ALPINE_URL: z.string().optional().default('https://secdb.alpinelinux.org'),
+
+  // Microsoft Security
+  MSRC_API_URL: z.string().url().optional().default('https://api.msrc.microsoft.com'),
+  MS_UPDATE_CATALOG_URL: z.string().optional().default('https://www.catalog.update.microsoft.com'),
+
+  // Third-Party Security Feeds
+  GITHUB_ADVISORY_URL: z.string().url().optional().default('https://api.github.com/advisories'),
+  GITHUB_TOKEN: z.string().optional(),
+
+  // CVE Sync Settings
+  CVE_SYNC_INTERVAL_HOURS: z.string().transform(Number).optional().default('24'),
+  CVE_SYNC_BATCH_SIZE: z.string().transform(Number).optional().default('1000'),
+  CVE_SYNC_MAX_PAGES: z.string().transform(Number).optional().default('100'),
 
   // Optional: SMTP
   SMTP_HOST: z.string().optional(),
@@ -69,6 +102,21 @@ const envSchema = z.object({
 
   // Encryption
   ENCRYPTION_KEY: z.string().min(32).optional(),
+
+  // Redis (for BullMQ job queue)
+  REDIS_URL: z.string().url().optional().default('redis://localhost:6379'),
+
+  // MinIO (Patch Repository Storage)
+  MINIO_ENDPOINT: z.string().optional().default('localhost'),
+  MINIO_PORT: z.string().transform(Number).optional().default('9000'),
+  MINIO_ACCESS_KEY: z.string().optional().default('patchiq_admin'),
+  MINIO_SECRET_KEY: z.string().optional().default('patchiq_secret_key'),
+  MINIO_BUCKET: z.string().optional().default('patches'),
+  MINIO_USE_SSL: z
+    .string()
+    .transform((v) => v === 'true')
+    .optional()
+    .default('false'),
 });
 
 // Validate environment variables

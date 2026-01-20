@@ -35,7 +35,6 @@ import {
   ClockCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import type { MenuProps } from 'antd';
 import { patchService, type Patch, type AffectedProduct } from '../../services/patch.service';
 import { SeverityBadge, OSIcon } from '../../components/patches';
 import dayjs from 'dayjs';
@@ -67,11 +66,6 @@ export const AllPatches = () => {
 
   // For Create Patch Step 2
   const [affectedProducts] = useState<AffectedProduct[]>([]);
-  const [selectedPatch, setSelectedPatch] = useState<Patch | null>(null);
-
-  // Scan Endpoints Modal
-  const [scanModalVisible, setScanModalVisible] = useState(false);
-  const [scanForm] = Form.useForm();
 
   // Bulk Add Modal
   const [bulkAddModalVisible, setBulkAddModalVisible] = useState(false);
@@ -108,29 +102,6 @@ export const AllPatches = () => {
     navigate(`/patches/${patch.id}`);
   };
 
-  const handleEditPatch = (patch: Patch) => {
-    setEditingPatch(patch);
-    setCurrentStep(0);
-    // Pre-fill the create patch form with patch details
-    form.setFieldsValue({
-      software: patch.software,
-      platform: patch.platform,
-      description: patch.description,
-      category: patch.category,
-      severity: patch.severity,
-      bulletinId: patch.bulletinId,
-      kbNumber: patch.kbNumber,
-      releaseDate: patch.releaseDate ? dayjs(patch.releaseDate) : null,
-      rebootRequired: patch.rebootRequired === true ? true : patch.rebootRequired === false ? false : 'maybe',
-      supportUninstallation: patch.supportUninstallation,
-      architecture: patch.architecture,
-      referenceUrl: patch.referenceUrl,
-      languagesSupported: patch.languagesSupported || [],
-      tags: patch.tags || [],
-    });
-    setCreateModalVisible(true);
-  };
-
   const handleEditPatchSubmit = async () => {
     try {
       const values = await editForm.validateFields();
@@ -160,46 +131,6 @@ export const AllPatches = () => {
       }
     } catch (error) {
       message.error('Failed to update patch');
-    }
-  };
-
-  const handleDeletePatch = (patch: Patch) => {
-    Modal.confirm({
-      title: 'Delete Patch',
-      content: `Are you sure you want to delete ${patch.software}?`,
-      okText: 'Delete',
-      okType: 'danger',
-      onOk: async () => {
-        try {
-          await patchService.deletePatch(patch.id);
-          message.success('Patch deleted successfully');
-          fetchPatches();
-        } catch (error) {
-          message.error('Failed to delete patch');
-        }
-      },
-    });
-  };
-
-  const handleScanEndpoints = (patch: Patch) => {
-    setSelectedPatch(patch);
-    setScanModalVisible(true);
-  };
-
-  const handleScanSubmit = async () => {
-    try {
-      const values = await scanForm.validateFields();
-      if (selectedPatch) {
-        await patchService.scanEndpoints(selectedPatch.id, {
-          scope: values.scope,
-          endpointIds: values.endpointIds || [],
-        });
-        message.success('Endpoint scan initiated successfully');
-        setScanModalVisible(false);
-        scanForm.resetFields();
-      }
-    } catch (error) {
-      message.error('Failed to initiate scan');
     }
   };
 
@@ -365,9 +296,12 @@ export const AllPatches = () => {
   ];
 
   const filteredPatches = patches.filter((patch) => {
-    // Text search filter
-    const matchesSearch = patch.software.toLowerCase().includes(searchText.toLowerCase()) ||
-      patch.patchId.toLowerCase().includes(searchText.toLowerCase());
+    // Text search filter - add null checks
+    const software = patch.software || '';
+    const patchId = patch.patchId || '';
+    const searchLower = searchText.toLowerCase();
+    const matchesSearch = software.toLowerCase().includes(searchLower) ||
+      patchId.toLowerCase().includes(searchLower);
 
     // OS filter from URL params
     if (osFilter) {
@@ -757,46 +691,6 @@ export const AllPatches = () => {
           ]}
         />
         {currentStep === 0 ? renderCreatePatchStep1() : renderCreatePatchStep2()}
-      </Modal>
-
-      {/* Scan Endpoints Modal */}
-      <Modal
-        title="Scan Endpoints For Patches"
-        open={scanModalVisible}
-        onCancel={() => {
-          setScanModalVisible(false);
-          scanForm.resetFields();
-        }}
-        onOk={handleScanSubmit}
-        okText="Start Scanning"
-        width={600}
-      >
-        <Form form={scanForm} layout="vertical">
-          <Form.Item
-            name="scope"
-            label="Scope"
-            rules={[{ required: true, message: 'Please select scope' }]}
-            initialValue="All End Points"
-          >
-            <Select>
-              <Option value="All End Points">All End Points</Option>
-              <Option value="Specific Groups">Specific Groups</Option>
-              <Option value="Custom">Custom</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="endpointIds"
-            label="Select End Points"
-            rules={[{ required: true, message: 'Please select endpoints' }]}
-          >
-            <Select mode="multiple" placeholder="Select from available">
-              <Option value="1">DESKTOP-7CC6ETJ</Option>
-              <Option value="2">LAPTOP-9XK2PLM</Option>
-              <Option value="3">WORKSTATION-5YT8QWE</Option>
-            </Select>
-          </Form.Item>
-        </Form>
       </Modal>
 
       {/* Edit Patch Modal */}

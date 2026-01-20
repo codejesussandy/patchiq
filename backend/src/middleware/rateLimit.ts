@@ -4,7 +4,7 @@ import { TooManyRequestsError } from '@shared/errors';
 
 export const defaultRateLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.maxRequests,
+  max: 1000, // Increased for development
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req, _res, next) => {
@@ -16,7 +16,7 @@ export const defaultRateLimiter = rateLimit({
 // Stricter rate limit for auth endpoints
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 requests per 15 minutes
+  max: 100, // 100 requests per 15 minutes (increased for development)
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req, _res, next) => {

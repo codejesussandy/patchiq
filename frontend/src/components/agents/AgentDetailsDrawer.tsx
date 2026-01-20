@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Drawer, Tabs, Table, Tag, Space, Spin, Empty, Button, Divider, Statistic, Row, Col, Typography, Badge } from 'antd';
 import { LinkOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import type { ColumnsType, TableProps } from 'antd/es/table';
+import type { ColumnsType } from 'antd/es/table';
 import type { Agent, Command } from '../../types/agent.types';
 import { agentService } from '../../services/agent.service';
 
@@ -122,11 +122,10 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
                 />
               </Col>
               <Col span={12}>
-                <Statistic
-                  title="Status"
-                  value={<Badge status={getStatusColor(agent.status)} text={agent.status} />}
-                  valueStyle={{ fontSize: '14px' }}
-                />
+                <div>
+                  <div style={{ color: 'rgba(0, 0, 0, 0.45)', fontSize: '14px', marginBottom: '4px' }}>Status</div>
+                  <Badge status={getStatusColor(agent.status)} text={agent.status} />
+                </div>
               </Col>
             </Row>
           </div>

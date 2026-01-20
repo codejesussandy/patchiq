@@ -1,5 +1,10 @@
-// Agent Types
-export type Agent = {
+// Re-export the canonical Agent type from agent.types.ts
+// Note: Discovery module uses the same Agent type as the main agent module
+export type { Agent, AgentStatus } from './agent.types';
+
+// Legacy/simplified agent type for discovery listing (backwards compatibility)
+// This is used by discovery handlers that have simplified mock data
+export type DiscoveryAgent = {
   id: string;
   name: string;
   status: 'Connected' | 'Disconnected' | 'Offline';
@@ -9,7 +14,11 @@ export type Agent = {
   createdAt?: string;
 };
 
-export type AgentFormData = Omit<Agent, 'id' | 'lastConnectedTime' | 'status' | 'createdAt'>;
+export type AgentFormData = {
+  name: string;
+  os: string;
+  version: string;
+};
 
 // IP Range Types
 export type IPRange = {

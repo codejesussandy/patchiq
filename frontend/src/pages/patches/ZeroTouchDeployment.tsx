@@ -16,7 +16,6 @@ import {
   Card,
   Checkbox,
   Switch,
-  TimePicker,
 } from 'antd';
 import {
   SearchOutlined,
@@ -338,7 +337,7 @@ export const ZeroTouchDeployment = () => {
                 placeholder="Search and select computers"
                 showSearch
                 filterOption={(input, option) =>
-                  (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+                  String(option?.label ?? option?.value ?? '').toLowerCase().includes(input.toLowerCase())
                 }
               >
                 <Option value="DESKTOP-7CC6ETJ">DESKTOP-7CC6ETJ</Option>

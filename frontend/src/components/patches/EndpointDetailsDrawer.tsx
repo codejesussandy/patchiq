@@ -11,7 +11,6 @@ import {
   Statistic,
   Space,
   Spin,
-  Divider,
   message,
   Button,
 } from 'antd';
@@ -29,7 +28,7 @@ import {
   LinkOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { patchService, type EndpointDetails, type AssetRelatedPatch, type PatchSummary, type AssetGroup } from '../../services/patch.service';
+import { patchService, type EndpointDetails, type AssetRelatedPatch, type EndpointRelatedPatch } from '../../services/patch.service';
 import { SeverityBadge } from './SeverityBadge';
 
 const { Title, Text } = Typography;

@@ -17,7 +17,6 @@ import {
   Switch,
   Popconfirm,
   message,
-  Checkbox,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';

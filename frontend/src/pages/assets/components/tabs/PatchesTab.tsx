@@ -12,7 +12,6 @@ import {
   Progress,
   Timeline,
   Badge,
-  Tooltip,
   Button,
   message,
 } from 'antd';
@@ -338,7 +337,7 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
                     wrapperStyle={{ fontSize: '11px' }}
                   />
                   <RechartsTooltip
-                    formatter={(value: number, name: string) => [`${value} patches`, name]}
+                    formatter={(value: number | undefined, name: string | undefined) => [`${value ?? 0} patches`, name ?? '']}
                   />
                 </PieChart>
               </ResponsiveContainer>

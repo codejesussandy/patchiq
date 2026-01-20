@@ -11,7 +11,6 @@ import {
   Tooltip,
   Checkbox,
   Drawer,
-  Divider,
 } from 'antd';
 import {
   SearchOutlined,

@@ -14,7 +14,6 @@ import {
   Checkbox,
   Row,
   Col,
-  Empty,
 } from 'antd';
 import {
   SearchOutlined,
@@ -23,7 +22,6 @@ import {
   ReloadOutlined,
   DownloadOutlined,
   PlusOutlined,
-  MinusOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { settingsService } from '../../services/settings.service';

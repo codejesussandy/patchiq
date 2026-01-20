@@ -38,6 +38,7 @@ let mockUsers: User[] = [
     status: 'Active',
     lastLogin: 'March 5 2024, 09:45 am',
     createdAt: '2025-11-28T10:00:00Z',
+    updatedAt: '2025-11-28T10:00:00Z',
     timezone: 'IST',
     organization: 'Global Organization',
     department: 'Global Department',
@@ -56,6 +57,7 @@ let mockUsers: User[] = [
     status: 'Active',
     lastLogin: 'March 5 2024, 09:45 am',
     createdAt: '2025-11-28T10:21:34Z',
+    updatedAt: '2025-11-28T10:21:34Z',
     timezone: 'IST',
     organization: 'Kogta Financial (I) Limited',
     department: 'Accounts',
@@ -74,6 +76,7 @@ let mockUsers: User[] = [
     status: 'Active',
     lastLogin: 'March 5 2024, 09:45 am',
     createdAt: '2025-11-28T12:45:48Z',
+    updatedAt: '2025-11-28T12:45:48Z',
     timezone: 'IST',
     organization: 'Kogta Financial (I) Limited',
     department: 'Administration',
@@ -92,6 +95,7 @@ let mockUsers: User[] = [
     status: 'Active',
     lastLogin: 'March 5 2024, 09:45 am',
     createdAt: '2025-11-28T12:46:40Z',
+    updatedAt: '2025-11-28T12:46:40Z',
     timezone: 'IST',
     organization: 'Kogta Financial (I) Limited',
     department: 'Audit',
@@ -110,6 +114,7 @@ let mockUsers: User[] = [
     status: 'Active',
     lastLogin: 'March 5 2024, 09:45 am',
     createdAt: '2025-11-28T12:47:46Z',
+    updatedAt: '2025-11-28T12:47:46Z',
     timezone: 'IST',
     organization: 'Kogta Financial (I) Limited',
     department: 'Branding',
@@ -128,6 +133,7 @@ let mockUsers: User[] = [
     status: 'Invite Sent',
     lastLogin: 'Never',
     createdAt: '2025-11-28T12:48:34Z',
+    updatedAt: '2025-11-28T12:48:34Z',
     timezone: 'IST',
     organization: 'Kogta Financial (I) Limited',
     department: 'CMS & Banking',
@@ -1101,12 +1107,11 @@ export const settingsHandlers = [
     return HttpResponse.json({ success: true });
   }),
 
-  http.post(`${API_BASE_URL}/settings/users/invite`, async ({ request }) => {
-    const data = (await request.json()) as any;
+  http.post(`${API_BASE_URL}/settings/users/invite`, async () => {
     return HttpResponse.json({ success: true, message: 'Invitation sent' });
   }),
 
-  http.post(`${API_BASE_URL}/settings/users/:id/reset-password`, ({ params }) => {
+  http.post(`${API_BASE_URL}/settings/users/:id/reset-password`, () => {
     return HttpResponse.json({ success: true, message: 'Password reset email sent' });
   }),
 
@@ -1119,7 +1124,7 @@ export const settingsHandlers = [
     return HttpResponse.json({ success: true });
   }),
 
-  http.get(`${API_BASE_URL}/settings/users/:id/audit-log`, ({ params }) => {
+  http.get(`${API_BASE_URL}/settings/users/:id/audit-log`, () => {
     return HttpResponse.json([
       { action: 'Created', timestamp: '2024-01-15T10:00:00Z', by: 'System' },
       { action: 'Login', timestamp: '2024-03-05T09:45:00Z', by: 'User' },
@@ -1256,11 +1261,11 @@ export const settingsHandlers = [
     return HttpResponse.json({ success: true });
   }),
 
-  http.get(`${API_BASE_URL}/settings/policies/:id/affected-users`, ({ params }) => {
+  http.get(`${API_BASE_URL}/settings/policies/:id/affected-users`, () => {
     return HttpResponse.json(mockUsers.slice(0, 5));
   }),
 
-  http.get(`${API_BASE_URL}/settings/policies/:id/audit`, ({ params }) => {
+  http.get(`${API_BASE_URL}/settings/policies/:id/audit`, () => {
     return HttpResponse.json([
       { action: 'Created', timestamp: '2024-01-15T10:00:00Z', by: 'Alice Johnson' },
       { action: 'Modified', timestamp: '2024-02-01T10:00:00Z', by: 'Alice Johnson' },

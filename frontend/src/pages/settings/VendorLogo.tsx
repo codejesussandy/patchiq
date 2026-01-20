@@ -23,18 +23,18 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { settingsService } from '../../services/settings.service';
-import type { VendorLogo } from '../../types/settings.types';
+import type { VendorLogo as VendorLogoType } from '../../types/settings.types';
 
 const { Title, Text } = Typography;
 
 export const VendorLogo = () => {
-  const [logos, setLogos] = useState<VendorLogo[]>([]);
+  const [logos, setLogos] = useState<VendorLogoType[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [editingLogo, setEditingLogo] = useState<VendorLogo | null>(null);
+  const [editingLogo, setEditingLogo] = useState<VendorLogoType | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [uploading, setUploading] = useState(false);
@@ -75,7 +75,7 @@ export const VendorLogo = () => {
     logo.name.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  const handleOpenModal = (mode: 'create' | 'edit', logo?: VendorLogo) => {
+  const handleOpenModal = (mode: 'create' | 'edit', logo?: VendorLogoType) => {
     setModalMode(mode);
     setLogoFile(null);
     setLogoPreview('');
@@ -146,7 +146,7 @@ export const VendorLogo = () => {
     }
   };
 
-  const handleDelete = (logo: VendorLogo) => {
+  const handleDelete = (logo: VendorLogoType) => {
     Modal.confirm({
       title: 'Delete Vendor Logo',
       content: `Are you sure you want to delete "${logo.name}"?`,
@@ -234,14 +234,14 @@ export const VendorLogo = () => {
     setFilterModalVisible(false);
   };
 
-  const tableColumns: ColumnsType<VendorLogo> = [
+  const tableColumns: ColumnsType<VendorLogoType> = [
     filters.showLogo
       ? {
           title: 'Logo',
           dataIndex: 'logoUrl',
           key: 'logo',
           width: 80,
-          render: (logoUrl: string, record: VendorLogo) => (
+          render: (logoUrl: string, record: VendorLogoType) => (
             <div
               style={{
                 width: 40,
@@ -276,8 +276,8 @@ export const VendorLogo = () => {
           title: 'Name',
           dataIndex: 'name',
           key: 'name',
-          sorter: (a: VendorLogo, b: VendorLogo) => a.name.localeCompare(b.name),
-          render: (text: string, record: VendorLogo) => (
+          sorter: (a: VendorLogoType, b: VendorLogoType) => a.name.localeCompare(b.name),
+          render: (text: string, record: VendorLogoType) => (
             <a
               href="#"
               onClick={(e) => {
@@ -297,7 +297,7 @@ export const VendorLogo = () => {
           dataIndex: 'type',
           key: 'type',
           width: 120,
-          sorter: (a: VendorLogo, b: VendorLogo) => a.type.localeCompare(b.type),
+          sorter: (a: VendorLogoType, b: VendorLogoType) => a.type.localeCompare(b.type),
           render: (type: string) => type,
         }
       : null,
@@ -326,7 +326,7 @@ export const VendorLogo = () => {
       key: 'actions',
       width: 100,
       align: 'right' as const,
-      render: (_: any, record: VendorLogo) => (
+      render: (_: any, record: VendorLogoType) => (
         <Space>
           <Tooltip title="Edit">
             <Button
@@ -348,7 +348,7 @@ export const VendorLogo = () => {
         </Space>
       ),
     },
-  ].filter(Boolean) as ColumnsType<VendorLogo>;
+  ].filter(Boolean) as ColumnsType<VendorLogoType>;
 
   return (
     <div style={{ padding: '24px' }}>

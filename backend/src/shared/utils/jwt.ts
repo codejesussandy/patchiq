@@ -1,11 +1,20 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
+import crypto from 'crypto';
 import { config } from '@config/index';
 import { TokenPayload, TokenPair } from '@shared/types';
 import { UnauthorizedError } from '@shared/errors';
 
+/**
+ * Generate a unique JWT ID (jti) to ensure token uniqueness
+ */
+function generateJti(): string {
+  return crypto.randomUUID();
+}
+
 export function signAccessToken(payload: Omit<TokenPayload, 'type'>): string {
   const options: SignOptions = {
     expiresIn: config.jwt.accessExpiry as jwt.SignOptions['expiresIn'],
+    jwtid: generateJti(), // Add unique identifier to prevent token collision
   };
   return jwt.sign({ ...payload, type: 'access' }, config.jwt.secret, options);
 }
@@ -13,6 +22,7 @@ export function signAccessToken(payload: Omit<TokenPayload, 'type'>): string {
 export function signRefreshToken(payload: Omit<TokenPayload, 'type'>): string {
   const options: SignOptions = {
     expiresIn: config.jwt.refreshExpiry as jwt.SignOptions['expiresIn'],
+    jwtid: generateJti(), // Add unique identifier to prevent token collision
   };
   return jwt.sign({ ...payload, type: 'refresh' }, config.jwt.secret, options);
 }

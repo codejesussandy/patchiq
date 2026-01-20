@@ -21,15 +21,19 @@ export interface RefreshResponse {
 }
 
 // Public user data (safe to expose)
+// Matches frontend User type expectations
 export interface UserPublic {
   id: string;
   email: string;
-  name: string | null;
+  firstName: string;
+  lastName: string;
   role: string;
   isOnboarded: boolean;
   organizationId?: string | null;
   departmentId?: string | null;
   locationId?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // User me response (more detailed)

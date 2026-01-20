@@ -28,7 +28,7 @@ import type { ColumnsType } from 'antd/es/table';
 import type { SecurityCompliance, LocalUser, MissingPatch, DriveEncryption, FirewallProfile, AntivirusProduct } from '../../../../types/security.types';
 import { assetService } from '../../../../services/asset.service';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface SecurityTabProps {
   assetId: string;
@@ -736,7 +736,7 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
 
           {security.patchStatus.missingPatches && security.patchStatus.missingPatches.length > 0 && (
             <>
-              <Divider orientation="left" style={{ marginTop: 0 }}>Missing Patches</Divider>
+              <Divider titlePlacement="left" style={{ marginTop: 0 }}>Missing Patches</Divider>
               <Table
                 columns={missingPatchColumns}
                 dataSource={security.patchStatus.missingPatches}

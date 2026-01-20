@@ -16,7 +16,7 @@ interface RiskScoreFormValues {
 export const RiskScoreSettings = () => {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm<RiskScoreFormValues>();
-  const [currentRiskScore, setCurrentRiskScore] = useState<RiskScore | null>(null);
+  const [_currentRiskScore, setCurrentRiskScore] = useState<RiskScore | null>(null);
   const [originalFormValues, setOriginalFormValues] = useState<RiskScoreFormValues | null>(null);
 
   useEffect(() => {

@@ -20,14 +20,12 @@ import {
   ApiOutlined,
   CloudOutlined,
   LaptopOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { NetworkConfiguration, NetworkAdapterExpanded, IPConfiguration } from '../../../../types/network.types';
 import { assetService } from '../../../../services/asset.service';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface NetworkTabProps {
   assetId: string;

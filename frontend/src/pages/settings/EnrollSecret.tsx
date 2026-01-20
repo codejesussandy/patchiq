@@ -34,7 +34,7 @@ export const EnrollSecret = () => {
   const [submitting, setSubmitting] = useState(false);
   const [organizations, setOrganizations] = useState<Array<{ id: string; name: string }>>([]);
   const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
-  const [selectedSecret, setSelectedSecret] = useState<EnrollSecretType | null>(null);
+  const [_selectedSecret, setSelectedSecret] = useState<EnrollSecretType | null>(null);
   const [form] = Form.useForm();
   const [viewForm] = Form.useForm();
   const [pagination, setPagination] = useState<TablePaginationConfig>({

@@ -52,6 +52,26 @@ services:
     networks:
       - patchiq_network
 
+  minio:
+    image: minio/minio:latest
+    container_name: patchiq_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: patchiq_admin
+      MINIO_ROOT_PASSWORD: patchiq_secret_key
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web Console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - patchiq_network
+
   backend:
     build:
       context: .
@@ -62,12 +82,20 @@ services:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/patchiq_dev
       - REDIS_URL=redis://redis:6379
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=patchiq_admin
+      - MINIO_SECRET_KEY=patchiq_secret_key
+      - MINIO_BUCKET=patches
+      - MINIO_USE_SSL=false
     ports:
       - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     volumes:
       - .:/app
@@ -78,6 +106,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  minio_data:
 
 networks:
   patchiq_network:

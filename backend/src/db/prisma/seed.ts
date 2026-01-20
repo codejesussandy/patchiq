@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { WHITELIST_SOURCES } from '../../modules/patch-repository/whitelist-sources.seed';
 
 const prisma = new PrismaClient();
 
@@ -196,12 +197,12 @@ async function main() {
       description:
         'A security feature bypass vulnerability exists in Windows SmartScreen that could allow an attacker to bypass security warnings.',
       severity: 'HIGH',
-      cvssScore: 7.6,
-      cvssVector: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N',
-      attackVector: 'NETWORK',
-      attackComplexity: 'LOW',
+      cvss3BaseScore: 7.6,
+      cvss3VectorString: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N',
+      cvss3AttackVector: 'NETWORK',
+      cvss3AttackComplexity: 'LOW',
       publishedDate: new Date('2024-02-13'),
-      exploitAvailable: true,
+      exploitable: true,
       patchAvailable: true,
     },
     {
@@ -210,12 +211,12 @@ async function main() {
       description:
         'A security feature bypass vulnerability exists when handling Internet Shortcut Files.',
       severity: 'CRITICAL',
-      cvssScore: 8.1,
-      cvssVector: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N',
-      attackVector: 'NETWORK',
-      attackComplexity: 'LOW',
+      cvss3BaseScore: 8.1,
+      cvss3VectorString: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N',
+      cvss3AttackVector: 'NETWORK',
+      cvss3AttackComplexity: 'LOW',
       publishedDate: new Date('2024-02-13'),
-      exploitAvailable: true,
+      exploitable: true,
       patchAvailable: true,
     },
     {
@@ -223,12 +224,12 @@ async function main() {
       title: 'Example Low Severity Vulnerability',
       description: 'An example low severity vulnerability for testing.',
       severity: 'LOW',
-      cvssScore: 3.1,
-      cvssVector: 'CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:U/C:L/I:N/A:N',
-      attackVector: 'LOCAL',
-      attackComplexity: 'HIGH',
+      cvss3BaseScore: 3.1,
+      cvss3VectorString: 'CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:U/C:L/I:N/A:N',
+      cvss3AttackVector: 'LOCAL',
+      cvss3AttackComplexity: 'HIGH',
       publishedDate: new Date('2024-01-15'),
-      exploitAvailable: false,
+      exploitable: false,
       patchAvailable: false,
     },
   ];
@@ -357,6 +358,58 @@ async function main() {
     });
   }
   console.log('Created', alertConfigs.length, 'alert configurations');
+
+  // ============================================
+  // Patch Repository Sources (Whitelist)
+  // ============================================
+
+  console.log('\nSeeding patch repository whitelist sources...');
+
+  let patchSourcesCreated = 0;
+  for (const source of WHITELIST_SOURCES) {
+    try {
+      await prisma.patchSource.upsert({
+        where: {
+          vendor_name: {
+            vendor: source.vendor,
+            name: source.name,
+          },
+        },
+        update: {
+          category: source.category,
+          platform: source.platform,
+          baseUrl: source.baseUrl,
+          urlPatterns: source.urlPatterns || [],
+          priority: source.priority || 50,
+          isEnabled: source.isEnabled ?? true,
+          requiresAuth: source.requiresAuth || false,
+          authType: source.authType,
+          authConfig: source.authConfig,
+          syncSchedule: source.syncSchedule,
+          metadata: source.metadata,
+        },
+        create: {
+          name: source.name,
+          vendor: source.vendor,
+          category: source.category,
+          platform: source.platform,
+          baseUrl: source.baseUrl,
+          urlPatterns: source.urlPatterns || [],
+          priority: source.priority || 50,
+          isEnabled: source.isEnabled ?? true,
+          requiresAuth: source.requiresAuth || false,
+          authType: source.authType,
+          authConfig: source.authConfig,
+          syncSchedule: source.syncSchedule,
+          metadata: source.metadata,
+        },
+      });
+      patchSourcesCreated++;
+    } catch (error) {
+      console.error(`Failed to seed patch source "${source.name}":`, error);
+    }
+  }
+  console.log('Created/Updated', patchSourcesCreated, 'patch repository sources');
 
   console.log('\nDatabase seed completed successfully!');
   console.log('\n=== Login Credentials ===');

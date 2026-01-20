@@ -392,8 +392,7 @@ describe('E2E: Agent Lifecycle', () => {
   });
 
   describe('Agent Token Refresh', () => {
-    // TODO: Implement agent token refresh in service
-    it.skip('should refresh agent token', async () => {
+    it('should refresh agent token', async () => {
       // Get initial registration for refresh token
       const regRes = await request(app)
         .post('/api/agent/register')

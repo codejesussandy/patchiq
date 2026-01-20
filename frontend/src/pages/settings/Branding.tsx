@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Button, message, Upload, Typography, Space, Card, Spin } from 'antd';
+import { Button, message, Typography, Space, Card, Spin } from 'antd';
 import { CloudUploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/es/upload';
 import { settingsService } from '../../services/settings.service';

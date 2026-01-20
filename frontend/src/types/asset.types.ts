@@ -43,6 +43,7 @@ export type AssetRelatedPatch = {
   severity: 'CRITICAL' | 'High' | 'Medium' | 'Low' | 'UNSPECIFIED';
   status: AssetPatchStatus;
   kbNumber?: string;
+  releaseDate?: string;
 };
 
 // Deployment history for an asset

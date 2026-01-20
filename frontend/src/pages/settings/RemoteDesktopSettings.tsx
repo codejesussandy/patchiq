@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button, message, Typography, Space, Switch, Spin, Segmented } from 'antd';
+import { Button, message, Typography, Switch, Spin, Segmented } from 'antd';
 import { settingsService } from '../../services/settings.service';
 import type { RemoteDesktopSettings as RemoteDesktopSettingsType } from '../../types/settings.types';
 
@@ -8,7 +8,7 @@ const { Title, Text } = Typography;
 export const RemoteDesktopSettings = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [settings, setSettings] = useState<RemoteDesktopSettingsType | null>(null);
+  const [_settings, setSettings] = useState<RemoteDesktopSettingsType | null>(null);
   const [formData, setFormData] = useState({
     connectionType: 'Local' as 'Local' | 'Remote',
     remoteSessionIndicator: false,

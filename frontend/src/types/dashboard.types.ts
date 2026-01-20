@@ -25,6 +25,7 @@ export interface EndpointDistribution {
   name: string;
   value: number;
   color?: string;
+  [key: string]: unknown;
 }
 
 export interface VulnerabilityTrend {

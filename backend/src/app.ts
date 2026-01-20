@@ -7,6 +7,7 @@ import { errorHandler, notFoundHandler, defaultRateLimiter } from '@middleware/i
 import { authRoutes, userRoutes } from '@modules/auth';
 import { agentsRoutes, agentApiRoutes, agentVersionsRoutes } from '@modules/agents';
 import { vulnerabilityRoutes } from '@modules/vulnerabilities';
+import cveSyncRoutes from '@modules/vulnerabilities/cve-sync.routes';
 import { assetsRoutes } from '@modules/assets';
 import { patchRoutes, deploymentRoutes, patchTestRoutes, zeroTouchConfigRoutes } from '@modules/patches';
 import { discoveryRoutes } from '@modules/discovery';
@@ -14,6 +15,7 @@ import { jobsRoutes, deploymentPoliciesRoutes } from '@modules/jobs';
 import { dashboardRoutes } from '@modules/dashboard';
 import { reportsRoutes } from '@modules/reports';
 import { settingsRoutes } from '@modules/settings';
+import { patchRepositoryRoutes } from '@modules/patch-repository';
 
 export function createApp(): Application {
   const app = express();
@@ -97,6 +99,9 @@ export function createApp(): Application {
   // Vulnerabilities routes
   app.use(`/${config.apiVersion}/vulnerabilities`, vulnerabilityRoutes);
 
+  // CVE Sync routes
+  app.use(`/${config.apiVersion}/vulnerabilities/sync`, cveSyncRoutes);
+
   // Jobs routes
   app.use(`/${config.apiVersion}/jobs`, jobsRoutes);
 
@@ -114,6 +119,9 @@ export function createApp(): Application {
 
   // Settings routes
   app.use(`/${config.apiVersion}/settings`, settingsRoutes);
+
+  // Patch Repository routes (Central patch storage with MinIO)
+  app.use(`/${config.apiVersion}/patch-repository`, patchRepositoryRoutes);
 
   // Tags routes (included in assets module)
 

@@ -4,13 +4,21 @@ import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { settingsService } from '../../services/settings.service';
 import type { PatchPreference, PatchPreferenceFormData } from '../../types/settings.types';
+import type { Dayjs } from 'dayjs';
 
 dayjs.extend(customParseFormat);
 
 const { Title, Text } = Typography;
 
+// Form values type with Dayjs for TimePicker fields
+type FormValues = Omit<PatchPreferenceFormData, 'patchApprovalScheduleTime' | 'scheduleTime' | 'zeroTouchDeploymentScheduleTime'> & {
+  patchApprovalScheduleTime: Dayjs;
+  scheduleTime: Dayjs;
+  zeroTouchDeploymentScheduleTime: Dayjs;
+};
+
 export const PatchPreferences = () => {
-  const [form] = Form.useForm<PatchPreferenceFormData>();
+  const [form] = Form.useForm<FormValues>();
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [data, setData] = useState<PatchPreference | null>(null);

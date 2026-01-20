@@ -34,8 +34,7 @@ describe('E2E: Authentication', () => {
   });
 
   describe('Complete Auth Lifecycle', () => {
-    // TODO: Fix 500 error in refresh token - possible issue with token hash lookup
-    it.skip('should complete full auth lifecycle: login -> access -> refresh -> logout', async () => {
+    it('should complete full auth lifecycle: login -> access -> refresh -> logout', async () => {
       // 1. Login
       const loginRes = await request(app)
         .post('/v1/auth/login')

@@ -649,16 +649,95 @@ model PatchAffectedProduct {
 }
 
 model PatchFileDetail {
-  id       String  @id @default(uuid())
-  patchId  String  @map("patch_id")
-  patch    Patch   @relation(fields: [patchId], references: [id], onDelete: Cascade)
-  fileName String  @map("file_name")
-  version  String?
-  size     String?
-  path     String?
+  id              String    @id @default(uuid())
+  patchId         String    @map("patch_id")
+  patch           Patch     @relation(fields: [patchId], references: [id], onDelete: Cascade)
+  fileName        String    @map("file_name")
+  version         String?
+  size            String?
+  sizeBytes       BigInt?   @map("size_bytes")
+  path            String?
+  // MinIO storage fields
+  minioObjectKey  String?   @map("minio_object_key")   // e.g., "windows/microsoft/KB5034441/x64/patch.msu"
+  minioBucket     String?   @map("minio_bucket")        // e.g., "patches"
+  checksum        String?                               // SHA256 hash
+  checksumType    String?   @map("checksum_type")       // "sha256" | "md5"
+  sourceUrl       String?   @map("source_url")          // Original vendor URL
+  downloadStatus  String    @default("pending") @map("download_status") // pending | downloading | completed | failed
+  downloadedAt    DateTime? @map("downloaded_at")
+  downloadError   String?   @map("download_error")
+  retryCount      Int       @default(0) @map("retry_count")
 
   @@index([patchId])
+  @@index([downloadStatus])
+  @@index([minioObjectKey])
   @@map("patch_file_details")
+}
+
+// ============================================
+// Patch Repository Models (Central Patch Storage)
+// ============================================
+
+model PatchSource {
+  id              String    @id @default(uuid())
+  name            String                              // e.g., "Microsoft Windows Update"
+  vendor          String                              // e.g., "Microsoft", "Apple", "Adobe"
+  category        String                              // "os", "firmware", "enterprise", "runtime", "security", "browser", "utility"
+  platform        String?                             // "windows", "macos", "linux", "cross-platform"
+  baseUrl         String    @map("base_url")          // e.g., "https://download.windowsupdate.com"
+  urlPatterns     String[]  @default([]) @map("url_patterns") // Glob patterns for allowed URLs
+  priority        Int       @default(50)              // 1-100, higher = more important
+  isEnabled       Boolean   @default(true) @map("is_enabled")
+  requiresAuth    Boolean   @default(false) @map("requires_auth")
+  authType        String?   @map("auth_type")         // "basic", "bearer", "api_key"
+  authConfig      Json?     @map("auth_config")       // Encrypted auth configuration
+  syncSchedule    String?   @map("sync_schedule")     // Cron expression for scheduled sync
+  lastSyncAt      DateTime? @map("last_sync_at")
+  lastSyncStatus  String?   @map("last_sync_status")  // "success", "partial", "failed"
+  lastSyncError   String?   @map("last_sync_error")
+  metadata        Json?                               // Additional vendor-specific config
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  downloadJobs    PatchDownloadJob[]
+
+  @@unique([vendor, name])
+  @@index([vendor])
+  @@index([category])
+  @@index([isEnabled])
+  @@map("patch_sources")
+}
+
+model PatchDownloadJob {
+  id              String    @id @default(uuid())
+  jobId           String    @unique @map("job_id")    // BullMQ job ID for tracking
+  sourceId        String?   @map("source_id")
+  source          PatchSource? @relation(fields: [sourceId], references: [id])
+  patchId         String?   @map("patch_id")          // Link to Patch if known
+  sourceUrl       String    @map("source_url")        // URL to download from
+  targetPath      String    @map("target_path")       // MinIO object key target
+  fileName        String    @map("file_name")
+  expectedSize    BigInt?   @map("expected_size")
+  expectedChecksum String?  @map("expected_checksum")
+  checksumType    String?   @map("checksum_type")
+  status          String    @default("pending")       // pending | queued | downloading | verifying | completed | failed | cancelled
+  progress        Int       @default(0)               // 0-100 percentage
+  downloadedBytes BigInt?   @map("downloaded_bytes")
+  actualChecksum  String?   @map("actual_checksum")
+  error           String?
+  retryCount      Int       @default(0) @map("retry_count")
+  maxRetries      Int       @default(3) @map("max_retries")
+  priority        Int       @default(50)              // 1-100
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([sourceId])
+  @@index([patchId])
+  @@index([priority])
+  @@map("patch_download_jobs")
 }
 
 model PatchVulnerability {

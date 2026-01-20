@@ -1,10 +1,10 @@
 import { http, HttpResponse } from 'msw';
-import type { Agent, IPRange, DeviceCredential } from '../../types/discovery.types';
+import type { DiscoveryAgent, IPRange, DeviceCredential } from '../../types/discovery.types';
 
 const API_BASE_URL = '/v1';
 
-// Mock data for agents
-let mockAgents: Agent[] = [
+// Mock data for agents (using simplified DiscoveryAgent type for mock data)
+let mockAgents: DiscoveryAgent[] = [
   {
     id: '1',
     name: 'MacOS 01',
@@ -115,10 +115,12 @@ export const discoveryHandlers = [
   }),
 
   http.post(`${API_BASE_URL}/discovery/agents`, async ({ request }) => {
-    const data = (await request.json()) as any;
-    const newAgent: Agent = {
+    const data = (await request.json()) as Record<string, unknown>;
+    const newAgent: DiscoveryAgent = {
       id: String(mockAgents.length + 1),
-      ...data,
+      name: (data.name as string) || '',
+      os: (data.os as string) || '',
+      version: (data.version as string) || '',
       status: 'Disconnected',
       lastConnectedTime: 'Never',
       createdAt: new Date().toISOString(),

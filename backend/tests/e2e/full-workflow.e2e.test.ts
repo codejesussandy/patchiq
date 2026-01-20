@@ -355,8 +355,7 @@ describe('E2E: Complete User Journey', () => {
   });
 
   describe('Phase 10: Session Management', () => {
-    // TODO: Fix refresh token 500 error - possible issue with token hash lookup
-    it.skip('should refresh token', async () => {
+    it('should refresh token', async () => {
       if (!refreshToken) return;
 
       const res = await request(app)

@@ -80,10 +80,10 @@ export const AgentConfiguration = () => {
   const renderFieldPair = (
     label1: string,
     name1: string,
-    value1: string | number | undefined,
+    _value1: string | number | undefined,
     label2: string,
     name2: string,
-    value2: string | number | undefined,
+    _value2: string | number | undefined,
     suffix: string = 'Seconds'
   ) => (
     <Row gutter={[32, 24]} style={{ marginBottom: '16px' }}>
