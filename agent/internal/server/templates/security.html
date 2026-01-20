@@ -1,0 +1,200 @@
+{{define "security.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security - Patchify Agent</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header { padding: 20px 0; border-bottom: 1px solid #334155; margin-bottom: 30px; }
+        h1 { font-size: 24px; color: #f8fafc; }
+        nav { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        nav a { padding: 10px 20px; background: #1e293b; color: #94a3b8; text-decoration: none; border-radius: 8px; }
+        nav a:hover, nav a.active { background: #3b82f6; color: white; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+        .card { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .card h2 { font-size: 16px; color: #f8fafc; margin-bottom: 15px; }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #334155; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #94a3b8; }
+        .info-value { color: #f8fafc; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+        .badge.green { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .badge.yellow { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+        .badge.red { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #334155; }
+        th { color: #94a3b8; font-weight: 500; font-size: 12px; text-transform: uppercase; }
+        td { color: #e2e8f0; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header><h1>Security Status</h1></header>
+
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/hardware">Hardware</a>
+            <a href="/software">Software</a>
+            <a href="/network">Network</a>
+            <a href="/security" class="active">Security</a>
+            <a href="/peripherals">Peripherals</a>
+            <a href="/telemetry">Telemetry</a>
+        </nav>
+
+        {{if .}}
+        <div class="grid">
+            <div class="card">
+                <h2>Disk Encryption</h2>
+                <div class="info-row">
+                    <span class="info-label">Status</span>
+                    <span class="info-value">
+                        {{if .Encryption.DriveEncryptionEnabled}}<span class="badge green">Enabled</span>
+                        {{else}}<span class="badge red">Disabled</span>{{end}}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Type</span>
+                    <span class="info-value">{{.Encryption.EncryptionType}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">System Drive</span>
+                    <span class="info-value">
+                        {{if .Encryption.SystemDriveEncrypted}}<span class="badge green">Encrypted</span>
+                        {{else}}<span class="badge red">Not Encrypted</span>{{end}}
+                    </span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Firewall</h2>
+                <div class="info-row">
+                    <span class="info-label">Status</span>
+                    <span class="info-value">
+                        {{if .Firewall.Enabled}}<span class="badge green">Enabled</span>
+                        {{else}}<span class="badge red">Disabled</span>{{end}}
+                    </span>
+                </div>
+                {{if .Firewall.ProductName}}
+                <div class="info-row">
+                    <span class="info-label">Product</span>
+                    <span class="info-value">{{.Firewall.ProductName}}</span>
+                </div>
+                {{end}}
+                {{if .Firewall.StealthMode}}
+                <div class="info-row">
+                    <span class="info-label">Stealth Mode</span>
+                    <span class="info-value"><span class="badge green">Enabled</span></span>
+                </div>
+                {{end}}
+            </div>
+
+            <div class="card">
+                <h2>Antivirus</h2>
+                <div class="info-row">
+                    <span class="info-label">Status</span>
+                    <span class="info-value">
+                        {{if .Antivirus.Installed}}<span class="badge green">Installed</span>
+                        {{else}}<span class="badge yellow">Not Found</span>{{end}}
+                    </span>
+                </div>
+                {{range .Antivirus.Products}}
+                <div style="margin-top: 10px; padding: 10px; background: #0f172a; border-radius: 8px;">
+                    <div class="info-row">
+                        <span class="info-label">Product</span>
+                        <span class="info-value">{{.Name}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Real-time Protection</span>
+                        <span class="info-value">
+                            {{if .RealTimeProtection}}<span class="badge green">On</span>
+                            {{else}}<span class="badge yellow">Off</span>{{end}}
+                        </span>
+                    </div>
+                    {{if .DefinitionVersion}}
+                    <div class="info-row">
+                        <span class="info-label">Definitions</span>
+                        <span class="info-value">{{.DefinitionVersion}}</span>
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+
+            <div class="card">
+                <h2>Compliance Settings</h2>
+                <div class="info-row">
+                    <span class="info-label">SIP (macOS)</span>
+                    <span class="info-value">
+                        {{if .Compliance.SIPEnabled}}<span class="badge green">Enabled</span>
+                        {{else}}<span class="badge yellow">Disabled</span>{{end}}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Gatekeeper</span>
+                    <span class="info-value">
+                        {{if .Compliance.GatekeeperEnabled}}<span class="badge green">Enabled</span>
+                        {{else}}<span class="badge yellow">Disabled</span>{{end}}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Screen Lock</span>
+                    <span class="info-value">
+                        {{if .Compliance.ScreenLockEnabled}}<span class="badge green">Enabled</span>
+                        {{else}}<span class="badge red">Disabled</span>{{end}}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Auto Login</span>
+                    <span class="info-value">
+                        {{if .Compliance.AutoLoginDisabled}}<span class="badge green">Disabled</span>
+                        {{else}}<span class="badge yellow">Enabled</span>{{end}}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Remote Login (SSH)</span>
+                    <span class="info-value">
+                        {{if .Compliance.RemoteLoginEnabled}}<span class="badge yellow">Enabled</span>
+                        {{else}}<span class="badge green">Disabled</span>{{end}}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        {{if .LocalUsers}}
+        <div class="card">
+            <h2>Local Users</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Full Name</th>
+                        <th>Admin</th>
+                        <th>Enabled</th>
+                        <th>Groups</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .LocalUsers}}
+                    <tr>
+                        <td>{{.Username}}</td>
+                        <td>{{.FullName}}</td>
+                        <td>{{if .IsAdmin}}<span class="badge yellow">Yes</span>{{else}}No{{end}}</td>
+                        <td>{{if .IsEnabled}}<span class="badge green">Yes</span>{{else}}<span class="badge red">No</span>{{end}}</td>
+                        <td style="font-size: 11px;">{{range $i, $g := .Groups}}{{if $i}}, {{end}}{{$g}}{{end}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{end}}
+        {{else}}
+        <div class="card"><p>No security data collected yet.</p></div>
+        {{end}}
+    </div>
+</body>
+</html>
+{{end}}

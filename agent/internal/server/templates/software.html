@@ -1,0 +1,192 @@
+{{define "software.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Software - Patchify Agent</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header { padding: 20px 0; border-bottom: 1px solid #334155; margin-bottom: 30px; }
+        h1 { font-size: 24px; color: #f8fafc; }
+        nav { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        nav a { padding: 10px 20px; background: #1e293b; color: #94a3b8; text-decoration: none; border-radius: 8px; }
+        nav a:hover, nav a.active { background: #3b82f6; color: white; }
+        .card { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .card h2 { font-size: 16px; color: #f8fafc; margin-bottom: 15px; }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #334155; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #94a3b8; }
+        .info-value { color: #f8fafc; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #334155; }
+        th { color: #94a3b8; font-weight: 500; font-size: 12px; text-transform: uppercase; position: sticky; top: 0; background: #1e293b; }
+        td { color: #e2e8f0; font-size: 13px; }
+        .table-wrapper { max-height: 500px; overflow-y: auto; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+        .badge.green { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .badge.red { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .search { width: 100%; padding: 10px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; border-radius: 8px; margin-bottom: 15px; }
+        .count { color: #64748b; font-size: 14px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header><h1>Software Inventory</h1></header>
+
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/hardware">Hardware</a>
+            <a href="/software" class="active">Software</a>
+            <a href="/network">Network</a>
+            <a href="/security">Security</a>
+            <a href="/peripherals">Peripherals</a>
+            <a href="/telemetry">Telemetry</a>
+        </nav>
+
+        {{if .}}
+        <div class="card">
+            <h2>Operating System</h2>
+            <div class="info-row">
+                <span class="info-label">Name</span>
+                <span class="info-value">{{.OperatingSystem.Name}}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Version</span>
+                <span class="info-value">{{.OperatingSystem.Version}}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Build</span>
+                <span class="info-value">{{.OperatingSystem.BuildNumber}}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Architecture</span>
+                <span class="info-value">{{.OperatingSystem.Architecture}}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Hostname</span>
+                <span class="info-value">{{.OperatingSystem.Hostname}}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">System Uptime</span>
+                <span class="info-value">{{.OperatingSystem.UptimeHuman}}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Pending Reboot</span>
+                <span class="info-value">
+                    {{if .OperatingSystem.PendingReboot}}<span class="badge red">Yes</span>{{else}}<span class="badge green">No</span>{{end}}
+                </span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Installed Applications</h2>
+            <p class="count">{{len .Applications}} applications found</p>
+            <input type="text" class="search" placeholder="Search applications..." onkeyup="filterTable(this, 'apps-table')">
+            <div class="table-wrapper">
+                <table id="apps-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Version</th>
+                            <th>Vendor</th>
+                            <th>Size</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Applications}}
+                        <tr>
+                            <td>{{.Name}}</td>
+                            <td>{{.Version}}</td>
+                            <td>{{.Vendor}}</td>
+                            <td>{{.SizeHuman}}</td>
+                            <td>{{.InstallSource}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{if .Services}}
+        <div class="card">
+            <h2>Services</h2>
+            <p class="count">{{len .Services}} services found</p>
+            <input type="text" class="search" placeholder="Search services..." onkeyup="filterTable(this, 'services-table')">
+            <div class="table-wrapper">
+                <table id="services-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>PID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Services}}
+                        <tr>
+                            <td>{{.Name}}</td>
+                            <td>
+                                {{if eq .Status "Running"}}<span class="badge green">{{.Status}}</span>
+                                {{else}}<span class="badge">{{.Status}}</span>{{end}}
+                            </td>
+                            <td>{{if .PID}}{{.PID}}{{else}}-{{end}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {{end}}
+
+        {{if .StartupPrograms}}
+        <div class="card">
+            <h2>Startup Programs</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Location</th>
+                        <th>Enabled</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .StartupPrograms}}
+                    <tr>
+                        <td>{{.Name}}</td>
+                        <td>{{.Location}}</td>
+                        <td>{{if .Enabled}}<span class="badge green">Yes</span>{{else}}<span class="badge">No</span>{{end}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{end}}
+        {{else}}
+        <div class="card"><p>No software data collected yet.</p></div>
+        {{end}}
+    </div>
+    <script>
+        function filterTable(input, tableId) {
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById(tableId);
+            const rows = table.getElementsByTagName('tr');
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                let match = false;
+                for (let j = 0; j < cells.length; j++) {
+                    if (cells[j].textContent.toLowerCase().includes(filter)) {
+                        match = true;
+                        break;
+                    }
+                }
+                rows[i].style.display = match ? '' : 'none';
+            }
+        }
+    </script>
+</body>
+</html>
+{{end}}

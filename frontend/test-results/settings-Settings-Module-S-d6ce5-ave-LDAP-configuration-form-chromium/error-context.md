@@ -1,0 +1,156 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: P
+      - generic [ref=e7]: Patch Manager
+    - generic [ref=e8] [cursor=pointer]:
+      - generic [ref=e9]:
+        - generic "Gurugram" [ref=e10]
+        - combobox [ref=e11]
+      - img "down" [ref=e13]:
+        - img [ref=e14]
+    - menu [ref=e16]:
+      - menuitem "Dashboard" [ref=e17] [cursor=pointer]
+      - menuitem "Patches" [ref=e18] [cursor=pointer]
+      - menuitem "Assets" [ref=e19] [cursor=pointer]
+      - menuitem "Vulnerability" [ref=e20] [cursor=pointer]
+      - menuitem "Jobs" [ref=e21] [cursor=pointer]
+      - text: Reports
+      - menuitem "ellipsis" [ref=e22] [cursor=pointer]:
+        - img "ellipsis" [ref=e23]:
+          - img [ref=e24]
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - img "search" [ref=e29]:
+          - img [ref=e30]
+        - textbox "Search" [ref=e32]
+      - img "setting" [ref=e33] [cursor=pointer]:
+        - img [ref=e34]
+      - img "bell" [ref=e37] [cursor=pointer]:
+        - img [ref=e38]
+      - generic [ref=e41] [cursor=pointer]: CH
+  - generic [ref=e42]:
+    - complementary [ref=e43]:
+      - generic [ref=e44]:
+        - generic [ref=e45]:
+          - generic [ref=e47]: Settings
+          - img "menu-fold" [ref=e48] [cursor=pointer]:
+            - img [ref=e49]
+        - menu [ref=e52]:
+          - menuitem "user User Management" [ref=e53] [cursor=pointer]:
+            - img "user" [ref=e54]:
+              - img [ref=e55]
+            - generic [ref=e57]: User Management
+          - menuitem "setting System Settings" [expanded] [ref=e58] [cursor=pointer]:
+            - img "setting" [ref=e59]:
+              - img [ref=e60]
+            - generic [ref=e62]: System Settings
+          - menu [ref=e63]:
+            - menuitem "Branding" [ref=e64] [cursor=pointer]:
+              - generic [ref=e65]: Branding
+            - menuitem "Vendor Logo" [ref=e66] [cursor=pointer]:
+              - generic [ref=e67]: Vendor Logo
+            - menuitem "Mail Server Configurations" [ref=e68] [cursor=pointer]:
+              - generic [ref=e69]: Mail Server Configurations
+            - menuitem "Proxy Server Configurations" [ref=e70] [cursor=pointer]:
+              - generic [ref=e71]: Proxy Server Configurations
+            - menuitem "LDAP Server Configurations" [ref=e72] [cursor=pointer]:
+              - generic [ref=e73]: LDAP Server Configurations
+            - menuitem "Risk Score Settings" [ref=e74] [cursor=pointer]:
+              - generic [ref=e75]: Risk Score Settings
+            - menuitem "Remote Desktop Settings" [ref=e76] [cursor=pointer]:
+              - generic [ref=e77]: Remote Desktop Settings
+            - menuitem "Server Settings" [ref=e78] [cursor=pointer]:
+              - generic [ref=e79]: Server Settings
+          - menuitem "file-text Vulnerability Preference" [ref=e80] [cursor=pointer]:
+            - img "file-text" [ref=e81]:
+              - img [ref=e82]
+            - generic [ref=e84]: Vulnerability Preference
+          - menuitem "folder Market Place" [ref=e85] [cursor=pointer]:
+            - img "folder" [ref=e86]:
+              - img [ref=e87]
+            - generic [ref=e89]: Market Place
+          - menuitem "user Discovery" [ref=e90] [cursor=pointer]:
+            - img "user" [ref=e91]:
+              - img [ref=e92]
+            - generic [ref=e94]: Discovery
+          - menuitem "desktop Agent Management" [ref=e95] [cursor=pointer]:
+            - img "desktop" [ref=e96]:
+              - img [ref=e97]
+            - generic [ref=e99]: Agent Management
+          - menuitem "windows Jobs" [ref=e100] [cursor=pointer]:
+            - img "windows" [ref=e101]:
+              - img [ref=e102]
+            - generic [ref=e104]: Jobs
+          - menuitem "edit Patch Management" [ref=e105] [cursor=pointer]:
+            - img "edit" [ref=e106]:
+              - img [ref=e107]
+            - generic [ref=e109]: Patch Management
+          - menuitem "credit-card Alert Management" [ref=e110] [cursor=pointer]:
+            - img "credit-card" [ref=e111]:
+              - img [ref=e112]
+            - generic [ref=e114]: Alert Management
+          - menuitem "file-text Audit" [ref=e115] [cursor=pointer]:
+            - img "file-text" [ref=e116]:
+              - img [ref=e117]
+            - generic [ref=e119]: Audit
+          - menuitem "credit-card Platform License" [ref=e120] [cursor=pointer]:
+            - img "credit-card" [ref=e121]:
+              - img [ref=e122]
+            - generic [ref=e124]: Platform License
+    - main [ref=e126]:
+      - generic [ref=e127]:
+        - heading "LDAP Server Configurations" [level=2] [ref=e129]
+        - generic [ref=e130]:
+          - generic [ref=e131]:
+            - img "search" [ref=e133]:
+              - img [ref=e134]
+            - textbox "Search by name, host, or FQDN" [ref=e136]
+          - generic [ref=e137]:
+            - button "reload" [ref=e138] [cursor=pointer]:
+              - img "reload" [ref=e140]:
+                - img [ref=e141]
+            - button "download" [disabled] [ref=e143]:
+              - generic:
+                - img "download":
+                  - img
+            - button "filter" [ref=e144] [cursor=pointer]:
+              - img "filter" [ref=e146]:
+                - img [ref=e147]
+            - button "plus Create" [ref=e149] [cursor=pointer]:
+              - img "plus" [ref=e151]:
+                - img [ref=e152]
+              - generic [ref=e155]: Create
+        - table [ref=e162]:
+          - rowgroup [ref=e170]:
+            - row "ID Name Host FQDN Created On Actions" [ref=e171]:
+              - columnheader "ID" [ref=e172] [cursor=pointer]:
+                - generic [ref=e173]:
+                  - generic [ref=e174]: ID
+                  - generic [ref=e176]:
+                    - img [ref=e177]:
+                      - img [ref=e178]
+                    - img [ref=e180]:
+                      - img [ref=e181]
+              - columnheader "Name" [ref=e183] [cursor=pointer]:
+                - generic [ref=e184]:
+                  - generic [ref=e185]: Name
+                  - generic [ref=e187]:
+                    - img [ref=e188]:
+                      - img [ref=e189]
+                    - img [ref=e191]:
+                      - img [ref=e192]
+              - columnheader "Host" [ref=e194]
+              - columnheader "FQDN" [ref=e195]
+              - columnheader "Created On" [ref=e196]
+              - columnheader "Actions" [ref=e197]
+          - rowgroup [ref=e198]:
+            - row "No data No data" [ref=e199]:
+              - cell "No data No data" [ref=e200]:
+                - generic [ref=e201]:
+                  - img "No data" [ref=e203]
+                  - generic [ref=e209]: No data
+```

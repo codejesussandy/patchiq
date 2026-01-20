@@ -1,0 +1,256 @@
+{{define "hardware.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hardware - Patchify Agent</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #334155; margin-bottom: 30px; }
+        h1 { font-size: 24px; color: #f8fafc; }
+        nav { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        nav a { padding: 10px 20px; background: #1e293b; color: #94a3b8; text-decoration: none; border-radius: 8px; transition: all 0.2s; }
+        nav a:hover, nav a.active { background: #3b82f6; color: white; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+        .card { background: #1e293b; border-radius: 12px; padding: 20px; }
+        .card h2 { font-size: 16px; color: #f8fafc; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #334155; }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #334155; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #94a3b8; }
+        .info-value { color: #f8fafc; font-weight: 500; text-align: right; max-width: 60%; }
+        .json-view { background: #0f172a; padding: 15px; border-radius: 8px; font-family: 'Monaco', monospace; font-size: 11px; max-height: 300px; overflow: auto; white-space: pre-wrap; }
+        .section { margin-top: 30px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #334155; }
+        th { color: #94a3b8; font-weight: 500; font-size: 12px; text-transform: uppercase; }
+        td { color: #e2e8f0; font-size: 13px; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .badge.green { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .badge.yellow { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+        .badge.red { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Hardware Inventory</h1>
+        </header>
+
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/hardware" class="active">Hardware</a>
+            <a href="/software">Software</a>
+            <a href="/network">Network</a>
+            <a href="/security">Security</a>
+            <a href="/peripherals">Peripherals</a>
+            <a href="/telemetry">Telemetry</a>
+        </nav>
+
+        {{if .}}
+        <div class="grid">
+            <div class="card">
+                <h2>System Identity</h2>
+                <div class="info-row">
+                    <span class="info-label">Manufacturer</span>
+                    <span class="info-value">{{.SystemIdentity.Manufacturer}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Model</span>
+                    <span class="info-value">{{.SystemIdentity.Model}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Serial Number</span>
+                    <span class="info-value">{{.SystemIdentity.SerialNumber}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">UUID</span>
+                    <span class="info-value" style="font-size: 11px;">{{.SystemIdentity.UUID}}</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Processor</h2>
+                <div class="info-row">
+                    <span class="info-label">Name</span>
+                    <span class="info-value">{{.Processor.Name}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Manufacturer</span>
+                    <span class="info-value">{{.Processor.Manufacturer}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Architecture</span>
+                    <span class="info-value">{{.Processor.Architecture}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Cores</span>
+                    <span class="info-value">{{.Processor.CoreCount}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Threads</span>
+                    <span class="info-value">{{.Processor.ThreadCount}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Clock Speed</span>
+                    <span class="info-value">{{.Processor.ClockSpeedMHz}} MHz</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Memory</h2>
+                <div class="info-row">
+                    <span class="info-label">Total Physical</span>
+                    <span class="info-value">{{printf "%.2f" .Memory.TotalPhysicalGB}} GB</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Used Slots</span>
+                    <span class="info-value">{{.Memory.UsedSlots}}</span>
+                </div>
+                {{if .Memory.Modules}}
+                <h3 style="margin-top: 15px; font-size: 14px; color: #94a3b8;">Modules</h3>
+                {{range .Memory.Modules}}
+                <div style="margin-top: 10px; padding: 10px; background: #0f172a; border-radius: 8px;">
+                    <div class="info-row">
+                        <span class="info-label">Slot</span>
+                        <span class="info-value">{{.Slot}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Capacity</span>
+                        <span class="info-value">{{printf "%.0f" .CapacityGB}} GB</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Type</span>
+                        <span class="info-value">{{.Type}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Speed</span>
+                        <span class="info-value">{{.SpeedMHz}} MHz</span>
+                    </div>
+                </div>
+                {{end}}
+                {{end}}
+            </div>
+
+            <div class="card">
+                <h2>BIOS / Firmware</h2>
+                <div class="info-row">
+                    <span class="info-label">Vendor</span>
+                    <span class="info-value">{{.BIOS.Vendor}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Version</span>
+                    <span class="info-value">{{.BIOS.Version}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Type</span>
+                    <span class="info-value">{{.BIOS.FirmwareType}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Secure Boot</span>
+                    <span class="info-value">
+                        {{if .BIOS.SecureBootEnabled}}<span class="badge green">Enabled</span>{{else}}<span class="badge yellow">Disabled</span>{{end}}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="card">
+                <h2>Storage Drives</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Device</th>
+                            <th>Mount Point</th>
+                            <th>Type</th>
+                            <th>Capacity</th>
+                            <th>Free Space</th>
+                            <th>File System</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .StorageDrives}}
+                        <tr>
+                            <td>{{.DeviceID}}</td>
+                            <td>{{.MountPoint}}</td>
+                            <td>{{.Type}}</td>
+                            <td>{{printf "%.1f" .CapacityGB}} GB</td>
+                            <td>{{printf "%.1f" .FreeSpaceGB}} GB</td>
+                            <td>{{.FileSystem}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{if .Battery}}
+        <div class="section">
+            <div class="card">
+                <h2>Battery</h2>
+                <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div class="info-row">
+                        <span class="info-label">Status</span>
+                        <span class="info-value">{{.Battery.ChargingStatus}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Charge Level</span>
+                        <span class="info-value">{{printf "%.0f" .Battery.ChargeLevel}}%</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Health</span>
+                        <span class="info-value">{{printf "%.1f" .Battery.HealthPercent}}%</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Cycle Count</span>
+                        <span class="info-value">{{.Battery.CycleCount}}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{end}}
+
+        {{if .GraphicsAdapters}}
+        <div class="section">
+            <div class="card">
+                <h2>Graphics Adapters</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Manufacturer</th>
+                            <th>Memory</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .GraphicsAdapters}}
+                        <tr>
+                            <td>{{.Name}}</td>
+                            <td>{{.Manufacturer}}</td>
+                            <td>{{if .MemoryMB}}{{.MemoryMB}} MB{{else}}-{{end}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {{end}}
+
+        <div class="section">
+            <div class="card">
+                <h2>Raw JSON</h2>
+                <div class="json-view">{{json .}}</div>
+            </div>
+        </div>
+        {{else}}
+        <div class="card">
+            <p>No hardware data collected yet. Click "Collect All Data" on the dashboard to collect inventory.</p>
+        </div>
+        {{end}}
+    </div>
+</body>
+</html>
+{{end}}

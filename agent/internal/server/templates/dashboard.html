@@ -1,0 +1,275 @@
+{{define "dashboard.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patchify Agent Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #334155; margin-bottom: 30px; }
+        h1 { font-size: 24px; color: #f8fafc; }
+        .status { display: flex; align-items: center; gap: 8px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        nav { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        nav a { padding: 10px 20px; background: #1e293b; color: #94a3b8; text-decoration: none; border-radius: 8px; transition: all 0.2s; }
+        nav a:hover, nav a.active { background: #3b82f6; color: white; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: #1e293b; border-radius: 12px; padding: 20px; }
+        .card h2 { font-size: 14px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 15px; }
+        .card-value { font-size: 28px; font-weight: 600; color: #f8fafc; }
+        .card-label { font-size: 14px; color: #64748b; margin-top: 5px; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #334155; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #94a3b8; }
+        .info-value { color: #f8fafc; font-weight: 500; }
+        .progress-bar { height: 8px; background: #334155; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+        .progress-fill.green { background: linear-gradient(90deg, #22c55e, #16a34a); }
+        .progress-fill.yellow { background: linear-gradient(90deg, #eab308, #ca8a04); }
+        .progress-fill.red { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        .btn { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+        .btn:hover { background: #2563eb; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .actions { display: flex; gap: 10px; margin-top: 20px; }
+        .json-view { background: #0f172a; padding: 15px; border-radius: 8px; font-family: 'Monaco', monospace; font-size: 12px; max-height: 400px; overflow: auto; white-space: pre-wrap; }
+        .section { margin-top: 30px; }
+        .section h3 { font-size: 18px; margin-bottom: 15px; color: #f8fafc; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
+        th { color: #94a3b8; font-weight: 500; font-size: 12px; text-transform: uppercase; }
+        td { color: #e2e8f0; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .badge.green { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .badge.yellow { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+        .badge.red { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .badge.blue { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Patchify Agent</h1>
+            <div class="status">
+                <span class="status-dot"></span>
+                <span>{{if .Agent}}{{.Agent.Status}}{{else}}Initializing{{end}}</span>
+            </div>
+        </header>
+
+        <nav>
+            <a href="/" class="active">Dashboard</a>
+            <a href="/hardware">Hardware</a>
+            <a href="/software">Software</a>
+            <a href="/network">Network</a>
+            <a href="/security">Security</a>
+            <a href="/peripherals">Peripherals</a>
+            <a href="/telemetry">Telemetry</a>
+        </nav>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Agent Info</h2>
+                {{if .Agent}}
+                <div class="info-row">
+                    <span class="info-label">Hostname</span>
+                    <span class="info-value">{{.Agent.Hostname}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">OS</span>
+                    <span class="info-value">{{.Agent.OS}} {{.Agent.OSVersion}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Agent Version</span>
+                    <span class="info-value">{{.Agent.Version}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Uptime</span>
+                    <span class="info-value">{{$.Uptime}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Machine ID</span>
+                    <span class="info-value" style="font-size: 11px;">{{.Agent.MachineID}}</span>
+                </div>
+                {{else}}
+                <p>Loading agent info...</p>
+                {{end}}
+            </div>
+
+            {{if .Telemetry}}
+            <div class="card">
+                <h2>CPU Usage</h2>
+                <div class="card-value">{{printf "%.1f" .Telemetry.CPU.UsagePercent}}%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill {{if lt .Telemetry.CPU.UsagePercent 60.0}}green{{else if lt .Telemetry.CPU.UsagePercent 85.0}}yellow{{else}}red{{end}}"
+                         style="width: {{.Telemetry.CPU.UsagePercent}}%"></div>
+                </div>
+                {{if .Telemetry.CPU.LoadAverage}}
+                <div class="card-label">Load: {{index .Telemetry.CPU.LoadAverage 0 | printf "%.2f"}} / {{index .Telemetry.CPU.LoadAverage 1 | printf "%.2f"}} / {{index .Telemetry.CPU.LoadAverage 2 | printf "%.2f"}}</div>
+                {{end}}
+            </div>
+
+            <div class="card">
+                <h2>Memory Usage</h2>
+                <div class="card-value">{{printf "%.1f" .Telemetry.Memory.UsagePercent}}%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill {{if lt .Telemetry.Memory.UsagePercent 60.0}}green{{else if lt .Telemetry.Memory.UsagePercent 85.0}}yellow{{else}}red{{end}}"
+                         style="width: {{.Telemetry.Memory.UsagePercent}}%"></div>
+                </div>
+                <div class="card-label">{{.Telemetry.Memory.UsedHuman}} used of {{printf "%.1f" (divf .Telemetry.Memory.TotalBytes 1073741824)}} GB</div>
+            </div>
+
+            {{if .Telemetry.Disk.Drives}}
+            <div class="card">
+                <h2>Disk Usage</h2>
+                {{range .Telemetry.Disk.Drives}}
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>{{.MountPoint}}</span>
+                        <span>{{printf "%.1f" .UsagePercent}}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill {{if lt .UsagePercent 60.0}}green{{else if lt .UsagePercent 85.0}}yellow{{else}}red{{end}}"
+                             style="width: {{.UsagePercent}}%"></div>
+                    </div>
+                    <div class="card-label">{{.AvailableHuman}} free</div>
+                </div>
+                {{end}}
+            </div>
+            {{end}}
+            {{else}}
+            <div class="card">
+                <h2>System Metrics</h2>
+                <p style="color: #64748b;">Collecting telemetry data...</p>
+            </div>
+            {{end}}
+        </div>
+
+        {{if .Inventory}}
+        <div class="section">
+            <h3>Quick Overview</h3>
+            <div class="grid">
+                {{if .Inventory.Hardware}}
+                <div class="card">
+                    <h2>Hardware Summary</h2>
+                    <div class="info-row">
+                        <span class="info-label">System</span>
+                        <span class="info-value">{{.Inventory.Hardware.SystemIdentity.Manufacturer}} {{.Inventory.Hardware.SystemIdentity.Model}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Processor</span>
+                        <span class="info-value">{{.Inventory.Hardware.Processor.Name}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Cores</span>
+                        <span class="info-value">{{.Inventory.Hardware.Processor.CoreCount}} cores / {{.Inventory.Hardware.Processor.ThreadCount}} threads</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Memory</span>
+                        <span class="info-value">{{printf "%.1f" .Inventory.Hardware.Memory.TotalPhysicalGB}} GB</span>
+                    </div>
+                </div>
+                {{end}}
+
+                {{if .Inventory.Software}}
+                <div class="card">
+                    <h2>Software Summary</h2>
+                    <div class="info-row">
+                        <span class="info-label">OS</span>
+                        <span class="info-value">{{.Inventory.Software.OperatingSystem.Name}} {{.Inventory.Software.OperatingSystem.Version}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Applications</span>
+                        <span class="info-value">{{len .Inventory.Software.Applications}} installed</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Services</span>
+                        <span class="info-value">{{len .Inventory.Software.Services}} active</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">System Uptime</span>
+                        <span class="info-value">{{.Inventory.Software.OperatingSystem.UptimeHuman}}</span>
+                    </div>
+                </div>
+                {{end}}
+
+                {{if .Inventory.Security}}
+                <div class="card">
+                    <h2>Security Status</h2>
+                    <div class="info-row">
+                        <span class="info-label">Encryption</span>
+                        <span class="info-value">
+                            {{if .Inventory.Security.Encryption.DriveEncryptionEnabled}}
+                            <span class="badge green">Enabled</span>
+                            {{else}}
+                            <span class="badge red">Disabled</span>
+                            {{end}}
+                        </span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Firewall</span>
+                        <span class="info-value">
+                            {{if .Inventory.Security.Firewall.Enabled}}
+                            <span class="badge green">Enabled</span>
+                            {{else}}
+                            <span class="badge red">Disabled</span>
+                            {{end}}
+                        </span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Antivirus</span>
+                        <span class="info-value">
+                            {{if .Inventory.Security.Antivirus.Installed}}
+                            <span class="badge green">Installed</span>
+                            {{else}}
+                            <span class="badge yellow">Not Found</span>
+                            {{end}}
+                        </span>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        <div class="actions">
+            <button class="btn" onclick="collectAll()">Collect All Data</button>
+            <button class="btn" onclick="refreshTelemetry()">Refresh Telemetry</button>
+        </div>
+
+        {{if .Inventory.Errors}}
+        <div class="section">
+            <h3>Collection Errors</h3>
+            <div class="card">
+                {{range .Inventory.Errors}}
+                <div class="info-row">
+                    <span class="info-label">{{.Category}}</span>
+                    <span class="info-value" style="color: #ef4444;">{{.Error}}</span>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+    </div>
+
+    <script>
+        function collectAll() {
+            fetch('/api/collect', { method: 'POST' })
+                .then(() => {
+                    alert('Collection started! Refresh in a few seconds.');
+                });
+        }
+
+        function refreshTelemetry() {
+            fetch('/api/collect/telemetry', { method: 'POST' })
+                .then(() => location.reload());
+        }
+
+        // Auto-refresh every 60 seconds
+        setTimeout(() => location.reload(), 60000);
+    </script>
+</body>
+</html>
+{{end}}

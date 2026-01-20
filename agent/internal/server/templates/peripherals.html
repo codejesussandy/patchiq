@@ -1,0 +1,185 @@
+{{define "peripherals.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peripherals - Patchify Agent</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header { padding: 20px 0; border-bottom: 1px solid #334155; margin-bottom: 30px; }
+        h1 { font-size: 24px; color: #f8fafc; }
+        nav { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        nav a { padding: 10px 20px; background: #1e293b; color: #94a3b8; text-decoration: none; border-radius: 8px; }
+        nav a:hover, nav a.active { background: #3b82f6; color: white; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+        .card { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .card h2 { font-size: 16px; color: #f8fafc; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #334155; }
+        th { color: #94a3b8; font-weight: 500; font-size: 12px; text-transform: uppercase; }
+        td { color: #e2e8f0; font-size: 13px; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+        .badge.green { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .badge.yellow { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+        .badge.blue { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .count { color: #64748b; font-size: 14px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header><h1>Connected Peripherals</h1></header>
+
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/hardware">Hardware</a>
+            <a href="/software">Software</a>
+            <a href="/network">Network</a>
+            <a href="/security">Security</a>
+            <a href="/peripherals" class="active">Peripherals</a>
+            <a href="/telemetry">Telemetry</a>
+        </nav>
+
+        {{if .}}
+        <div class="grid">
+            {{if .Monitors}}
+            <div class="card">
+                <h2>Monitors</h2>
+                <p class="count">{{len .Monitors}} displays</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Resolution</th>
+                            <th>Connection</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Monitors}}
+                        <tr>
+                            <td>{{.Name}}</td>
+                            <td>{{.Resolution}}</td>
+                            <td>{{.ConnectionType}}</td>
+                            <td>
+                                {{if .IsPrimary}}<span class="badge blue">Primary</span>{{end}}
+                                {{if .IsBuiltIn}}<span class="badge">Built-in</span>{{end}}
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{end}}
+
+            {{if .USBDevices}}
+            <div class="card">
+                <h2>USB Devices</h2>
+                <p class="count">{{len .USBDevices}} devices</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Vendor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .USBDevices}}
+                        <tr>
+                            <td>{{.Name}}</td>
+                            <td>{{if .DeviceType}}<span class="badge">{{.DeviceType}}</span>{{end}}</td>
+                            <td>{{.Manufacturer}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{end}}
+        </div>
+
+        {{if .Printers}}
+        <div class="card">
+            <h2>Printers</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Connection</th>
+                        <th>Status</th>
+                        <th>Default</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Printers}}
+                    <tr>
+                        <td>{{.Name}}</td>
+                        <td>{{.ConnectionType}}</td>
+                        <td>
+                            {{if eq .Status "Ready"}}<span class="badge green">{{.Status}}</span>
+                            {{else}}<span class="badge yellow">{{.Status}}</span>{{end}}
+                        </td>
+                        <td>{{if .IsDefault}}<span class="badge blue">Yes</span>{{else}}No{{end}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{end}}
+
+        {{if .AudioDevices}}
+        <div class="card">
+            <h2>Audio Devices</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Default</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .AudioDevices}}
+                    <tr>
+                        <td>{{.Name}}</td>
+                        <td><span class="badge">{{.Type}}</span></td>
+                        <td>{{if .IsDefault}}<span class="badge blue">Yes</span>{{else}}No{{end}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{end}}
+
+        {{if .BluetoothDevices}}
+        <div class="card">
+            <h2>Bluetooth Devices</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Connected</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .BluetoothDevices}}
+                    <tr>
+                        <td>{{.Name}}</td>
+                        <td>{{.Type}}</td>
+                        <td>{{if .Connected}}<span class="badge green">Yes</span>{{else}}<span class="badge">No</span>{{end}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{end}}
+        {{else}}
+        <div class="card"><p>No peripheral data collected yet.</p></div>
+        {{end}}
+    </div>
+</body>
+</html>
+{{end}}

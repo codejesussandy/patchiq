@@ -1,0 +1,234 @@
+{{define "telemetry.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telemetry - Patchify Agent</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header { padding: 20px 0; border-bottom: 1px solid #334155; margin-bottom: 30px; }
+        h1 { font-size: 24px; color: #f8fafc; }
+        nav { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        nav a { padding: 10px 20px; background: #1e293b; color: #94a3b8; text-decoration: none; border-radius: 8px; }
+        nav a:hover, nav a.active { background: #3b82f6; color: white; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
+        .card { background: #1e293b; border-radius: 12px; padding: 20px; }
+        .card h2 { font-size: 16px; color: #f8fafc; margin-bottom: 15px; }
+        .metric { text-align: center; padding: 20px; }
+        .metric-value { font-size: 48px; font-weight: 700; color: #f8fafc; }
+        .metric-label { color: #94a3b8; margin-top: 5px; }
+        .progress-bar { height: 8px; background: #334155; border-radius: 4px; overflow: hidden; margin-top: 15px; }
+        .progress-fill { height: 100%; border-radius: 4px; }
+        .progress-fill.green { background: linear-gradient(90deg, #22c55e, #16a34a); }
+        .progress-fill.yellow { background: linear-gradient(90deg, #eab308, #ca8a04); }
+        .progress-fill.red { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #334155; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #94a3b8; }
+        .info-value { color: #f8fafc; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #334155; }
+        th { color: #94a3b8; font-weight: 500; font-size: 12px; text-transform: uppercase; }
+        td { color: #e2e8f0; font-size: 13px; }
+        .timestamp { color: #64748b; font-size: 12px; margin-top: 10px; }
+        .btn { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; }
+        .btn:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header><h1>Real-time Telemetry</h1></header>
+
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/hardware">Hardware</a>
+            <a href="/software">Software</a>
+            <a href="/network">Network</a>
+            <a href="/security">Security</a>
+            <a href="/peripherals">Peripherals</a>
+            <a href="/telemetry" class="active">Telemetry</a>
+        </nav>
+
+        {{if .}}
+        <p class="timestamp">Last updated: {{.Timestamp}}</p>
+
+        <div class="grid">
+            <div class="card">
+                <h2>CPU Usage</h2>
+                <div class="metric">
+                    <div class="metric-value">{{printf "%.1f" .CPU.UsagePercent}}%</div>
+                    <div class="metric-label">Total Usage</div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill {{if lt .CPU.UsagePercent 60.0}}green{{else if lt .CPU.UsagePercent 85.0}}yellow{{else}}red{{end}}"
+                         style="width: {{.CPU.UsagePercent}}%"></div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <div class="info-row">
+                        <span class="info-label">User</span>
+                        <span class="info-value">{{printf "%.1f" .CPU.UserPercent}}%</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">System</span>
+                        <span class="info-value">{{printf "%.1f" .CPU.SystemPercent}}%</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Idle</span>
+                        <span class="info-value">{{printf "%.1f" .CPU.IdlePercent}}%</span>
+                    </div>
+                    {{if .CPU.LoadAverage}}
+                    <div class="info-row">
+                        <span class="info-label">Load Avg (1/5/15)</span>
+                        <span class="info-value">{{index .CPU.LoadAverage 0 | printf "%.2f"}} / {{index .CPU.LoadAverage 1 | printf "%.2f"}} / {{index .CPU.LoadAverage 2 | printf "%.2f"}}</span>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Memory Usage</h2>
+                <div class="metric">
+                    <div class="metric-value">{{printf "%.1f" .Memory.UsagePercent}}%</div>
+                    <div class="metric-label">{{.Memory.UsedHuman}} / {{printf "%.1f" (divf .Memory.TotalBytes 1073741824)}} GB</div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill {{if lt .Memory.UsagePercent 60.0}}green{{else if lt .Memory.UsagePercent 85.0}}yellow{{else}}red{{end}}"
+                         style="width: {{.Memory.UsagePercent}}%"></div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <div class="info-row">
+                        <span class="info-label">Available</span>
+                        <span class="info-value">{{.Memory.AvailableHuman}}</span>
+                    </div>
+                    {{if .Memory.SwapTotalBytes}}
+                    <div class="info-row">
+                        <span class="info-label">Swap Usage</span>
+                        <span class="info-value">{{printf "%.1f" .Memory.SwapUsagePercent}}%</span>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+
+        {{if .Disk.Drives}}
+        <div class="card" style="margin-top: 20px;">
+            <h2>Disk Usage</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mount Point</th>
+                        <th>Used</th>
+                        <th>Available</th>
+                        <th>Usage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Disk.Drives}}
+                    <tr>
+                        <td>{{.MountPoint}}</td>
+                        <td>{{.UsedHuman}}</td>
+                        <td>{{.AvailableHuman}}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="flex: 1; height: 6px; background: #334155; border-radius: 3px;">
+                                    <div class="progress-fill {{if lt .UsagePercent 60.0}}green{{else if lt .UsagePercent 85.0}}yellow{{else}}red{{end}}"
+                                         style="width: {{.UsagePercent}}%; height: 6px; border-radius: 3px;"></div>
+                                </div>
+                                <span>{{printf "%.1f" .UsagePercent}}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{end}}
+
+        {{if .Processes}}
+        <div class="grid" style="margin-top: 20px;">
+            <div class="card">
+                <h2>Top Processes by CPU</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Process</th>
+                            <th>PID</th>
+                            <th>CPU %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Processes.TopByCPU}}
+                        <tr>
+                            <td>{{.Name}}</td>
+                            <td>{{.PID}}</td>
+                            <td>{{printf "%.1f" .CPUPercent}}%</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Top Processes by Memory</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Process</th>
+                            <th>PID</th>
+                            <th>Memory %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Processes.TopByMemory}}
+                        <tr>
+                            <td>{{.Name}}</td>
+                            <td>{{.PID}}</td>
+                            <td>{{printf "%.1f" .MemoryPercent}}%</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {{end}}
+
+        {{if .SystemErrors}}
+        <div class="card" style="margin-top: 20px;">
+            <h2>System Errors</h2>
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <div class="info-row">
+                    <span class="info-label">App Crashes (24h)</span>
+                    <span class="info-value">{{.SystemErrors.ApplicationCrashCount24h}}</span>
+                </div>
+                {{if .SystemErrors.KernelPanicCount30d}}
+                <div class="info-row">
+                    <span class="info-label">Kernel Panics (30d)</span>
+                    <span class="info-value">{{.SystemErrors.KernelPanicCount30d}}</span>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        <button class="btn" onclick="refresh()">Refresh Telemetry</button>
+        {{else}}
+        <div class="card"><p>No telemetry data available. Click the button to collect.</p></div>
+        <button class="btn" onclick="refresh()">Collect Telemetry</button>
+        {{end}}
+    </div>
+
+    <script>
+        function refresh() {
+            fetch('/api/collect/telemetry', { method: 'POST' })
+                .then(() => location.reload());
+        }
+
+        // Auto-refresh every 30 seconds
+        setTimeout(() => location.reload(), 30000);
+    </script>
+</body>
+</html>
+{{end}}
