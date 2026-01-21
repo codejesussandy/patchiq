@@ -25,6 +25,9 @@ import {
   DownOutlined,
   DownloadOutlined,
   UploadOutlined,
+  AppleOutlined,
+  WindowsOutlined,
+  CloudDownloadOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
@@ -42,6 +45,7 @@ const { Title } = Typography;
 const defaultColumnConfig: ColumnConfig[] = [
   { key: 'assetId', title: 'Asset ID', visible: true, pinned: false, width: 200, group: 'Basic' },
   { key: 'name', title: 'Asset Name', visible: false, pinned: false, width: 120, group: 'Basic' },
+  { key: 'networkIdentity', title: 'Network Identity', visible: true, pinned: false, width: 180, group: 'Basic' },
   { key: 'category', title: 'Category', visible: true, pinned: false, width: 180, group: 'Organization' },
   { key: 'operationalStatus', title: 'Operational Status', visible: true, pinned: false, width: 150, group: 'Status' },
   { key: 'status', title: 'Status', visible: true, pinned: false, width: 150, group: 'Status' },
@@ -50,7 +54,7 @@ const defaultColumnConfig: ColumnConfig[] = [
   { key: 'action', title: 'Actions', visible: true, pinned: false, required: true, width: 50, group: 'Actions' },
 ];
 
-const STORAGE_KEY = 'assets_column_config_v2';
+const STORAGE_KEY = 'assets_column_config_v3';
 
 export function AllAssets() {
   const navigate = useNavigate();
@@ -73,6 +77,7 @@ export function AllAssets() {
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | null>(null);
+  const [downloadAgentModalVisible, setDownloadAgentModalVisible] = useState(false);
 
   const categoryId = searchParams.get('category');
   const subCategoryId = searchParams.get('subcategory');
@@ -203,6 +208,79 @@ export function AllAssets() {
     message.info('Download functionality coming soon');
   };
 
+  // Download agent using backend API
+  const handleAgentDownload = async (platform: 'windows' | 'macos' | 'linux') => {
+    const platformMap: Record<string, string> = {
+      windows: 'Windows',
+      macos: 'Mac',
+      linux: 'Linux',
+    };
+    const filenameMap: Record<string, string> = {
+      windows: 'patchify-agent.exe',
+      macos: 'patchify-agent-macos',
+      linux: 'patchify-agent',
+    };
+
+    try {
+      message.loading({ content: `Downloading ${platform} agent...`, key: 'agent-download' });
+
+      // Get auth token from localStorage
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      // First fetch agent versions to find the right one
+      const versionsResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/agent-versions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!versionsResponse.ok) {
+        throw new Error(`Failed to fetch agent versions: ${versionsResponse.statusText}`);
+      }
+
+      const versions = await versionsResponse.json();
+      const targetPlatform = platformMap[platform];
+
+      // Find the first version matching the platform (prefer amd64 architecture)
+      const version = versions.find((v: { platform: string; architecture: string }) =>
+        v.platform === targetPlatform && v.architecture === 'amd64'
+      ) || versions.find((v: { platform: string }) => v.platform === targetPlatform);
+
+      if (!version) {
+        throw new Error(`No agent version found for ${platform}`);
+      }
+
+      // Download the agent binary
+      const downloadResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/agent-versions/${version.id}/download`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!downloadResponse.ok) {
+        throw new Error(`Failed to download: ${downloadResponse.statusText}`);
+      }
+
+      const blob = await downloadResponse.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filenameMap[platform];
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      message.success({ content: `${platform} agent downloaded successfully!`, key: 'agent-download' });
+    } catch (error) {
+      console.error('Agent download error:', error);
+      message.error({ content: `Failed to download ${platform} agent`, key: 'agent-download' });
+    }
+  };
+
   const handleFileUpload = (file: File) => {
     // File size validation (6MB = 6 * 1024 * 1024 bytes)
     const maxSize = 6 * 1024 * 1024;
@@ -275,6 +353,22 @@ export function AllAssets() {
     });
 
   const columns: ColumnsType<Asset> = visibleColumns.map((col) => {
+    if (col.key === 'networkIdentity') {
+      return {
+        title: col.title,
+        key: col.key,
+        width: col.width,
+        render: (_, record: Asset) => {
+          const identity = record.hostname || record.ipAddress || '-';
+          return (
+            <Tooltip title={record.hostname && record.ipAddress ? `IP: ${record.ipAddress}` : undefined}>
+              <span style={{ fontFamily: 'monospace', fontSize: '13px' }}>{identity}</span>
+            </Tooltip>
+          );
+        },
+      };
+    }
+
     if (col.key === 'operationalStatus') {
       return {
         title: col.title,
@@ -438,6 +532,9 @@ export function AllAssets() {
             <Space>
               <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddModalVisible(true)}>
                 Add Assets
+              </Button>
+              <Button icon={<CloudDownloadOutlined />} onClick={() => setDownloadAgentModalVisible(true)}>
+                Download Agent
               </Button>
               <Upload
                 accept=".png,.jpeg,.jpg,.pdf,.xls,.xlsx,.csv"
@@ -645,6 +742,68 @@ export function AllAssets() {
             </div>
           )}
         </Form>
+      </Modal>
+
+      {/* Download Agent Modal */}
+      <Modal
+        title="Download PatchIQ Agent"
+        open={downloadAgentModalVisible}
+        onCancel={() => setDownloadAgentModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <div style={{ padding: '16px 0' }}>
+          <p style={{ marginBottom: '24px', color: '#666' }}>
+            Download and install the PatchIQ agent on your endpoints to enable asset discovery,
+            vulnerability scanning, and patch deployment.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', padding: '16px', background: '#f5f5f5', borderRadius: '8px', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <WindowsOutlined style={{ fontSize: '32px', color: '#0078d4' }} />
+                <div>
+                  <div style={{ fontWeight: 600 }}>Windows Agent</div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>Windows 10/11, Server 2016+</div>
+                </div>
+              </div>
+              <Button type="primary" icon={<DownloadOutlined />} onClick={() => handleAgentDownload('windows')}>
+                Download
+              </Button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', padding: '16px', background: '#f5f5f5', borderRadius: '8px', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <AppleOutlined style={{ fontSize: '32px', color: '#555' }} />
+                <div>
+                  <div style={{ fontWeight: 600 }}>macOS Agent</div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>macOS 12 (Monterey) and later</div>
+                </div>
+              </div>
+              <Button type="primary" icon={<DownloadOutlined />} onClick={() => handleAgentDownload('macos')}>
+                Download
+              </Button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', padding: '16px', background: '#f5f5f5', borderRadius: '8px', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '28px' }}>🐧</span>
+                <div>
+                  <div style={{ fontWeight: 600 }}>Linux Agent</div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>Ubuntu 20.04+, RHEL 8+, Debian 11+</div>
+                </div>
+              </div>
+              <Button type="primary" icon={<DownloadOutlined />} onClick={() => handleAgentDownload('linux')}>
+                Download
+              </Button>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '24px', padding: '12px', background: '#e6f7ff', borderRadius: '4px', fontSize: '13px' }}>
+            <strong>Installation:</strong> After downloading, run the agent with administrator/root privileges.
+            The agent will automatically register with the PatchIQ server and appear in the Assets list.
+          </div>
+        </div>
       </Modal>
     </div>
   );

@@ -10,6 +10,7 @@ import type {
   PaginatedResponse,
   MessageResponse,
   SuccessResponse,
+  AgentApprovalResponse,
 } from './settings.types';
 import type {
   UpdateAlertConfigInput,
@@ -660,6 +661,96 @@ export class SettingsService {
     }
 
     return this.getPlatformLicense();
+  }
+
+  // ============================================
+  // Agent Approvals
+  // ============================================
+
+  async listAgentApprovals(params: { page: number; limit: number; search?: string }): Promise<PaginatedResponse<AgentApprovalResponse>> {
+    const where: Record<string, unknown> = {
+      status: 'Pending',
+    };
+
+    if (params.search) {
+      where.OR = [
+        { hostname: { contains: params.search, mode: 'insensitive' } },
+        { name: { contains: params.search, mode: 'insensitive' } },
+        { machineId: { contains: params.search, mode: 'insensitive' } },
+        { ipAddress: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const paginationParams = { page: params.page, limit: params.limit };
+
+    const [agents, total] = await Promise.all([
+      prisma.agent.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        ...getPaginationParams(paginationParams),
+      }),
+      prisma.agent.count({ where }),
+    ]);
+
+    const data: AgentApprovalResponse[] = agents.map((agent) => ({
+      id: agent.id,
+      uuid: agent.machineId,
+      hostName: agent.hostname,
+      ipAddresses: agent.ipAddress || '',
+      createdOn: agent.createdAt.toISOString(),
+      performedBy: null,
+      status: agent.status as 'Approved' | 'Pending' | 'Rejected',
+    }));
+
+    return paginate(data, total, paginationParams);
+  }
+
+  async approveAgent(id: string): Promise<SuccessResponse> {
+    const agent = await prisma.agent.findUnique({
+      where: { id },
+    });
+
+    if (!agent) {
+      throw new NotFoundError('Agent not found');
+    }
+
+    if (agent.status !== 'Pending') {
+      throw new BadRequestError(`Agent is already ${agent.status.toLowerCase()}`);
+    }
+
+    await prisma.agent.update({
+      where: { id },
+      data: { status: 'Connected' },
+    });
+
+    return {
+      success: true,
+      message: 'Agent approved successfully',
+    };
+  }
+
+  async rejectAgent(id: string): Promise<SuccessResponse> {
+    const agent = await prisma.agent.findUnique({
+      where: { id },
+    });
+
+    if (!agent) {
+      throw new NotFoundError('Agent not found');
+    }
+
+    if (agent.status === 'Rejected') {
+      throw new BadRequestError('Agent is already rejected');
+    }
+
+    await prisma.agent.update({
+      where: { id },
+      data: { status: 'Rejected' },
+    });
+
+    return {
+      success: true,
+      message: 'Agent rejected successfully',
+    };
   }
 }
 

@@ -17,11 +17,16 @@ export interface AssetResponse {
   agentId?: string | null;
   ipAddress?: string | null;
   macAddress?: string | null;
+  hostname?: string | null;
   serialNumber?: string | null;
   manufacturer?: string | null;
   model?: string | null;
   osType?: string | null;
   osVersion?: string | null;
+  // Computed hardware fields
+  memorySize?: string | null;
+  diskSize?: string | null;
+  systemSKU?: string | null;
   tags?: TagResponse[];
   createdAt: string;
   updatedAt: string;
@@ -177,6 +182,17 @@ export interface AssetHardware {
   memory: MemoryInfo[];
   networkAdapters: NetworkAdapterInfo[];
   battery?: BatteryInfo;
+  graphicsCards?: GraphicsCardInfo[];
+}
+
+export interface GraphicsCardInfo {
+  name: string;
+  manufacturer?: string;
+  driverVersion?: string;
+  driverDate?: string;
+  videoMemoryMB?: number;
+  currentResolution?: string;
+  refreshRate?: number;
 }
 
 export interface BiosInfo {
@@ -243,7 +259,10 @@ export interface BatteryInfo {
   health?: string;
   cycleCount?: number;
   chargeLevel?: number;
-  chargingStatus?: 'Charging' | 'Discharging' | 'Not charging' | 'Unknown';
+  chargingStatus?: 'Charging' | 'Discharging' | 'Not charging' | 'Unknown' | string;
+  batteryCapacity?: string;
+  estimatedRuntime?: string;
+  temperature?: string;
 }
 
 export interface AssetSoftware {

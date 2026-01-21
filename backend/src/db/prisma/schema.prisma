@@ -18,8 +18,12 @@ model User {
   id            String    @id @default(uuid())
   email         String    @unique
   passwordHash  String    @map("password_hash")
-  name          String?
+  name          String?   @map("display_name")  // Keep for backwards compatibility
+  firstName     String?   @map("first_name")    // NEW: Split name for frontend
+  lastName      String?   @map("last_name")     // NEW: Split name for frontend
   contactNumber String?   @map("contact_number")
+  timezone      String?   @default("UTC")       // NEW: User timezone preference
+  avatar        String?                         // NEW: Avatar URL or path
   role          String    @default("user")
   isActive      Boolean   @default(true) @map("is_active")
   isOnboarded   Boolean   @default(false) @map("is_onboarded")
@@ -166,6 +170,7 @@ model Agent {
   architecture  String?
   agentVersion  String?   @map("agent_version")
   ipAddress     String?   @map("ip_address")
+  macAddress    String?   @map("mac_address")
   serialNumber  String?   @map("serial_number")
   lastHeartbeat DateTime? @map("last_heartbeat")
   registeredAt  DateTime  @default(now()) @map("registered_at")
@@ -207,11 +212,20 @@ model AgentTelemetry {
   id          String   @id @default(uuid())
   agentId     String   @map("agent_id")
   agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  cpuUsage    Float?   @map("cpu_usage")
-  memoryUsage Float?   @map("memory_usage")
-  diskUsage   Float?   @map("disk_usage")
-  uptime      Int?
-  timestamp   DateTime @default(now())
+
+  // Summary fields for quick queries and dashboards
+  cpuUsage      Float?   @map("cpu_usage")
+  memoryUsage   Float?   @map("memory_usage")
+  diskUsage     Float?   @map("disk_usage")
+  uptime        Int?
+  networkInBps  BigInt?  @map("network_in_bps")   // NEW: Network bytes in per second
+  networkOutBps BigInt?  @map("network_out_bps")  // NEW: Network bytes out per second
+  processCount  Int?     @map("process_count")    // NEW: Running process count
+  pendingReboot Boolean? @map("pending_reboot")   // NEW: System needs reboot
+
+  // NEW: Full telemetry payload from agent
+  rawPayload    Json?    @map("raw_payload")      // Stores complete Telemetry struct
+  timestamp     DateTime @default(now())
 
   @@index([agentId, timestamp])
   @@map("agent_telemetry")
@@ -288,26 +302,59 @@ model Asset {
   macAddress     String?      @map("mac_address")
   manufacturer   String?
   model          String?
+  hostname       String?                         // NEW: Hostname from agent
   purchaseDate   DateTime?    @map("purchase_date")
   warrantyExpiry DateTime?    @map("warranty_expiry")
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
+  // NEW: Owner information (denormalized for display)
+  ownerId        String?      @map("owner_id")   // Optional FK to User
+  ownerName      String?      @map("owner_name")
+  ownerEmail     String?      @map("owner_email")
+  ownerPhone     String?      @map("owner_phone")
+  ownerDepartment String?     @map("owner_department")
+
+  // NEW: Procurement fields (from MISMATCH_DECISIONS.md)
+  vendor             String?                     // Vendor who sold the asset
+  purchaseOrderNumber String?   @map("purchase_order_number")
+  amcCost            String?    @map("amc_cost") // Annual Maintenance Contract cost
+  amcExpiryDate      DateTime?  @map("amc_expiry_date")
+  amcVendor          String?    @map("amc_vendor")
+  endOfLife          DateTime?  @map("end_of_life")
+  endOfSupport       DateTime?  @map("end_of_support")
+
+  // NEW: Cost fields (from MISMATCH_DECISIONS.md)
+  purchaseCost       Decimal?   @map("purchase_cost") @db.Decimal(12, 2)
+  currentValue       Decimal?   @map("current_value") @db.Decimal(12, 2)
+  salvageValue       Decimal?   @map("salvage_value") @db.Decimal(12, 2)
+  currency           String?    @default("USD")
+  depreciationType   String?    @map("depreciation_type") // "Straight Line" | "Declining Balance"
+  depreciationRate   Decimal?   @map("depreciation_rate") @db.Decimal(5, 2)
+  invoiceNumber      String?    @map("invoice_number")
+
+  // NEW: Dual location support
+  baseLocationId      String?   @map("base_location_id")
+  installedLocationId String?   @map("installed_location_id")
+
+  // Existing relations
   organizationId String?       @map("organization_id")
   organization   Organization? @relation(fields: [organizationId], references: [id])
   locationId     String?       @map("location_id")
   location       Location?     @relation(fields: [locationId], references: [id])
 
-  agent          Agent?
-  hardware       AssetHardware?
-  software       AssetSoftware[]
-  security       AssetSecurity?
-  tags           AssetTag[]
-  vulnerabilities AssetVulnerability[]
-  patchTasks     PatchDeploymentTask[]
+  agent             Agent?
+  hardware          AssetHardware?
+  software          AssetSoftware[]
+  softwareInventory AssetSoftwareInventory?
+  security          AssetSecurity?
+  tags              AssetTag[]
+  vulnerabilities   AssetVulnerability[]
+  patchTasks        PatchDeploymentTask[]
 
   @@index([status])
   @@index([type])
+  @@index([ownerId])
   @@map("assets")
 }
 
@@ -315,13 +362,31 @@ model AssetHardware {
   id         String  @id @default(uuid())
   assetId    String  @unique @map("asset_id")
   asset      Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  cpu        String?
-  cpuCores   Int?    @map("cpu_cores")
-  ramTotal   BigInt? @map("ram_total")
-  diskTotal  BigInt? @map("disk_total")
-  diskFree   BigInt? @map("disk_free")
-  gpuModel   String? @map("gpu_model")
-  biosVersion String? @map("bios_version")
+
+  // Summary fields for querying/display in lists (indexed)
+  cpu             String?
+  cpuCores        Int?     @map("cpu_cores")
+  cpuManufacturer String?  @map("cpu_manufacturer")  // NEW: Intel, AMD, Apple
+  cpuThreads      Int?     @map("cpu_threads")       // NEW: Thread count
+  cpuSpeedMHz     Int?     @map("cpu_speed_mhz")     // NEW: Clock speed
+  ramTotal        BigInt?  @map("ram_total")
+  ramSlots        Int?     @map("ram_slots")         // NEW: Used memory slots
+  ramType         String?  @map("ram_type")          // NEW: DDR4, DDR5
+  diskTotal       BigInt?  @map("disk_total")
+  diskFree        BigInt?  @map("disk_free")
+  diskType        String?  @map("disk_type")         // NEW: SSD, HDD, NVMe
+  gpuModel        String?  @map("gpu_model")
+  gpuMemoryMB     Int?     @map("gpu_memory_mb")     // NEW: GPU memory
+  biosVendor      String?  @map("bios_vendor")       // NEW: BIOS manufacturer
+  biosVersion     String?  @map("bios_version")
+  systemSKU       String?  @map("system_sku")
+  manufacturer    String?                            // NEW: System manufacturer
+  model           String?                            // NEW: System model
+  serialNumber    String?  @map("serial_number")     // NEW: System serial
+
+  // NEW: Full hardware payload from agent (JSON + Summary pattern)
+  rawPayload      Json?    @map("raw_payload")       // Stores complete agent Hardware struct
+  collectedAt     DateTime? @map("collected_at")     // When agent collected this data
 
   @@map("asset_hardware")
 }
@@ -336,9 +401,30 @@ model AssetSoftware {
   installDate  DateTime? @map("install_date")
   installPath  String?   @map("install_path")
   isSystem     Boolean   @default(false) @map("is_system")
+  category     String?                           // NEW: Application category
 
   @@index([assetId])
   @@map("asset_software")
+}
+
+// NEW: Complete software inventory from agent (includes OS info, services, etc.)
+model AssetSoftwareInventory {
+  id           String    @id @default(uuid())
+  assetId      String    @unique @map("asset_id")
+  asset        Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  // Summary fields for quick queries
+  osName       String?   @map("os_name")
+  osVersion    String?   @map("os_version")
+  osBuild      String?   @map("os_build")
+  totalApps    Int?      @map("total_apps")
+  totalServices Int?     @map("total_services")
+
+  // Full software inventory payload from agent
+  rawPayload   Json?     @map("raw_payload")     // Stores complete SoftwareInventory struct
+  collectedAt  DateTime? @map("collected_at")
+
+  @@map("asset_software_inventory")
 }
 
 model AssetSecurity {

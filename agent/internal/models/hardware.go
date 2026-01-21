@@ -18,6 +18,7 @@ type SystemIdentity struct {
 	Model        string `json:"model"`
 	SerialNumber string `json:"serialNumber"`
 	UUID         string `json:"uuid"`
+	SKU          string `json:"sku,omitempty"`
 	AssetTag     string `json:"assetTag,omitempty"`
 }
 

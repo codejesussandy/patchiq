@@ -19,6 +19,9 @@ router.get('/', validateQuery(listAgentsQuerySchema), controller.listAgents);
 // GET /v1/agents/:id - Get agent details
 router.get('/:id', controller.getAgent);
 
+// PUT /v1/agents/:id - Update agent
+router.put('/:id', controller.updateAgent);
+
 // DELETE /v1/agents/:id - Delete agent
 router.delete('/:id', controller.deleteAgent);
 

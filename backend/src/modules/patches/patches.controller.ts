@@ -223,6 +223,28 @@ export async function deleteDeployment(req: Request, res: Response, next: NextFu
   }
 }
 
+export async function updateDeployment(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const { name, scheduledAt } = req.body;
+    const result = await patchesService.updateDeployment(id, { name, scheduledAt });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function cancelDeployment(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const userId = req.user!.id;
+    const result = await patchesService.cancelDeployment(id, userId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getDeploymentPreview(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;

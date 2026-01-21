@@ -22,6 +22,7 @@ import {
 } from 'antd';
 import {
   WindowsOutlined,
+  AppleOutlined,
   EditOutlined,
   MoreOutlined,
   FilterOutlined,
@@ -37,10 +38,12 @@ import {
   AppstoreOutlined,
   UnorderedListOutlined,
   SettingOutlined,
+  DesktopOutlined,
 } from '@ant-design/icons';
 import { OSIcon } from '../../../components/patches';
 import type { ColumnsType } from 'antd/es/table';
 import type { Asset, AssetLifeCycle, Hardware, Software } from '../../../types/asset.types';
+import type { TelemetryPayload } from '../../../types/telemetry.types';
 import { assetService } from '../../../services/asset.service';
 import { tagService } from '../../../services/tag.service';
 import { AddAssetModal } from './AddAssetModal';
@@ -64,6 +67,9 @@ export const AssetDetails = () => {
   const [loadingHardware, setLoadingHardware] = useState(false);
   const [loadingSoftware, setLoadingSoftware] = useState(false);
   const [loadingVulnerabilities, setLoadingVulnerabilities] = useState(false);
+  const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
+  const [loadingTelemetry, setLoadingTelemetry] = useState(false);
+  const [telemetryLastUpdated, setTelemetryLastUpdated] = useState<Date | null>(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [fileList, setFileList] = useState<any[]>([]);
   const [editingTags, setEditingTags] = useState(false);
@@ -94,6 +100,7 @@ export const AssetDetails = () => {
       fetchHardwareData();
       fetchSoftwareData();
       fetchVulnerabilitiesData();
+      fetchTelemetryData();
       setSelectedTags(asset.tagIds || []);
     }
   }, [asset]);
@@ -155,65 +162,31 @@ export const AssetDetails = () => {
     if (!asset) return;
     setLoadingVulnerabilities(true);
     try {
-      // Mock vulnerabilities data
-      const mockVulnerabilities = [
-        {
-          id: 'vuln-1',
-          cveId: 'CVE-2024-1086',
-          title: 'Critical Security Vulnerability in Windows',
-          description: 'A remote code execution vulnerability in Windows kernel',
-          severity: 'Critical',
-          cvssScore: 9.8,
-          affectedSoftware: 'Windows 11 Pro',
-          affectedVersions: '21H2 - 23H2',
-          datePublished: '2024-01-15',
-          dateDiscovered: '2024-01-10',
-          status: 'Unpatched',
-          patchAvailable: true,
-          patchVersion: 'KB5028997',
-          exploitAvailable: true,
-          inTheWild: true,
-        },
-        {
-          id: 'vuln-2',
-          cveId: 'CVE-2024-2156',
-          title: 'High Priority Update for Microsoft Office',
-          description: 'Information disclosure vulnerability in Microsoft Office',
-          severity: 'High',
-          cvssScore: 7.5,
-          affectedSoftware: 'Microsoft Office 2021',
-          affectedVersions: 'All versions',
-          datePublished: '2024-02-20',
-          dateDiscovered: '2024-02-15',
-          status: 'Patch Available',
-          patchAvailable: true,
-          patchVersion: 'KB5034772',
-          exploitAvailable: false,
-          inTheWild: false,
-        },
-        {
-          id: 'vuln-3',
-          cveId: 'CVE-2024-1234',
-          title: 'Medium Priority - Browser Security Update',
-          description: 'Cross-site scripting vulnerability in browser engine',
-          severity: 'Medium',
-          cvssScore: 5.2,
-          affectedSoftware: 'Google Chrome',
-          affectedVersions: '< 123.0.6312.86',
-          datePublished: '2024-03-01',
-          dateDiscovered: '2024-02-28',
-          status: 'Patched',
-          patchAvailable: true,
-          patchVersion: '123.0.6312.86',
-          exploitAvailable: false,
-          inTheWild: false,
-        },
-      ];
-      setVulnerabilities(mockVulnerabilities);
+      // TODO: Implement asset vulnerabilities API endpoint
+      // For now, show empty state - vulnerabilities will be populated when
+      // the backend /assets/:id/vulnerabilities endpoint is implemented
+      setVulnerabilities([]);
     } catch (error) {
       console.error('Failed to fetch vulnerabilities data:', error);
+      setVulnerabilities([]);
     } finally {
       setLoadingVulnerabilities(false);
+    }
+  };
+
+  const fetchTelemetryData = async () => {
+    if (!asset) return;
+    setLoadingTelemetry(true);
+    try {
+      const data = await assetService.getAssetTelemetry(asset.id);
+      setTelemetry(data);
+      setTelemetryLastUpdated(new Date());
+    } catch (error) {
+      console.error('Failed to fetch telemetry data:', error);
+      // Fall back to static asset performance data if telemetry fails
+      setTelemetry(null);
+    } finally {
+      setLoadingTelemetry(false);
     }
   };
 
@@ -605,7 +578,7 @@ export const AssetDetails = () => {
 
     return (
       <div>
-        {/* BIOS - Device Header */}
+        {/* Device Header - Dynamic based on OS */}
         <div style={{ marginBottom: 24 }}>
           <div
             style={{
@@ -618,27 +591,33 @@ export const AssetDetails = () => {
               marginBottom: 24,
             }}
           >
-            {/* Large Logo/Icon */}
+            {/* Large Logo/Icon - Dynamic based on OS */}
             <div
               style={{
                 fontSize: '80px',
-                color: '#0078d4',
+                color: asset?.osType?.toLowerCase().includes('mac') || asset?.osType?.toLowerCase().includes('darwin') ? '#000' : '#0078d4',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 minWidth: '120px',
               }}
             >
-              <WindowsOutlined />
+              {asset?.osType?.toLowerCase().includes('mac') || asset?.osType?.toLowerCase().includes('darwin') ? (
+                <AppleOutlined />
+              ) : asset?.osType?.toLowerCase().includes('linux') ? (
+                <DesktopOutlined style={{ color: '#E95420' }} />
+              ) : (
+                <WindowsOutlined />
+              )}
             </div>
 
-            {/* Device Info */}
+            {/* Device Info - Use asset data */}
             <div>
               <Title level={2} style={{ margin: 0, marginBottom: 8 }}>
-                {hardware.bios.name}
+                {asset?.model || hardware.bios?.name || 'Unknown Device'}
               </Title>
               <Text type="secondary" style={{ fontSize: '14px' }}>
-                {hardware.bios.manufacturer}
+                {asset?.manufacturer || hardware.bios?.manufacturer || 'Unknown Manufacturer'}
               </Text>
             </div>
           </div>
@@ -653,33 +632,33 @@ export const AssetDetails = () => {
           <Row gutter={16}>
             <Col span={6}>
               <Text type="secondary">Install Date</Text>
-              <div>{hardware.bios.installDate}</div>
+              <div>{hardware.bios?.installDate ?? 'N/A'}</div>
             </Col>
             <Col span={6}>
               <Text type="secondary">BIOS Version</Text>
-              <div>{hardware.bios.biosVersion}</div>
+              <div>{hardware.bios?.biosVersion ?? 'N/A'}</div>
             </Col>
             <Col span={6}>
               <Text type="secondary">Manufacturer</Text>
-              <div>{hardware.bios.manufacturer}</div>
+              <div>{hardware.bios?.manufacturer ?? 'N/A'}</div>
             </Col>
             <Col span={6}>
               <Text type="secondary">Description</Text>
-              <div>{hardware.bios.description}</div>
+              <div>{hardware.bios?.description ?? 'N/A'}</div>
             </Col>
           </Row>
           <Row gutter={16} style={{ marginTop: 16 }}>
             <Col span={6}>
               <Text type="secondary">Secure Boot State</Text>
-              <div>{hardware.bios.secureBootState}</div>
+              <div>{hardware.bios?.secureBootState ?? 'N/A'}</div>
             </Col>
             <Col span={6}>
               <Text type="secondary">Serial Number</Text>
-              <div>{hardware.bios.serialNumber}</div>
+              <div>{hardware.bios?.serialNumber ?? 'N/A'}</div>
             </Col>
             <Col span={6}>
               <Text type="secondary">Serial Number</Text>
-              <div>{hardware.bios.serialNumber}</div>
+              <div>{hardware.bios?.serialNumber ?? 'N/A'}</div>
             </Col>
           </Row>
         </Card>
@@ -688,7 +667,7 @@ export const AssetDetails = () => {
         <Card
           title={
             <div>
-              <div style={{ fontWeight: 600 }}>{hardware.processor.name}</div>
+              <div style={{ fontWeight: 600 }}>{hardware.processor?.name ?? 'Unknown Processor'}</div>
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 PROCESSOR DETAILS
               </Text>
@@ -700,26 +679,26 @@ export const AssetDetails = () => {
           <Row gutter={16}>
             <Col span={6}>
               <Text type="secondary">Logical Processors</Text>
-              <div>{hardware.processor.logicalProcessors}</div>
+              <div>{hardware.processor?.logicalProcessors ?? 'N/A'}</div>
             </Col>
             <Col span={6}>
               <Text type="secondary">Manufacturer</Text>
-              <div>{hardware.processor.manufacturer}</div>
+              <div>{hardware.processor?.manufacturer ?? 'N/A'}</div>
             </Col>
             <Col span={6}>
               <Text type="secondary">Number of Core</Text>
-              <div>{hardware.processor.numberOfCores}</div>
+              <div>{hardware.processor?.numberOfCores ?? 'N/A'}</div>
             </Col>
             <Col span={6}>
               <Text type="secondary">Processor Speed</Text>
-              <div>{hardware.processor.processorSpeed}</div>
+              <div>{hardware.processor?.processorSpeed ?? 'N/A'}</div>
             </Col>
           </Row>
           <Row gutter={16} style={{ marginTop: 16 }}>
             <Col span={24}>
               <Text type="secondary">Secure Boot State</Text>
               <div style={{ fontSize: '11px', wordBreak: 'break-all' }}>
-                {hardware.processor.secureBootState}
+                {hardware.processor?.secureBootState ?? 'N/A'}
               </div>
             </Col>
           </Row>
@@ -729,7 +708,7 @@ export const AssetDetails = () => {
         <Card
           title={
             <div>
-              <div style={{ fontWeight: 600 }}>{hardware.baseBoard.name}</div>
+              <div style={{ fontWeight: 600 }}>{hardware.baseBoard?.name ?? 'Unknown Baseboard'}</div>
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 BASEBOARD DETAILS
               </Text>
@@ -741,25 +720,25 @@ export const AssetDetails = () => {
           <Row gutter={16}>
             <Col span={6}>
               <Text type="secondary">Part Number</Text>
-              <div>{hardware.baseBoard.partNumber}</div>
+              <div>{hardware.baseBoard?.partNumber ?? 'N/A'}</div>
             </Col>
             <Col span={6}>
               <Text type="secondary">Product ID</Text>
-              <div>{hardware.baseBoard.productId}</div>
+              <div>{hardware.baseBoard?.productId ?? 'N/A'}</div>
             </Col>
             <Col span={6}>
               <Text type="secondary">Serial Number</Text>
-              <div>{hardware.baseBoard.serialNumber}</div>
+              <div>{hardware.baseBoard?.serialNumber ?? 'N/A'}</div>
             </Col>
             <Col span={6}>
               <Text type="secondary">Tag</Text>
-              <div>{hardware.baseBoard.tag}</div>
+              <div>{hardware.baseBoard?.tag ?? 'N/A'}</div>
             </Col>
           </Row>
           <Row gutter={16} style={{ marginTop: 16 }}>
             <Col span={6}>
               <Text type="secondary">Version</Text>
-              <div>{hardware.baseBoard.version}</div>
+              <div>{hardware.baseBoard?.version ?? 'N/A'}</div>
             </Col>
           </Row>
         </Card>
@@ -769,8 +748,8 @@ export const AssetDetails = () => {
           title={
             <div>
               <div style={{ fontWeight: 600 }}>
-                {hardware.storage.length} Partition -{' '}
-                {hardware.storage.reduce((acc, d) => acc + parseInt(d.capacity), 0)} GB
+                {(hardware.storage || []).length} Partition -{' '}
+                {(hardware.storage || []).reduce((acc, d) => acc + parseInt(d.capacity || '0'), 0)} GB
               </div>
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 STORAGE
@@ -781,7 +760,7 @@ export const AssetDetails = () => {
           style={{ marginBottom: 16 }}
         >
           <Row gutter={[16, 16]}>
-            {hardware.storage.map((drive, idx) => (
+            {(hardware.storage || []).map((drive, idx) => (
               <Col span={12} key={idx}>
                 <Card size="small" style={{ background: '#fafafa' }}>
                   <Row gutter={8}>
@@ -826,8 +805,8 @@ export const AssetDetails = () => {
           title={
             <div>
               <div style={{ fontWeight: 600 }}>
-                {hardware.memory.length} Slots -{' '}
-                {hardware.memory.reduce((acc, m) => acc + parseFloat(m.capacity), 0)} GB
+                {(hardware.memory || []).length} Slots -{' '}
+                {(hardware.memory || []).reduce((acc, m) => acc + parseFloat(m.capacity || '0'), 0)} GB
               </div>
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 MEMORY
@@ -838,7 +817,7 @@ export const AssetDetails = () => {
           style={{ marginBottom: 16 }}
         >
           <Row gutter={[16, 16]}>
-            {hardware.memory.map((mem, idx) => (
+            {(hardware.memory || []).map((mem, idx) => (
               <Col span={12} key={idx}>
                 <Card size="small" style={{ background: '#fafafa' }}>
                   <Row gutter={8}>
@@ -886,7 +865,7 @@ export const AssetDetails = () => {
           title={
             <div>
               <div style={{ fontWeight: 600 }}>
-                {hardware.networkAdapters.length} Network Adapters
+                {(hardware.networkAdapters || []).length} Network Adapters
               </div>
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 NETWORK ADAPTERS
@@ -1027,7 +1006,7 @@ export const AssetDetails = () => {
       },
       {
         key: 'environment',
-        label: `System Environment (${Object.keys(software.systemEnvironment).length})`,
+        label: `System Environment (${Object.keys(software?.systemEnvironment ?? {}).length})`,
         children: (
           <div>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
@@ -1039,7 +1018,7 @@ export const AssetDetails = () => {
             </div>
             <Table
               columns={environmentColumns}
-              dataSource={Object.entries(software.systemEnvironment).map(([key, value]) => ({
+              dataSource={Object.entries(software?.systemEnvironment ?? {}).map(([key, value]) => ({
                 key,
                 value: value ?? 'N/A',
               }))}
@@ -1077,107 +1056,87 @@ export const AssetDetails = () => {
       },
     ];
 
+    // Helper to get OS icon
+    const getOSIcon = () => {
+      const osName = software?.os?.name?.toLowerCase() || asset?.osType?.toLowerCase() || '';
+      if (osName.includes('mac') || osName.includes('darwin')) {
+        return <AppleOutlined style={{ color: '#000', fontSize: '16px' }} />;
+      } else if (osName.includes('windows')) {
+        return <WindowsOutlined style={{ color: '#0078d4', fontSize: '16px' }} />;
+      } else if (osName.includes('linux') || osName.includes('ubuntu')) {
+        return <DesktopOutlined style={{ color: '#E95420', fontSize: '16px' }} />;
+      }
+      return <DesktopOutlined style={{ fontSize: '16px' }} />;
+    };
+
+    // Get OS display name
+    const getOSDisplayName = () => {
+      if (software?.os?.name && software?.os?.version) {
+        return `${software.os.name} ${software.os.version}`;
+      }
+      if (asset?.osType && asset?.osVersion) {
+        return `${asset.osType} ${asset.osVersion}`;
+      }
+      return 'Operating System';
+    };
+
     return (
       <div>
-        {/* Windows Details */}
-        <Collapse defaultActiveKey={[]} style={{ marginBottom: 16 }}>
+        {/* Operating System Details */}
+        <Collapse defaultActiveKey={['os']} style={{ marginBottom: 16 }}>
           <Panel
             header={
               <Space>
-                <WindowsOutlined style={{ color: '#0078d4' }} />
-                <Text strong>Microsoft Windows 11 Pro</Text>
+                {getOSIcon()}
+                <Text strong>{getOSDisplayName()}</Text>
               </Space>
             }
-            key="windows"
+            key="os"
           >
             <Row gutter={[16, 8]}>
               <Col span={6}>
-                <Text type="secondary">Alias</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">Boot Device</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">Build Number</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">Description</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">Device Type</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">Hostname</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">Last Boot-Up Time</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">Licence Description</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">License Status</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">Manufacturer</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">OS Installed By</Text>
-                <div>Admin</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">OS Install date</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">Partial Product Key</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">Product ID</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">Product Key</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">System Discovery</Text>
-                <div>xxxx</div>
-              </Col>
-              <Col span={6}>
-                <Text type="secondary">System Drive</Text>
-                <div>xxxx</div>
+                <Text type="secondary">Operating System</Text>
+                <div>{software?.os?.name || asset?.osType || '-'}</div>
               </Col>
               <Col span={6}>
                 <Text type="secondary">Version</Text>
-                <div>xxxx</div>
+                <div>{software?.os?.version || asset?.osVersion || '-'}</div>
               </Col>
               <Col span={6}>
-                <Text type="secondary">Virtual Memory</Text>
-                <div>32 Gbyte</div>
+                <Text type="secondary">Hostname</Text>
+                <div>{asset?.name || '-'}</div>
               </Col>
               <Col span={6}>
-                <Text type="secondary">Windows Directory</Text>
-                <div>xxxx</div>
+                <Text type="secondary">Manufacturer</Text>
+                <div>{asset?.manufacturer || '-'}</div>
+              </Col>
+              <Col span={6}>
+                <Text type="secondary">Model</Text>
+                <div>{asset?.model || '-'}</div>
+              </Col>
+              <Col span={6}>
+                <Text type="secondary">Serial Number</Text>
+                <div>{asset?.serialNumber || '-'}</div>
+              </Col>
+              <Col span={6}>
+                <Text type="secondary">Status</Text>
+                <div>
+                  <Tag color={asset?.operationalStatus === 'Connected' ? 'green' : 'orange'}>
+                    {asset?.operationalStatus || '-'}
+                  </Tag>
+                </div>
+              </Col>
+              <Col span={6}>
+                <Text type="secondary">Last Updated</Text>
+                <div>{asset?.updatedAt ? new Date(asset.updatedAt).toLocaleString() : '-'}</div>
               </Col>
             </Row>
           </Panel>
         </Collapse>
 
         <Collapse defaultActiveKey={[]} style={{ marginBottom: 16 }}>
-          <Panel header={<Text strong>License Details</Text>} key="license">
-            <Text type="secondary">License information will be displayed here</Text>
+          <Panel header={<Text strong>System Information</Text>} key="system">
+            <Text type="secondary">Detailed system information from agent inventory</Text>
           </Panel>
         </Collapse>
 
@@ -1212,98 +1171,10 @@ export const AssetDetails = () => {
       kbId?: string;
     };
 
-    const mockPatches: PatchItem[] = [
-      {
-        id: '1',
-        patchId: 'ZPH-U-7401',
-        title: 'wireless-regdb',
-        severity: 'LOW',
-        platform: 'Ubuntu',
-        releaseDate: '2025/09/18 03:26:55 AM',
-        rollback: 'NOT SUPPORTED',
-        category: 'Security updates',
-      },
-      {
-        id: '2',
-        patchId: 'ZPH-U-3479',
-        title: 'LibreOffice vulnerability',
-        severity: 'LOW',
-        platform: 'Ubuntu',
-        releaseDate: '2025/05/08 06:05:27 PM',
-        rollback: 'NOT SUPPORTED',
-        category: 'Security updates',
-      },
-      {
-        id: '3',
-        patchId: 'ZPH-U-3478',
-        title: 'libgpgmepp6',
-        severity: 'LOW',
-        platform: 'Ubuntu',
-        releaseDate: '2023/10/14 12:04:05 PM',
-        rollback: 'NOT SUPPORTED',
-        category: 'Security updates',
-      },
-      {
-        id: '4',
-        patchId: 'ZPH-U-3477',
-        title: 'gnome-shell-common',
-        severity: 'LOW',
-        platform: 'Ubuntu',
-        releaseDate: '2024/11/15 11:26:41 PM',
-        rollback: 'NOT SUPPORTED',
-        category: 'Security updates',
-      },
-      {
-        id: '5',
-        patchId: 'ZPH-U-3476',
-        title: 'nano vulnerability',
-        severity: 'MODERATE',
-        platform: 'Ubuntu',
-        releaseDate: '2024/10/15 05:59:19 PM',
-        rollback: 'NOT SUPPORTED',
-        category: 'Security updates',
-      },
-      {
-        id: '6',
-        patchId: 'ZPH-U-3475',
-        title: 'shadow vulnerability',
-        severity: 'IMPORTANT',
-        platform: 'Ubuntu',
-        releaseDate: '2024/02/15 11:35:16 PM',
-        rollback: 'NOT SUPPORTED',
-        category: 'Security updates',
-      },
-      {
-        id: '7',
-        patchId: 'ZPH-U-3474',
-        title: 'Libxslt vulnerability',
-        severity: 'LOW',
-        platform: 'Ubuntu',
-        releaseDate: '2025/03/20 05:27:31 PM',
-        rollback: 'NOT SUPPORTED',
-        category: 'Security updates',
-      },
-      {
-        id: '8',
-        patchId: 'ZPH-U-3473',
-        title: 'LibreOffice vulnerability',
-        severity: 'LOW',
-        platform: 'Ubuntu',
-        releaseDate: '2025/05/08 06:05:27 PM',
-        rollback: 'NOT SUPPORTED',
-        category: 'Security updates',
-      },
-      {
-        id: '9',
-        patchId: 'ZPH-U-3472',
-        title: 'Netplan regression',
-        severity: 'IMPORTANT',
-        platform: 'Ubuntu',
-        releaseDate: '2024/06/29 12:44:48 AM',
-        rollback: 'NOT SUPPORTED',
-        category: 'Security updates',
-      },
-    ];
+    // TODO: Implement asset patches API endpoint
+    // For now, show empty state - patches will be populated when
+    // the backend /assets/:id/patches endpoint is implemented
+    const mockPatches: PatchItem[] = [];
 
     const getPatchSeverityColor = (severity: string) => {
       switch (severity) {
@@ -1522,38 +1393,10 @@ export const AssetDetails = () => {
       createdOn: string;
     };
 
-    const mockAlerts: AlertItem[] = [
-      {
-        id: '1',
-        alert: 'Memory Policy',
-        severity: 'CRITICAL',
-        module: 'Endpoint',
-        attribute: 'Memory Utilization (%)',
-        value: '63.0',
-        message: 'KFILKHAROPS001 : M...',
-        createdOn: '2026/01/16 10:04:08 AM',
-      },
-      {
-        id: '2',
-        alert: 'Memory Policy',
-        severity: 'CLEAR',
-        module: 'Endpoint',
-        attribute: 'Memory Utilization (%)',
-        value: '48.0',
-        message: 'KFILKHAROPS001 : M...',
-        createdOn: '2026/01/16 08:54:03 AM',
-      },
-      {
-        id: '3',
-        alert: 'Memory Policy',
-        severity: 'CRITICAL',
-        module: 'Endpoint',
-        attribute: 'Memory Utilization (%)',
-        value: '68.0',
-        message: 'KFILKHAROPS001 : M...',
-        createdOn: '2026/01/16 08:49:03 AM',
-      },
-    ];
+    // TODO: Implement asset alerts API endpoint
+    // For now, show empty state - alerts will be populated when
+    // the backend /assets/:id/alerts endpoint is implemented
+    const mockAlerts: AlertItem[] = [];
 
     const getAlertSeverityColor = (severity: string) => {
       switch (severity) {
@@ -1982,31 +1825,46 @@ export const AssetDetails = () => {
             <Col span={12}>
               <Text type="secondary">Asset ID</Text>
               <div>
-                <Text strong>{asset.assetId}</Text>
+                <Text strong>{asset.assetId || asset.id || 'N/A'}</Text>
               </div>
             </Col>
             <Col span={12}>
               <Text type="secondary">Asset type</Text>
               <div>
-                <Text strong>{asset.assetType}</Text>
+                <Text strong>{asset.assetType || 'Endpoint'}</Text>
               </div>
             </Col>
             <Col span={12}>
               <Text type="secondary">Host Name</Text>
               <div>
-                <Text strong>{asset.hostname}</Text>
+                <Text strong style={{ fontFamily: 'monospace' }}>
+                  {asset.hostname || asset.name || 'N/A'}
+                </Text>
               </div>
             </Col>
             <Col span={12}>
               <Text type="secondary">OS</Text>
               <div>
-                <Text strong>{asset.osType}</Text>
+                <Text strong>{asset.osType || 'N/A'}</Text>
               </div>
             </Col>
             <Col span={12}>
               <Text type="secondary">IP Address</Text>
               <div>
-                <Text strong>{asset.ipAddress}</Text>
+                <Text strong style={{ fontFamily: 'monospace' }}>
+                  {asset.ipAddress || 'N/A'}
+                </Text>
+              </div>
+            </Col>
+            <Col span={12}>
+              <Text type="secondary">MAC Address</Text>
+              <div>
+                <Text strong style={{ fontFamily: 'monospace' }}>
+                  {asset.macAddress ||
+                   (hardware?.networkAdapters && hardware.networkAdapters.length > 0
+                     ? hardware.networkAdapters[0].macAddress
+                     : 'N/A')}
+                </Text>
               </div>
             </Col>
           </Row>
@@ -2022,55 +1880,114 @@ export const AssetDetails = () => {
             </div>
           </div>
 
-          {/* Performance */}
-          <Card title="Performance" size="small" style={{ marginBottom: 24 }}>
-            <Row gutter={16}>
-              <Col span={6}>
-                <Text type="secondary">System Uptime</Text>
-                <div>
-                  <Text strong>{asset.performance.systemUptime}</Text>
-                </div>
-              </Col>
-              <Col span={6}>
-                <div>
-                  <Text type="secondary">Memory Utilization</Text>
+          {/* Performance - Real-time telemetry from agent heartbeat */}
+          <Card
+            title={
+              <Space>
+                <span>Performance</span>
+                {telemetryLastUpdated && (
+                  <Text type="secondary" style={{ fontSize: '12px', fontWeight: 'normal' }}>
+                    Last updated: {telemetryLastUpdated.toLocaleTimeString()}
+                  </Text>
+                )}
+              </Space>
+            }
+            size="small"
+            style={{ marginBottom: 24 }}
+            extra={
+              <Button
+                icon={<ReloadOutlined spin={loadingTelemetry} />}
+                size="small"
+                onClick={fetchTelemetryData}
+                disabled={loadingTelemetry}
+              >
+                Refresh
+              </Button>
+            }
+          >
+            {loadingTelemetry && !telemetry ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <Spin size="small" />
+                <Text type="secondary" style={{ marginLeft: 8 }}>Fetching telemetry...</Text>
+              </div>
+            ) : (
+              <Row gutter={16}>
+                <Col span={6}>
+                  <Text type="secondary">System Uptime</Text>
                   <div>
-                    <Text strong>{asset.performance.memoryUtilization}%</Text>
+                    <Text strong>
+                      {telemetry?.systemUptime
+                        ? (() => {
+                            const seconds = telemetry.systemUptime;
+                            const days = Math.floor(seconds / 86400);
+                            const hours = Math.floor((seconds % 86400) / 3600);
+                            const mins = Math.floor((seconds % 3600) / 60);
+                            const secs = seconds % 60;
+                            return `${days} day${days !== 1 ? 's' : ''}, ${hours} hr${hours !== 1 ? 's' : ''}, ${mins} min, ${secs} sec`;
+                          })()
+                        : asset.performance?.systemUptime ?? 'N/A'}
+                    </Text>
                   </div>
-                  <Progress
-                    percent={asset.performance.memoryUtilization}
-                    showInfo={false}
-                    size="small"
-                  />
-                </div>
-              </Col>
-              <Col span={6}>
-                <div>
-                  <Text type="secondary">CPU Utilization</Text>
+                </Col>
+                <Col span={6}>
                   <div>
-                    <Text strong>{asset.performance.cpuUtilization}%</Text>
+                    <Text type="secondary">Memory Utilization</Text>
+                    <div>
+                      <Text strong>
+                        {telemetry?.memory?.usagePercent?.toFixed(1) ?? asset.performance?.memoryUtilization ?? 0}%
+                      </Text>
+                    </div>
+                    <Progress
+                      percent={telemetry?.memory?.usagePercent ?? asset.performance?.memoryUtilization ?? 0}
+                      showInfo={false}
+                      size="small"
+                      status={
+                        (telemetry?.memory?.usagePercent ?? 0) > 90 ? 'exception' :
+                        (telemetry?.memory?.usagePercent ?? 0) > 70 ? 'active' : 'normal'
+                      }
+                    />
                   </div>
-                  <Progress
-                    percent={asset.performance.cpuUtilization}
-                    showInfo={false}
-                    size="small"
-                  />
-                </div>
-              </Col>
-              <Col span={6}>
-                <div>
-                  <Text type="secondary">Disk Utilization</Text>
+                </Col>
+                <Col span={6}>
                   <div>
-                    <Text strong>{asset.performance.diskUtilization}%</Text>
+                    <Text type="secondary">CPU Utilization</Text>
+                    <div>
+                      <Text strong>
+                        {telemetry?.cpu?.usagePercent?.toFixed(1) ?? asset.performance?.cpuUtilization ?? 0}%
+                      </Text>
+                    </div>
+                    <Progress
+                      percent={telemetry?.cpu?.usagePercent ?? asset.performance?.cpuUtilization ?? 0}
+                      showInfo={false}
+                      size="small"
+                      status={
+                        (telemetry?.cpu?.usagePercent ?? 0) > 90 ? 'exception' :
+                        (telemetry?.cpu?.usagePercent ?? 0) > 70 ? 'active' : 'normal'
+                      }
+                    />
                   </div>
-                  <Progress
-                    percent={asset.performance.diskUtilization}
-                    showInfo={false}
-                    size="small"
-                  />
-                </div>
-              </Col>
-            </Row>
+                </Col>
+                <Col span={6}>
+                  <div>
+                    <Text type="secondary">Disk Utilization</Text>
+                    <div>
+                      <Text strong>
+                        {telemetry?.disk?.drives?.[0]?.usagePercent?.toFixed(1) ?? asset.performance?.diskUtilization ?? 0}%
+                      </Text>
+                    </div>
+                    <Progress
+                      percent={telemetry?.disk?.drives?.[0]?.usagePercent ?? asset.performance?.diskUtilization ?? 0}
+                      showInfo={false}
+                      size="small"
+                      status={
+                        (telemetry?.disk?.drives?.[0]?.usagePercent ?? 0) > 90 ? 'exception' :
+                        (telemetry?.disk?.drives?.[0]?.usagePercent ?? 0) > 70 ? 'active' : 'normal'
+                      }
+                    />
+                  </div>
+                </Col>
+              </Row>
+            )}
           </Card>
 
           {/* Allotment */}
@@ -2079,13 +1996,13 @@ export const AssetDetails = () => {
               <Col span={12}>
                 <Text type="secondary">Owner</Text>
                 <div>
-                  <Text strong>{asset.owner.name}</Text>
+                  <Text strong>{asset.owner?.name ?? 'Not Assigned'}</Text>
                 </div>
                 <div>
-                  <Text type="secondary">{asset.owner.email}</Text>
+                  <Text type="secondary">{asset.owner?.email ?? '-'}</Text>
                 </div>
                 <div>
-                  <Text type="secondary">{asset.owner.phone}</Text>
+                  <Text type="secondary">{asset.owner?.phone ?? '-'}</Text>
                 </div>
               </Col>
               <Col span={12}>
@@ -2197,24 +2114,24 @@ export const AssetDetails = () => {
               <Col span={12}>
                 <Text type="secondary">Base Location</Text>
                 <div>
-                  <Text strong>{asset.location.base.address}</Text>
+                  <Text strong>{asset.location?.base?.address ?? 'N/A'}</Text>
                 </div>
                 <div>
                   <Text type="secondary">
-                    Latitude: {asset.location.base.latitude} Longitude:{' '}
-                    {asset.location.base.longitude}
+                    Latitude: {asset.location?.base?.latitude ?? '-'} Longitude:{' '}
+                    {asset.location?.base?.longitude ?? '-'}
                   </Text>
                 </div>
               </Col>
               <Col span={12}>
                 <Text type="secondary">Installed Location</Text>
                 <div>
-                  <Text strong>{asset.location.installed.address}</Text>
+                  <Text strong>{asset.location?.installed?.address ?? 'N/A'}</Text>
                 </div>
                 <div>
                   <Text type="secondary">
-                    Latitude: {asset.location.installed.latitude} Longitude:{' '}
-                    {asset.location.installed.longitude}
+                    Latitude: {asset.location?.installed?.latitude ?? '-'} Longitude:{' '}
+                    {asset.location?.installed?.longitude ?? '-'}
                   </Text>
                 </div>
               </Col>
@@ -2226,39 +2143,65 @@ export const AssetDetails = () => {
             <Row gutter={[16, 8]}>
               <Col span={8}>
                 <Text type="secondary">Alias</Text>
-                <div>{asset.alias || 'N/A'}</div>
+                <div>{asset.alias || asset.hostname || 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Disk Size</Text>
-                <div>{asset.diskSize || 'N/A'}</div>
+                <div>
+                  {asset.diskSize ||
+                   asset.storage?.size ||
+                   (hardware?.storage && hardware.storage.length > 0
+                     ? `${hardware.storage.reduce((acc, d) => acc + parseInt(d.capacity || '0'), 0)} GB`
+                     : 'N/A')}
+                </div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">IP Version</Text>
-                <div>{asset.ipVersion || 'N/A'}</div>
+                <div>
+                  {asset.ipVersion ||
+                   (asset.ipAddress
+                     ? (asset.ipAddress.includes(':') ? 'IPv6' : 'IPv4')
+                     : 'N/A')}
+                </div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">MAC</Text>
-                <div>{asset.mac || 'N/A'}</div>
+                <div style={{ fontFamily: 'monospace', fontSize: '13px' }}>
+                  {asset.mac || asset.macAddress ||
+                   (hardware?.networkAdapters && hardware.networkAdapters.length > 0
+                     ? hardware.networkAdapters[0].macAddress
+                     : 'N/A')}
+                </div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Memory Size</Text>
-                <div>{asset.memorySize || 'N/A'}</div>
+                <div>
+                  {asset.memorySize ||
+                   asset.ram?.size ||
+                   (hardware?.memory && hardware.memory.length > 0
+                     ? `${hardware.memory.reduce((acc, m) => acc + parseFloat(m.capacity || '0'), 0).toFixed(0)} GB`
+                     : (telemetry?.memory?.totalBytes
+                       ? `${(telemetry.memory.totalBytes / (1024 * 1024 * 1024)).toFixed(0)} GB`
+                       : 'N/A'))}
+                </div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Model</Text>
-                <div>{asset.model}</div>
+                <div>{asset.model || 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">OS Version</Text>
-                <div>{asset.osVersion}</div>
+                <div>{asset.osVersion || 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Serial Number</Text>
-                <div>{asset.serialNumber}</div>
+                <div style={{ fontFamily: 'monospace', fontSize: '13px' }}>
+                  {asset.serialNumber || hardware?.bios?.serialNumber || 'N/A'}
+                </div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">System SKU</Text>
-                <div>{asset.systemSKU || 'N/A'}</div>
+                <div>{asset.systemSKU || hardware?.baseBoard?.productId || 'N/A'}</div>
               </Col>
             </Row>
           </Card>
@@ -2268,31 +2211,31 @@ export const AssetDetails = () => {
             <Row gutter={[16, 8]}>
               <Col span={8}>
                 <Text type="secondary">AMC Cost</Text>
-                <div>{asset.procurement.amcCost}</div>
+                <div>{asset.procurement?.amcCost ?? 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">AMC Expiry Date</Text>
-                <div>{asset.procurement.amcExpiryDate}</div>
+                <div>{asset.procurement?.amcExpiryDate ?? 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">AMC Vendor</Text>
-                <div>{asset.procurement.amcVendor}</div>
+                <div>{asset.procurement?.amcVendor ?? 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">End Of Life</Text>
-                <div>{asset.procurement.endOfLife}</div>
+                <div>{asset.procurement?.endOfLife ?? 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Expiry Date</Text>
-                <div>{asset.procurement.expiryDate}</div>
+                <div>{asset.procurement?.expiryDate ?? 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Warranty Expiry</Text>
-                <div>{asset.procurement.warrantyExpiryDate}</div>
+                <div>{asset.procurement?.warrantyExpiryDate ?? 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Warranty Year & Month</Text>
-                <div>{asset.procurement.warrantyYearAndMonth}</div>
+                <div>{asset.procurement?.warrantyYearAndMonth ?? 'N/A'}</div>
               </Col>
             </Row>
           </Card>
@@ -2302,35 +2245,35 @@ export const AssetDetails = () => {
             <Row gutter={[16, 8]}>
               <Col span={8}>
                 <Text type="secondary">Asset Age</Text>
-                <div>{asset.cost.age}</div>
+                <div>{asset.cost?.age ?? 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Cost</Text>
-                <div>{asset.cost.cost}</div>
+                <div>{asset.cost?.cost ?? 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Currency</Text>
-                <div>{asset.cost.currency}</div>
+                <div>{asset.cost?.currency ?? 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Current Cost</Text>
-                <div>{asset.cost.currentCost}</div>
+                <div>{asset.cost?.currentCost ?? 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Depreciation Type</Text>
-                <div>{asset.cost.depreciationType}</div>
+                <div>{asset.cost?.depreciationType ?? 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Invoice No.</Text>
-                <div>{asset.cost.invoiceNumber}</div>
+                <div>{asset.cost?.invoiceNumber ?? 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Purchase Date</Text>
-                <div>{asset.cost.purchaseDate}</div>
+                <div>{asset.cost?.purchaseDate ?? 'N/A'}</div>
               </Col>
               <Col span={8}>
                 <Text type="secondary">Salvage Value</Text>
-                <div>{asset.cost.salvageValue}</div>
+                <div>{asset.cost?.salvageValue ?? 'N/A'}</div>
               </Col>
             </Row>
           </Card>

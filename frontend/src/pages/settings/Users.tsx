@@ -797,8 +797,8 @@ export const Users = () => {
                       setUploadedFile(null);
                     }
                   }}
-                  onDrop={(e) => {
-                    console.log('Dropped files', e.dataTransfer.files);
+                  onDrop={() => {
+                    // Handle file drop
                   }}
                 >
                   <p style={{ fontSize: '16px', marginBottom: 0 }}>

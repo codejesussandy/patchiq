@@ -124,6 +124,13 @@ router.get('/agent-configuration', settingsController.getAgentConfig.bind(settin
 router.put('/agent-configuration', validateBody(updateAgentConfigSchema), settingsController.updateAgentConfig.bind(settingsController));
 
 // ============================================
+// Agent Approvals
+// ============================================
+router.get('/agent-approvals', settingsController.listAgentApprovals.bind(settingsController));
+router.post('/agent-approvals/:id/approve', validateParams(idParamSchema), settingsController.approveAgent.bind(settingsController));
+router.post('/agent-approvals/:id/reject', validateParams(idParamSchema), settingsController.rejectAgent.bind(settingsController));
+
+// ============================================
 // Proxy Server (singleton)
 // ============================================
 router.get('/proxy-server', settingsController.getProxyServer.bind(settingsController));

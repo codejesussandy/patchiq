@@ -35,9 +35,11 @@ const TagSelector: React.FC<TagSelectorProps> = ({
     setLoading(true);
     try {
       const allTags = await tagService.getTags();
-      setTags(allTags);
+      // Ensure tags is always an array to prevent .map() errors
+      setTags(Array.isArray(allTags) ? allTags : []);
     } catch (error) {
       console.error('Failed to fetch tags:', error);
+      setTags([]); // Reset to empty array on error
     } finally {
       setLoading(false);
     }
@@ -51,9 +53,11 @@ const TagSelector: React.FC<TagSelectorProps> = ({
 
     try {
       const results = await tagService.searchTags(searchValue);
-      setTags(results);
+      // Ensure results is always an array
+      setTags(Array.isArray(results) ? results : []);
     } catch (error) {
       console.error('Failed to search tags:', error);
+      setTags([]); // Reset to empty array on error
     }
   };
 

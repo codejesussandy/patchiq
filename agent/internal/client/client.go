@@ -34,6 +34,21 @@ func New(baseURL string, agentVersion string) *Client {
 	}
 }
 
+// agentAPIURL constructs the URL for agent API endpoints
+// The agent API is at /api/agent/* not /{version}/agent/*
+func (c *Client) agentAPIURL(path string) string {
+	// Extract base URL without version (e.g., http://localhost:3000 from http://localhost:3000/v1)
+	base := c.baseURL
+	// Remove any trailing version segment like /v1, /v2, etc.
+	for _, suffix := range []string{"/v1", "/v2", "/api"} {
+		if len(base) > len(suffix) && base[len(base)-len(suffix):] == suffix {
+			base = base[:len(base)-len(suffix)]
+			break
+		}
+	}
+	return base + "/api/agent" + path
+}
+
 // SetCredentials sets the agent credentials after registration
 func (c *Client) SetCredentials(agentID, accessToken, refreshToken string) {
 	c.agentID = agentID
@@ -58,7 +73,7 @@ func (c *Client) Register(req *RegisterRequest) (*RegisterResponse, error) {
 		return nil, fmt.Errorf("failed to marshal registration request: %w", err)
 	}
 
-	httpReq, err := http.NewRequest("POST", c.baseURL+"/agent/register", bytes.NewBuffer(body))
+	httpReq, err := http.NewRequest("POST", c.agentAPIURL("/register"), bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -107,7 +122,7 @@ func (c *Client) Heartbeat(req *HeartbeatRequest) (*HeartbeatResponse, error) {
 		return nil, fmt.Errorf("failed to marshal heartbeat request: %w", err)
 	}
 
-	httpReq, err := http.NewRequest("POST", c.baseURL+"/agent/heartbeat", bytes.NewBuffer(body))
+	httpReq, err := http.NewRequest("POST", c.agentAPIURL("/heartbeat"), bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -147,7 +162,7 @@ func (c *Client) GetPendingCommands() ([]PendingCommand, error) {
 		return nil, fmt.Errorf("agent not registered")
 	}
 
-	httpReq, err := http.NewRequest("GET", c.baseURL+"/agent/commands", nil)
+	httpReq, err := http.NewRequest("GET", c.agentAPIURL("/commands"), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -188,7 +203,7 @@ func (c *Client) ReportCommandResult(commandID string, req *CommandResultRequest
 		return fmt.Errorf("failed to marshal command result: %w", err)
 	}
 
-	httpReq, err := http.NewRequest("POST", c.baseURL+"/agent/commands/"+commandID+"/result", bytes.NewBuffer(body))
+	httpReq, err := http.NewRequest("POST", c.agentAPIURL("/commands/"+commandID+"/result"), bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -219,7 +234,7 @@ func (c *Client) SubmitInventory(req *InventoryRequest) error {
 		return fmt.Errorf("failed to marshal inventory: %w", err)
 	}
 
-	httpReq, err := http.NewRequest("POST", c.baseURL+"/agent/inventory", bytes.NewBuffer(body))
+	httpReq, err := http.NewRequest("POST", c.agentAPIURL("/inventory"), bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -251,7 +266,7 @@ func (c *Client) SubmitTelemetry(req *TelemetryRequest) error {
 		return fmt.Errorf("failed to marshal telemetry: %w", err)
 	}
 
-	httpReq, err := http.NewRequest("POST", c.baseURL+"/agent/telemetry", bytes.NewBuffer(body))
+	httpReq, err := http.NewRequest("POST", c.agentAPIURL("/telemetry"), bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -278,7 +293,7 @@ func (c *Client) GetConfig() (*AgentConfig, error) {
 		return nil, fmt.Errorf("agent not registered")
 	}
 
-	httpReq, err := http.NewRequest("GET", c.baseURL+"/agent/config", nil)
+	httpReq, err := http.NewRequest("GET", c.agentAPIURL("/config"), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -314,7 +329,7 @@ func (c *Client) RefreshToken() error {
 		return fmt.Errorf("no refresh token available")
 	}
 
-	httpReq, err := http.NewRequest("POST", c.baseURL+"/agent/token/refresh", nil)
+	httpReq, err := http.NewRequest("POST", c.agentAPIURL("/token/refresh"), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}

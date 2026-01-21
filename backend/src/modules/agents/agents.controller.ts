@@ -47,6 +47,21 @@ export class AgentsController {
   };
 
   /**
+   * PUT /v1/agents/:id
+   * Update an agent
+   */
+  updateAgent = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { name, tags } = req.body;
+      const agent = await this.agentsService.updateAgent(id, { name, tags });
+      res.json(agent);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * DELETE /v1/agents/:id
    * Delete an agent
    */

@@ -70,9 +70,7 @@ export const Organization = () => {
   const fetchOrganizations = async () => {
     setLoading(true);
     try {
-      console.log('Fetching organizations...');
       const data = await settingsService.getOrganizations();
-      console.log('Data received:', data);
       const formattedData = Array.isArray(data)
         ? data.map((org: any, index: number) => ({
             ...org,
@@ -80,7 +78,6 @@ export const Organization = () => {
             isDefault: org.name === 'Global Organization',
           }))
         : [];
-      console.log('Formatted data:', formattedData);
       setOrganizations(formattedData);
     } catch (error) {
       console.error('Error fetching organizations:', error);

@@ -98,6 +98,10 @@ func (c *DarwinHardwareCollector) collectSystemIdentity() models.SystemIdentity 
 		if out, err := exec.Command("wmic", "csproduct", "get", "uuid", "/value").Output(); err == nil {
 			si.UUID = parseWmicValue(string(out), "UUID")
 		}
+		// Get SKU Number from csproduct
+		if out, err := exec.Command("wmic", "csproduct", "get", "skunumber", "/value").Output(); err == nil {
+			si.SKU = parseWmicValue(string(out), "SKUNumber")
+		}
 
 	default:
 		// Linux fallback using dmidecode or /sys
@@ -105,6 +109,7 @@ func (c *DarwinHardwareCollector) collectSystemIdentity() models.SystemIdentity 
 		si.Model = readFileContent("/sys/class/dmi/id/product_name")
 		si.SerialNumber = readFileContent("/sys/class/dmi/id/product_serial")
 		si.UUID = readFileContent("/sys/class/dmi/id/product_uuid")
+		si.SKU = readFileContent("/sys/class/dmi/id/product_sku")
 	}
 
 	return si
@@ -889,21 +894,30 @@ func parseSize(sizeStr string) float64 {
 	sizeStr = strings.ToUpper(sizeStr)
 
 	var multiplier float64 = 1
-	if strings.HasSuffix(sizeStr, "T") || strings.HasSuffix(sizeStr, "TI") || strings.HasSuffix(sizeStr, "TB") {
+	if strings.HasSuffix(sizeStr, "T") || strings.HasSuffix(sizeStr, "TI") || strings.HasSuffix(sizeStr, "TB") || strings.HasSuffix(sizeStr, "TIB") {
 		multiplier = 1024
+		// Trim secondary suffixes first (I, B), then primary (T)
+		sizeStr = strings.TrimSuffix(sizeStr, "B")
+		sizeStr = strings.TrimSuffix(sizeStr, "I")
 		sizeStr = strings.TrimSuffix(sizeStr, "T")
-		sizeStr = strings.TrimSuffix(sizeStr, "I")
-		sizeStr = strings.TrimSuffix(sizeStr, "B")
-	} else if strings.HasSuffix(sizeStr, "G") || strings.HasSuffix(sizeStr, "GI") || strings.HasSuffix(sizeStr, "GB") {
+	} else if strings.HasSuffix(sizeStr, "G") || strings.HasSuffix(sizeStr, "GI") || strings.HasSuffix(sizeStr, "GB") || strings.HasSuffix(sizeStr, "GIB") {
 		multiplier = 1
+		// Trim secondary suffixes first (I, B), then primary (G)
+		sizeStr = strings.TrimSuffix(sizeStr, "B")
+		sizeStr = strings.TrimSuffix(sizeStr, "I")
 		sizeStr = strings.TrimSuffix(sizeStr, "G")
-		sizeStr = strings.TrimSuffix(sizeStr, "I")
-		sizeStr = strings.TrimSuffix(sizeStr, "B")
-	} else if strings.HasSuffix(sizeStr, "M") || strings.HasSuffix(sizeStr, "MI") || strings.HasSuffix(sizeStr, "MB") {
+	} else if strings.HasSuffix(sizeStr, "M") || strings.HasSuffix(sizeStr, "MI") || strings.HasSuffix(sizeStr, "MB") || strings.HasSuffix(sizeStr, "MIB") {
 		multiplier = 1.0 / 1024
-		sizeStr = strings.TrimSuffix(sizeStr, "M")
-		sizeStr = strings.TrimSuffix(sizeStr, "I")
+		// Trim secondary suffixes first (I, B), then primary (M)
 		sizeStr = strings.TrimSuffix(sizeStr, "B")
+		sizeStr = strings.TrimSuffix(sizeStr, "I")
+		sizeStr = strings.TrimSuffix(sizeStr, "M")
+	} else if strings.HasSuffix(sizeStr, "K") || strings.HasSuffix(sizeStr, "KI") || strings.HasSuffix(sizeStr, "KB") || strings.HasSuffix(sizeStr, "KIB") {
+		multiplier = 1.0 / (1024 * 1024)
+		// Trim secondary suffixes first (I, B), then primary (K)
+		sizeStr = strings.TrimSuffix(sizeStr, "B")
+		sizeStr = strings.TrimSuffix(sizeStr, "I")
+		sizeStr = strings.TrimSuffix(sizeStr, "K")
 	}
 
 	size, _ := strconv.ParseFloat(strings.TrimSpace(sizeStr), 64)

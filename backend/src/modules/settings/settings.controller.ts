@@ -709,6 +709,42 @@ export class SettingsController {
       next(error);
     }
   }
+
+  // ============================================
+  // Agent Approvals
+  // ============================================
+
+  async listAgentApprovals(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search } = req.query;
+      const result = await settingsService.listAgentApprovals({
+        page: Number(page),
+        limit: Number(limit),
+        search: search as string | undefined,
+      });
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async approveAgent(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.approveAgent(req.params.id);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async rejectAgent(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.rejectAgent(req.params.id);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const settingsController = new SettingsController();

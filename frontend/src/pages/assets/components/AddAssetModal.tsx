@@ -83,11 +83,26 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
       setLoading(true);
       const values = form.getFieldsValue();
 
+      // Transform form values to match backend API expectations
+      const transformedData = {
+        name: values.assetName,
+        osType: values.os || values.osType,
+        osVersion: values.osVersion,
+        category: values.category,
+        model: values.model,
+        serialNumber: values.serialNumber,
+        status: values.status || 'Available',
+        operationalStatus: values.operationalStatus || 'Disconnected',
+        // Include other fields as needed
+        manufacturer: values.make,
+        tags: values.assetTags || [],
+      };
+
        if (mode === 'edit' && asset) {
-         await assetService.updateAsset(asset.id, values as any);
+         await assetService.updateAsset(asset.id, transformedData as any);
          message.success('Asset updated successfully');
        } else {
-         await assetService.createAsset(values as any);
+         await assetService.createAsset(transformedData as any);
          message.success('Asset created successfully');
        }
 
@@ -95,6 +110,7 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
       setCurrentStep(0);
       onSuccess();
     } catch (error) {
+      console.error('Asset creation error:', error);
       message.error(mode === 'edit' ? 'Failed to update asset' : 'Failed to create asset');
     } finally {
       setLoading(false);

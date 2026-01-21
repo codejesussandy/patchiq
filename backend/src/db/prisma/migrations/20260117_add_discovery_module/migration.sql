@@ -1,3 +1,23 @@
+-- CreateTable: device_credentials (must be created first since ip_ranges references it)
+CREATE TABLE "device_credentials" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "username" TEXT,
+    "password_enc" TEXT,
+    "domain" TEXT,
+    "snmp_community" TEXT,
+    "snmp_version" TEXT,
+    "port" INTEGER,
+    "description" TEXT,
+    "last_used" TIMESTAMP(3),
+    "created_by" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "device_credentials_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateTable
 CREATE TABLE "ip_ranges" (
     "id" TEXT NOT NULL,
@@ -49,23 +69,6 @@ CREATE TABLE "discovered_devices" (
 
     CONSTRAINT "discovered_devices_pkey" PRIMARY KEY ("id")
 );
-
--- AlterTable (DeviceCredential - add new fields)
-ALTER TABLE "device_credentials" ADD COLUMN IF NOT EXISTS "snmp_community" TEXT;
-ALTER TABLE "device_credentials" ADD COLUMN IF NOT EXISTS "snmp_version" TEXT;
-ALTER TABLE "device_credentials" ADD COLUMN IF NOT EXISTS "description" TEXT;
-ALTER TABLE "device_credentials" ADD COLUMN IF NOT EXISTS "last_used" TIMESTAMP(3);
-ALTER TABLE "device_credentials" ADD COLUMN IF NOT EXISTS "created_by" TEXT;
-
--- Make username and password nullable for SNMP credentials
-ALTER TABLE "device_credentials" ALTER COLUMN "username" DROP NOT NULL;
-ALTER TABLE "device_credentials" RENAME COLUMN "password_enc" TO "password_enc_old";
-ALTER TABLE "device_credentials" ADD COLUMN "password_enc" TEXT;
-UPDATE "device_credentials" SET "password_enc" = "password_enc_old";
-ALTER TABLE "device_credentials" DROP COLUMN "password_enc_old";
-
--- Drop is_default column if no longer needed
-ALTER TABLE "device_credentials" DROP COLUMN IF EXISTS "is_default";
 
 -- CreateIndex
 CREATE INDEX "discovery_scans_ip_range_id_status_idx" ON "discovery_scans"("ip_range_id", "status");

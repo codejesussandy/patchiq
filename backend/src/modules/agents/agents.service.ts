@@ -1,4 +1,5 @@
 import { prisma } from '@/db/client';
+import { Prisma } from '@prisma/client';
 import { NotFoundError } from '@shared/errors';
 import { generateTokenPair } from '@shared/utils/jwt';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
@@ -43,6 +44,7 @@ export class AgentsService {
           architecture: input.architecture,
           agentVersion: input.agentVersion,
           ipAddress: input.ipAddress,
+          macAddress: input.macAddress,
           serialNumber: input.serialNumber,
           status: 'Connected',
           lastHeartbeat: new Date(),
@@ -79,6 +81,8 @@ export class AgentsService {
           manufacturer: input.manufacturer,
           model: input.model,
           serialNumber: input.serialNumber,
+          ipAddress: input.ipAddress,
+          macAddress: input.macAddress,
         },
       });
 
@@ -93,6 +97,7 @@ export class AgentsService {
           agentVersion: input.agentVersion,
           hostname: input.hostname,
           ipAddress: input.ipAddress,
+          macAddress: input.macAddress,
           serialNumber: input.serialNumber,
           assetId: asset.id,
           status: 'Connected',
@@ -218,6 +223,7 @@ export class AgentsService {
         : null,
       registeredAt: agent.registeredAt.toISOString(),
       ipAddress: agent.ipAddress,
+      macAddress: agent.macAddress,
       hostname: agent.hostname,
       serialNumber: agent.serialNumber,
       assetId: agent.assetId,
@@ -263,6 +269,7 @@ export class AgentsService {
         : null,
       registeredAt: agent.registeredAt.toISOString(),
       ipAddress: agent.ipAddress,
+      macAddress: agent.macAddress,
       hostname: agent.hostname,
       serialNumber: agent.serialNumber,
       assetId: agent.assetId,
@@ -272,6 +279,92 @@ export class AgentsService {
         name: g.group.name,
       })),
       capabilities: agent.capabilities as string[],
+    };
+  }
+
+  /**
+   * Update agent
+   */
+  async updateAgent(id: string, data: { name?: string; tags?: string[] }): Promise<AgentResponse> {
+    const agent = await prisma.agent.findUnique({
+      where: { id },
+      include: {
+        tags: true,
+        groups: { include: { group: true } },
+      },
+    });
+
+    if (!agent) {
+      throw new NotFoundError('Agent not found');
+    }
+
+    // Update basic fields
+    const updatedAgent = await prisma.agent.update({
+      where: { id },
+      data: {
+        name: data.name || agent.name,
+      },
+      include: {
+        tags: true,
+        groups: { include: { group: true } },
+      },
+    });
+
+    // Handle tags update if provided
+    if (data.tags !== undefined) {
+      // Remove existing tag associations
+      await prisma.agentTagRelation.deleteMany({
+        where: { agentId: id },
+      });
+
+      // Add new tag associations
+      if (data.tags.length > 0) {
+        const tagRecords = await prisma.tag.findMany({
+          where: { id: { in: data.tags } },
+        });
+
+        await prisma.agentTagRelation.createMany({
+          data: tagRecords.map((tag) => ({
+            agentId: id,
+            tag: tag.name,
+          })),
+        });
+      }
+    }
+
+    // Fetch updated agent with tags
+    const finalAgent = await prisma.agent.findUnique({
+      where: { id },
+      include: {
+        tags: true,
+        groups: { include: { group: true } },
+      },
+    });
+
+    return {
+      id: finalAgent!.id,
+      machineId: finalAgent!.machineId,
+      name: finalAgent!.name,
+      status: finalAgent!.status,
+      os: finalAgent!.os,
+      osVersion: finalAgent!.osVersion,
+      agentVersion: finalAgent!.agentVersion,
+      lastHeartbeat: finalAgent!.lastHeartbeat?.toISOString() ?? null,
+      lastHeartbeatRelative: finalAgent!.lastHeartbeat
+        ? getRelativeTime(finalAgent!.lastHeartbeat)
+        : null,
+      registeredAt: finalAgent!.registeredAt.toISOString(),
+      ipAddress: finalAgent!.ipAddress,
+      macAddress: finalAgent!.macAddress,
+      hostname: finalAgent!.hostname,
+      serialNumber: finalAgent!.serialNumber,
+      assetId: finalAgent!.assetId,
+      tags: finalAgent!.tags.map((t) => t.tag),
+      groups: finalAgent!.groups.map((g) => ({
+        id: g.group.id,
+        name: g.group.name,
+      })),
+      capabilities: finalAgent!.capabilities as string[],
     };
   }
 
@@ -450,39 +543,199 @@ export class AgentsService {
       throw new NotFoundError('Agent or linked asset not found');
     }
 
-    // Update asset with inventory data
+    // Extract hardware data from agent's nested structure
+    const hw = inventory.hardware as Record<string, unknown> | undefined;
+    const systemIdentity = hw?.systemIdentity as Record<string, unknown> | undefined;
+    const processor = hw?.processor as Record<string, unknown> | undefined;
+    const memory = hw?.memory as Record<string, unknown> | undefined;
+    const bios = hw?.bios as Record<string, unknown> | undefined;
+    const graphicsAdapters = hw?.graphicsAdapters as Array<Record<string, unknown>> | undefined;
+    const storageDrives = hw?.storageDrives as Array<Record<string, unknown>> | undefined;
+    const battery = hw?.battery as Record<string, unknown> | undefined;
+
+    // Extract software data
+    const sw = inventory.software as Record<string, unknown> | undefined;
+    const operatingSystem = sw?.operatingSystem as Record<string, unknown> | undefined;
+
+    // Extract network data for hostname and MAC address
+    const net = inventory.network as Record<string, unknown> | undefined;
+    const networkIdentity = net?.identity as Record<string, unknown> | undefined;
+    const networkAdapters = net?.adapters as Array<Record<string, unknown>> | undefined;
+
+    // Update asset with inventory data (manufacturer, model, serial from hardware)
+    const assetUpdateData: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+
+    if (systemIdentity) {
+      if (systemIdentity.manufacturer) assetUpdateData.manufacturer = systemIdentity.manufacturer;
+      if (systemIdentity.model) assetUpdateData.model = systemIdentity.model;
+      if (systemIdentity.serialNumber) assetUpdateData.serialNumber = systemIdentity.serialNumber;
+    }
+
+    // Update OS info from software.operatingSystem if provided
+    if (operatingSystem) {
+      if (operatingSystem.name) assetUpdateData.os = operatingSystem.name;
+      if (operatingSystem.version) assetUpdateData.osVersion = operatingSystem.version;
+    }
+
+    // Extract MAC address from network adapters (prefer default/first physical adapter)
+    let macAddressFromNetwork: string | undefined;
+    if (networkAdapters && Array.isArray(networkAdapters)) {
+      // Find default adapter first, then fall back to first physical adapter
+      const defaultAdapter = networkAdapters.find(a => a.isDefault === true);
+      const physicalAdapter = networkAdapters.find(a =>
+        a.type === 'Ethernet' || a.type === 'WiFi'
+      );
+      const adapterWithMac = defaultAdapter || physicalAdapter || networkAdapters[0];
+      if (adapterWithMac?.macAddress) {
+        macAddressFromNetwork = adapterWithMac.macAddress as string;
+      }
+    }
+
+    // Update asset with MAC address if found
+    if (macAddressFromNetwork) {
+      assetUpdateData.macAddress = macAddressFromNetwork;
+    }
+
+    // Update asset with hostname from network identity
+    if (networkIdentity?.hostname) {
+      assetUpdateData.name = networkIdentity.hostname as string;
+    }
+
     await prisma.asset.update({
       where: { id: agent.assetId },
-      data: {
-        updatedAt: new Date(),
-      },
+      data: assetUpdateData,
     });
 
-    // Store hardware data if provided
-    if (inventory.hardware) {
-      const hw = inventory.hardware as Record<string, unknown>;
+    // Update agent with hostname and macAddress from network data
+    const agentUpdateData: Record<string, unknown> = {};
+    if (networkIdentity?.hostname) {
+      agentUpdateData.hostname = networkIdentity.hostname as string;
+      agentUpdateData.name = networkIdentity.hostname as string;
+    }
+    if (macAddressFromNetwork) {
+      agentUpdateData.macAddress = macAddressFromNetwork;
+    }
+    if (Object.keys(agentUpdateData).length > 0) {
+      await prisma.agent.update({
+        where: { id: agentId },
+        data: agentUpdateData,
+      });
+    }
+
+    // Store hardware data if provided - map from agent's nested structure
+    if (hw) {
+      // Calculate RAM in bytes from GB
+      const ramTotalGB = memory?.totalPhysicalGB as number | undefined;
+      const ramTotalBytes = ramTotalGB ? BigInt(Math.floor(ramTotalGB * 1024 * 1024 * 1024)) : undefined;
+
+      // Calculate disk totals from storage drives
+      // Agent sends: capacityGB, freeSpaceGB (not sizeGB, freeGB)
+      let diskTotalBytes: bigint | undefined;
+      let diskFreeBytes: bigint | undefined;
+      let diskType: string | undefined;
+      if (storageDrives && Array.isArray(storageDrives)) {
+        let totalSize = 0;
+        let totalFree = 0;
+        for (const drive of storageDrives) {
+          // Support both field naming conventions
+          const capacity = (drive.capacityGB ?? drive.sizeGB) as number | undefined;
+          const freeSpace = (drive.freeSpaceGB ?? drive.freeGB) as number | undefined;
+          if (capacity) totalSize += capacity;
+          if (freeSpace) totalFree += freeSpace;
+          if (!diskType && drive.type) diskType = drive.type as string;
+        }
+        if (totalSize > 0) diskTotalBytes = BigInt(Math.floor(totalSize * 1024 * 1024 * 1024));
+        if (totalFree > 0) diskFreeBytes = BigInt(Math.floor(totalFree * 1024 * 1024 * 1024));
+      }
+
+      // Get GPU model and memory from first graphics adapter
+      const gpuModel = graphicsAdapters?.[0]?.name as string | undefined;
+      const gpuMemoryMB = graphicsAdapters?.[0]?.memoryMB as number | undefined;
+
+      // Get BIOS info
+      const biosVendor = bios?.vendor as string | undefined;
+      const biosVersion = bios?.version as string | undefined;
+
+      // Get System SKU from system identity (fallback to assetTag if sku not available)
+      const systemSKU = (systemIdentity?.sku ?? systemIdentity?.assetTag) as string | undefined;
+
+      // Extract additional hardware summary fields for querying
+      const cpuManufacturer = processor?.manufacturer as string | undefined;
+      const cpuThreads = processor?.threadCount as number | undefined;
+      const cpuSpeedMHz = processor?.clockSpeedMHz as number | undefined;
+      const ramSlots = memory?.usedSlots as number | undefined;
+      const ramType = memory?.type as string | undefined;
+      const manufacturer = systemIdentity?.manufacturer as string | undefined;
+      const model = systemIdentity?.model as string | undefined;
+      const serialNumber = systemIdentity?.serialNumber as string | undefined;
+
       await prisma.assetHardware.upsert({
         where: { assetId: agent.assetId },
         create: {
           assetId: agent.assetId,
-          cpu: hw.cpu as string | undefined,
-          cpuCores: hw.cpuCores as number | undefined,
-          ramTotal: hw.ramTotal as bigint | undefined,
-          diskTotal: hw.diskTotal as bigint | undefined,
-          diskFree: hw.diskFree as bigint | undefined,
-          gpuModel: hw.gpuModel as string | undefined,
-          biosVersion: hw.biosVersion as string | undefined,
+          // CPU summary fields
+          cpu: processor?.name as string | undefined,
+          cpuCores: processor?.coreCount as number | undefined,
+          cpuManufacturer,
+          cpuThreads,
+          cpuSpeedMHz,
+          // RAM summary fields
+          ramTotal: ramTotalBytes,
+          ramSlots,
+          ramType,
+          // Disk summary fields
+          diskTotal: diskTotalBytes,
+          diskFree: diskFreeBytes,
+          diskType,
+          // GPU summary fields
+          gpuModel,
+          gpuMemoryMB,
+          // BIOS summary fields
+          biosVendor,
+          biosVersion,
+          // System summary fields
+          systemSKU,
+          manufacturer,
+          model,
+          serialNumber,
+          // Full payload for detailed views
+          rawPayload: hw as Prisma.InputJsonValue,
+          collectedAt: new Date(),
         },
         update: {
-          cpu: hw.cpu as string | undefined,
-          cpuCores: hw.cpuCores as number | undefined,
-          ramTotal: hw.ramTotal as bigint | undefined,
-          diskTotal: hw.diskTotal as bigint | undefined,
-          diskFree: hw.diskFree as bigint | undefined,
-          gpuModel: hw.gpuModel as string | undefined,
-          biosVersion: hw.biosVersion as string | undefined,
+          // CPU summary fields
+          cpu: processor?.name as string | undefined,
+          cpuCores: processor?.coreCount as number | undefined,
+          cpuManufacturer,
+          cpuThreads,
+          cpuSpeedMHz,
+          // RAM summary fields
+          ramTotal: ramTotalBytes,
+          ramSlots,
+          ramType,
+          // Disk summary fields
+          diskTotal: diskTotalBytes,
+          diskFree: diskFreeBytes,
+          diskType,
+          // GPU summary fields
+          gpuModel,
+          gpuMemoryMB,
+          // BIOS summary fields
+          biosVendor,
+          biosVersion,
+          // System summary fields
+          systemSKU,
+          manufacturer,
+          model,
+          serialNumber,
+          // Full payload for detailed views
+          rawPayload: hw as Prisma.InputJsonValue,
+          collectedAt: new Date(),
         },
       });
+
     }
 
     // Store security data if provided
@@ -516,6 +769,7 @@ export class AgentsService {
       // Extract applications from software object
       const softwareData = inventory.software as Record<string, unknown>;
       const applications = (softwareData.applications as Array<Record<string, unknown>>) || [];
+      const services = (softwareData.services as Array<Record<string, unknown>>) || [];
 
       // Insert new software entries
       if (applications.length > 0) {
@@ -527,9 +781,34 @@ export class AgentsService {
             vendor: app.vendor as string | undefined,
             installPath: app.path as string | undefined,
             isSystem: app.installSource === 'Pre-installed',
+            category: app.category as string | undefined,
           })),
         });
       }
+
+      // Store full software inventory in AssetSoftwareInventory
+      await prisma.assetSoftwareInventory.upsert({
+        where: { assetId: agent.assetId },
+        create: {
+          assetId: agent.assetId,
+          osName: operatingSystem?.name as string | undefined,
+          osVersion: operatingSystem?.version as string | undefined,
+          osBuild: operatingSystem?.build as string | undefined,
+          totalApps: applications.length,
+          totalServices: services.length,
+          rawPayload: softwareData as Prisma.InputJsonValue,
+          collectedAt: new Date(),
+        },
+        update: {
+          osName: operatingSystem?.name as string | undefined,
+          osVersion: operatingSystem?.version as string | undefined,
+          osBuild: operatingSystem?.build as string | undefined,
+          totalApps: applications.length,
+          totalServices: services.length,
+          rawPayload: softwareData as Prisma.InputJsonValue,
+          collectedAt: new Date(),
+        },
+      });
     }
   }
 
@@ -548,14 +827,32 @@ export class AgentsService {
     const cpu = telemetry.cpu as Record<string, unknown> | undefined;
     const memory = telemetry.memory as Record<string, unknown> | undefined;
     const disk = telemetry.disk as Record<string, unknown> | undefined;
+    const network = telemetry.network as Record<string, unknown> | undefined;
+    const telemetryAny = telemetry as Record<string, unknown>;
+    const system = telemetryAny.system as Record<string, unknown> | undefined;
 
-    // Store telemetry data
+    // Extract additional telemetry fields
+    const networkInBps = network?.bytesReceivedPerSec as number | undefined;
+    const networkOutBps = network?.bytesSentPerSec as number | undefined;
+    const processCount = cpu?.processCount as number | undefined;
+    const pendingReboot = system?.pendingReboot as boolean | undefined;
+    const uptime = (system?.uptime ?? telemetryAny.uptime) as number | undefined;
+
+    // Store telemetry data with rawPayload
     await prisma.agentTelemetry.create({
       data: {
         agentId,
+        // Summary fields for quick queries
         cpuUsage: cpu?.usage as number | undefined,
         memoryUsage: memory?.usage as number | undefined,
         diskUsage: disk?.usage as number | undefined,
+        uptime,
+        networkInBps: networkInBps ? BigInt(Math.floor(networkInBps)) : undefined,
+        networkOutBps: networkOutBps ? BigInt(Math.floor(networkOutBps)) : undefined,
+        processCount,
+        pendingReboot,
+        // Full payload for detailed views
+        rawPayload: telemetryAny as Prisma.InputJsonValue,
         timestamp: new Date(telemetry.collectedAt),
       },
     });

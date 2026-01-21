@@ -18,6 +18,7 @@ export interface AgentResponse {
   lastHeartbeatRelative?: string | null;
   registeredAt: string;
   ipAddress: string | null;
+  macAddress: string | null;
   hostname: string | null;
   serialNumber: string | null;
   assetId: string | null;

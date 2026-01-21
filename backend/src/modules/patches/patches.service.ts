@@ -498,6 +498,71 @@ export async function deleteDeployment(id: string, userId: string) {
   return { success: true };
 }
 
+export async function updateDeployment(id: string, data: { name?: string; scheduledAt?: string }) {
+  const existing = await prisma.patchDeployment.findUnique({
+    where: { id },
+    include: { patches: true },
+  });
+
+  if (!existing) {
+    throw new NotFoundError('Deployment not found');
+  }
+
+  // Block update if deployment has already started executing
+  if (existing.startedAt) {
+    throw new BadRequestError('Cannot update deployment that has started execution');
+  }
+
+  if (existing.stage === 'COMPLETED' || existing.stage === 'CANCELLED') {
+    throw new BadRequestError('Cannot update completed or cancelled deployment');
+  }
+
+  const updated = await prisma.patchDeployment.update({
+    where: { id },
+    data: {
+      name: data.name || existing.name,
+      scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : existing.scheduledAt,
+    },
+    include: { patches: true },
+  });
+
+  return transformDeployment(updated);
+}
+
+export async function cancelDeployment(id: string, userId: string) {
+  const existing = await prisma.patchDeployment.findUnique({ where: { id } });
+
+  if (!existing) {
+    throw new NotFoundError('Deployment not found');
+  }
+
+  if (existing.stage === 'COMPLETED') {
+    throw new BadRequestError('Cannot cancel completed deployment');
+  }
+
+  const updated = await prisma.patchDeployment.update({
+    where: { id },
+    data: {
+      stage: 'CANCELLED',
+      status: 'CANCELLED',
+      completedAt: new Date(),
+    },
+    include: { patches: true },
+  });
+
+  // Create audit log
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: 'CANCEL_DEPLOYMENT',
+      resource: 'deployments',
+      resourceId: id,
+    },
+  });
+
+  return transformDeployment(updated);
+}
+
 export async function getDeploymentPreview(id: string) {
   const deployment = await prisma.patchDeployment.findUnique({
     where: { id },

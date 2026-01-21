@@ -183,6 +183,22 @@ deploymentsRouter.get(
   controller.getDeployment
 );
 
+// PUT /v1/deployments/:id - Update deployment
+deploymentsRouter.put(
+  '/:id',
+  authenticate,
+  validateParams(deploymentIdParamSchema),
+  controller.updateDeployment
+);
+
+// POST /v1/deployments/:id/cancel - Cancel deployment
+deploymentsRouter.post(
+  '/:id/cancel',
+  authenticate,
+  validateParams(deploymentIdParamSchema),
+  controller.cancelDeployment
+);
+
 // DELETE /v1/deployments/:id - Delete deployment
 deploymentsRouter.delete(
   '/:id',

@@ -36,6 +36,10 @@ import type {
   OSLicenseCreateInput,
   OSLicenseUpdateInput,
 } from './assets.validators';
+import {
+  transformHardwareForAPI,
+  transformTelemetryForAPI,
+} from './assets.transformer';
 
 // Helper to generate asset display ID
 function generateAssetId(count: number): string {
@@ -628,7 +632,8 @@ export async function listAssets(params: AssetQueryInput & PaginationParams) {
       where,
       include: {
         tags: { include: { tag: true } },
-        agent: { select: { id: true, status: true } },
+        agent: { select: { id: true, status: true, hostname: true, ipAddress: true, macAddress: true } },
+        hardware: true,
       },
       ...getPaginationParams(params),
       orderBy: params.sort
@@ -646,7 +651,7 @@ export async function getAssetById(id: string): Promise<AssetResponse> {
     where: { id },
     include: {
       tags: { include: { tag: true } },
-      agent: { select: { id: true, status: true, lastHeartbeat: true } },
+      agent: { select: { id: true, status: true, lastHeartbeat: true, hostname: true, ipAddress: true, macAddress: true } },
       hardware: true,
       security: true,
     },
@@ -789,7 +794,28 @@ export async function bulkDeleteAssets(ids: string[]): Promise<{ deleted: number
   return { deleted: result.count };
 }
 
+// Helper to format bytes to human readable size
+function formatBytesToSize(bytes: bigint | null | undefined): string | null {
+  if (!bytes) return null;
+  const numBytes = Number(bytes);
+  const gb = numBytes / (1024 * 1024 * 1024);
+  if (gb >= 1024) {
+    return `${Math.round(gb / 1024)}TB`;
+  }
+  return `${Math.round(gb)}GB`;
+}
+
 function transformAsset(asset: any): AssetResponse {
+  // Get values from agent if available, fall back to asset
+  const hostname = asset.agent?.hostname || asset.name;
+  const ipAddress = asset.agent?.ipAddress || asset.ipAddress;
+  const macAddress = asset.agent?.macAddress || asset.macAddress;
+
+  // Compute memory and disk size from hardware data
+  const memorySize = asset.hardware ? formatBytesToSize(asset.hardware.ramTotal) : null;
+  const diskSize = asset.hardware ? formatBytesToSize(asset.hardware.diskTotal) : null;
+  const systemSKU = asset.hardware?.systemSKU || null;
+
   return {
     id: asset.id,
     assetId: asset.assetTag || asset.id.substring(0, 8).toUpperCase(),
@@ -802,13 +828,17 @@ function transformAsset(asset: any): AssetResponse {
     operationalStatus: asset.agent?.status === 'Connected' ? 'Connected' : 'Disconnected',
     operationalStatusSince: asset.agent?.lastHeartbeat?.toISOString(),
     agentId: asset.agent?.id,
-    ipAddress: asset.ipAddress,
-    macAddress: asset.macAddress,
+    hostname,
+    ipAddress,
+    macAddress,
     serialNumber: asset.serialNumber,
     manufacturer: asset.manufacturer,
     model: asset.model,
     osType: asset.os,
     osVersion: asset.osVersion,
+    memorySize,
+    diskSize,
+    systemSKU,
     tags: asset.tags?.map((at: any) => transformTag(at.tag)),
     createdAt: asset.createdAt.toISOString(),
     updatedAt: asset.updatedAt.toISOString(),
@@ -900,29 +930,181 @@ export async function getAssetHardware(id: string): Promise<AssetHardware | null
     return null;
   }
 
+  // Use transformer to return rawPayload if available, else construct from summary fields
+  const transformed = transformHardwareForAPI(hw);
+  if (transformed) {
+    // The transformer returns rawPayload directly when available.
+    // The rawPayload uses Go agent field names which differ from HardwareResponse:
+    // - Agent sends: storageDrives, graphicsAdapters, memory.modules[].capacityGB
+    // - HardwareResponse expects: storage, graphicsCards, memory.modules[].capacity
+    // We need to handle BOTH formats for compatibility.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = transformed as any;
+
+    // Get storage drives (agent sends "storageDrives", fallback to "storage")
+    const storageDrives = raw.storageDrives || transformed.storage || [];
+
+    // Get memory modules
+    const memoryModules = raw.memory?.modules || [];
+    const totalPhysicalGB = raw.memory?.totalPhysicalGB || transformed.memory?.totalPhysicalGB;
+
+    // Get network adapters (agent might send these in different formats)
+    const networkAdapters = raw.networkAdapters || [];
+
+    // Get graphics (agent sends "graphicsAdapters")
+    const graphicsAdapters = raw.graphicsAdapters || transformed.graphicsCards || [];
+
+    // Get BIOS info
+    const biosInfo = raw.bios || transformed.bios;
+
+    // Get processor info
+    const processorInfo = raw.processor || transformed.processor;
+
+    // Get system identity for additional fields
+    const systemIdentity = raw.systemIdentity || transformed.systemIdentity;
+
+    // Get battery info
+    const batteryInfo = raw.battery;
+
+    return {
+      bios: biosInfo ? {
+        name: biosInfo.vendor || biosInfo.name,
+        biosVersion: biosInfo.version,
+        manufacturer: biosInfo.vendor,
+        installDate: biosInfo.releaseDate,
+        description: biosInfo.firmwareType || undefined,
+        secureBootState: biosInfo.secureBootEnabled !== undefined
+          ? (biosInfo.secureBootEnabled ? 'Enabled' : 'Disabled')
+          : undefined,
+        serialNumber: systemIdentity?.serialNumber,
+      } : undefined,
+      processor: processorInfo ? {
+        name: processorInfo.name,
+        manufacturer: processorInfo.manufacturer,
+        numberOfCores: processorInfo.coreCount,
+        logicalProcessors: processorInfo.threadCount,
+        processorSpeed: processorInfo.clockSpeedMHz ? `${processorInfo.clockSpeedMHz} MHz` : undefined,
+        secureBootState: biosInfo?.secureBootEnabled !== undefined
+          ? (biosInfo.secureBootEnabled ? 'Enabled' : 'Disabled')
+          : undefined,
+      } : undefined,
+      baseBoard: systemIdentity ? {
+        name: systemIdentity.model || 'Unknown',
+        partNumber: systemIdentity.sku || undefined,
+        productId: systemIdentity.uuid || undefined,
+        serialNumber: systemIdentity.serialNumber || undefined,
+        tag: systemIdentity.assetTag || undefined,
+        version: undefined,
+      } : undefined,
+      storage: storageDrives.map((s: any, i: number) => ({
+        name: s.name || `Drive ${i + 1}`,
+        drive: s.mountPoint || s.deviceId || s.name || `Drive ${i + 1}`,
+        capacity: s.capacityGB ? `${Math.round(s.capacityGB)} GB` : undefined,
+        used: s.capacityGB && s.freeSpaceGB !== undefined
+          ? `${Math.round(s.capacityGB - s.freeSpaceGB)} GB`
+          : undefined,
+        format: s.fileSystem || undefined,
+        type: s.type || 'Unknown',
+        serialNumber: s.serialNumber || undefined,
+      })),
+      memory: memoryModules.length > 0
+        ? memoryModules.map((m: any, i: number) => ({
+            slot: m.slot || `Slot ${i + 1}`,
+            name: m.manufacturer || 'Memory Module',
+            // Handle both string "capacity" and number "capacityGB"
+            capacity: typeof m.capacity === 'string'
+              ? m.capacity
+              : (m.capacityGB ? `${Math.round(m.capacityGB)} GB` : undefined),
+            bankLabel: m.bankLabel || undefined,
+            locator: m.slot || undefined,
+            memoryType: m.type || m.memoryType || undefined,
+            serialNumber: m.serialNumber || undefined,
+            partNumber: m.partNumber || undefined,
+          }))
+        : [{
+            slot: 'Total',
+            name: 'System Memory',
+            capacity: totalPhysicalGB ? `${Math.round(totalPhysicalGB)} GB` : undefined,
+          }],
+      networkAdapters: networkAdapters.map((n: any, i: number) => ({
+        id: n.id || `adapter-${i}`,
+        name: n.name || `Network Adapter ${i + 1}`,
+        ipAddressV4: n.ipAddressV4 || n.ipAddress || undefined,
+        ipAddressV6: n.ipAddressV6 || undefined,
+        macAddress: n.macAddress || undefined,
+        dhcpServer: n.dhcpServer || undefined,
+      })),
+      battery: batteryInfo ? {
+        id: 'battery-0',
+        name: batteryInfo.name || 'Battery',
+        health: batteryInfo.healthPercent !== undefined
+          ? `${Math.round(batteryInfo.healthPercent)}%`
+          : 'Unknown',
+        cycleCount: batteryInfo.cycleCount || 0,
+        chargeLevel: batteryInfo.chargeLevel || 0,
+        chargingStatus: batteryInfo.chargingStatus || 'Unknown',
+        batteryCapacity: batteryInfo.designCapacityWh
+          ? `${batteryInfo.designCapacityWh} Wh`
+          : undefined,
+        estimatedRuntime: batteryInfo.estimatedRuntimeMinutes
+          ? `${batteryInfo.estimatedRuntimeMinutes} min`
+          : undefined,
+        temperature: batteryInfo.temperature
+          ? `${batteryInfo.temperature}°C`
+          : undefined,
+      } : undefined,
+      graphicsCards: graphicsAdapters.map((g: any) => ({
+        name: g.name || 'Unknown GPU',
+        manufacturer: g.manufacturer || undefined,
+        driverVersion: g.driverVersion || undefined,
+        videoMemoryMB: g.memoryMB || undefined,
+        currentResolution: g.resolution || undefined,
+      })),
+    };
+  }
+
+  // Fallback to basic fields
   return {
     bios: {
-      name: hw.biosVersion || undefined,
+      name: hw.biosVendor || hw.biosVersion || undefined,
       biosVersion: hw.biosVersion || undefined,
+      manufacturer: hw.biosVendor || undefined,
     },
     processor: {
       name: hw.cpu || undefined,
+      manufacturer: hw.cpuManufacturer || undefined,
       numberOfCores: hw.cpuCores || undefined,
+      logicalProcessors: hw.cpuThreads || hw.cpuCores || undefined,
+      processorSpeed: hw.cpuSpeedMHz ? `${hw.cpuSpeedMHz} MHz` : undefined,
     },
+    baseBoard: hw.manufacturer ? {
+      name: hw.model || 'Unknown',
+      serialNumber: hw.serialNumber || undefined,
+    } : undefined,
     storage: [
       {
         name: 'Primary Drive',
+        drive: 'C:',
         capacity: hw.diskTotal ? `${Math.round(Number(hw.diskTotal) / (1024 * 1024 * 1024))} GB` : undefined,
-        type: 'SSD',
+        used: hw.diskTotal && hw.diskFree
+          ? `${Math.round((Number(hw.diskTotal) - Number(hw.diskFree)) / (1024 * 1024 * 1024))} GB`
+          : undefined,
+        type: hw.diskType || 'SSD',
       },
     ],
     memory: [
       {
         slot: 'Slot 1',
+        name: 'System Memory',
         capacity: hw.ramTotal ? `${Math.round(Number(hw.ramTotal) / (1024 * 1024 * 1024))} GB` : undefined,
+        memoryType: hw.ramType || undefined,
       },
     ],
     networkAdapters: [],
+    graphicsCards: hw.gpuModel ? [{
+      name: hw.gpuModel,
+      videoMemoryMB: hw.gpuMemoryMB || undefined,
+    }] : [],
   };
 }
 
@@ -1099,10 +1281,43 @@ export async function getAssetTelemetry(id: string): Promise<AssetTelemetry | nu
     return null;
   }
 
+  // Use transformer to get rawPayload if available
+  const transformed = transformTelemetryForAPI(latestTelemetry);
+  if (transformed && latestTelemetry.rawPayload) {
+    // rawPayload contains full telemetry from agent
+    const raw = transformed as Record<string, unknown>;
+    return {
+      timestamp: latestTelemetry.timestamp.toISOString(),
+      cpu: {
+        usagePercent: (raw.cpu as Record<string, unknown>)?.usage as number ?? latestTelemetry.cpuUsage ?? 0,
+        processCount: latestTelemetry.processCount ?? undefined,
+      },
+      memory: {
+        usagePercent: (raw.memory as Record<string, unknown>)?.usage as number ?? latestTelemetry.memoryUsage ?? 0,
+      },
+      disk: {
+        drives: (raw.disk as Record<string, unknown>)?.drives as Array<{ mountPoint: string; usagePercent: number }> ?? [
+          {
+            mountPoint: 'C:',
+            usagePercent: latestTelemetry.diskUsage ?? 0,
+          },
+        ],
+      },
+      network: {
+        totalBytesSentPerSec: latestTelemetry.networkOutBps ? Number(latestTelemetry.networkOutBps) : undefined,
+        totalBytesReceivedPerSec: latestTelemetry.networkInBps ? Number(latestTelemetry.networkInBps) : undefined,
+      },
+      systemUptime: latestTelemetry.uptime || undefined,
+      pendingReboot: latestTelemetry.pendingReboot ?? false,
+    };
+  }
+
+  // Fallback to summary fields
   return {
     timestamp: latestTelemetry.timestamp.toISOString(),
     cpu: {
       usagePercent: latestTelemetry.cpuUsage ?? 0,
+      processCount: latestTelemetry.processCount ?? undefined,
     },
     memory: {
       usagePercent: latestTelemetry.memoryUsage ?? 0,
@@ -1115,8 +1330,12 @@ export async function getAssetTelemetry(id: string): Promise<AssetTelemetry | nu
         },
       ],
     },
+    network: {
+      totalBytesSentPerSec: latestTelemetry.networkOutBps ? Number(latestTelemetry.networkOutBps) : undefined,
+      totalBytesReceivedPerSec: latestTelemetry.networkInBps ? Number(latestTelemetry.networkInBps) : undefined,
+    },
     systemUptime: latestTelemetry.uptime || undefined,
-    pendingReboot: false,
+    pendingReboot: latestTelemetry.pendingReboot ?? false,
   };
 }
 
@@ -1165,8 +1384,8 @@ export async function getAssetTelemetryHistory(
     cpu: mapToDataPoints(telemetry, (t) => t.cpuUsage),
     memory: mapToDataPoints(telemetry, (t) => t.memoryUsage),
     disk: mapToDataPoints(telemetry, (t) => t.diskUsage),
-    networkIn: [],
-    networkOut: [],
+    networkIn: mapToDataPoints(telemetry, (t) => t.networkInBps ? Number(t.networkInBps) : null),
+    networkOut: mapToDataPoints(telemetry, (t) => t.networkOutBps ? Number(t.networkOutBps) : null),
   };
 }
 

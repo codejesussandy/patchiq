@@ -241,6 +241,8 @@ export type Asset = {
   // Additional fields (NEW)
   department?: string;
   lastSeen?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 // Asset Life Cycle

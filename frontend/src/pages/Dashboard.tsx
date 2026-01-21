@@ -58,9 +58,7 @@ export const Dashboard = () => {
 
   const fetchDashboard = useCallback(async () => {
     try {
-      console.log('Fetching dashboard data...');
       const dashboardData = await dashboardService.getDashboardData();
-      console.log('Dashboard data received:', dashboardData);
       setData(dashboardData);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
