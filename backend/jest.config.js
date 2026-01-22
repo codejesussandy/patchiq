@@ -5,6 +5,7 @@ const sharedConfig = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   moduleNameMapper: {
+    '^@scalar/express-api-reference$': '<rootDir>/tests/mocks/scalarMock.js',
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@modules/(.*)$': '<rootDir>/src/modules/$1',
     '^@shared/(.*)$': '<rootDir>/src/shared/$1',
@@ -15,9 +16,6 @@ const sharedConfig = {
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
-  transformIgnorePatterns: [
-    'node_modules/(?!(@scalar)/)',
-  ],
   clearMocks: true,
   resetMocks: true,
   restoreMocks: true,
