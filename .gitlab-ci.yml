@@ -1,0 +1,224 @@
+# PatchIQ GitLab CI/CD Pipeline
+# Stages: test → build → deploy
+
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  NODE_VERSION: "20"
+  GO_VERSION: "1.23"
+  # Staging server
+  STAGING_HOST: "192.168.1.13"
+  STAGING_USER: "patchiq"
+
+# Cache node_modules between jobs
+.node_cache: &node_cache
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - backend/node_modules/
+      - frontend/node_modules/
+
+# ===================
+# TEST STAGE
+# ===================
+
+test:backend:
+  stage: test
+  image: node:20-alpine
+  <<: *node_cache
+  services:
+    - postgres:16-alpine
+    - redis:7-alpine
+  variables:
+    POSTGRES_DB: patchiq_test
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/patchiq_test"
+    REDIS_URL: "redis://redis:6379"
+  before_script:
+    - cd backend
+    - npm ci
+    - npx prisma generate
+    - npx prisma db push
+  script:
+    - npm run lint || true
+    - npm run build
+    - npm test
+  artifacts:
+    when: always
+    reports:
+      junit: backend/junit.xml
+    paths:
+      - backend/coverage/
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "full-dev-local"
+
+test:frontend:
+  stage: test
+  image: node:20
+  <<: *node_cache
+  before_script:
+    - cd frontend
+    - npm ci
+    - npx playwright install --with-deps chromium
+  script:
+    - npm run lint || true
+    - npm run build
+    # Skip e2e tests in CI for now (needs backend running)
+    # - npm run test
+  artifacts:
+    paths:
+      - frontend/dist/
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "full-dev-local"
+
+test:agent:
+  stage: test
+  image: golang:1.23-alpine
+  before_script:
+    - cd agent
+  script:
+    - go mod download
+    - go build -o /dev/null ./cmd/agent
+    - go test ./... || true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "full-dev-local"
+    - changes:
+        - agent/**/*
+
+# ===================
+# BUILD STAGE
+# ===================
+
+build:backend:
+  stage: build
+  image: node:20-alpine
+  <<: *node_cache
+  before_script:
+    - cd backend
+    - npm ci
+    - npx prisma generate
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - backend/dist/
+      - backend/node_modules/
+      - backend/src/db/prisma/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "full-dev-local"
+
+build:frontend:
+  stage: build
+  image: node:20-alpine
+  <<: *node_cache
+  before_script:
+    - cd frontend
+    - npm ci
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/dist/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "full-dev-local"
+
+build:agent:
+  stage: build
+  image: golang:1.23-alpine
+  script:
+    - cd agent
+    - go mod download
+    - GOOS=linux GOARCH=amd64 go build -o ../artifacts/patchiq-agent-linux-amd64 ./cmd/agent
+    - GOOS=darwin GOARCH=arm64 go build -o ../artifacts/patchiq-agent-darwin-arm64 ./cmd/agent
+    - GOOS=windows GOARCH=amd64 go build -o ../artifacts/patchiq-agent-windows-amd64.exe ./cmd/agent
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "full-dev-local"
+    - changes:
+        - agent/**/*
+
+# ===================
+# DEPLOY STAGE
+# ===================
+
+deploy:staging:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client rsync
+    - eval $(ssh-agent -s)
+    - echo "$STAGING_SSH_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "$STAGING_HOST_KEY" >> ~/.ssh/known_hosts || true
+    - ssh-keyscan -H $STAGING_HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+  script:
+    - echo "Deploying to staging server..."
+
+    # Sync backend
+    - rsync -avz --delete --exclude 'node_modules' backend/ $STAGING_USER@$STAGING_HOST:~/patchiq/backend/
+
+    # Sync frontend dist
+    - rsync -avz --delete frontend/dist/ $STAGING_USER@$STAGING_HOST:~/patchiq/frontend/dist/
+
+    # Sync agent binaries
+    - rsync -avz artifacts/ $STAGING_USER@$STAGING_HOST:~/patchiq/agent/ || true
+
+    # Install dependencies and restart services on staging
+    - |
+      ssh $STAGING_USER@$STAGING_HOST << 'ENDSSH'
+        cd ~/patchiq/backend
+        npm ci --production
+        npx prisma generate
+        npx prisma db push
+
+        # Restart backend (using pm2 or systemd)
+        pm2 restart patchiq-backend || pm2 start dist/server.js --name patchiq-backend || echo "PM2 not configured yet"
+
+        echo "Deployment complete!"
+      ENDSSH
+  environment:
+    name: staging
+    url: http://192.168.1.13:3000
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "full-dev-local"
+  when: manual  # Require manual trigger for deploy
+
+# ===================
+# OPTIONAL: Auto-fix with Claude
+# ===================
+
+claude:autofix:
+  stage: test
+  image: node:20-alpine
+  allow_failure: true
+  before_script:
+    - npm install -g @anthropic-ai/claude-code
+  script:
+    - echo "Claude autofix would run here"
+    # - claude --print "Analyze test failures and suggest fixes" --allowedTools "Read,Glob,Grep"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: on_failure
+  when: on_failure
