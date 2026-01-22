@@ -39,6 +39,7 @@ test:backend:
     DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/patchiq_test"
     REDIS_URL: "redis://redis:6379"
   before_script:
+    - apk add --no-cache openssl openssl-dev
     - cd backend
     - npm ci
     - npx prisma generate
@@ -106,6 +107,7 @@ build:backend:
   image: node:20-alpine
   <<: *node_cache
   before_script:
+    - apk add --no-cache openssl openssl-dev
     - cd backend
     - npm ci
     - npx prisma generate
