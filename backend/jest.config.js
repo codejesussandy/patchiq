@@ -15,6 +15,9 @@ const sharedConfig = {
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(@scalar)/)',
+  ],
   clearMocks: true,
   resetMocks: true,
   restoreMocks: true,
