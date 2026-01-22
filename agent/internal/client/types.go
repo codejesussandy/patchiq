@@ -90,11 +90,17 @@ type InventoryRequest struct {
 
 // TelemetryRequest represents the telemetry payload sent to the backend
 type TelemetryRequest struct {
-	CollectedAt string      `json:"collectedAt"`
-	CPU         interface{} `json:"cpu,omitempty"`
-	Memory      interface{} `json:"memory,omitempty"`
-	Disk        interface{} `json:"disk,omitempty"`
-	Network     interface{} `json:"network,omitempty"`
+	CollectedAt      string      `json:"collectedAt"`
+	CPU              interface{} `json:"cpu,omitempty"`
+	Memory           interface{} `json:"memory,omitempty"`
+	Disk             interface{} `json:"disk,omitempty"`
+	Network          interface{} `json:"network,omitempty"`
+	Processes        interface{} `json:"processes,omitempty"`
+	SystemUptime     interface{} `json:"systemUptime,omitempty"`
+	Thermal          interface{} `json:"thermal,omitempty"`
+	Power            interface{} `json:"power,omitempty"`
+	AgentUtilization interface{} `json:"agentUtilization,omitempty"`
+	SystemErrors     interface{} `json:"systemErrors,omitempty"`
 }
 
 // ErrorResponse represents an error response from the backend

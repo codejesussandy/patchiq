@@ -122,14 +122,18 @@ func (c *DarwinHardwareCollector) collectBIOS() models.BIOS {
 
 	switch runtime.GOOS {
 	case "darwin":
-		// macOS uses EFI
+		// macOS uses EFI/UEFI
 		bios.Vendor = "Apple Inc."
 		out, err := exec.Command("system_profiler", "SPHardwareDataType").Output()
 		if err == nil {
 			lines := strings.Split(string(out), "\n")
 			for _, line := range lines {
 				line = strings.TrimSpace(line)
-				if strings.HasPrefix(line, "Boot ROM Version:") {
+				// On Apple Silicon, it's "System Firmware Version"
+				// On Intel Macs, it's "Boot ROM Version"
+				if strings.HasPrefix(line, "System Firmware Version:") {
+					bios.Version = strings.TrimSpace(strings.TrimPrefix(line, "System Firmware Version:"))
+				} else if strings.HasPrefix(line, "Boot ROM Version:") && bios.Version == "" {
 					bios.Version = strings.TrimSpace(strings.TrimPrefix(line, "Boot ROM Version:"))
 				}
 			}
@@ -167,9 +171,23 @@ func (c *DarwinHardwareCollector) collectProcessor() models.Processor {
 
 	switch runtime.GOOS {
 	case "darwin":
+		// First try Intel-style brand string
 		out, err := exec.Command("sysctl", "-n", "machdep.cpu.brand_string").Output()
-		if err == nil {
+		if err == nil && len(strings.TrimSpace(string(out))) > 0 {
 			proc.Name = strings.TrimSpace(string(out))
+		}
+
+		// If no brand string (Apple Silicon), get from system_profiler
+		if proc.Name == "" {
+			if out, err := exec.Command("system_profiler", "SPHardwareDataType").Output(); err == nil {
+				lines := strings.Split(string(out), "\n")
+				for _, line := range lines {
+					line = strings.TrimSpace(line)
+					if strings.HasPrefix(line, "Chip:") {
+						proc.Name = strings.TrimSpace(strings.TrimPrefix(line, "Chip:"))
+					}
+				}
+			}
 		}
 
 		// Get core count
@@ -186,10 +204,27 @@ func (c *DarwinHardwareCollector) collectProcessor() models.Processor {
 			}
 		}
 
-		// Get CPU frequency
+		// Get CPU frequency (only works on Intel Macs)
 		if out, err := exec.Command("sysctl", "-n", "hw.cpufrequency").Output(); err == nil {
-			if freq, err := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64); err == nil {
-				proc.ClockSpeedMHz = int(freq / 1000000)
+			freqStr := strings.TrimSpace(string(out))
+			if freqStr != "" {
+				if freq, err := strconv.ParseInt(freqStr, 10, 64); err == nil && freq > 0 {
+					proc.ClockSpeedMHz = int(freq / 1000000)
+				}
+			}
+		}
+
+		// For Apple Silicon, set known base speeds (approximate)
+		if proc.ClockSpeedMHz == 0 && strings.Contains(proc.Name, "Apple") {
+			// Apple Silicon has dynamic frequency, these are approximate max values
+			if strings.Contains(proc.Name, "M4") {
+				proc.ClockSpeedMHz = 4400 // M4 performance cores max ~4.4 GHz
+			} else if strings.Contains(proc.Name, "M3") {
+				proc.ClockSpeedMHz = 4000
+			} else if strings.Contains(proc.Name, "M2") {
+				proc.ClockSpeedMHz = 3500
+			} else if strings.Contains(proc.Name, "M1") {
+				proc.ClockSpeedMHz = 3200
 			}
 		}
 
@@ -433,10 +468,30 @@ func (c *DarwinHardwareCollector) collectStorageDrives() []models.StorageDrive {
 
 	switch runtime.GOOS {
 	case "darwin":
-		// Use df to get mounted filesystems
+		// Get actual physical disk size using diskutil
+		var physicalDiskSizeGB float64
+		if out, err := exec.Command("diskutil", "info", "disk0").Output(); err == nil {
+			lines := strings.Split(string(out), "\n")
+			for _, line := range lines {
+				if strings.Contains(line, "Disk Size:") {
+					// Format: "Disk Size:                 500.3 GB (500277792768 Bytes)"
+					re := regexp.MustCompile(`([\d.]+)\s*GB`)
+					if matches := re.FindStringSubmatch(line); len(matches) > 1 {
+						if size, err := strconv.ParseFloat(matches[1], 64); err == nil {
+							physicalDiskSizeGB = size
+						}
+					}
+				}
+			}
+		}
+
+		// Use df to get mounted filesystems for usage info
 		out, err := exec.Command("df", "-h").Output()
 		if err == nil {
 			lines := strings.Split(string(out), "\n")
+			// Track the main drive index to update with Data volume stats
+			mainDriveIndex := -1
+
 			for _, line := range lines {
 				fields := strings.Fields(line)
 				if len(fields) >= 6 && strings.HasPrefix(fields[0], "/dev/") {
@@ -445,38 +500,95 @@ func (c *DarwinHardwareCollector) collectStorageDrives() []models.StorageDrive {
 						continue
 					}
 
-					drive := models.StorageDrive{
-						DeviceID:   fields[0],
-						MountPoint: fields[len(fields)-1],
+					mountPoint := fields[len(fields)-1]
+
+					// For macOS APFS, only include the main Data volume as the primary drive
+					// Skip system volumes like VM, Preboot, Update, xarts, etc.
+					isSystemVolume := strings.HasPrefix(mountPoint, "/System/Volumes/") &&
+						mountPoint != "/System/Volumes/Data"
+
+					if isSystemVolume {
+						continue
 					}
 
-					// Parse capacity
-					drive.CapacityGB = parseSize(fields[1])
-					usedGB := parseSize(fields[2])
-					drive.FreeSpaceGB = drive.CapacityGB - usedGB
+					// For macOS: prefer /System/Volumes/Data for accurate usage stats
+					// because that's where user data actually resides
+					if mountPoint == "/" {
+						// Create main drive entry, but may update with Data volume stats later
+						drive := models.StorageDrive{
+							DeviceID:   fields[0],
+							MountPoint: "/",
+							Name:       "Macintosh HD",
+							Type:       "SSD",
+							FileSystem: "APFS",
+						}
+						if physicalDiskSizeGB > 0 {
+							drive.CapacityGB = physicalDiskSizeGB
+						} else {
+							drive.CapacityGB = parseSize(fields[1])
+						}
+						usedGB := parseSize(fields[2])
+						drive.FreeSpaceGB = drive.CapacityGB - usedGB
 
-					// Determine type
-					if strings.Contains(fields[0], "disk") {
-						drive.Type = "SSD" // Most Macs use SSD
-						drive.Name = "Macintosh HD"
-					}
+						if drive.CapacityGB > 0 {
+							mainDriveIndex = len(drives)
+							drives = append(drives, drive)
+						}
+					} else if mountPoint == "/System/Volumes/Data" {
+						// This is where actual user data lives - use this for accurate usage
+						usedGB := parseSize(fields[2])
+						if mainDriveIndex >= 0 {
+							// Update the main drive with Data volume usage stats
+							drives[mainDriveIndex].FreeSpaceGB = drives[mainDriveIndex].CapacityGB - usedGB
+						} else {
+							// Data volume seen before root - create entry
+							drive := models.StorageDrive{
+								DeviceID:   fields[0],
+								MountPoint: "/",
+								Name:       "Macintosh HD",
+								Type:       "SSD",
+								FileSystem: "APFS",
+							}
+							if physicalDiskSizeGB > 0 {
+								drive.CapacityGB = physicalDiskSizeGB
+							} else {
+								drive.CapacityGB = parseSize(fields[1])
+							}
+							drive.FreeSpaceGB = drive.CapacityGB - usedGB
 
-					if drive.CapacityGB > 0 {
-						drives = append(drives, drive)
+							if drive.CapacityGB > 0 {
+								mainDriveIndex = len(drives)
+								drives = append(drives, drive)
+							}
+						}
+					} else {
+						// External drives or disk images
+						drive := models.StorageDrive{
+							DeviceID:   fields[0],
+							MountPoint: mountPoint,
+							Type:       "SSD",
+						}
+						drive.CapacityGB = parseSize(fields[1])
+						usedGB := parseSize(fields[2])
+						drive.FreeSpaceGB = drive.CapacityGB - usedGB
+
+						if drive.CapacityGB > 0 {
+							drives = append(drives, drive)
+						}
 					}
 				}
 			}
 		}
 
-		// Get more details from diskutil
-		out, err = exec.Command("diskutil", "list").Output()
-		if err == nil && len(drives) > 0 {
-			// Update drive names from diskutil output if available
+		// Get filesystem type from diskutil
+		if out, err := exec.Command("diskutil", "list").Output(); err == nil && len(drives) > 0 {
 			lines := strings.Split(string(out), "\n")
 			for _, line := range lines {
 				if strings.Contains(line, "Apple_APFS") || strings.Contains(line, "APFS Container") {
 					for i := range drives {
-						drives[i].FileSystem = "APFS"
+						if drives[i].FileSystem == "" {
+							drives[i].FileSystem = "APFS"
+						}
 					}
 				}
 			}

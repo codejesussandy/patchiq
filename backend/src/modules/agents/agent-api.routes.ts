@@ -31,7 +31,8 @@ router.get('/config', controller.getConfig);
 router.post('/inventory', validateBody(inventorySchema), controller.submitInventory);
 
 // POST /api/agent/telemetry - Submit telemetry data
-router.post('/telemetry', validateBody(telemetrySchema), controller.submitTelemetry);
+// Note: No validation middleware - telemetry has many fields and we want to preserve all of them in rawPayload
+router.post('/telemetry', controller.submitTelemetry);
 
 // POST /api/agent/token/refresh - Refresh agent token
 router.post('/token/refresh', controller.refreshToken);

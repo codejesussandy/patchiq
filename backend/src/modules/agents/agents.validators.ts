@@ -58,14 +58,20 @@ export const inventorySchema = z.object({
   peripherals: z.object({}).passthrough().optional(),
 });
 
-// Telemetry schema
+// Telemetry schema - use passthrough to preserve all fields from agent
 export const telemetrySchema = z.object({
   collectedAt: z.string().datetime(),
   cpu: z.object({}).passthrough().optional(),
   memory: z.object({}).passthrough().optional(),
   disk: z.object({}).passthrough().optional(),
   network: z.object({}).passthrough().optional(),
-});
+  processes: z.object({}).passthrough().optional(),
+  systemUptime: z.object({}).passthrough().optional(),
+  thermal: z.object({}).passthrough().optional(),
+  power: z.object({}).passthrough().optional(),
+  agentUtilization: z.object({}).passthrough().optional(),
+  systemErrors: z.object({}).passthrough().optional(),
+}).passthrough();
 
 // Type exports
 export type ListAgentsQuery = z.infer<typeof listAgentsQuerySchema>;

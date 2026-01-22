@@ -1,0 +1,19 @@
+meta {
+  name: Get Asset Telemetry
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/{{apiVersion}}/assets/:id/telemetry
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id: {{assetId}}
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

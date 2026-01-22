@@ -96,6 +96,9 @@ router.get('/assets/:id/patches', validateParams(assetIdParamSchema), controller
 router.get('/assets/:id/deployments', validateParams(assetIdParamSchema), controller.getAssetDeployments);
 router.post('/assets/:id/attachments', validateParams(assetIdParamSchema), controller.uploadAssetAttachment);
 
+// Force inventory refresh
+router.post('/assets/:id/refresh', validateParams(assetIdParamSchema), controller.refreshAssetInventory);
+
 // Asset tags management
 router.post('/assets/:id/tags', validateParams(assetIdParamSchema), validateBody(addTagsToAssetSchema), controller.addTagsToAsset);
 router.delete('/assets/:id/tags/:tagId', validateParams(assetTagParamSchema), controller.removeTagFromAsset);

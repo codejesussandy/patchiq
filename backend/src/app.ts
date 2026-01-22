@@ -2,6 +2,9 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import path from 'path';
+import fs from 'fs';
+import { apiReference } from '@scalar/express-api-reference';
 import { config } from '@config/index';
 import { errorHandler, notFoundHandler, defaultRateLimiter } from '@middleware/index';
 import { authRoutes, userRoutes } from '@modules/auth';
@@ -20,11 +23,26 @@ import { patchRepositoryRoutes } from '@modules/patch-repository';
 export function createApp(): Application {
   const app = express();
 
-  // Security middleware
-  app.use(helmet());
+  // Security middleware - configure CSP to allow Scalar API docs
+  app.use(
+    helmet({
+      contentSecurityPolicy: config.isDevelopment
+        ? false // Disable CSP in dev to allow Scalar to load
+        : undefined,
+    })
+  );
   app.use(
     cors({
-      origin: config.corsOrigin,
+      // In development, allow any localhost port. In production, use configured origin
+      origin: config.isDevelopment
+        ? (origin, callback) => {
+            // Allow requests with no origin (like mobile apps or curl)
+            if (!origin) return callback(null, true);
+            // Allow any localhost origin in development
+            if (origin.startsWith('http://localhost:')) return callback(null, true);
+            callback(null, false);
+          }
+        : config.corsOrigin,
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Agent-Id', 'X-Agent-Version'],
@@ -61,6 +79,32 @@ export function createApp(): Application {
       documentation: '/api-docs',
     });
   });
+
+  // OpenAPI spec endpoint
+  app.get('/openapi.yaml', (_req, res) => {
+    const specPath = path.join(__dirname, 'openapi.yaml');
+    if (fs.existsSync(specPath)) {
+      res.type('text/yaml').sendFile(specPath);
+    } else {
+      res.status(404).json({ error: 'OpenAPI spec not found' });
+    }
+  });
+
+  // Scalar API Documentation
+  app.use(
+    '/api-docs',
+    apiReference({
+      spec: {
+        url: '/openapi.yaml',
+      },
+      theme: 'purple',
+      layout: 'modern',
+      darkMode: true,
+      metaData: {
+        title: 'PatchIQ API Documentation',
+      },
+    })
+  );
 
   // ============================================
   // API Routes - Will be added by other modules

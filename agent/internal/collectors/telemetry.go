@@ -61,8 +61,16 @@ func (c *DarwinTelemetryCollector) Collect() (interface{}, error) {
 	// Collect power/battery data
 	tel.Power = c.collectPowerTelemetry()
 
+	// Collect system uptime
+	tel.SystemUptime = c.collectSystemUptime()
+	if tel.SystemUptime != nil {
+		tel.Uptime = tel.SystemUptime.UptimeSeconds
+	}
+
 	return tel, nil
 }
+
+// Note: formatDuration is defined in software.go and is reused here
 
 func (c *DarwinTelemetryCollector) collectCPUTelemetry() models.CPUTelemetry {
 	cpu := models.CPUTelemetry{}
@@ -1649,6 +1657,76 @@ func (c *DarwinTelemetryCollector) collectPowerTelemetry() *models.PowerTelemetr
 	}
 
 	return power
+}
+
+func (c *DarwinTelemetryCollector) collectSystemUptime() *models.SystemUptime {
+	uptime := &models.SystemUptime{}
+
+	switch runtime.GOOS {
+	case "darwin":
+		// Get boot time using sysctl
+		out, err := exec.Command("sysctl", "-n", "kern.boottime").Output()
+		if err == nil {
+			// Format: { sec = 1764325942, usec = 549539 } Fri Nov 28 16:02:22 2025
+			output := string(out)
+			re := regexp.MustCompile(`sec\s*=\s*(\d+)`)
+			if matches := re.FindStringSubmatch(output); len(matches) > 1 {
+				if bootTimeSec, err := strconv.ParseInt(matches[1], 10, 64); err == nil {
+					bootTime := time.Unix(bootTimeSec, 0)
+					uptime.BootTime = bootTime.Format(time.RFC3339)
+					uptime.UptimeSeconds = int64(time.Since(bootTime).Seconds())
+					uptime.UptimeHuman = formatDuration(time.Since(bootTime))
+				}
+			}
+		}
+
+	case "windows":
+		// Windows: Use wmic to get LastBootUpTime
+		out, err := exec.Command("wmic", "os", "get", "LastBootUpTime", "/value").Output()
+		if err == nil {
+			for _, line := range strings.Split(string(out), "\n") {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "LastBootUpTime=") {
+					bootStr := strings.TrimPrefix(line, "LastBootUpTime=")
+					// Format: 20231215123456.123456+000
+					if len(bootStr) >= 14 {
+						year, _ := strconv.Atoi(bootStr[0:4])
+						month, _ := strconv.Atoi(bootStr[4:6])
+						day, _ := strconv.Atoi(bootStr[6:8])
+						hour, _ := strconv.Atoi(bootStr[8:10])
+						minute, _ := strconv.Atoi(bootStr[10:12])
+						second, _ := strconv.Atoi(bootStr[12:14])
+
+						bootTime := time.Date(year, time.Month(month), day, hour, minute, second, 0, time.Local)
+						uptime.BootTime = bootTime.Format(time.RFC3339)
+						uptime.UptimeSeconds = int64(time.Since(bootTime).Seconds())
+						uptime.UptimeHuman = formatDuration(time.Since(bootTime))
+					}
+				}
+			}
+		}
+
+	default:
+		// Linux: Read from /proc/uptime
+		data, err := os.ReadFile("/proc/uptime")
+		if err == nil {
+			fields := strings.Fields(string(data))
+			if len(fields) >= 1 {
+				if upSec, err := strconv.ParseFloat(fields[0], 64); err == nil {
+					uptime.UptimeSeconds = int64(upSec)
+					uptime.UptimeHuman = formatDuration(time.Duration(upSec) * time.Second)
+					bootTime := time.Now().Add(-time.Duration(upSec) * time.Second)
+					uptime.BootTime = bootTime.Format(time.RFC3339)
+				}
+			}
+		}
+	}
+
+	if uptime.UptimeSeconds == 0 {
+		return nil
+	}
+
+	return uptime
 }
 
 // getThermalStatus returns a status string based on temperature thresholds

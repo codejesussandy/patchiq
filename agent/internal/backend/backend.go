@@ -363,21 +363,19 @@ func (m *Manager) submitTelemetryNow() {
 		return
 	}
 
+	// Send the complete telemetry data, not just summaries
 	req := &client.TelemetryRequest{
 		CollectedAt: time.Now().UTC().Format(time.RFC3339),
-		CPU: map[string]interface{}{
-			"usage": telemetry.CPU.UsagePercent,
-		},
-		Memory: map[string]interface{}{
-			"usage": telemetry.Memory.UsagePercent,
-		},
-		Disk: map[string]interface{}{
-			"usage": getDiskUsage(telemetry),
-		},
-		Network: map[string]interface{}{
-			"bytesSentPerSec":     telemetry.Network.BytesSentPerSec,
-			"bytesReceivedPerSec": telemetry.Network.BytesReceivedPerSec,
-		},
+		CPU:         telemetry.CPU,
+		Memory:      telemetry.Memory,
+		Disk:        telemetry.Disk,
+		Network:     telemetry.Network,
+		Processes:   telemetry.Processes,
+		SystemUptime: telemetry.SystemUptime,
+		Thermal:     telemetry.Thermal,
+		Power:       telemetry.Power,
+		AgentUtilization: telemetry.AgentUtilization,
+		SystemErrors: telemetry.SystemErrors,
 	}
 
 	if err := m.client.SubmitTelemetry(req); err != nil {

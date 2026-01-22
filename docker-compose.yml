@@ -1,0 +1,164 @@
+# Full-Stack Development Docker Compose
+# Usage: docker-compose up -d (or use `make dev`)
+#
+# This orchestrates all services for local development:
+# - PostgreSQL (primary database)
+# - Redis (job queue)
+# - MinIO (S3-compatible storage for patches)
+# - Backend (Express API with hot reload)
+# - Frontend (Vite with HMR)
+#
+# The agent runs locally outside Docker for easier debugging.
+# Use `make agent` to start the agent with hot reload.
+
+services:
+  # PostgreSQL - Primary database
+  postgres:
+    image: postgres:16-alpine
+    container_name: patchiq_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: patchiq_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - patchiq_network
+
+  # Redis - Job queue (BullMQ)
+  redis:
+    image: redis:7-alpine
+    container_name: patchiq_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - patchiq_network
+
+  # MinIO - S3-compatible patch storage
+  minio:
+    image: minio/minio:latest
+    container_name: patchiq_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: patchiq_admin
+      MINIO_ROOT_PASSWORD: patchiq_secret_key
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web Console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - patchiq_network
+
+  # pgAdmin - Web-based PostgreSQL administration
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: patchiq_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@patchiq.io
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - patchiq_network
+    restart: unless-stopped
+
+  # Backend - Express API with hot reload via nodemon
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: patchiq_backend
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/patchiq_dev
+      - REDIS_URL=redis://redis:6379
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=patchiq_admin
+      - MINIO_SECRET_KEY=patchiq_secret_key
+      - MINIO_BUCKET=patches
+      - MINIO_USE_SSL=false
+      - JWT_SECRET=dev-jwt-secret-change-in-production
+      - JWT_ACCESS_TOKEN_EXPIRY=15m
+      - JWT_REFRESH_TOKEN_EXPIRY=7d
+      - CORS_ORIGIN=http://localhost:5173
+      # Mock services for local development
+      - MOCK_NVD=true
+      - MOCK_EMAIL=true
+      - MOCK_LDAP=true
+      - MOCK_PATCHES=true
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - /app/dist
+    networks:
+      - patchiq_network
+    restart: unless-stopped
+
+  # Frontend - Vite with Hot Module Replacement
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: patchiq_frontend
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:3000/v1
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - patchiq_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  pgadmin_data:
+
+networks:
+  patchiq_network:
+    driver: bridge

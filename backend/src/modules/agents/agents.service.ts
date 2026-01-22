@@ -454,6 +454,35 @@ export class AgentsService {
   }
 
   /**
+   * Queue an inventory refresh command for the agent
+   * The agent will execute this on its next heartbeat
+   */
+  async queueInventoryRefresh(agentId: string): Promise<{ id: string; status: string }> {
+    const agent = await prisma.agent.findUnique({
+      where: { id: agentId },
+    });
+
+    if (!agent) {
+      throw new NotFoundError('Agent not found');
+    }
+
+    // Create a pending command for inventory collection
+    const command = await prisma.agentCommand.create({
+      data: {
+        agentId,
+        type: 'inventory_full',
+        status: 'pending',
+        scheduledAt: new Date(),
+      },
+    });
+
+    return {
+      id: command.id,
+      status: 'queued',
+    };
+  }
+
+  /**
    * Get agent downloads
    */
   async getAgentDownloads(): Promise<AgentDownloadResponse[]> {
@@ -671,6 +700,14 @@ export class AgentsService {
       const model = systemIdentity?.model as string | undefined;
       const serialNumber = systemIdentity?.serialNumber as string | undefined;
 
+      // Build combined payload with hardware and network adapters for detailed views
+      // The assets.service.ts getAssetHardware() expects networkAdapters in rawPayload
+      const combinedPayload = {
+        ...hw,
+        // Include network adapters in the payload so getAssetHardware can access them
+        networkAdapters: networkAdapters || [],
+      };
+
       await prisma.assetHardware.upsert({
         where: { assetId: agent.assetId },
         create: {
@@ -700,8 +737,8 @@ export class AgentsService {
           manufacturer,
           model,
           serialNumber,
-          // Full payload for detailed views
-          rawPayload: hw as Prisma.InputJsonValue,
+          // Full payload for detailed views (includes network adapters)
+          rawPayload: combinedPayload as Prisma.InputJsonValue,
           collectedAt: new Date(),
         },
         update: {
@@ -730,8 +767,8 @@ export class AgentsService {
           manufacturer,
           model,
           serialNumber,
-          // Full payload for detailed views
-          rawPayload: hw as Prisma.InputJsonValue,
+          // Full payload for detailed views (includes network adapters)
+          rawPayload: combinedPayload as Prisma.InputJsonValue,
           collectedAt: new Date(),
         },
       });
@@ -815,7 +852,8 @@ export class AgentsService {
   /**
    * Process telemetry submission from agent
    */
-  async processTelemetry(agentId: string, telemetry: TelemetryInput): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async processTelemetry(agentId: string, telemetry: any): Promise<void> {
     const agent = await prisma.agent.findUnique({
       where: { id: agentId },
     });
@@ -828,31 +866,33 @@ export class AgentsService {
     const memory = telemetry.memory as Record<string, unknown> | undefined;
     const disk = telemetry.disk as Record<string, unknown> | undefined;
     const network = telemetry.network as Record<string, unknown> | undefined;
+    const processes = telemetry.processes as Record<string, unknown> | undefined;
+    const systemUptime = telemetry.systemUptime as { uptimeSeconds?: number; uptimeHuman?: string; bootTime?: string } | undefined;
     const telemetryAny = telemetry as Record<string, unknown>;
-    const system = telemetryAny.system as Record<string, unknown> | undefined;
 
     // Extract additional telemetry fields
     const networkInBps = network?.bytesReceivedPerSec as number | undefined;
     const networkOutBps = network?.bytesSentPerSec as number | undefined;
-    const processCount = cpu?.processCount as number | undefined;
-    const pendingReboot = system?.pendingReboot as boolean | undefined;
-    const uptime = (system?.uptime ?? telemetryAny.uptime) as number | undefined;
+    const processCount = processes?.totalCount as number ?? cpu?.processCount as number | undefined;
+    const pendingReboot = telemetryAny.pendingReboot as boolean | undefined;
+    // Get uptime from systemUptime object (preferred) or fallback to legacy uptime field
+    const uptime = systemUptime?.uptimeSeconds ?? telemetryAny.uptime as number | undefined;
 
     // Store telemetry data with rawPayload
     await prisma.agentTelemetry.create({
       data: {
         agentId,
-        // Summary fields for quick queries
-        cpuUsage: cpu?.usage as number | undefined,
-        memoryUsage: memory?.usage as number | undefined,
-        diskUsage: disk?.usage as number | undefined,
+        // Summary fields for quick queries (support both old 'usage' and new 'usagePercent' formats)
+        cpuUsage: (cpu?.usagePercent ?? cpu?.usage) as number | undefined,
+        memoryUsage: (memory?.usagePercent ?? memory?.usage) as number | undefined,
+        diskUsage: (disk?.usagePercent ?? disk?.usage) as number | undefined,
         uptime,
         networkInBps: networkInBps ? BigInt(Math.floor(networkInBps)) : undefined,
         networkOutBps: networkOutBps ? BigInt(Math.floor(networkOutBps)) : undefined,
         processCount,
         pendingReboot,
-        // Full payload for detailed views
-        rawPayload: telemetryAny as Prisma.InputJsonValue,
+        // Full payload for detailed views - store the complete telemetry from agent
+        rawPayload: telemetry as Prisma.InputJsonValue,
         timestamp: new Date(telemetry.collectedAt),
       },
     });

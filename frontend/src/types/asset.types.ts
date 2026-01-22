@@ -7,13 +7,12 @@ export type AssetPatchStatus = 'Installed' | 'Missing' | 'Pending' | 'Failed';
 
 // Agent link for assets
 export type AgentLink = {
-  agentId: string;
-  agentName?: string;
-  agentVersion?: string;
-  agentStatus?: AgentStatus;
+  id: string;
+  status: string;
+  version?: string;
   lastHeartbeat?: string;
   lastHeartbeatRelative?: string;
-  registeredAt?: string;
+  heartbeatInterval?: number;
 };
 
 // Patch summary for assets

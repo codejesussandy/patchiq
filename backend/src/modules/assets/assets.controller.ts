@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import * as assetsService from './assets.service';
+import { AgentsService } from '@modules/agents/agents.service';
 import { parsePaginationQuery } from '@shared/utils/pagination';
+
+const agentsService = new AgentsService();
 
 // ============================================
 // Categories Controllers
@@ -581,6 +584,33 @@ export async function importOSLicenses(req: Request, res: Response, next: NextFu
   try {
     // File import handling would be implemented here
     res.status(201).json({ success: true, imported: 0 });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Trigger inventory refresh for an asset's agent
+ * POST /v1/assets/:id/refresh
+ */
+export async function refreshAssetInventory(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    // Get the asset to find its agent
+    const asset = await assetsService.getAssetById(req.params.id);
+
+    if (!asset.agentId) {
+      res.status(400).json({ error: 'Asset has no linked agent' });
+      return;
+    }
+
+    // Queue an inventory refresh command for the agent
+    const result = await agentsService.queueInventoryRefresh(asset.agentId);
+
+    res.json({
+      message: 'Inventory refresh queued',
+      commandId: result.id,
+      status: result.status,
+    });
   } catch (error) {
     next(error);
   }

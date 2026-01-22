@@ -3,6 +3,15 @@ export type AssetStatus = 'In Use' | 'Available' | 'Under Maintenance' | 'Retire
 export type OperationalStatus = 'Connected' | 'Disconnected';
 export type OsType = 'Windows' | 'MacOS' | 'Linux';
 
+export interface AgentStatus {
+  id: string;
+  status: string;
+  version: string;
+  lastHeartbeat?: string | null;
+  lastHeartbeatRelative?: string | null;
+  heartbeatInterval: number;
+}
+
 export interface AssetResponse {
   id: string;
   assetId: string;
@@ -15,6 +24,7 @@ export interface AssetResponse {
   operationalStatus: OperationalStatus;
   operationalStatusSince?: string | null;
   agentId?: string | null;
+  agent?: AgentStatus | null;
   ipAddress?: string | null;
   macAddress?: string | null;
   hostname?: string | null;
@@ -447,6 +457,10 @@ export interface AssetTelemetry {
   timestamp: string;
   cpu?: {
     usagePercent: number;
+    userPercent?: number;
+    systemPercent?: number;
+    idlePercent?: number;
+    loadAverage?: number[];
     temperature?: number;
     processCount?: number;
     threadCount?: number;
@@ -456,16 +470,33 @@ export interface AssetTelemetry {
     totalBytes?: number;
     usedBytes?: number;
     availableBytes?: number;
+    usedHuman?: string;
+    availableHuman?: string;
   };
   disk?: {
     drives?: DriveTelemetry[];
   };
   network?: {
+    bytesSentPerSec?: number;
+    bytesReceivedPerSec?: number;
     totalBytesSentPerSec?: number;
     totalBytesReceivedPerSec?: number;
     internetConnected?: boolean;
   };
-  systemUptime?: number;
+  processes?: {
+    totalCount?: number;
+    runningCount?: number;
+    topByCPU?: Array<{ pid: number; name: string; cpuPercent: number }>;
+    topByMemory?: Array<{ pid: number; name: string; memoryPercent: number }>;
+  };
+  systemUptime?: {
+    uptimeSeconds: number;
+    uptimeHuman: string;
+    bootTime?: string;
+  };
+  thermal?: Record<string, unknown>;
+  power?: Record<string, unknown>;
+  agentUtilization?: Record<string, unknown>;
   pendingReboot?: boolean;
   batteryChargePercent?: number;
   batteryCharging?: boolean;

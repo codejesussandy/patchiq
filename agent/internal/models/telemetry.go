@@ -14,6 +14,15 @@ type Telemetry struct {
 	AgentUtilization *AgentUtilization `json:"agentUtilization,omitempty"`
 	Thermal          *ThermalTelemetry `json:"thermal,omitempty"`
 	Power            *PowerTelemetry   `json:"power,omitempty"`
+	SystemUptime     *SystemUptime     `json:"systemUptime,omitempty"`
+	Uptime           int64             `json:"uptime,omitempty"` // System uptime in seconds (for backend compatibility)
+}
+
+// SystemUptime represents system uptime information
+type SystemUptime struct {
+	UptimeSeconds int64  `json:"uptimeSeconds"`
+	UptimeHuman   string `json:"uptimeHuman"`
+	BootTime      string `json:"bootTime,omitempty"`
 }
 
 // ThermalTelemetry represents temperature readings from various sensors

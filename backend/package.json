@@ -45,6 +45,7 @@
   "license": "PROPRIETARY",
   "dependencies": {
     "@prisma/client": "^5.10.0",
+    "@scalar/express-api-reference": "^0.8.35",
     "axios": "^1.6.7",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.1.0",

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Tabs,
@@ -19,6 +19,8 @@ import {
   Modal,
   Spin,
   Divider,
+  Switch,
+  Tooltip,
 } from 'antd';
 import {
   WindowsOutlined,
@@ -53,6 +55,9 @@ import type { MenuProps } from 'antd';
 
 const { Title, Text } = Typography;
 
+// Telemetry polling interval in milliseconds (30 seconds)
+const TELEMETRY_POLL_INTERVAL = 30000;
+
 export const AssetDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -75,6 +80,9 @@ export const AssetDetails = () => {
   const [editingTags, setEditingTags] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [locatingAsset, setLocatingAsset] = useState(false);
+  const [refreshingInventory, setRefreshingInventory] = useState(false);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const telemetryPollRef = useRef<NodeJS.Timeout | null>(null);
 
   // Patches tab state
   const [patchesTab, setPatchesTab] = useState<'missing' | 'installed' | 'exception'>('missing');
@@ -104,6 +112,33 @@ export const AssetDetails = () => {
       setSelectedTags(asset.tagIds || []);
     }
   }, [asset]);
+
+  // Auto-poll telemetry data when auto-refresh is enabled
+  useEffect(() => {
+    // Clear any existing interval
+    if (telemetryPollRef.current) {
+      clearInterval(telemetryPollRef.current);
+      telemetryPollRef.current = null;
+    }
+
+    // Set up polling if auto-refresh is enabled and we have an asset
+    if (autoRefreshEnabled && asset) {
+      telemetryPollRef.current = setInterval(() => {
+        // Only fetch if not already loading
+        if (!loadingTelemetry) {
+          fetchTelemetryData();
+        }
+      }, TELEMETRY_POLL_INTERVAL);
+    }
+
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (telemetryPollRef.current) {
+        clearInterval(telemetryPollRef.current);
+        telemetryPollRef.current = null;
+      }
+    };
+  }, [autoRefreshEnabled, asset, loadingTelemetry]);
 
   const fetchAssetDetails = async () => {
     if (!id) return;
@@ -302,6 +337,29 @@ export const AssetDetails = () => {
       console.error('Error detecting location:', error);
       message.error('Failed to detect location');
       setLocatingAsset(false);
+    }
+  };
+
+  const handleRefreshInventory = async () => {
+    if (!asset) return;
+    setRefreshingInventory(true);
+    try {
+      const result = await assetService.refreshAssetInventory(asset.id);
+      message.success(`${result.message}. The data will update shortly.`);
+
+      // Wait for agent to respond and then refetch data
+      setTimeout(async () => {
+        await fetchAssetDetails();
+        await fetchHardwareData();
+        await fetchSoftwareData();
+        await fetchTelemetryData();
+        setRefreshingInventory(false);
+        message.info('Asset data refreshed');
+      }, 5000);
+    } catch (error: any) {
+      console.error('Failed to refresh inventory:', error);
+      message.error(error?.response?.data?.error || 'Failed to refresh inventory');
+      setRefreshingInventory(false);
     }
   };
 
@@ -749,7 +807,17 @@ export const AssetDetails = () => {
             <div>
               <div style={{ fontWeight: 600 }}>
                 {(hardware.storage || []).length} Partition -{' '}
-                {(hardware.storage || []).reduce((acc, d) => acc + parseInt(d.capacity || '0'), 0)} GB
+                {(() => {
+                  const storage = hardware.storage || [];
+                  // Find the main drive (root or Data volume)
+                  const mainDrive = storage.find(d =>
+                    d.mountPoint === '/' ||
+                    d.mountPoint === '/System/Volumes/Data' ||
+                    d.name?.toLowerCase().includes('macintosh')
+                  ) || storage[0];
+                  const capacity = parseFloat(mainDrive?.capacity || '0');
+                  return capacity >= 1000 ? `${(capacity / 1024).toFixed(1)} TB` : `${Math.round(capacity)} GB`;
+                })()}
               </div>
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 STORAGE
@@ -760,38 +828,56 @@ export const AssetDetails = () => {
           style={{ marginBottom: 16 }}
         >
           <Row gutter={[16, 16]}>
-            {(hardware.storage || []).map((drive, idx) => (
-              <Col span={12} key={idx}>
-                <Card size="small" style={{ background: '#fafafa' }}>
-                  <Row gutter={8}>
-                    <Col span={12}>
-                      <Text type="secondary">Drive</Text>
-                      <div style={{ fontWeight: 600 }}>{drive.drive}</div>
-                    </Col>
-                    <Col span={12}>
-                      <Text type="secondary">Capacity</Text>
-                      <div>
-                        <span style={{ color: '#52c41a' }}>{drive.used}</span> / {drive.capacity}
-                      </div>
-                    </Col>
-                  </Row>
-                  <Row gutter={8} style={{ marginTop: 8 }}>
-                    <Col span={8}>
-                      <Text type="secondary">Format</Text>
-                      <div>{drive.format}</div>
-                    </Col>
-                    <Col span={8}>
-                      <Text type="secondary">Type</Text>
-                      <div>{drive.type}</div>
-                    </Col>
-                    <Col span={8}>
-                      <Text type="secondary">Serial number</Text>
-                      <div style={{ fontSize: '11px' }}>{drive.serialNumber}</div>
-                    </Col>
-                  </Row>
-                </Card>
-              </Col>
-            ))}
+            {(hardware.storage || []).map((drive, idx) => {
+              // Parse used and capacity to calculate percentage
+              const usedGB = parseFloat(drive.used?.replace(/[^0-9.]/g, '') || '0');
+              const capacityGB = parseFloat(drive.capacity?.replace(/[^0-9.]/g, '') || '1');
+              const usedPercent = capacityGB > 0 ? Math.round((usedGB / capacityGB) * 100) : 0;
+              const progressColor = usedPercent > 90 ? '#ff4d4f' : usedPercent > 70 ? '#faad14' : '#52c41a';
+
+              return (
+                <Col span={12} key={idx}>
+                  <Card size="small" style={{ background: '#fafafa' }}>
+                    <Row gutter={8}>
+                      <Col span={12}>
+                        <Text type="secondary">Drive</Text>
+                        <div style={{ fontWeight: 600 }}>{drive.drive}</div>
+                      </Col>
+                      <Col span={12}>
+                        <Text type="secondary">Capacity</Text>
+                        <div>
+                          <span style={{ color: progressColor }}>{drive.used}</span> / {drive.capacity}
+                        </div>
+                      </Col>
+                    </Row>
+                    <Row style={{ marginTop: 8 }}>
+                      <Col span={24}>
+                        <Progress
+                          percent={usedPercent}
+                          strokeColor={progressColor}
+                          size="small"
+                          format={() => `${usedPercent}% used`}
+                        />
+                      </Col>
+                    </Row>
+                    <Row gutter={8} style={{ marginTop: 8 }}>
+                      <Col span={8}>
+                        <Text type="secondary">Format</Text>
+                        <div>{drive.format}</div>
+                      </Col>
+                      <Col span={8}>
+                        <Text type="secondary">Type</Text>
+                        <div>{drive.type}</div>
+                      </Col>
+                      <Col span={8}>
+                        <Text type="secondary">Serial number</Text>
+                        <div style={{ fontSize: '11px' }}>{drive.serialNumber}</div>
+                      </Col>
+                    </Row>
+                  </Card>
+                </Col>
+              );
+            })}
           </Row>
           <div style={{ marginTop: 16, textAlign: 'center' }}>
             <Button type="link" size="small">
@@ -1880,6 +1966,71 @@ export const AssetDetails = () => {
             </div>
           </div>
 
+          {/* Agent Status */}
+          {asset.agent && (
+            <Card
+              title={
+                <Space>
+                  <span
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      backgroundColor: asset.agent.status === 'Connected' ? '#52c41a' : '#ff4d4f',
+                      display: 'inline-block',
+                    }}
+                  />
+                  <span>Agent Status</span>
+                  <Tag color={asset.agent.status === 'Connected' ? 'green' : 'red'}>
+                    {asset.agent.status}
+                  </Tag>
+                </Space>
+              }
+              extra={
+                <Button
+                  type="primary"
+                  icon={<ReloadOutlined spin={refreshingInventory} />}
+                  onClick={handleRefreshInventory}
+                  loading={refreshingInventory}
+                  size="small"
+                >
+                  Refresh Inventory
+                </Button>
+              }
+              size="small"
+              style={{ marginBottom: 24 }}
+            >
+              <Row gutter={16}>
+                <Col span={6}>
+                  <Text type="secondary">Agent Version</Text>
+                  <div>
+                    <Text strong>{asset.agent.version || 'Unknown'}</Text>
+                  </div>
+                </Col>
+                <Col span={6}>
+                  <Text type="secondary">Last Heartbeat</Text>
+                  <div>
+                    <Text strong>{asset.agent.lastHeartbeatRelative || 'Never'}</Text>
+                  </div>
+                </Col>
+                <Col span={6}>
+                  <Text type="secondary">Heartbeat Interval</Text>
+                  <div>
+                    <Text strong>{asset.agent.heartbeatInterval || 60} seconds</Text>
+                  </div>
+                </Col>
+                <Col span={6}>
+                  <Text type="secondary">Agent ID</Text>
+                  <div>
+                    <Text strong style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+                      {asset.agent.id?.substring(0, 8) || 'N/A'}...
+                    </Text>
+                  </div>
+                </Col>
+              </Row>
+            </Card>
+          )}
+
           {/* Performance - Real-time telemetry from agent heartbeat */}
           <Card
             title={
@@ -1890,20 +2041,36 @@ export const AssetDetails = () => {
                     Last updated: {telemetryLastUpdated.toLocaleTimeString()}
                   </Text>
                 )}
+                {loadingTelemetry && telemetry && (
+                  <Spin size="small" />
+                )}
+              </Space>
+            }
+            extra={
+              <Space>
+                <Tooltip title={`Auto-refresh every ${TELEMETRY_POLL_INTERVAL / 1000}s`}>
+                  <Space>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>Auto-refresh</Text>
+                    <Switch
+                      size="small"
+                      checked={autoRefreshEnabled}
+                      onChange={setAutoRefreshEnabled}
+                    />
+                  </Space>
+                </Tooltip>
+                <Tooltip title="Refresh now">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<ReloadOutlined spin={loadingTelemetry} />}
+                    onClick={fetchTelemetryData}
+                    disabled={loadingTelemetry}
+                  />
+                </Tooltip>
               </Space>
             }
             size="small"
             style={{ marginBottom: 24 }}
-            extra={
-              <Button
-                icon={<ReloadOutlined spin={loadingTelemetry} />}
-                size="small"
-                onClick={fetchTelemetryData}
-                disabled={loadingTelemetry}
-              >
-                Refresh
-              </Button>
-            }
           >
             {loadingTelemetry && !telemetry ? (
               <div style={{ textAlign: 'center', padding: '20px' }}>
@@ -1916,9 +2083,11 @@ export const AssetDetails = () => {
                   <Text type="secondary">System Uptime</Text>
                   <div>
                     <Text strong>
-                      {telemetry?.systemUptime
+                      {telemetry?.systemUptime?.uptimeHuman
+                        ? telemetry.systemUptime.uptimeHuman
+                        : telemetry?.systemUptime?.uptimeSeconds
                         ? (() => {
-                            const seconds = telemetry.systemUptime;
+                            const seconds = telemetry.systemUptime.uptimeSeconds;
                             const days = Math.floor(seconds / 86400);
                             const hours = Math.floor((seconds % 86400) / 3600);
                             const mins = Math.floor((seconds % 3600) / 60);
@@ -2151,7 +2320,16 @@ export const AssetDetails = () => {
                   {asset.diskSize ||
                    asset.storage?.size ||
                    (hardware?.storage && hardware.storage.length > 0
-                     ? `${hardware.storage.reduce((acc, d) => acc + parseInt(d.capacity || '0'), 0)} GB`
+                     ? (() => {
+                         // Find the main drive (root or Data volume)
+                         const mainDrive = hardware.storage.find(d =>
+                           d.mountPoint === '/' ||
+                           d.mountPoint === '/System/Volumes/Data' ||
+                           d.name?.toLowerCase().includes('macintosh')
+                         ) || hardware.storage[0];
+                         const capacity = parseFloat(mainDrive?.capacity || '0');
+                         return capacity >= 1000 ? `${(capacity / 1024).toFixed(1)}TB` : `${Math.round(capacity)}GB`;
+                       })()
                      : 'N/A')}
                 </div>
               </Col>

@@ -1,0 +1,54 @@
+# Air - Live reload for Go apps
+# Documentation: https://github.com/air-verse/air
+#
+# Usage: Run `air` in the agent directory, or use `make dev-agent` from root
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  # Build command
+  cmd = "go build -o ./tmp/patchify-agent ./cmd/agent"
+  # Binary entrypoint (replaces deprecated 'bin')
+  entrypoint = "./tmp/patchify-agent"
+  # Arguments passed to the binary
+  args_bin = ["--server", "http://localhost:3000/api", "--port", "8080"]
+  # Directories to watch
+  include_dir = ["cmd", "internal"]
+  # File extensions to watch
+  include_ext = ["go", "tpl", "tmpl", "html"]
+  # Excluded directories
+  exclude_dir = ["tmp", "vendor", ".git"]
+  # Excluded files (regex)
+  exclude_regex = ["_test\\.go$"]
+  # Watch for file changes in the working directory
+  exclude_unchanged = true
+  # Follow symlinks
+  follow_symlink = true
+  # Delay before rebuilding (ms)
+  delay = 500
+  # Stop old binary on rebuild
+  stop_on_error = true
+  # Send SIGTERM instead of SIGKILL
+  send_interrupt = true
+  # Delay after interrupt signal (ms)
+  kill_delay = 500
+  # Log build output
+  log = "build-errors.log"
+
+[log]
+  # Show time in log
+  time = true
+  # Log level: debug, info, warn, error
+  main_only = false
+
+[color]
+  # Customize colors
+  main = "magenta"
+  watcher = "cyan"
+  build = "yellow"
+  runner = "green"
+
+[misc]
+  # Delete tmp directory on exit
+  clean_on_exit = true

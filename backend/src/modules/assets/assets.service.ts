@@ -46,6 +46,45 @@ function generateAssetId(count: number): string {
   return `AST-${String(count + 1).padStart(4, '0')}`;
 }
 
+// Helper to format uptime seconds into a human-readable string
+function formatUptimeHuman(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m`;
+  } else if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  } else {
+    return `${minutes}m`;
+  }
+}
+
+// Helper to format system uptime as an object
+function formatSystemUptime(uptimeSeconds: number | null | undefined, rawSystemUptime?: unknown): { uptimeSeconds: number; uptimeHuman: string } | undefined {
+  // First try to use the raw systemUptime object from the agent
+  if (rawSystemUptime && typeof rawSystemUptime === 'object') {
+    const raw = rawSystemUptime as Record<string, unknown>;
+    if (typeof raw.uptimeSeconds === 'number' && raw.uptimeSeconds > 0) {
+      return {
+        uptimeSeconds: raw.uptimeSeconds,
+        uptimeHuman: (typeof raw.uptimeHuman === 'string' && raw.uptimeHuman) || formatUptimeHuman(raw.uptimeSeconds),
+      };
+    }
+  }
+
+  // Fall back to the database uptime field
+  if (uptimeSeconds && uptimeSeconds > 0) {
+    return {
+      uptimeSeconds,
+      uptimeHuman: formatUptimeHuman(uptimeSeconds),
+    };
+  }
+
+  return undefined;
+}
+
 // ============================================
 // Categories Service
 // ============================================
@@ -651,7 +690,17 @@ export async function getAssetById(id: string): Promise<AssetResponse> {
     where: { id },
     include: {
       tags: { include: { tag: true } },
-      agent: { select: { id: true, status: true, lastHeartbeat: true, hostname: true, ipAddress: true, macAddress: true } },
+      agent: {
+        select: {
+          id: true,
+          status: true,
+          lastHeartbeat: true,
+          hostname: true,
+          ipAddress: true,
+          macAddress: true,
+          agentVersion: true,
+        }
+      },
       hardware: true,
       security: true,
     },
@@ -816,6 +865,24 @@ function transformAsset(asset: any): AssetResponse {
   const diskSize = asset.hardware ? formatBytesToSize(asset.hardware.diskTotal) : null;
   const systemSKU = asset.hardware?.systemSKU || null;
 
+  // Calculate human-readable time since last heartbeat
+  let lastHeartbeatRelative: string | undefined;
+  if (asset.agent?.lastHeartbeat) {
+    const now = new Date();
+    const lastHb = new Date(asset.agent.lastHeartbeat);
+    const diffMs = now.getTime() - lastHb.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    if (diffSecs < 60) {
+      lastHeartbeatRelative = `${diffSecs} seconds ago`;
+    } else if (diffSecs < 3600) {
+      lastHeartbeatRelative = `${Math.floor(diffSecs / 60)} minutes ago`;
+    } else if (diffSecs < 86400) {
+      lastHeartbeatRelative = `${Math.floor(diffSecs / 3600)} hours ago`;
+    } else {
+      lastHeartbeatRelative = `${Math.floor(diffSecs / 86400)} days ago`;
+    }
+  }
+
   return {
     id: asset.id,
     assetId: asset.assetTag || asset.id.substring(0, 8).toUpperCase(),
@@ -828,6 +895,15 @@ function transformAsset(asset: any): AssetResponse {
     operationalStatus: asset.agent?.status === 'Connected' ? 'Connected' : 'Disconnected',
     operationalStatusSince: asset.agent?.lastHeartbeat?.toISOString(),
     agentId: asset.agent?.id,
+    // Agent status details
+    agent: asset.agent ? {
+      id: asset.agent.id,
+      status: asset.agent.status || 'Unknown',
+      version: asset.agent.agentVersion || 'Unknown',
+      lastHeartbeat: asset.agent.lastHeartbeat?.toISOString(),
+      lastHeartbeatRelative,
+      heartbeatInterval: 60, // Default heartbeat interval in seconds
+    } : null,
     hostname,
     ipAddress,
     macAddress,
@@ -1026,14 +1102,22 @@ export async function getAssetHardware(id: string): Promise<AssetHardware | null
             name: 'System Memory',
             capacity: totalPhysicalGB ? `${Math.round(totalPhysicalGB)} GB` : undefined,
           }],
-      networkAdapters: networkAdapters.map((n: any, i: number) => ({
-        id: n.id || `adapter-${i}`,
-        name: n.name || `Network Adapter ${i + 1}`,
-        ipAddressV4: n.ipAddressV4 || n.ipAddress || undefined,
-        ipAddressV6: n.ipAddressV6 || undefined,
-        macAddress: n.macAddress || undefined,
-        dhcpServer: n.dhcpServer || undefined,
-      })),
+      networkAdapters: networkAdapters.map((n: any, i: number) => {
+        // Handle nested ipConfiguration from agent (ipConfiguration.ipv4Address)
+        // Also handle flat structure (ipAddressV4) for compatibility
+        const ipConfig = n.ipConfiguration || {};
+        return {
+          id: n.id || `adapter-${i}`,
+          name: n.displayName || n.name || `Network Adapter ${i + 1}`,
+          type: n.type || undefined,
+          status: n.status || undefined,
+          ipAddressV4: n.ipAddressV4 || n.ipAddress || ipConfig.ipv4Address || undefined,
+          ipAddressV6: n.ipAddressV6 || ipConfig.ipv6Address || undefined,
+          macAddress: n.macAddress || undefined,
+          dhcpServer: n.dhcpServer || ipConfig.dhcpServer || undefined,
+          isDefault: n.isDefault || false,
+        };
+      }),
       battery: batteryInfo ? {
         id: 'battery-0',
         name: batteryInfo.name || 'Battery',
@@ -1286,17 +1370,34 @@ export async function getAssetTelemetry(id: string): Promise<AssetTelemetry | nu
   if (transformed && latestTelemetry.rawPayload) {
     // rawPayload contains full telemetry from agent
     const raw = transformed as Record<string, unknown>;
+    const cpuRaw = raw.cpu as Record<string, unknown> | undefined;
+    const memoryRaw = raw.memory as Record<string, unknown> | undefined;
+    const diskRaw = raw.disk as Record<string, unknown> | undefined;
+    const networkRaw = raw.network as Record<string, unknown> | undefined;
+    const processesRaw = raw.processes as Record<string, unknown> | undefined;
+
     return {
       timestamp: latestTelemetry.timestamp.toISOString(),
       cpu: {
-        usagePercent: (raw.cpu as Record<string, unknown>)?.usage as number ?? latestTelemetry.cpuUsage ?? 0,
-        processCount: latestTelemetry.processCount ?? undefined,
+        // Support both old format (usage) and new format (usagePercent)
+        usagePercent: cpuRaw?.usagePercent as number ?? cpuRaw?.usage as number ?? latestTelemetry.cpuUsage ?? 0,
+        userPercent: cpuRaw?.userPercent as number | undefined,
+        systemPercent: cpuRaw?.systemPercent as number | undefined,
+        idlePercent: cpuRaw?.idlePercent as number | undefined,
+        loadAverage: cpuRaw?.loadAverage as number[] | undefined,
+        temperature: cpuRaw?.temperature as number | undefined,
+        processCount: processesRaw?.totalCount as number ?? latestTelemetry.processCount ?? undefined,
       },
       memory: {
-        usagePercent: (raw.memory as Record<string, unknown>)?.usage as number ?? latestTelemetry.memoryUsage ?? 0,
+        usagePercent: memoryRaw?.usagePercent as number ?? memoryRaw?.usage as number ?? latestTelemetry.memoryUsage ?? 0,
+        usedBytes: memoryRaw?.usedBytes as number | undefined,
+        availableBytes: memoryRaw?.availableBytes as number | undefined,
+        totalBytes: memoryRaw?.totalBytes as number | undefined,
+        usedHuman: memoryRaw?.usedHuman as string | undefined,
+        availableHuman: memoryRaw?.availableHuman as string | undefined,
       },
       disk: {
-        drives: (raw.disk as Record<string, unknown>)?.drives as Array<{ mountPoint: string; usagePercent: number }> ?? [
+        drives: diskRaw?.drives as Array<{ mountPoint: string; usagePercent: number; name?: string; usedBytes?: number; availableBytes?: number; totalBytes?: number }> ?? [
           {
             mountPoint: 'C:',
             usagePercent: latestTelemetry.diskUsage ?? 0,
@@ -1304,10 +1405,21 @@ export async function getAssetTelemetry(id: string): Promise<AssetTelemetry | nu
         ],
       },
       network: {
+        bytesSentPerSec: networkRaw?.bytesSentPerSec as number | undefined,
+        bytesReceivedPerSec: networkRaw?.bytesReceivedPerSec as number | undefined,
         totalBytesSentPerSec: latestTelemetry.networkOutBps ? Number(latestTelemetry.networkOutBps) : undefined,
         totalBytesReceivedPerSec: latestTelemetry.networkInBps ? Number(latestTelemetry.networkInBps) : undefined,
       },
-      systemUptime: latestTelemetry.uptime || undefined,
+      processes: processesRaw ? {
+        totalCount: processesRaw.totalCount as number | undefined,
+        runningCount: processesRaw.runningCount as number | undefined,
+        topByCPU: processesRaw.topByCPU as Array<{ pid: number; name: string; cpuPercent: number }> | undefined,
+        topByMemory: processesRaw.topByMemory as Array<{ pid: number; name: string; memoryPercent: number }> | undefined,
+      } : undefined,
+      systemUptime: formatSystemUptime(latestTelemetry.uptime, raw.systemUptime),
+      thermal: raw.thermal as Record<string, unknown> | undefined,
+      power: raw.power as Record<string, unknown> | undefined,
+      agentUtilization: raw.agentUtilization as Record<string, unknown> | undefined,
       pendingReboot: latestTelemetry.pendingReboot ?? false,
     };
   }
@@ -1334,7 +1446,7 @@ export async function getAssetTelemetry(id: string): Promise<AssetTelemetry | nu
       totalBytesSentPerSec: latestTelemetry.networkOutBps ? Number(latestTelemetry.networkOutBps) : undefined,
       totalBytesReceivedPerSec: latestTelemetry.networkInBps ? Number(latestTelemetry.networkInBps) : undefined,
     },
-    systemUptime: latestTelemetry.uptime || undefined,
+    systemUptime: formatSystemUptime(latestTelemetry.uptime, undefined),
     pendingReboot: latestTelemetry.pendingReboot ?? false,
   };
 }

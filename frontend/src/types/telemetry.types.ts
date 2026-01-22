@@ -131,6 +131,13 @@ export type SystemErrors = {
   criticalEventCount24h?: number;
 };
 
+// System Uptime Type
+export type SystemUptime = {
+  uptimeSeconds: number;
+  uptimeHuman: string;
+  bootTime?: string;
+};
+
 // Complete Telemetry Payload Type
 export type TelemetryPayload = {
   timestamp: string;
@@ -142,7 +149,7 @@ export type TelemetryPayload = {
   network?: NetworkTelemetry;
   processes?: ProcessMetrics;
   errors?: SystemErrors;
-  systemUptime?: number;
+  systemUptime?: SystemUptime;
   agentUptime?: number;
   pendingReboot?: boolean;
   batteryChargePercent?: number;

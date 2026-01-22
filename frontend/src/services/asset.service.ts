@@ -161,6 +161,12 @@ export const assetService = {
     });
   },
 
+  // Force refresh inventory from agent
+  async refreshAssetInventory(id: string): Promise<{ message: string; commandId: string; status: string }> {
+    const response = await api.post(`/assets/${id}/refresh`);
+    return response.data;
+  },
+
   // Software Inventory
   async getSoftwareInventory(): Promise<SoftwareInventory[]> {
     const response = await api.get(`/software-inventory`);

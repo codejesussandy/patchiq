@@ -1,0 +1,19 @@
+meta {
+  name: Get Asset
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/{{apiVersion}}/assets/:id
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id: {{assetId}}
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
