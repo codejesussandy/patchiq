@@ -4,9 +4,7 @@ package executors
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 	"time"
 

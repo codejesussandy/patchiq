@@ -3,10 +3,13 @@
 package executors
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -388,4 +391,44 @@ func (e *WindowsSoftwareExecutor) GetInstalledVersion(name string) (string, erro
 	}
 
 	return "", fmt.Errorf("version not found for %s", name)
+}
+
+// downloadFile downloads a file from URL and verifies checksum if provided
+func downloadFile(url string, expectedChecksum string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("download failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("download failed with status: %d", resp.StatusCode)
+	}
+
+	// Create temp file
+	tmpFile, err := os.CreateTemp("", "download-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer tmpFile.Close()
+
+	// Download with checksum calculation
+	hasher := sha256.New()
+	writer := io.MultiWriter(tmpFile, hasher)
+
+	if _, err := io.Copy(writer, resp.Body); err != nil {
+		os.Remove(tmpFile.Name())
+		return "", fmt.Errorf("failed to write file: %v", err)
+	}
+
+	// Verify checksum if provided
+	if expectedChecksum != "" {
+		actualChecksum := hex.EncodeToString(hasher.Sum(nil))
+		if !strings.EqualFold(actualChecksum, expectedChecksum) {
+			os.Remove(tmpFile.Name())
+			return "", fmt.Errorf("checksum mismatch: expected %s, got %s", expectedChecksum, actualChecksum)
+		}
+	}
+
+	return tmpFile.Name(), nil
 }
