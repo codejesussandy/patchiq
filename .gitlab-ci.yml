@@ -173,7 +173,8 @@ deploy:staging:
   before_script:
     - apk add --no-cache openssh-client rsync
     - eval $(ssh-agent -s)
-    - echo "$STAGING_SSH_KEY" | tr -d '\r' | ssh-add -
+    - chmod 600 "$STAGING_SSH_KEY"
+    - ssh-add "$STAGING_SSH_KEY"
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
     - echo "$STAGING_HOST_KEY" >> ~/.ssh/known_hosts || true
