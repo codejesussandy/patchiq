@@ -465,11 +465,17 @@ export interface AssetTelemetry {
     processCount?: number;
     threadCount?: number;
   };
+  // Note: usedBytes = totalBytes - freeBytes (matches Proxmox/system monitors, includes buffers/cache)
+  // applicationUsedBytes = totalBytes - availableBytes (memory not readily available for new apps)
   memory?: {
     usagePercent: number;
     totalBytes?: number;
-    usedBytes?: number;
-    availableBytes?: number;
+    usedBytes?: number;              // Total - Free (what Proxmox shows)
+    availableBytes?: number;         // Memory available for apps (MemAvailable)
+    freeBytes?: number;              // Completely unused memory (MemFree)
+    buffersBytes?: number;           // Kernel buffers
+    cachedBytes?: number;            // Page cache
+    applicationUsedBytes?: number;   // Total - Available (app memory usage)
     usedHuman?: string;
     availableHuman?: string;
   };
@@ -486,7 +492,7 @@ export interface AssetTelemetry {
   processes?: {
     totalCount?: number;
     runningCount?: number;
-    topByCPU?: Array<{ pid: number; name: string; cpuPercent: number }>;
+    topByCpu?: Array<{ pid: number; name: string; cpuPercent: number }>;
     topByMemory?: Array<{ pid: number; name: string; memoryPercent: number }>;
   };
   systemUptime?: {

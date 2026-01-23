@@ -518,7 +518,8 @@ func (c *DarwinSecurityCollector) collectLocalUsers() []models.LocalUser {
 			uid, _ := strconv.Atoi(fields[2])
 
 			// Skip system users (UID < 1000, except root)
-			if uid < 1000 && uid != 0 {
+			// Also skip "nobody" user (UID 65534) which is a special system account
+			if (uid < 1000 && uid != 0) || uid == 65534 {
 				continue
 			}
 
@@ -526,16 +527,22 @@ func (c *DarwinSecurityCollector) collectLocalUsers() []models.LocalUser {
 				Username:  fields[0],
 				FullName:  strings.Split(fields[4], ",")[0], // GECOS field
 				IsEnabled: true,
+				IsAdmin:   uid == 0, // root user is always admin
 			}
 
 			// Check if admin (in sudo or wheel group)
+			// Linux `groups` output format: "username : group1 group2 group3"
 			if out, err := exec.Command("groups", fields[0]).Output(); err == nil {
-				groups := strings.Fields(string(out))
-				localUser.Groups = groups
-				for _, g := range groups {
-					if g == "sudo" || g == "wheel" || g == "admin" {
-						localUser.IsAdmin = true
-						break
+				output := string(out)
+				parts := strings.SplitN(output, ":", 2)
+				if len(parts) == 2 {
+					groups := strings.Fields(strings.TrimSpace(parts[1]))
+					localUser.Groups = groups
+					for _, g := range groups {
+						if g == "sudo" || g == "wheel" || g == "admin" {
+							localUser.IsAdmin = true
+							break
+						}
 					}
 				}
 			}

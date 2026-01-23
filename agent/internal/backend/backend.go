@@ -577,6 +577,7 @@ func (m *Manager) GetStatus() *Status {
 	return &Status{
 		Registered:        m.registered,
 		AgentID:           m.client.GetAgentID(),
+		ServerURL:         m.config.ServerURL,
 		LastHeartbeat:     m.lastHeartbeat,
 		LastInventory:     m.lastInventory,
 		LastTelemetry:     m.lastTelemetry,
@@ -589,6 +590,7 @@ func (m *Manager) GetStatus() *Status {
 type Status struct {
 	Registered        bool
 	AgentID           string
+	ServerURL         string
 	LastHeartbeat     time.Time
 	LastInventory     time.Time
 	LastTelemetry     time.Time

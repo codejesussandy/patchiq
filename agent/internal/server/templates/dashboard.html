@@ -67,7 +67,66 @@
             <a href="/security">Security</a>
             <a href="/peripherals">Peripherals</a>
             <a href="/telemetry">Telemetry</a>
+            <a href="/settings">Settings</a>
         </nav>
+
+        {{if .Server}}
+        <div class="card" style="margin-bottom: 20px; border-left: 4px solid {{if eq .Server.Status "connected"}}#22c55e{{else if eq .Server.Status "connecting"}}#eab308{{else if eq .Server.Status "error"}}#ef4444{{else}}#64748b{{end}};">
+            <h2>Server Connection</h2>
+            <div style="display: flex; gap: 40px; flex-wrap: wrap;">
+                <div>
+                    <div class="info-row">
+                        <span class="info-label">Server URL</span>
+                        <span class="info-value">{{if .Server.URL}}{{.Server.URL}}{{else}}<em>Not configured</em>{{end}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Status</span>
+                        <span class="info-value">
+                            {{if eq .Server.Status "connected"}}
+                            <span class="badge green">● Connected</span>
+                            {{else if eq .Server.Status "connecting"}}
+                            <span class="badge yellow">● Connecting...</span>
+                            {{else if eq .Server.Status "error"}}
+                            <span class="badge red">● Connection Error</span>
+                            {{else if eq .Server.Status "disabled"}}
+                            <span class="badge" style="background: rgba(100,116,139,0.2); color: #94a3b8;">○ Disabled</span>
+                            {{else}}
+                            <span class="badge" style="background: rgba(100,116,139,0.2); color: #94a3b8;">○ Not Started</span>
+                            {{end}}
+                        </span>
+                    </div>
+                </div>
+                {{if .Server.Registered}}
+                <div>
+                    <div class="info-row">
+                        <span class="info-label">Agent ID</span>
+                        <span class="info-value" style="font-family: monospace; font-size: 12px;">{{.Server.AgentID}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Last Heartbeat</span>
+                        <span class="info-value">{{if .Server.LastHeartbeat}}{{.Server.LastHeartbeat}} <span style="color: #64748b;">({{.Server.LastHeartbeatAgo}})</span>{{else}}-{{end}}</span>
+                    </div>
+                </div>
+                {{end}}
+                {{if .Server.LastError}}
+                <div style="flex-basis: 100%;">
+                    <div class="info-row">
+                        <span class="info-label">Last Error</span>
+                        <span class="info-value" style="color: #ef4444;">{{.Server.LastError}}</span>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+            {{if not .Server.Registered}}
+            {{if eq .Server.Status "disabled"}}
+            <p style="margin-top: 15px; color: #94a3b8;">
+                Backend communication is disabled. Start the agent with a server URL to enable:
+                <code style="background: #0f172a; padding: 4px 8px; border-radius: 4px; margin-left: 8px;">./patchify-agent --server http://your-server:3000/api</code>
+            </p>
+            {{end}}
+            {{end}}
+        </div>
+        {{end}}
 
         <div class="grid">
             <div class="card">

@@ -15,7 +15,7 @@ async function main() {
     process.exit(1);
   }
 
-  const server = app.listen(config.port, () => {
+  const server = app.listen(config.port, '0.0.0.0', () => {
     console.log(`
     =============================================
     PatchIQ Backend Server

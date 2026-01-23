@@ -116,31 +116,46 @@ export const AgentVersions = () => {
 
   const handleDownload = async (record: AgentVersion) => {
     try {
-      // Construct a download URL based on platform and architecture
-      const downloadFileName = `agent-${record.platform.toLowerCase()}-${record.architecture}-v${record.version}`;
-      const fileExtension = record.platform === 'Windows' ? '.exe' : record.platform === 'Mac' ? '.dmg' : '.deb';
+      // Get auth token from localStorage
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        message.error('Please log in to download agents');
+        return;
+      }
 
-      // For now, we'll create a mock download by triggering a blob download
-      // In production, this would be a real API endpoint
-      const response = await fetch(`/v1/agent-versions/${record.id}/download`);
+      message.loading({ content: 'Preparing download...', key: 'download' });
+
+      // Fetch from API with authorization - server returns a ZIP file
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/v1';
+      const response = await fetch(`${apiBaseUrl}/agent-versions/${record.id}/download`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
       if (response.ok) {
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `${downloadFileName}${fileExtension}`);
+        // Use the filename from Content-Disposition header or generate one
+        const contentDisposition = response.headers.get('content-disposition');
+        const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+        const filename = filenameMatch?.[1] || `patchiq-agent-${record.platform.toLowerCase()}-${record.architecture}-v${record.version}.zip`;
+        link.setAttribute('download', filename);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        message.success('Download started');
+        URL.revokeObjectURL(url);
+        message.success({ content: 'Download started! Extract the ZIP and run start-agent script.', key: 'download', duration: 5 });
       } else {
-        message.error('Failed to download agent version');
+        const errorData = await response.json().catch(() => ({}));
+        message.error({ content: errorData.message || 'Failed to download agent version', key: 'download' });
       }
     } catch (error) {
       console.error('Error downloading agent version:', error);
-      message.error('Failed to download agent version');
+      message.error({ content: 'Failed to download agent version', key: 'download' });
     }
   };
 

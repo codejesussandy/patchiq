@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -28,10 +29,24 @@ func main() {
 	serverURL := flag.String("server", "", "Backend server URL (e.g., http://localhost:3000/api)")
 	showVersion := flag.Bool("version", false, "Show version")
 	noBackend := flag.Bool("no-backend", false, "Disable backend communication (local mode)")
+	setup := flag.Bool("setup", false, "Run interactive setup wizard")
+	showStatus := flag.Bool("status", false, "Show agent connection status")
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Printf("Patchify Agent v%s (built %s)\n", version, buildDate)
+		os.Exit(0)
+	}
+
+	// Handle setup command
+	if *setup {
+		runSetupWizard()
+		os.Exit(0)
+	}
+
+	// Handle status command
+	if *showStatus {
+		showAgentStatus()
 		os.Exit(0)
 	}
 
@@ -82,6 +97,14 @@ func main() {
 	}
 	if *serverURL != "" {
 		cfg.ServerURL = *serverURL
+		// Auto-save config when server URL is provided via CLI
+		homeDir, _ := os.UserHomeDir()
+		configSavePath := filepath.Join(homeDir, ".patchify-agent", "config.json")
+		if err := cfg.Save(configSavePath); err != nil {
+			log.Printf("Warning: Could not save config: %v", err)
+		} else {
+			log.Printf("Configuration saved to %s", configSavePath)
+		}
 	}
 
 	// Ensure data directory exists
@@ -113,6 +136,8 @@ func main() {
 		} else {
 			log.Printf("Backend communication started (server: %s)", cfg.ServerURL)
 		}
+		// Connect backend to server for status display
+		srv.SetBackendManager(&BackendAdapter{mgr: backendMgr})
 	} else {
 		log.Println("Running in local-only mode (no backend communication)")
 	}
@@ -162,4 +187,154 @@ func getBackendStatus(mgr *backend.Manager, cfg *config.Config) string {
 		return fmt.Sprintf("%s (registered)", cfg.ServerURL)
 	}
 	return fmt.Sprintf("%s (connecting...)", cfg.ServerURL)
+}
+
+func runSetupWizard() {
+	fmt.Println(`
+╔═══════════════════════════════════════════════════╗
+║         Patchify Agent Setup Wizard               ║
+╚═══════════════════════════════════════════════════╝
+`)
+
+	homeDir, _ := os.UserHomeDir()
+	configPath := filepath.Join(homeDir, ".patchify-agent", "config.json")
+
+	// Load existing config or create default
+	cfg := config.DefaultConfig()
+	if existingCfg, err := config.Load(configPath); err == nil && existingCfg != nil {
+		cfg = existingCfg
+		fmt.Printf("Found existing configuration at %s\n\n", configPath)
+	}
+
+	// Prompt for server URL
+	fmt.Printf("Enter PatchIQ Server URL [%s]: ", cfg.ServerURL)
+	var serverURL string
+	fmt.Scanln(&serverURL)
+	if serverURL != "" {
+		cfg.ServerURL = serverURL
+	}
+
+	// Prompt for Web UI port
+	fmt.Printf("Enter Web UI Port [%d]: ", cfg.WebUIPort)
+	var portStr string
+	fmt.Scanln(&portStr)
+	if portStr != "" {
+		if port, err := parseInt(portStr); err == nil && port > 0 && port < 65536 {
+			cfg.WebUIPort = port
+		}
+	}
+
+	// Show summary
+	fmt.Println("\n─────────────────────────────────────────────────────")
+	fmt.Println("Configuration Summary:")
+	fmt.Printf("  Server URL:  %s\n", cfg.ServerURL)
+	fmt.Printf("  Web UI Port: %d\n", cfg.WebUIPort)
+	fmt.Printf("  Config File: %s\n", configPath)
+	fmt.Println("─────────────────────────────────────────────────────")
+
+	// Save config
+	if err := cfg.Save(configPath); err != nil {
+		fmt.Printf("\n❌ Failed to save configuration: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("\n✓ Configuration saved successfully!")
+	fmt.Println("\nTo start the agent, run:")
+	fmt.Println("  ./patchify-agent")
+	fmt.Println("\nOr to start with a different server:")
+	fmt.Println("  ./patchify-agent --server http://your-server:3000/api")
+}
+
+func parseInt(s string) (int, error) {
+	var n int
+	_, err := fmt.Sscanf(s, "%d", &n)
+	return n, err
+}
+
+func showAgentStatus() {
+	fmt.Println(`
+╔═══════════════════════════════════════════════════╗
+║         Patchify Agent Status                     ║
+╚═══════════════════════════════════════════════════╝
+`)
+
+	homeDir, _ := os.UserHomeDir()
+	dataDir := filepath.Join(homeDir, ".patchify-agent")
+	configPath := filepath.Join(dataDir, "config.json")
+	credPath := filepath.Join(dataDir, "credentials.json")
+
+	// Check config
+	fmt.Println("Configuration:")
+	if cfg, err := config.Load(configPath); err == nil && cfg != nil {
+		fmt.Printf("  ✓ Config file: %s\n", configPath)
+		fmt.Printf("    Server URL:  %s\n", cfg.ServerURL)
+		fmt.Printf("    Web UI Port: %d\n", cfg.WebUIPort)
+	} else {
+		fmt.Printf("  ✗ No configuration found at %s\n", configPath)
+		fmt.Println("    Run './patchify-agent --setup' to configure")
+	}
+
+	// Check credentials
+	fmt.Println("\nRegistration:")
+	if data, err := os.ReadFile(credPath); err == nil {
+		var creds struct {
+			AgentID   string `json:"agentId"`
+			AssetID   string `json:"assetId"`
+			MachineID string `json:"machineId"`
+		}
+		if err := parseJSON(data, &creds); err == nil && creds.AgentID != "" {
+			fmt.Printf("  ✓ Registered with server\n")
+			fmt.Printf("    Agent ID:   %s\n", creds.AgentID)
+			fmt.Printf("    Asset ID:   %s\n", creds.AssetID)
+			fmt.Printf("    Machine ID: %s\n", creds.MachineID)
+		} else {
+			fmt.Println("  ✗ Invalid credentials file")
+		}
+	} else {
+		fmt.Println("  ✗ Not registered (no credentials found)")
+		fmt.Println("    The agent will register automatically when started")
+	}
+
+	// Show data directory
+	fmt.Println("\nData Directory:")
+	fmt.Printf("  %s\n", dataDir)
+	if info, err := os.Stat(dataDir); err == nil && info.IsDir() {
+		fmt.Println("  ✓ Directory exists")
+	} else {
+		fmt.Println("  ✗ Directory does not exist (will be created on first run)")
+	}
+}
+
+func parseJSON(data []byte, v interface{}) error {
+	return json.Unmarshal(data, v)
+}
+
+// BackendAdapter adapts backend.Manager to server.BackendStatus interface
+type BackendAdapter struct {
+	mgr *backend.Manager
+}
+
+func (a *BackendAdapter) IsRegistered() bool {
+	return a.mgr.IsRegistered()
+}
+
+func (a *BackendAdapter) GetAgentID() string {
+	return a.mgr.GetAgentID()
+}
+
+func (a *BackendAdapter) GetStatus() *server.BackendStatusInfo {
+	status := a.mgr.GetStatus()
+	if status == nil {
+		return nil
+	}
+	return &server.BackendStatusInfo{
+		Registered:        status.Registered,
+		AgentID:           status.AgentID,
+		ServerURL:         status.ServerURL,
+		LastHeartbeat:     status.LastHeartbeat,
+		LastInventory:     status.LastInventory,
+		LastTelemetry:     status.LastTelemetry,
+		LastError:         status.LastError,
+		ConsecutiveErrors: status.ConsecutiveErrors,
+	}
 }

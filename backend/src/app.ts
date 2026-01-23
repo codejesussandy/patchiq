@@ -33,16 +33,8 @@ export function createApp(): Application {
   );
   app.use(
     cors({
-      // In development, allow any localhost port. In production, use configured origin
-      origin: config.isDevelopment
-        ? (origin, callback) => {
-            // Allow requests with no origin (like mobile apps or curl)
-            if (!origin) return callback(null, true);
-            // Allow any localhost origin in development
-            if (origin.startsWith('http://localhost:')) return callback(null, true);
-            callback(null, false);
-          }
-        : config.corsOrigin,
+      // In development, allow all origins. In production, use configured origin
+      origin: config.isDevelopment ? true : config.corsOrigin,
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Agent-Id', 'X-Agent-Version'],

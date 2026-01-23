@@ -28,6 +28,20 @@ func (c *DarwinTelemetryCollector) Name() string {
 // agentStartTime tracks when the agent started (set on first collection)
 var agentStartTime time.Time
 
+// CPU sampling state for calculating instantaneous CPU usage
+var (
+	prevCPUUser   int64
+	prevCPUNice   int64
+	prevCPUSystem int64
+	prevCPUIdle   int64
+	prevCPUIowait int64
+	prevCPUIrq    int64
+	prevCPUSoftirq int64
+	prevCPUSteal  int64
+	prevCPUTotal  int64
+	prevCPUTime   time.Time
+)
+
 // Collect gathers telemetry data
 func (c *DarwinTelemetryCollector) Collect() (interface{}, error) {
 	tel := &models.Telemetry{
@@ -171,26 +185,66 @@ func (c *DarwinTelemetryCollector) collectCPUTelemetry() models.CPUTelemetry {
 		}
 
 	default:
-		// Linux: Read from /proc/stat
+		// Linux: Read from /proc/stat and calculate instantaneous CPU usage
+		// by comparing with the previous sample (matches what Proxmox/top show)
 		data, err := os.ReadFile("/proc/stat")
 		if err == nil {
 			lines := strings.Split(string(data), "\n")
 			for _, line := range lines {
 				if strings.HasPrefix(line, "cpu ") {
 					fields := strings.Fields(line)
-					if len(fields) >= 5 {
-						user, _ := strconv.ParseFloat(fields[1], 64)
-						nice, _ := strconv.ParseFloat(fields[2], 64)
-						system, _ := strconv.ParseFloat(fields[3], 64)
-						idle, _ := strconv.ParseFloat(fields[4], 64)
-
-						total := user + nice + system + idle
-						if total > 0 {
-							cpu.UserPercent = (user + nice) / total * 100
-							cpu.SystemPercent = system / total * 100
-							cpu.IdlePercent = idle / total * 100
-							cpu.UsagePercent = cpu.UserPercent + cpu.SystemPercent
+					if len(fields) >= 8 {
+						// Parse all CPU time fields (cumulative jiffies since boot)
+						user, _ := strconv.ParseInt(fields[1], 10, 64)
+						nice, _ := strconv.ParseInt(fields[2], 10, 64)
+						system, _ := strconv.ParseInt(fields[3], 10, 64)
+						idle, _ := strconv.ParseInt(fields[4], 10, 64)
+						iowait, _ := strconv.ParseInt(fields[5], 10, 64)
+						irq, _ := strconv.ParseInt(fields[6], 10, 64)
+						softirq, _ := strconv.ParseInt(fields[7], 10, 64)
+						var steal int64
+						if len(fields) >= 9 {
+							steal, _ = strconv.ParseInt(fields[8], 10, 64)
 						}
+
+						// Calculate total CPU time
+						total := user + nice + system + idle + iowait + irq + softirq + steal
+
+						// Calculate instantaneous CPU usage by comparing with previous sample
+						if prevCPUTotal > 0 && total > prevCPUTotal {
+							deltaTotal := float64(total - prevCPUTotal)
+							deltaUser := float64((user + nice) - (prevCPUUser + prevCPUNice))
+							deltaSystem := float64((system + irq + softirq) - (prevCPUSystem + prevCPUIrq + prevCPUSoftirq))
+							deltaIdle := float64((idle + iowait) - (prevCPUIdle + prevCPUIowait))
+
+							if deltaTotal > 0 {
+								cpu.UserPercent = (deltaUser / deltaTotal) * 100
+								cpu.SystemPercent = (deltaSystem / deltaTotal) * 100
+								cpu.IdlePercent = (deltaIdle / deltaTotal) * 100
+								cpu.UsagePercent = 100 - cpu.IdlePercent // Total usage = 100% - idle%
+							}
+						} else {
+							// First sample - use cumulative values as approximation
+							totalFloat := float64(total)
+							if totalFloat > 0 {
+								cpu.UserPercent = float64(user+nice) / totalFloat * 100
+								cpu.SystemPercent = float64(system+irq+softirq) / totalFloat * 100
+								cpu.IdlePercent = float64(idle+iowait) / totalFloat * 100
+								cpu.UsagePercent = 100 - cpu.IdlePercent
+							}
+						}
+
+						// Store current values for next sample
+						prevCPUUser = user
+						prevCPUNice = nice
+						prevCPUSystem = system
+						prevCPUIdle = idle
+						prevCPUIowait = iowait
+						prevCPUIrq = irq
+						prevCPUSoftirq = softirq
+						prevCPUSteal = steal
+						prevCPUTotal = total
+						prevCPUTime = time.Now()
 					}
 					break
 				}
@@ -242,7 +296,7 @@ func (c *DarwinTelemetryCollector) collectMemoryTelemetry() models.MemoryTelemet
 			lines := strings.Split(string(out), "\n")
 			pageSize := int64(4096) // Default page size
 
-			var freePages, activePages, inactivePages, wiredPages, compressedPages int64
+			var freePages, activePages, inactivePages, wiredPages, compressedPages, speculativePages int64
 
 			for _, line := range lines {
 				if strings.HasPrefix(line, "Mach Virtual Memory Statistics") {
@@ -266,6 +320,8 @@ func (c *DarwinTelemetryCollector) collectMemoryTelemetry() models.MemoryTelemet
 					activePages = value
 				case "Pages inactive":
 					inactivePages = value
+				case "Pages speculative":
+					speculativePages = value
 				case "Pages wired down":
 					wiredPages = value
 				case "Pages occupied by compressor":
@@ -273,14 +329,24 @@ func (c *DarwinTelemetryCollector) collectMemoryTelemetry() models.MemoryTelemet
 				}
 			}
 
-			freeBytes := freePages * pageSize
-			usedBytes := (activePages + wiredPages + compressedPages) * pageSize
+			// FreeBytes = only pages marked as free
+			mem.FreeBytes = freePages * pageSize
 
-			mem.AvailableBytes = freeBytes + (inactivePages * pageSize)
-			mem.UsedBytes = usedBytes
+			// UsedBytes = Total - Free (matches Activity Monitor's "Memory Used")
+			// This includes active, wired, compressed, and inactive pages
+			mem.UsedBytes = mem.TotalBytes - mem.FreeBytes
+
+			// AvailableBytes = free + inactive + speculative (can be reclaimed)
+			mem.AvailableBytes = (freePages + inactivePages + speculativePages) * pageSize
+
+			// ApplicationUsedBytes = actively used memory (active + wired + compressed)
+			mem.ApplicationUsedBytes = (activePages + wiredPages + compressedPages) * pageSize
+
+			// CachedBytes approximation using inactive pages
+			mem.CachedBytes = inactivePages * pageSize
 
 			if mem.TotalBytes > 0 {
-				mem.UsagePercent = float64(usedBytes) / float64(mem.TotalBytes) * 100
+				mem.UsagePercent = float64(mem.UsedBytes) / float64(mem.TotalBytes) * 100
 			}
 		}
 
@@ -316,7 +382,9 @@ func (c *DarwinTelemetryCollector) collectMemoryTelemetry() models.MemoryTelemet
 					}
 				} else if strings.HasPrefix(line, "FreePhysicalMemory=") {
 					if kb, err := strconv.ParseInt(strings.TrimPrefix(line, "FreePhysicalMemory="), 10, 64); err == nil {
-						mem.AvailableBytes = kb * 1024
+						// FreePhysicalMemory = MemFree equivalent (actual free memory)
+						mem.FreeBytes = kb * 1024
+						mem.AvailableBytes = kb * 1024 // On Windows, free ≈ available
 					}
 				}
 			}
@@ -338,7 +406,10 @@ func (c *DarwinTelemetryCollector) collectMemoryTelemetry() models.MemoryTelemet
 			}
 		}
 
-		mem.UsedBytes = mem.TotalBytes - mem.AvailableBytes
+		// UsedBytes = Total - Free (matches what Task Manager shows)
+		mem.UsedBytes = mem.TotalBytes - mem.FreeBytes
+		mem.ApplicationUsedBytes = mem.UsedBytes // On Windows these are the same
+
 		if mem.TotalBytes > 0 {
 			mem.UsagePercent = float64(mem.UsedBytes) / float64(mem.TotalBytes) * 100
 		}
@@ -364,8 +435,14 @@ func (c *DarwinTelemetryCollector) collectMemoryTelemetry() models.MemoryTelemet
 				switch key {
 				case "MemTotal":
 					mem.TotalBytes = value
+				case "MemFree":
+					mem.FreeBytes = value
 				case "MemAvailable":
 					mem.AvailableBytes = value
+				case "Buffers":
+					mem.BuffersBytes = value
+				case "Cached":
+					mem.CachedBytes = value
 				case "SwapTotal":
 					mem.SwapTotalBytes = value
 				case "SwapFree":
@@ -373,8 +450,16 @@ func (c *DarwinTelemetryCollector) collectMemoryTelemetry() models.MemoryTelemet
 				}
 			}
 
-			mem.UsedBytes = mem.TotalBytes - mem.AvailableBytes
+			// UsedBytes = Total - Free (matches what Proxmox/system monitors show)
+			// This includes buffers and cache which are technically "in use"
+			mem.UsedBytes = mem.TotalBytes - mem.FreeBytes
+
+			// ApplicationUsedBytes = Total - Available (memory that apps can't easily use)
+			// This is what the old "UsedBytes" was showing
+			mem.ApplicationUsedBytes = mem.TotalBytes - mem.AvailableBytes
+
 			if mem.TotalBytes > 0 {
+				// UsagePercent based on Total - Free (matches system monitors)
 				mem.UsagePercent = float64(mem.UsedBytes) / float64(mem.TotalBytes) * 100
 			}
 			if mem.SwapTotalBytes > 0 {

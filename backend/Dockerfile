@@ -5,8 +5,10 @@ COPY package*.json ./
 
 # Development stage
 FROM base AS development
+RUN apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/v3.18/community openssl1.1-compat
 RUN npm install
 COPY . .
+RUN npx prisma generate --schema src/db/prisma/schema.prisma
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
 

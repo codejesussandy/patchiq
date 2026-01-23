@@ -28,5 +28,14 @@ router.delete('/:id', controller.deleteAgent);
 // GET /v1/agents/:id/commands - Get agent command history
 router.get('/:id/commands', controller.getAgentCommands);
 
+// POST /v1/agents/:id/collect - Trigger on-demand collection
+router.post('/:id/collect', controller.triggerCollection);
+
+// GET /v1/agents/:id/telemetry/latest - Get latest telemetry
+router.get('/:id/telemetry/latest', controller.getLatestTelemetry);
+
+// GET /v1/agents/:id/telemetry/stream - SSE stream for real-time telemetry
+router.get('/:id/telemetry/stream', controller.streamTelemetry);
+
 export const agentsRoutes = router;
 export default agentsRoutes;

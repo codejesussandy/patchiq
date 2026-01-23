@@ -105,17 +105,23 @@ type CPUTelemetry struct {
 }
 
 // MemoryTelemetry represents memory usage metrics
+// Note: UsedBytes = TotalBytes - FreeBytes (what Proxmox/system monitors show - includes buffers/cache)
+// ApplicationUsedBytes = TotalBytes - AvailableBytes (memory not readily available for new apps)
 type MemoryTelemetry struct {
-	UsagePercent    float64 `json:"usagePercent"`
-	UsedBytes       int64   `json:"usedBytes"`
-	AvailableBytes  int64   `json:"availableBytes"`
-	TotalBytes      int64   `json:"totalBytes"`
-	UsedHuman       string  `json:"usedHuman,omitempty"`
-	AvailableHuman  string  `json:"availableHuman,omitempty"`
-	SwapUsagePercent float64 `json:"swapUsagePercent,omitempty"`
-	SwapUsedBytes   int64   `json:"swapUsedBytes,omitempty"`
-	SwapTotalBytes  int64   `json:"swapTotalBytes,omitempty"`
-	PageFaultsPerSec int64  `json:"pageFaultsPerSec,omitempty"`
+	UsagePercent        float64 `json:"usagePercent"`
+	UsedBytes           int64   `json:"usedBytes"`           // Total - Free (matches Proxmox/system monitors)
+	AvailableBytes      int64   `json:"availableBytes"`      // MemAvailable - memory available for apps
+	TotalBytes          int64   `json:"totalBytes"`
+	FreeBytes           int64   `json:"freeBytes,omitempty"` // MemFree - completely unused memory
+	BuffersBytes        int64   `json:"buffersBytes,omitempty"`
+	CachedBytes         int64   `json:"cachedBytes,omitempty"`
+	ApplicationUsedBytes int64  `json:"applicationUsedBytes,omitempty"` // Total - Available (app memory)
+	UsedHuman           string  `json:"usedHuman,omitempty"`
+	AvailableHuman      string  `json:"availableHuman,omitempty"`
+	SwapUsagePercent    float64 `json:"swapUsagePercent,omitempty"`
+	SwapUsedBytes       int64   `json:"swapUsedBytes,omitempty"`
+	SwapTotalBytes      int64   `json:"swapTotalBytes,omitempty"`
+	PageFaultsPerSec    int64   `json:"pageFaultsPerSec,omitempty"`
 }
 
 // DiskTelemetry represents disk I/O metrics

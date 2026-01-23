@@ -160,24 +160,25 @@ model Role {
 // ============================================
 
 model Agent {
-  id            String    @id @default(uuid())
-  machineId     String    @unique @map("machine_id")
-  name          String?
-  hostname      String?
-  status        String    @default("Pending")
-  os            String?
-  osVersion     String?   @map("os_version")
-  architecture  String?
-  agentVersion  String?   @map("agent_version")
-  ipAddress     String?   @map("ip_address")
-  macAddress    String?   @map("mac_address")
-  serialNumber  String?   @map("serial_number")
-  lastHeartbeat DateTime? @map("last_heartbeat")
-  registeredAt  DateTime  @default(now()) @map("registered_at")
-  tokenHash     String?   @map("token_hash")
-  capabilities  Json      @default("[]")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id                 String    @id @default(uuid())
+  machineId          String    @unique @map("machine_id")
+  name               String?
+  hostname           String?
+  status             String    @default("Pending")
+  os                 String?
+  osVersion          String?   @map("os_version")
+  architecture       String?
+  agentVersion       String?   @map("agent_version")
+  ipAddress          String?   @map("ip_address")
+  macAddress         String?   @map("mac_address")
+  serialNumber       String?   @map("serial_number")
+  lastHeartbeat      DateTime? @map("last_heartbeat")
+  registeredAt       DateTime  @default(now()) @map("registered_at")
+  tokenHash          String?   @map("token_hash")
+  capabilities       Json      @default("[]")
+  inventoryRequested Boolean   @default(false) @map("inventory_requested")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   assetId String? @unique @map("asset_id")
   asset   Asset?  @relation(fields: [assetId], references: [id])

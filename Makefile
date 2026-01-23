@@ -2,13 +2,17 @@
 # ============================
 # Run `make help` to see all available commands
 
-.PHONY: help dev dev-services dev-backend dev-frontend dev-agent stop clean logs logs-backend logs-frontend db-migrate db-seed db-studio db-reset agent-build agent-run agent-install-air test test-backend test-frontend check check-types check-lint check-build check-health check-all install status minio-console api-docs api-endpoints dev-all clean-all
+.PHONY: help dev dev-fresh dev-services dev-backend dev-frontend dev-agent stop clean logs logs-backend logs-frontend db-migrate db-seed db-studio db-reset agent-build agent-run agent-install-air test test-backend test-frontend check check-types check-lint check-build check-health check-all install status minio-console api-docs api-endpoints dev-all clean-all preflight
 
 # Colors for output
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
 CYAN := \033[0;36m
+RED := \033[0;31m
 NC := \033[0m # No Color
+
+# Use docker compose v2 (with space) - check if it works, else fall back to docker-compose
+DOCKER_COMPOSE := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
 
 # Default target
 help:
@@ -17,15 +21,19 @@ help:
 	@echo "=============================="
 	@echo ""
 	@echo "$(GREEN)Quick Start:$(NC)"
-	@echo "  make dev              - Start full stack (services + backend + frontend)"
+	@echo "  make dev              - Start full stack (clean ports, rebuild if needed)"
+	@echo "  make dev-fresh        - Full reset: stop all, remove containers, start fresh"
 	@echo "  make dev-all          - Start everything including agent with hot reload"
 	@echo "  make stop             - Stop all Docker services"
 	@echo ""
 	@echo "$(GREEN)Individual Services:$(NC)"
-	@echo "  make dev-services     - Start infrastructure (DB, Redis, MinIO, pgAdmin, Prisma Studio)"
+	@echo "  make dev-services     - Start infrastructure only (DB, Redis, MinIO) for local dev"
 	@echo "  make dev-backend      - Start backend locally (with hot reload)"
 	@echo "  make dev-frontend     - Start frontend locally (with HMR)"
 	@echo "  make dev-agent        - Start agent with hot reload (requires Air)"
+	@echo ""
+	@echo "$(GREEN)Note:$(NC) 'make dev' uses nginx reverse proxy - all services on port 5173"
+	@echo "      'make dev-services' is for running backend/frontend outside Docker"
 	@echo ""
 	@echo "$(GREEN)Database:$(NC)"
 	@echo "  make db-migrate       - Run database migrations"
@@ -70,36 +78,88 @@ help:
 # Development Targets
 # ===================
 
-# Start full stack with Docker
-dev:
+# Pre-flight checks - kill conflicting processes and clean orphan containers
+preflight:
+	@echo "$(CYAN)Running pre-flight checks...$(NC)"
+	@# Kill processes on ports that Docker needs
+	@lsof -ti :3000 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@lsof -ti :5173 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@# Remove orphan patchiq containers
+	@docker ps -aq --filter "name=patchiq" 2>/dev/null | xargs -r docker rm -f 2>/dev/null || true
+	@echo "$(GREEN)Pre-flight checks complete$(NC)"
+
+# Start full stack with Docker (with pre-flight checks)
+dev: preflight
 	@echo "$(CYAN)Starting PatchIQ development stack...$(NC)"
-	docker-compose up -d
+	@$(DOCKER_COMPOSE) up -d --remove-orphans
+	@echo ""
+	@echo "$(CYAN)Waiting for services to be healthy...$(NC)"
+	@sleep 5
+	@# Ensure Prisma client is up to date in backend container
+	@docker exec patchiq_backend npx prisma generate --schema src/db/prisma/schema.prisma 2>/dev/null || true
+	@# Restart backend to pick up regenerated client
+	@docker restart patchiq_backend 2>/dev/null || true
+	@sleep 5
 	@echo ""
 	@echo "$(GREEN)Services started!$(NC)"
-	@echo "  Backend:  http://localhost:3000"
 	@echo "  Frontend: http://localhost:5173"
-	@echo "  MinIO:    http://localhost:9001 (patchiq_admin / patchiq_secret_key)"
+	@echo "  Backend:  http://localhost:3000"
+	@echo "  MinIO:    http://localhost:5002 (patchiq_admin / patchiq_secret_key)"
+	@echo "  Prisma:   http://localhost:5000"
+	@echo "  pgAdmin:  http://localhost:5050"
+	@echo ""
+	@echo "  Login: admin@patchiq.io / admin123"
 	@echo ""
 	@echo "Use 'make logs' to watch logs, 'make stop' to stop services"
+
+# Full fresh start - stop everything, remove containers, start clean
+dev-fresh:
+	@echo "$(YELLOW)Performing full fresh start...$(NC)"
+	@$(DOCKER_COMPOSE) down --remove-orphans 2>/dev/null || true
+	@docker ps -aq --filter "name=patchiq" 2>/dev/null | xargs -r docker rm -f 2>/dev/null || true
+	@lsof -ti :3000 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@lsof -ti :5173 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@lsof -ti :8083 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@echo "$(CYAN)Starting fresh...$(NC)"
+	@$(DOCKER_COMPOSE) up -d --build --remove-orphans
+	@echo ""
+	@echo "$(CYAN)Waiting for services to be healthy...$(NC)"
+	@sleep 10
+	@# Regenerate Prisma client and restart backend
+	@docker exec patchiq_backend npx prisma generate --schema src/db/prisma/schema.prisma 2>/dev/null || true
+	@docker restart patchiq_backend 2>/dev/null || true
+	@sleep 5
+	@echo ""
+	@echo "$(GREEN)Fresh start complete!$(NC)"
+	@echo "  Frontend: http://localhost:5173"
+	@echo "  Backend:  http://localhost:3000"
+	@echo ""
+	@echo "  Login: admin@patchiq.io / admin123"
 
 # Start everything including agent
 dev-all: dev
 	@echo ""
-	@echo "$(CYAN)Starting agent with hot reload...$(NC)"
-	@echo "Run 'make dev-agent' in a separate terminal"
+	@echo "$(CYAN)Starting agent...$(NC)"
+	@cd agent && go build -o patchify-agent ./cmd/agent 2>/dev/null || true
+	@echo "Run 'make dev-agent' in a separate terminal for hot reload"
+	@echo "Or run 'make agent-run' to start agent without hot reload"
 
-# Start only infrastructure services
-dev-services:
+# Start only infrastructure services (for local backend/frontend development)
+dev-services: preflight
 	@echo "$(CYAN)Starting infrastructure services (DB, Redis, MinIO, pgAdmin)...$(NC)"
-	docker-compose up -d postgres redis minio pgadmin
+	@$(DOCKER_COMPOSE) up -d postgres redis minio pgadmin
 	@echo "$(CYAN)Starting Prisma Studio on port 5555...$(NC)"
 	@cd backend && npx prisma studio --schema src/db/prisma/schema.prisma --port 5555 --browser none > /dev/null 2>&1 &
 	@echo "$(GREEN)Infrastructure ready!$(NC)"
 	@echo "  PostgreSQL:    localhost:5432"
 	@echo "  Redis:         localhost:6379"
-	@echo "  MinIO:         localhost:9000 (API), localhost:9001 (Console)"
+	@echo "  MinIO:         localhost:5001 (API), localhost:5002 (Console)"
 	@echo "  pgAdmin:       http://localhost:5050 (admin@patchiq.io / admin123)"
 	@echo "  Prisma Studio: http://localhost:5555"
+	@echo ""
+	@echo "Now run in separate terminals:"
+	@echo "  make dev-backend   # Start backend with hot reload"
+	@echo "  make dev-frontend  # Start frontend with HMR"
 
 # Start backend locally (outside Docker, for easier debugging)
 dev-backend:
@@ -125,8 +185,9 @@ dev-agent:
 # Stop all services
 stop:
 	@echo "$(CYAN)Stopping all services...$(NC)"
-	docker-compose down
+	@$(DOCKER_COMPOSE) down --remove-orphans 2>/dev/null || true
 	@pkill -f "prisma studio" 2>/dev/null || true
+	@pkill -f "patchify-agent" 2>/dev/null || true
 	@echo "$(GREEN)Services stopped.$(NC)"
 
 # ===================
@@ -189,13 +250,16 @@ test-frontend:
 # ===================
 
 logs:
-	docker-compose logs -f
+	@$(DOCKER_COMPOSE) logs -f
 
 logs-backend:
-	docker-compose logs -f backend
+	@$(DOCKER_COMPOSE) logs -f backend
 
 logs-frontend:
-	docker-compose logs -f frontend
+	@$(DOCKER_COMPOSE) logs -f frontend
+
+logs-nginx:
+	@$(DOCKER_COMPOSE) logs -f nginx
 
 # ===================
 # Cleanup Targets
@@ -203,7 +267,9 @@ logs-frontend:
 
 clean:
 	@echo "$(YELLOW)Stopping services and removing volumes...$(NC)"
-	docker-compose down -v
+	@$(DOCKER_COMPOSE) down -v --remove-orphans 2>/dev/null || true
+	@docker ps -aq --filter "name=patchiq" 2>/dev/null | xargs -r docker rm -f 2>/dev/null || true
+	@pkill -f "patchify-agent" 2>/dev/null || true
 	@echo "$(GREEN)Cleanup complete.$(NC)"
 
 clean-all: clean
@@ -249,11 +315,13 @@ check-build:
 # Health check - verify running services respond
 check-health:
 	@echo "$(CYAN)Checking service health...$(NC)"
-	@curl -sf http://localhost:3000/health > /dev/null 2>&1 && echo "  Backend:       $(GREEN)OK$(NC)" || echo "  Backend:       $(YELLOW)Not running$(NC)"
+	@curl -sf http://localhost:5173/health > /dev/null 2>&1 && echo "  Nginx+Backend: $(GREEN)OK$(NC) (via nginx proxy)" || echo "  Nginx+Backend: $(YELLOW)Not running$(NC)"
+	@curl -sf http://localhost:3000/health > /dev/null 2>&1 && echo "  Backend:       $(GREEN)OK$(NC) (direct)" || echo "  Backend:       $(YELLOW)Not running$(NC)"
 	@curl -sf http://localhost:5173 > /dev/null 2>&1 && echo "  Frontend:      $(GREEN)OK$(NC)" || echo "  Frontend:      $(YELLOW)Not running$(NC)"
-	@curl -sf http://localhost:8080/api/agent > /dev/null 2>&1 && echo "  Agent:         $(GREEN)OK$(NC)" || echo "  Agent:         $(YELLOW)Not running$(NC)"
-	@curl -sf http://localhost:5555 > /dev/null 2>&1 && echo "  Prisma Studio: $(GREEN)OK$(NC)" || echo "  Prisma Studio: $(YELLOW)Not running$(NC)"
+	@curl -sf http://localhost:8083/api/agent > /dev/null 2>&1 && echo "  Agent:         $(GREEN)OK$(NC)" || echo "  Agent:         $(YELLOW)Not running$(NC)"
+	@curl -sf http://localhost:5000 > /dev/null 2>&1 && echo "  Prisma Studio: $(GREEN)OK$(NC)" || echo "  Prisma Studio: $(YELLOW)Not running$(NC)"
 	@curl -sf http://localhost:5050 > /dev/null 2>&1 && echo "  pgAdmin:       $(GREEN)OK$(NC)" || echo "  pgAdmin:       $(YELLOW)Not running$(NC)"
+	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_nginx" && echo "  Nginx:         $(GREEN)OK$(NC)" || echo "  Nginx:         $(YELLOW)Not running$(NC)"
 	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_db.*healthy" && echo "  Postgres:      $(GREEN)OK$(NC)" || echo "  Postgres:      $(YELLOW)Not running$(NC)"
 	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_redis.*healthy" && echo "  Redis:         $(GREEN)OK$(NC)" || echo "  Redis:         $(YELLOW)Not running$(NC)"
 	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_minio.*healthy" && echo "  MinIO:         $(GREEN)OK$(NC)" || echo "  MinIO:         $(YELLOW)Not running$(NC)"
@@ -278,7 +346,7 @@ install:
 status: check-health
 	@echo ""
 	@echo "$(CYAN)Docker Status:$(NC)"
-	@docker-compose ps
+	@$(DOCKER_COMPOSE) ps
 
 # ===================
 # API & Debug Tools

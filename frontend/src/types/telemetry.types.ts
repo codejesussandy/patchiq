@@ -19,14 +19,19 @@ export type CPUTelemetry = {
 };
 
 // Memory Telemetry Types
+// Note: usedBytes = totalBytes - freeBytes (matches Proxmox/system monitors, includes buffers/cache)
+// applicationUsedBytes = totalBytes - availableBytes (memory not readily available for new apps)
 export type MemoryTelemetry = {
   usagePercent: number;
   totalBytes?: number;
-  usedBytes: number;
-  availableBytes: number;
-  freeBytes?: number;
-  cachedBytes?: number;
-  buffersBytes?: number;
+  usedBytes: number;              // Total - Free (what Proxmox shows, includes buffers/cache)
+  availableBytes: number;         // Memory available for apps (MemAvailable)
+  freeBytes?: number;             // Completely unused memory (MemFree)
+  cachedBytes?: number;           // Page cache
+  buffersBytes?: number;          // Kernel buffers
+  applicationUsedBytes?: number;  // Total - Available (app-specific memory usage)
+  usedHuman?: string;             // Human-readable used memory
+  availableHuman?: string;        // Human-readable available memory
   swapUsagePercent?: number;
   swapTotalBytes?: number;
   swapUsedBytes?: number;
@@ -141,7 +146,7 @@ export type SystemUptime = {
 // Complete Telemetry Payload Type
 export type TelemetryPayload = {
   timestamp: string;
-  agentId: string;
+  agentId?: string;
   intervalSeconds?: number;
   cpu: CPUTelemetry;
   memory: MemoryTelemetry;

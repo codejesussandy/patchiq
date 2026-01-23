@@ -1413,7 +1413,7 @@ export async function getAssetTelemetry(id: string): Promise<AssetTelemetry | nu
       processes: processesRaw ? {
         totalCount: processesRaw.totalCount as number | undefined,
         runningCount: processesRaw.runningCount as number | undefined,
-        topByCPU: processesRaw.topByCPU as Array<{ pid: number; name: string; cpuPercent: number }> | undefined,
+        topByCpu: (processesRaw.topByCPU || processesRaw.topByCpu) as Array<{ pid: number; name: string; cpuPercent: number }> | undefined,
         topByMemory: processesRaw.topByMemory as Array<{ pid: number; name: string; memoryPercent: number }> | undefined,
       } : undefined,
       systemUptime: formatSystemUptime(latestTelemetry.uptime, raw.systemUptime),

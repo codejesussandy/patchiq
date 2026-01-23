@@ -22,11 +22,31 @@ import (
 //go:embed templates/*
 var templatesFS embed.FS
 
+// BackendStatusInfo represents current backend connection status
+type BackendStatusInfo struct {
+	Registered        bool
+	AgentID           string
+	ServerURL         string
+	LastHeartbeat     time.Time
+	LastInventory     time.Time
+	LastTelemetry     time.Time
+	LastError         string
+	ConsecutiveErrors int
+}
+
+// BackendStatus interface for accessing backend manager status
+type BackendStatus interface {
+	IsRegistered() bool
+	GetAgentID() string
+	GetStatus() *BackendStatusInfo
+}
+
 // Server represents the agent web server
 type Server struct {
 	config        *config.Config
 	collectors    *collectors.CollectorManager
 	templates     *template.Template
+	backendMgr    BackendStatus
 
 	// Cached data
 	mu            sync.RWMutex
@@ -82,6 +102,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/security", s.handleSecurity)
 	mux.HandleFunc("/peripherals", s.handlePeripherals)
 	mux.HandleFunc("/telemetry", s.handleTelemetryPage)
+	mux.HandleFunc("/settings", s.handleSettings)
 
 	// API routes
 	mux.HandleFunc("/api/collect", s.handleCollect)
@@ -94,11 +115,20 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/inventory", s.handleGetInventory)
 	mux.HandleFunc("/api/telemetry", s.handleGetTelemetry)
 	mux.HandleFunc("/api/agent", s.handleGetAgent)
+	mux.HandleFunc("/api/config", s.handleGetConfig)
+	mux.HandleFunc("/api/status", s.handleGetStatus)
 
 	addr := fmt.Sprintf(":%d", s.config.WebUIPort)
 	log.Printf("Starting agent web UI on http://localhost%s", addr)
 
 	return http.ListenAndServe(addr, mux)
+}
+
+// SetBackendManager sets the backend manager for status display
+func (s *Server) SetBackendManager(mgr BackendStatus) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.backendMgr = mgr
 }
 
 // StartBackgroundCollection starts background data collection
@@ -183,6 +213,20 @@ func (s *Server) getAgentInfo() *models.AgentInfo {
 	}
 }
 
+// ServerConnectionInfo holds server connection data for templates
+type ServerConnectionInfo struct {
+	URL               string
+	Registered        bool
+	AgentID           string
+	LastHeartbeat     string
+	LastHeartbeatAgo  string
+	LastInventory     string
+	LastInventoryAgo  string
+	LastError         string
+	ConsecutiveErrors int
+	Status            string // "connected", "connecting", "disconnected", "disabled"
+}
+
 // Web handlers
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
@@ -191,20 +235,83 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.mu.RLock()
+
+	// Build server connection info
+	var serverInfo *ServerConnectionInfo
+	if s.backendMgr != nil {
+		status := s.backendMgr.GetStatus()
+		if status != nil {
+			serverInfo = &ServerConnectionInfo{
+				URL:               s.config.ServerURL,
+				Registered:        status.Registered,
+				AgentID:           status.AgentID,
+				LastError:         status.LastError,
+				ConsecutiveErrors: status.ConsecutiveErrors,
+			}
+
+			if !status.LastHeartbeat.IsZero() {
+				serverInfo.LastHeartbeat = status.LastHeartbeat.Format("15:04:05")
+				serverInfo.LastHeartbeatAgo = formatTimeAgo(status.LastHeartbeat)
+			}
+			if !status.LastInventory.IsZero() {
+				serverInfo.LastInventory = status.LastInventory.Format("15:04:05")
+				serverInfo.LastInventoryAgo = formatTimeAgo(status.LastInventory)
+			}
+
+			// Determine connection status
+			if status.Registered {
+				if status.ConsecutiveErrors > 0 {
+					serverInfo.Status = "error"
+				} else {
+					serverInfo.Status = "connected"
+				}
+			} else {
+				serverInfo.Status = "connecting"
+			}
+		}
+	} else if s.config.ServerURL == "" {
+		serverInfo = &ServerConnectionInfo{
+			Status: "disabled",
+		}
+	} else {
+		serverInfo = &ServerConnectionInfo{
+			URL:    s.config.ServerURL,
+			Status: "not_started",
+		}
+	}
+
 	data := struct {
 		Agent     *models.AgentInfo
 		Inventory *models.FullInventory
 		Telemetry *models.Telemetry
 		Uptime    string
+		Server    *ServerConnectionInfo
+		Config    *config.Config
 	}{
 		Agent:     s.agentInfo,
 		Inventory: s.lastInventory,
 		Telemetry: s.lastTelemetry,
 		Uptime:    formatUptime(time.Since(s.startTime)),
+		Server:    serverInfo,
+		Config:    s.config,
 	}
 	s.mu.RUnlock()
 
 	s.renderTemplate(w, "dashboard.html", data)
+}
+
+func formatTimeAgo(t time.Time) string {
+	d := time.Since(t)
+	if d < time.Minute {
+		return fmt.Sprintf("%ds ago", int(d.Seconds()))
+	}
+	if d < time.Hour {
+		return fmt.Sprintf("%dm ago", int(d.Minutes()))
+	}
+	if d < 24*time.Hour {
+		return fmt.Sprintf("%dh %dm ago", int(d.Hours()), int(d.Minutes())%60)
+	}
+	return t.Format("Jan 2, 15:04")
 }
 
 func (s *Server) handleHardware(w http.ResponseWriter, r *http.Request) {
@@ -438,6 +545,98 @@ func (s *Server) handleGetTelemetry(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGetAgent(w http.ResponseWriter, r *http.Request) {
 	s.jsonResponse(w, s.agentInfo)
+}
+
+func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+
+	// Build server connection info
+	var serverInfo *ServerConnectionInfo
+	if s.backendMgr != nil {
+		status := s.backendMgr.GetStatus()
+		if status != nil {
+			serverInfo = &ServerConnectionInfo{
+				URL:               s.config.ServerURL,
+				Registered:        status.Registered,
+				AgentID:           status.AgentID,
+				LastError:         status.LastError,
+				ConsecutiveErrors: status.ConsecutiveErrors,
+			}
+			if !status.LastHeartbeat.IsZero() {
+				serverInfo.LastHeartbeat = status.LastHeartbeat.Format("15:04:05")
+				serverInfo.LastHeartbeatAgo = formatTimeAgo(status.LastHeartbeat)
+			}
+			if !status.LastInventory.IsZero() {
+				serverInfo.LastInventory = status.LastInventory.Format("15:04:05")
+				serverInfo.LastInventoryAgo = formatTimeAgo(status.LastInventory)
+			}
+			if status.Registered {
+				if status.ConsecutiveErrors > 0 {
+					serverInfo.Status = "error"
+				} else {
+					serverInfo.Status = "connected"
+				}
+			} else {
+				serverInfo.Status = "connecting"
+			}
+		}
+	}
+
+	data := struct {
+		Config *config.Config
+		Server *ServerConnectionInfo
+		Agent  *models.AgentInfo
+	}{
+		Config: s.config,
+		Server: serverInfo,
+		Agent:  s.agentInfo,
+	}
+	s.mu.RUnlock()
+
+	s.renderTemplate(w, "settings.html", data)
+}
+
+func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
+	s.jsonResponse(w, s.config)
+}
+
+func (s *Server) handleGetStatus(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	status := struct {
+		Agent     *models.AgentInfo        `json:"agent"`
+		Config    *config.Config           `json:"config"`
+		Server    *ServerConnectionInfo    `json:"server,omitempty"`
+		Uptime    string                   `json:"uptime"`
+	}{
+		Agent:  s.agentInfo,
+		Config: s.config,
+		Uptime: formatUptime(time.Since(s.startTime)),
+	}
+
+	if s.backendMgr != nil {
+		backendStatus := s.backendMgr.GetStatus()
+		if backendStatus != nil {
+			status.Server = &ServerConnectionInfo{
+				URL:               s.config.ServerURL,
+				Registered:        backendStatus.Registered,
+				AgentID:           backendStatus.AgentID,
+				ConsecutiveErrors: backendStatus.ConsecutiveErrors,
+				LastError:         backendStatus.LastError,
+			}
+			if !backendStatus.LastHeartbeat.IsZero() {
+				status.Server.LastHeartbeat = backendStatus.LastHeartbeat.Format(time.RFC3339)
+			}
+			if backendStatus.Registered {
+				status.Server.Status = "connected"
+			} else {
+				status.Server.Status = "connecting"
+			}
+		}
+	}
+
+	s.jsonResponse(w, status)
 }
 
 // Helper methods

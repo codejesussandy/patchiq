@@ -138,13 +138,18 @@ export class AgentsService {
       throw new NotFoundError('Agent not found');
     }
 
-    // Update agent status
+    // Check if inventory was requested before we update
+    const inventoryWasRequested = agent.inventoryRequested ?? false;
+
+    // Update agent status (and clear inventoryRequested flag if set)
     await prisma.agent.update({
       where: { id: agentId },
       data: {
         status: input.status === 'error' ? 'Error' : 'Connected',
         lastHeartbeat: new Date(),
         ipAddress: input.ipAddress || agent.ipAddress,
+        // Clear the flag after we've noted it
+        inventoryRequested: false,
       },
     });
 
@@ -169,7 +174,7 @@ export class AgentsService {
     return {
       commandsPending: pendingCommands > 0,
       configUpdated: false,
-      inventoryRequested: false,
+      inventoryRequested: inventoryWasRequested,
     };
   }
 
@@ -479,6 +484,88 @@ export class AgentsService {
     return {
       id: command.id,
       status: 'queued',
+    };
+  }
+
+  /**
+   * Trigger on-demand collection for an agent
+   * Sets the inventoryRequested flag so agent collects on next heartbeat
+   */
+  async triggerCollection(agentId: string, type: string = 'all'): Promise<{ commandId: string; status: string; type: string }> {
+    const agent = await prisma.agent.findUnique({
+      where: { id: agentId },
+    });
+
+    if (!agent) {
+      throw new NotFoundError('Agent not found');
+    }
+
+    // Determine command type based on request
+    let commandType = 'inventory_full';
+    if (type === 'hardware') commandType = 'inventory_hardware';
+    else if (type === 'software') commandType = 'inventory_software';
+    else if (type === 'security') commandType = 'inventory_security';
+    else if (type === 'telemetry') commandType = 'telemetry_collect';
+
+    // Create a pending command - agent will pick this up on next heartbeat
+    const command = await prisma.agentCommand.create({
+      data: {
+        agentId,
+        type: commandType,
+        status: 'pending',
+        scheduledAt: new Date(),
+      },
+    });
+
+    // Also update agent to flag inventory requested (immediate flag for next heartbeat)
+    await prisma.agent.update({
+      where: { id: agentId },
+      data: {
+        inventoryRequested: true,
+      },
+    });
+
+    return {
+      commandId: command.id,
+      status: 'queued',
+      type: commandType,
+    };
+  }
+
+  /**
+   * Get latest telemetry for an agent
+   */
+  async getLatestTelemetry(agentId: string) {
+    const agent = await prisma.agent.findUnique({
+      where: { id: agentId },
+    });
+
+    if (!agent) {
+      throw new NotFoundError('Agent not found');
+    }
+
+    const telemetry = await prisma.agentTelemetry.findFirst({
+      where: { agentId },
+      orderBy: { timestamp: 'desc' },
+    });
+
+    if (!telemetry) {
+      return null;
+    }
+
+    return {
+      id: telemetry.id,
+      agentId: telemetry.agentId,
+      cpuUsage: telemetry.cpuUsage,
+      memoryUsage: telemetry.memoryUsage,
+      diskUsage: telemetry.diskUsage,
+      uptime: telemetry.uptime,
+      networkInBps: telemetry.networkInBps ? Number(telemetry.networkInBps) : null,
+      networkOutBps: telemetry.networkOutBps ? Number(telemetry.networkOutBps) : null,
+      processCount: telemetry.processCount,
+      pendingReboot: telemetry.pendingReboot,
+      rawPayload: telemetry.rawPayload,
+      timestamp: telemetry.timestamp.toISOString(),
     };
   }
 
