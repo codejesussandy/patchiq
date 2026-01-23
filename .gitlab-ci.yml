@@ -38,6 +38,8 @@ test:backend:
     POSTGRES_PASSWORD: postgres
     DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/patchiq_test"
     REDIS_URL: "redis://redis:6379"
+    # Limit Node memory to prevent OOM in CI
+    NODE_OPTIONS: "--max-old-space-size=2048"
   before_script:
     - apk add --no-cache openssl openssl-dev
     - cd backend
@@ -47,7 +49,8 @@ test:backend:
   script:
     - npm run lint || true
     - npm run build
-    - npm test
+    # Run tests with limited workers to prevent OOM
+    - npm test -- --maxWorkers=2 --forceExit
   artifacts:
     when: always
     reports:
@@ -62,16 +65,17 @@ test:backend:
 
 test:frontend:
   stage: test
-  image: node:20
+  image: node:20-alpine
   <<: *node_cache
   before_script:
     - cd frontend
     - npm ci
-    - npx playwright install --with-deps chromium
+    # Playwright install skipped - tests are disabled until backend integration ready
   script:
     - npm run lint || true
     - npm run build
     # Skip e2e tests in CI for now (needs backend running)
+    # When ready, uncomment and use: npx playwright install --with-deps chromium
     # - npm run test
   artifacts:
     paths:
