@@ -198,15 +198,26 @@ deploy:staging:
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
+        # Backend setup
         cd ~/patchiq/backend
-        npm ci --production
+        npm ci
+        npm run build
         npx prisma generate
-        npx prisma db push || true
+        npx prisma db push --accept-data-loss || true
 
-        # Restart backend (using pm2)
-        pm2 restart patchiq-backend 2>/dev/null || pm2 start dist/server.js --name patchiq-backend
-        pm2 save
+        # Create loader for module-alias (handles path aliases)
+        cat > dist/loader.js << 'EOF'
+        require("module-alias/register");
+        require("./server.js");
+        EOF
 
+        # Restart backend
+        pm2 restart patchiq-backend 2>/dev/null || pm2 start dist/loader.js --name patchiq-backend --cwd ~/patchiq/backend
+
+        # Restart frontend (serve static files)
+        pm2 restart patchiq-frontend 2>/dev/null || pm2 start "serve dist -l 5173" --name patchiq-frontend --cwd ~/patchiq/frontend
+
+        pm2 save --force
         echo "Deployment complete!"
       ENDSSH
   environment:
