@@ -193,13 +193,18 @@ deploy:staging:
     # Install dependencies and restart services on staging
     - |
       ssh $STAGING_USER@$STAGING_HOST << 'ENDSSH'
+        # Load NVM for non-interactive shell
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
         cd ~/patchiq/backend
         npm ci --production
         npx prisma generate
-        npx prisma db push
+        npx prisma db push || true
 
-        # Restart backend (using pm2 or systemd)
-        pm2 restart patchiq-backend || pm2 start dist/server.js --name patchiq-backend || echo "PM2 not configured yet"
+        # Restart backend (using pm2)
+        pm2 restart patchiq-backend 2>/dev/null || pm2 start dist/server.js --name patchiq-backend
+        pm2 save
 
         echo "Deployment complete!"
       ENDSSH
@@ -209,7 +214,7 @@ deploy:staging:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "full-dev-local"
-  when: manual  # Require manual trigger for deploy
+  # Deploys automatically after successful build stage
 
 # ===================
 # OPTIONAL: Auto-fix with Claude
