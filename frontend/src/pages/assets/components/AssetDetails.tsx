@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Tabs,
@@ -82,7 +82,7 @@ export const AssetDetails = () => {
   const [locatingAsset, setLocatingAsset] = useState(false);
   const [refreshingInventory, setRefreshingInventory] = useState(false);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-  const telemetryPollRef = useRef<NodeJS.Timeout | null>(null);
+  const telemetryPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Patches tab state
   const [patchesTab, setPatchesTab] = useState<'missing' | 'installed' | 'exception'>('missing');

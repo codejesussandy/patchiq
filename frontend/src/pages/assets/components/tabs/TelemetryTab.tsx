@@ -308,7 +308,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
                   <span>System Uptime</span>
                 </Space>
               }
-              value={formatUptime(telemetry.systemUptime)}
+              value={formatUptime(telemetry.systemUptime?.uptimeSeconds)}
               valueStyle={{ fontSize: '20px' }}
             />
             {telemetry.batteryChargePercent !== undefined && (

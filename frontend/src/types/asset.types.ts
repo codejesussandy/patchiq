@@ -300,6 +300,7 @@ export type Drive = {
   format: string;
   type: string;
   serialNumber: string;
+  mountPoint?: string;
 };
 
 export type MemorySlot = {
