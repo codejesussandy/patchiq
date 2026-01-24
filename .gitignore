@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Agent build artifacts
+agent/dist/
+agent/patchify-agent
+
+# Test results (root level)
+test-results/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

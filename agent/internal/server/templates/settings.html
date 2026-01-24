@@ -1,0 +1,270 @@
+{{define "settings.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Patchify Agent</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #334155; margin-bottom: 30px; }
+        h1 { font-size: 24px; color: #f8fafc; }
+        .status { display: flex; align-items: center; gap: 8px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        nav { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        nav a { padding: 10px 20px; background: #1e293b; color: #94a3b8; text-decoration: none; border-radius: 8px; transition: all 0.2s; }
+        nav a:hover, nav a.active { background: #3b82f6; color: white; }
+        .card { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .card h2 { font-size: 14px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 15px; }
+        .card h3 { font-size: 16px; color: #f8fafc; margin-bottom: 10px; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #334155; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #94a3b8; }
+        .info-value { color: #f8fafc; font-weight: 500; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .badge.green { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .badge.yellow { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+        .badge.red { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .badge.blue { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .code-block { background: #0f172a; padding: 15px; border-radius: 8px; font-family: 'Monaco', 'Menlo', monospace; font-size: 13px; overflow-x: auto; }
+        .code-block code { color: #22c55e; }
+        .section { margin-top: 30px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+        .help-text { color: #64748b; font-size: 13px; margin-top: 8px; }
+        .cli-example { margin-top: 15px; }
+        .cli-example .label { font-size: 12px; color: #94a3b8; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Patchify Agent</h1>
+            <div class="status">
+                <span class="status-dot"></span>
+                <span>{{if .Agent}}{{.Agent.Status}}{{else}}Initializing{{end}}</span>
+            </div>
+        </header>
+
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/hardware">Hardware</a>
+            <a href="/software">Software</a>
+            <a href="/network">Network</a>
+            <a href="/security">Security</a>
+            <a href="/peripherals">Peripherals</a>
+            <a href="/telemetry">Telemetry</a>
+            <a href="/settings" class="active">Settings</a>
+        </nav>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Server Connection</h2>
+                {{if .Server}}
+                <div class="info-row">
+                    <span class="info-label">Server URL</span>
+                    <span class="info-value">{{if .Config.ServerURL}}{{.Config.ServerURL}}{{else}}<em style="color: #64748b;">Not configured</em>{{end}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Connection Status</span>
+                    <span class="info-value">
+                        {{if eq .Server.Status "connected"}}
+                        <span class="badge green">Connected</span>
+                        {{else if eq .Server.Status "connecting"}}
+                        <span class="badge yellow">Connecting...</span>
+                        {{else if eq .Server.Status "error"}}
+                        <span class="badge red">Error</span>
+                        {{else}}
+                        <span class="badge" style="background: rgba(100,116,139,0.2); color: #94a3b8;">Disabled</span>
+                        {{end}}
+                    </span>
+                </div>
+                {{if .Server.Registered}}
+                <div class="info-row">
+                    <span class="info-label">Agent ID</span>
+                    <span class="info-value" style="font-family: monospace; font-size: 12px;">{{.Server.AgentID}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Last Heartbeat</span>
+                    <span class="info-value">{{if .Server.LastHeartbeat}}{{.Server.LastHeartbeat}} ({{.Server.LastHeartbeatAgo}}){{else}}-{{end}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Last Inventory</span>
+                    <span class="info-value">{{if .Server.LastInventory}}{{.Server.LastInventory}} ({{.Server.LastInventoryAgo}}){{else}}-{{end}}</span>
+                </div>
+                {{end}}
+                {{if .Server.LastError}}
+                <div class="info-row">
+                    <span class="info-label">Last Error</span>
+                    <span class="info-value" style="color: #ef4444;">{{.Server.LastError}}</span>
+                </div>
+                {{end}}
+                {{else}}
+                <div class="info-row">
+                    <span class="info-label">Server URL</span>
+                    <span class="info-value">{{if .Config.ServerURL}}{{.Config.ServerURL}}{{else}}<em style="color: #64748b;">Not configured</em>{{end}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Connection Status</span>
+                    <span class="info-value">
+                        <span class="badge" style="background: rgba(100,116,139,0.2); color: #94a3b8;">Local Mode</span>
+                    </span>
+                </div>
+                {{end}}
+
+                <div class="cli-example">
+                    <div class="label">To connect to a server:</div>
+                    <div class="code-block">
+                        <code>./patchify-agent --server http://your-server:3000/api</code>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Agent Configuration</h2>
+                <div class="info-row">
+                    <span class="info-label">Web UI Port</span>
+                    <span class="info-value">{{.Config.WebUIPort}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Heartbeat Interval</span>
+                    <span class="info-value">{{.Config.HeartbeatInterval}}s</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Telemetry Interval</span>
+                    <span class="info-value">{{.Config.TelemetryInterval}}s</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Inventory Interval</span>
+                    <span class="info-value">{{.Config.InventoryInterval}}s</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Data Directory</span>
+                    <span class="info-value" style="font-family: monospace; font-size: 12px;">{{.Config.DataDir}}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="card">
+                <h2>Collection Settings</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div class="info-row" style="border: none;">
+                        <span class="info-label">Hardware Collection</span>
+                        <span class="badge {{if .Config.CollectHardware}}green{{else}}red{{end}}">
+                            {{if .Config.CollectHardware}}Enabled{{else}}Disabled{{end}}
+                        </span>
+                    </div>
+                    <div class="info-row" style="border: none;">
+                        <span class="info-label">Software Collection</span>
+                        <span class="badge {{if .Config.CollectSoftware}}green{{else}}red{{end}}">
+                            {{if .Config.CollectSoftware}}Enabled{{else}}Disabled{{end}}
+                        </span>
+                    </div>
+                    <div class="info-row" style="border: none;">
+                        <span class="info-label">Network Collection</span>
+                        <span class="badge {{if .Config.CollectNetwork}}green{{else}}red{{end}}">
+                            {{if .Config.CollectNetwork}}Enabled{{else}}Disabled{{end}}
+                        </span>
+                    </div>
+                    <div class="info-row" style="border: none;">
+                        <span class="info-label">Security Collection</span>
+                        <span class="badge {{if .Config.CollectSecurity}}green{{else}}red{{end}}">
+                            {{if .Config.CollectSecurity}}Enabled{{else}}Disabled{{end}}
+                        </span>
+                    </div>
+                    <div class="info-row" style="border: none;">
+                        <span class="info-label">Peripherals Collection</span>
+                        <span class="badge {{if .Config.CollectPeripherals}}green{{else}}red{{end}}">
+                            {{if .Config.CollectPeripherals}}Enabled{{else}}Disabled{{end}}
+                        </span>
+                    </div>
+                    <div class="info-row" style="border: none;">
+                        <span class="info-label">Telemetry Collection</span>
+                        <span class="badge {{if .Config.CollectTelemetry}}green{{else}}red{{end}}">
+                            {{if .Config.CollectTelemetry}}Enabled{{else}}Disabled{{end}}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="card">
+                <h2>CLI Commands Reference</h2>
+                <div class="cli-example">
+                    <div class="label">Interactive setup wizard:</div>
+                    <div class="code-block"><code>./patchify-agent --setup</code></div>
+                </div>
+                <div class="cli-example">
+                    <div class="label">Check connection status:</div>
+                    <div class="code-block"><code>./patchify-agent --status</code></div>
+                </div>
+                <div class="cli-example">
+                    <div class="label">Run in local-only mode (no server):</div>
+                    <div class="code-block"><code>./patchify-agent --no-backend</code></div>
+                </div>
+                <div class="cli-example">
+                    <div class="label">Specify custom config file:</div>
+                    <div class="code-block"><code>./patchify-agent --config /path/to/config.json</code></div>
+                </div>
+                <div class="cli-example">
+                    <div class="label">Change Web UI port:</div>
+                    <div class="code-block"><code>./patchify-agent --port 9090</code></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="card">
+                <h2>API Endpoints</h2>
+                <p class="help-text" style="margin-bottom: 15px;">These endpoints are available on the local agent Web UI.</p>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #334155;">
+                            <th style="text-align: left; padding: 10px; color: #94a3b8;">Method</th>
+                            <th style="text-align: left; padding: 10px; color: #94a3b8;">Endpoint</th>
+                            <th style="text-align: left; padding: 10px; color: #94a3b8;">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #334155;">
+                            <td style="padding: 10px;"><span class="badge blue">GET</span></td>
+                            <td style="padding: 10px; font-family: monospace;">/api/agent</td>
+                            <td style="padding: 10px;">Agent information</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #334155;">
+                            <td style="padding: 10px;"><span class="badge blue">GET</span></td>
+                            <td style="padding: 10px; font-family: monospace;">/api/status</td>
+                            <td style="padding: 10px;">Full status including server connection</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #334155;">
+                            <td style="padding: 10px;"><span class="badge blue">GET</span></td>
+                            <td style="padding: 10px; font-family: monospace;">/api/config</td>
+                            <td style="padding: 10px;">Current configuration</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #334155;">
+                            <td style="padding: 10px;"><span class="badge blue">GET</span></td>
+                            <td style="padding: 10px; font-family: monospace;">/api/inventory</td>
+                            <td style="padding: 10px;">Full inventory data</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #334155;">
+                            <td style="padding: 10px;"><span class="badge blue">GET</span></td>
+                            <td style="padding: 10px; font-family: monospace;">/api/telemetry</td>
+                            <td style="padding: 10px;">Current telemetry metrics</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #334155;">
+                            <td style="padding: 10px;"><span class="badge green">POST</span></td>
+                            <td style="padding: 10px; font-family: monospace;">/api/collect</td>
+                            <td style="padding: 10px;">Trigger full data collection</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+{{end}}

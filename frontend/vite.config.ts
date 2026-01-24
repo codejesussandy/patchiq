@@ -13,11 +13,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: 'localhost',
+    host: '0.0.0.0',  // Allow connections from any host
     hmr: {
+      // HMR through nginx reverse proxy
+      clientPort: 5173,
       protocol: 'ws',
-      host: 'localhost',
-      port: 5173,
     },
     strictPort: false,
   },
