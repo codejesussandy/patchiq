@@ -67,7 +67,8 @@ export async function checkTableRendered(page: Page) {
 }
 
 export async function checkModalOpened(page: Page) {
-  const modal = page.locator('.ant-modal, [role="dialog"], [class*="modal"]').first();
+  // Check for visible modal content (not just the root container)
+  const modal = page.locator('.ant-modal-content, .ant-modal:visible').first();
   await expect(modal).toBeVisible({ timeout: 10000 });
 }
 

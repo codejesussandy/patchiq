@@ -39,6 +39,9 @@ import { ConfigurationJobs } from './pages/jobs/ConfigurationJobs';
 import { PatchJobs } from './pages/jobs/PatchJobs';
 import { VulnerabilityJobs } from './pages/jobs/VulnerabilityJobs';
 
+// Hub
+import { Hub } from './pages/hub/Hub';
+
 // Settings
 import { Organization } from './pages/settings/Organization';
 import { Department } from './pages/settings/Department';
@@ -375,6 +378,18 @@ function AppRoutes() {
       <Route
         path="/jobs"
         element={<Navigate to="/jobs/software-jobs/catalog" replace />}
+      />
+
+      {/* Hub - Software Package Repository */}
+      <Route
+        path="/hub"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Hub />
+            </MainLayout>
+          </ProtectedRoute>
+        }
       />
 
       {/* Settings - User Management Sub-pages */}

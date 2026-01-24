@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Input,
   Button,
@@ -14,6 +14,7 @@ import {
   Row,
   Col,
   message,
+  Tooltip,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
@@ -30,18 +31,26 @@ import {
   LeftOutlined,
   DesktopOutlined,
   CloseOutlined,
+  RollbackOutlined,
 } from '@ant-design/icons';
+import {
+  softwareJobsService,
+  type SoftwareDeployment,
+  type SoftwareDeploymentTask,
+} from '../../services/softwareJobs.service';
+import type { SoftwarePackage, HubBundle } from '../../types/hub.types';
 
 const { Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
+// Display types (converted from API types)
 type DeployedItem = {
   id: string;
   deploymentId: string;
   name: string;
   type: 'INSTALL' | 'UNINSTALL' | 'UPGRADE';
-  stage: 'COMPLETED' | 'IN_PROGRESS' | 'INSTALLED' | 'FAILED';
+  stage: 'COMPLETED' | 'IN_PROGRESS' | 'PENDING' | 'FAILED' | 'CANCELLED';
   pending: { current: number; total: number };
   succeeded: { current: number; total: number };
   failed: { current: number; total: number };
@@ -51,10 +60,12 @@ type DeployedItem = {
 
 type ApplicationItem = {
   key: string;
+  id: string;
   deploymentId: string;
   title: string;
   os: string[];
   architecture: string;
+  installSource: string;
 };
 
 type BundleItem = {
@@ -64,132 +75,78 @@ type BundleItem = {
   os: string[];
 };
 
+type AgentItem = {
+  key: string;
+  id: string;
+  agentId: string;
+  hostname: string;
+  osType: string;
+  status: string;
+};
+
 type TaskItem = {
-  id: number;
+  id: string;
   endpointId: string;
   endpointName: string;
   endpointOS: 'Windows' | 'Mac' | 'Linux';
   name: string;
   status: 'SUCCESS' | 'FAILED' | 'PENDING' | 'IN_PROGRESS';
-  createdBy: string;
+  errorMessage?: string;
   lastUpdated: string;
   createdOn: string;
 };
 
-const mockDeployedItems: DeployedItem[] = [
-  {
-    id: '1',
-    deploymentId: 'ADR-007',
-    name: 'Test3',
-    type: 'INSTALL',
-    stage: 'COMPLETED',
-    pending: { current: 0, total: 1 },
-    succeeded: { current: 1, total: 1 },
-    failed: { current: 0, total: 1 },
-    createdBy: 'Abhijeet Tiwari',
-    createdOn: '2025/12/02 11:13:44 AM',
-  },
-  {
-    id: '2',
-    deploymentId: 'ADR-006',
-    name: 'Test2',
-    type: 'INSTALL',
-    stage: 'COMPLETED',
-    pending: { current: 0, total: 1 },
-    succeeded: { current: 1, total: 1 },
-    failed: { current: 0, total: 1 },
-    createdBy: 'Abhijeet Tiwari',
-    createdOn: '2025/12/02 11:11:07 AM',
-  },
-  {
-    id: '3',
-    deploymentId: 'ADR-005',
-    name: 'TEST1',
-    type: 'INSTALL',
-    stage: 'COMPLETED',
-    pending: { current: 0, total: 1 },
-    succeeded: { current: 1, total: 1 },
-    failed: { current: 0, total: 1 },
-    createdBy: 'Abhijeet Tiwari',
-    createdOn: '2025/12/01 12:00:31 PM',
-  },
-  {
-    id: '4',
-    deploymentId: 'ADR-004',
-    name: 'TEST',
-    type: 'INSTALL',
-    stage: 'COMPLETED',
-    pending: { current: 0, total: 1 },
-    succeeded: { current: 0, total: 1 },
-    failed: { current: 1, total: 1 },
-    createdBy: 'Abhijeet Tiwari',
-    createdOn: '2025/12/01 11:56:33 AM',
-  },
-  {
-    id: '5',
-    deploymentId: 'ADR-003',
-    name: 'TEST',
-    type: 'INSTALL',
-    stage: 'COMPLETED',
-    pending: { current: 0, total: 1 },
-    succeeded: { current: 0, total: 1 },
-    failed: { current: 1, total: 1 },
-    createdBy: 'Abhijeet Tiwari',
-    createdOn: '2025/12/01 11:54:12 AM',
-  },
-];
+// Helper to convert API deployment to display type
+const convertDeployment = (d: SoftwareDeployment): DeployedItem => ({
+  id: d.id,
+  deploymentId: d.deploymentId,
+  name: d.name,
+  type: d.type.toUpperCase() as 'INSTALL' | 'UNINSTALL' | 'UPGRADE',
+  stage: d.stage as DeployedItem['stage'],
+  pending: { current: d.pending, total: d.total },
+  succeeded: { current: d.succeeded, total: d.total },
+  failed: { current: d.failed, total: d.total },
+  createdBy: d.createdBy || 'System',
+  createdOn: new Date(d.createdAt).toLocaleString(),
+});
 
-// Mock applications - these would come from the catalog
-const mockApplications: ApplicationItem[] = [
-  { key: '1', deploymentId: 'SWP-017', title: 'TightVNC', os: ['Windows'], architecture: 'x64' },
-  { key: '2', deploymentId: 'SWP-016', title: 'Google Chrome', os: ['Linux'], architecture: 'x64' },
-  { key: '3', deploymentId: 'SWP-015', title: 'TEST', os: ['Windows'], architecture: 'x64' },
-  { key: '4', deploymentId: 'SWP-014', title: 'Zoom desktop client', os: ['Windows'], architecture: 'x64' },
-  { key: '5', deploymentId: 'SWP-013', title: 'WinRAR', os: ['Windows'], architecture: 'x64' },
-  { key: '6', deploymentId: 'SWP-012', title: 'VLC For Mac', os: ['Mac'], architecture: 'x64' },
-  { key: '7', deploymentId: 'SWP-011', title: 'VLC', os: ['Windows'], architecture: 'x64' },
-  { key: '8', deploymentId: 'SWP-010', title: 'Slack Windows', os: ['Windows'], architecture: 'x64' },
-  { key: '9', deploymentId: 'SWP-009', title: 'O365 Mac', os: ['Mac'], architecture: 'x64' },
-  { key: '10', deploymentId: 'SWP-008', title: 'O365 Windows', os: ['Windows'], architecture: 'x64' },
-  { key: '11', deploymentId: 'SWP-007', title: 'Notepad++', os: ['Windows'], architecture: 'x64' },
-  { key: '12', deploymentId: 'SWP-006', title: 'Microsoft Teams', os: ['Windows'], architecture: 'x64' },
-  { key: '13', deploymentId: 'SWP-005', title: 'Firefox', os: ['Windows'], architecture: 'x64' },
-  { key: '14', deploymentId: 'SWP-004', title: 'Adobe Reader', os: ['Windows'], architecture: 'x64' },
-  { key: '15', deploymentId: 'SWP-003', title: '7-Zip', os: ['Windows'], architecture: 'x64' },
-  { key: '16', deploymentId: 'SWP-002', title: 'Visual Studio Code', os: ['Windows', 'Mac'], architecture: 'x64' },
-  { key: '17', deploymentId: 'SWP-001', title: 'Docker Desktop', os: ['Windows', 'Mac'], architecture: 'x64' },
-];
+// Helper to convert package to application item
+const convertPackage = (p: SoftwarePackage): ApplicationItem => ({
+  key: p.id,
+  id: p.id,
+  deploymentId: p.packageId,
+  title: p.displayName,
+  os: [p.platform === 'macos' ? 'Mac' : p.platform === 'windows' ? 'Windows' : 'Linux'],
+  architecture: p.architecture || 'x64',
+  installSource: p.installSource,
+});
 
-// Mock bundles - these would come from the bundle page
-const mockBundles: BundleItem[] = [
-  { key: 'b1', bundleId: 'BND-001', name: 'HR Team Bundle', os: ['Windows'] },
-  { key: 'b2', bundleId: 'BND-002', name: 'Development Tools', os: ['Windows', 'Mac'] },
-  { key: 'b3', bundleId: 'BND-003', name: 'Productivity Suite', os: ['Windows', 'Mac', 'Linux'] },
-  { key: 'b4', bundleId: 'BND-004', name: 'Design Tools', os: ['Mac'] },
-  { key: 'b5', bundleId: 'BND-005', name: 'Communication Tools', os: ['Windows', 'Mac'] },
-];
+// Helper to convert bundle to bundle item
+const convertBundle = (b: HubBundle): BundleItem => ({
+  key: b.id,
+  bundleId: b.bundleId,
+  name: b.name,
+  os: [b.platform === 'macos' ? 'Mac' : b.platform === 'windows' ? 'Windows' : 'Linux'],
+});
 
-// Mock tasks for deployments - these would come from API
-const getMockTasksForDeployment = (_deploymentId: string): TaskItem[] => {
-  return [
-    {
-      id: 62,
-      endpointId: 'EP-001',
-      endpointName: 'K TightVNC',
-      endpointOS: 'Windows',
-      name: 'TightVNC Installation',
-      status: 'SUCCESS',
-      createdBy: 'Abhijeet Tiwari',
-      lastUpdated: '2025/12/02 11:13:56 AM',
-      createdOn: '2025/12/02 11:13:44 AM',
-    },
-    // Add more mock tasks as needed
-  ];
-};
+// Helper to convert task to display type
+const convertTask = (t: SoftwareDeploymentTask): TaskItem => ({
+  id: t.id,
+  endpointId: t.agentId,
+  endpointName: t.agentName || t.agentId,
+  endpointOS: (t.agentOs === 'darwin' ? 'Mac' : t.agentOs === 'windows' ? 'Windows' : 'Linux') as TaskItem['endpointOS'],
+  name: t.packageName,
+  status: (t.status === 'completed' ? 'SUCCESS' : t.status === 'failed' ? 'FAILED' : t.status === 'in_progress' ? 'IN_PROGRESS' : 'PENDING') as TaskItem['status'],
+  errorMessage: t.errorMessage,
+  lastUpdated: t.updatedAt ? new Date(t.updatedAt).toLocaleString() : '-',
+  createdOn: new Date(t.createdAt).toLocaleString(),
+});
+
+// API data will be loaded into state
 
 export const SoftwareJobsDeployed = () => {
   const [searchText, setSearchText] = useState('');
-  const [deployedItems, setDeployedItems] = useState<DeployedItem[]>(mockDeployedItems);
+  const [deployedItems, setDeployedItems] = useState<DeployedItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [form] = Form.useForm();
@@ -206,28 +163,139 @@ export const SoftwareJobsDeployed = () => {
   const [tasksSearchText, setTasksSearchText] = useState('');
   const [tasksFilter, setTasksFilter] = useState('All');
 
-  const handleView = (record: DeployedItem) => {
-    setSelectedDeployment(record);
-    // Fetch tasks for this deployment
-    const deploymentTasks = getMockTasksForDeployment(record.deploymentId);
-    setTasks(deploymentTasks);
-    setTasksModalVisible(true);
-    setTasksSearchText('');
-    setTasksFilter('All');
+  // API data state
+  const [applications, setApplications] = useState<ApplicationItem[]>([]);
+  const [bundles, setBundles] = useState<BundleItem[]>([]);
+  const [agents, setAgents] = useState<AgentItem[]>([]);
+  const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
+
+  // Rollback state
+  const [rollbackLoading, setRollbackLoading] = useState<string | null>(null);
+
+  // Handle rollback for a task
+  const handleRollback = async (task: TaskItem) => {
+    if (!selectedDeployment) return;
+
+    Modal.confirm({
+      title: 'Confirm Rollback',
+      content: (
+        <div>
+          <p>Are you sure you want to rollback this installation?</p>
+          <p><strong>Endpoint:</strong> {task.endpointName}</p>
+          <p><strong>Package:</strong> {task.name}</p>
+          <p style={{ color: '#ff4d4f', fontSize: 12 }}>
+            This will attempt to uninstall or revert to the previous version.
+          </p>
+        </div>
+      ),
+      okText: 'Rollback',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        setRollbackLoading(task.id);
+        try {
+          const result = await softwareJobsService.triggerRollback(
+            selectedDeployment.deploymentId,
+            task.id,
+            { force: false }
+          );
+          message.success(`Rollback initiated (Command ID: ${result.commandId.slice(0, 8)}...)`);
+          // Refresh tasks to show updated status
+          await fetchTasks(selectedDeployment.deploymentId);
+        } catch (error: any) {
+          console.error('Failed to trigger rollback:', error);
+          message.error(error.response?.data?.message || 'Failed to trigger rollback');
+        } finally {
+          setRollbackLoading(null);
+        }
+      },
+    });
   };
 
-  const handleRefresh = async () => {
+  // Fetch deployments from API
+  const fetchDeployments = useCallback(async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // In real implementation, fetch data from API
-      message.success('Data refreshed successfully');
+      const data = await softwareJobsService.listDeployments();
+      setDeployedItems(data.map(convertDeployment));
     } catch (error) {
-      message.error('Failed to refresh data');
+      console.error('Failed to fetch deployments:', error);
+      message.error('Failed to load deployments');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Fetch packages from Hub
+  const fetchPackages = useCallback(async () => {
+    try {
+      const data = await softwareJobsService.listPackages();
+      setApplications(data.map(convertPackage));
+    } catch (error) {
+      console.error('Failed to fetch packages:', error);
+    }
+  }, []);
+
+  // Fetch bundles from Hub
+  const fetchBundles = useCallback(async () => {
+    try {
+      const data = await softwareJobsService.listBundles();
+      setBundles(data.map(convertBundle));
+    } catch (error) {
+      console.error('Failed to fetch bundles:', error);
+    }
+  }, []);
+
+  // Fetch agents for target selection
+  const fetchAgents = useCallback(async () => {
+    try {
+      const data = await softwareJobsService.listAgents();
+      setAgents(data.map(a => ({
+        key: a.id,
+        id: a.id,
+        agentId: a.agentId,
+        hostname: a.hostname,
+        osType: a.osType,
+        status: a.status,
+      })));
+    } catch (error) {
+      console.error('Failed to fetch agents:', error);
+    }
+  }, []);
+
+  // Fetch tasks for a deployment
+  const fetchTasks = useCallback(async (deploymentId: string) => {
+    try {
+      const data = await softwareJobsService.getDeployment(deploymentId);
+      if (data.tasks) {
+        setTasks(data.tasks.map(convertTask));
+      }
+    } catch (error) {
+      console.error('Failed to fetch tasks:', error);
+      message.error('Failed to load tasks');
+    }
+  }, []);
+
+  // Load data on mount
+  useEffect(() => {
+    fetchDeployments();
+    fetchPackages();
+    fetchBundles();
+    fetchAgents();
+  }, [fetchDeployments, fetchPackages, fetchBundles, fetchAgents]);
+
+  const handleView = async (record: DeployedItem) => {
+    setSelectedDeployment(record);
+    setTasksModalVisible(true);
+    setTasksSearchText('');
+    setTasksFilter('All');
+    // Fetch tasks for this deployment
+    await fetchTasks(record.deploymentId);
+  };
+
+  const handleRefresh = async () => {
+    await fetchDeployments();
+    message.success('Data refreshed successfully');
   };
 
   const handleExport = () => {
@@ -291,42 +359,55 @@ export const SoftwareJobsDeployed = () => {
     setSelectedSearch('');
     setDeploymentType('install');
     setSelectionType('application');
+    setSelectedAgents([]);
   };
 
   const handleSubmit = async () => {
     try {
       await form.validateFields();
       const values = form.getFieldsValue();
-      
-      // Create new deployment
-      const newDeployment: DeployedItem = {
-        id: Date.now().toString(),
-        deploymentId: `ADR-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-        name: values.deploymentName,
-        type: deploymentType.toUpperCase() as 'INSTALL' | 'UNINSTALL' | 'UPGRADE',
-        stage: 'IN_PROGRESS',
-        pending: { current: selectedApplications.length, total: selectedApplications.length },
-        succeeded: { current: 0, total: selectedApplications.length },
-        failed: { current: 0, total: selectedApplications.length },
-        createdBy: 'Current User', // In real app, get from auth context
-        createdOn: new Date().toLocaleString('en-US', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: true,
-        }).replace(',', ''),
-      };
 
-      setDeployedItems([newDeployment, ...deployedItems]);
+      // Get selected package details
+      const selectedPackage = applications.find(a => selectedApplications.includes(a.key));
+      if (!selectedPackage && selectionType === 'application') {
+        message.error('Please select a package');
+        return;
+      }
+
+      if (selectedAgents.length === 0) {
+        message.error('Please select at least one target agent');
+        return;
+      }
+
+      // Create deployment via API
+      const result = await softwareJobsService.createDeployment({
+        name: values.deploymentName,
+        description: values.description,
+        type: deploymentType,
+        targetAgentIds: selectedAgents,
+        package: selectedPackage ? {
+          name: selectedPackage.title,
+          source: selectedPackage.installSource,
+          version: 'latest',
+        } : {
+          name: 'bundle-install',
+          source: 'bundle',
+        },
+        retryCount: parseInt(values.retryCount, 10) || 1,
+        notifyOnComplete: true,
+      });
+
+      message.success(`Deployment ${result.deploymentId} created with ${result.tasksCreated} tasks`);
       setCreateModalVisible(false);
       form.resetFields();
       setSelectedApplications([]);
-      message.success('Deployment created successfully');
-    } catch (error) {
-      console.error('Form validation failed:', error);
+      setSelectedAgents([]);
+
+      // Refresh the list
+      await fetchDeployments();
+    } catch (error: any) {
+      console.error('Failed to create deployment:', error);
+      message.error(error.response?.data?.message || 'Failed to create deployment');
     }
   };
 
@@ -338,6 +419,7 @@ export const SoftwareJobsDeployed = () => {
     setSelectedSelectedKeys([]);
     setAvailableSearch('');
     setSelectedSearch('');
+    setSelectedAgents([]);
   };
 
   const endpointsMenuItems: MenuProps['items'] = [
@@ -369,9 +451,9 @@ export const SoftwareJobsDeployed = () => {
   };
 
   // Get available and selected items (applications or bundles)
-  const currentItems = selectionType === 'application' 
-    ? mockApplications 
-    : mockBundles;
+  const currentItems = selectionType === 'application'
+    ? applications
+    : bundles;
   
   const availableItems = currentItems.filter(item => !selectedApplications.includes(item.key));
   const selectedItems = currentItems.filter(item => selectedApplications.includes(item.key));
@@ -655,14 +737,15 @@ export const SoftwareJobsDeployed = () => {
       title: 'Id',
       dataIndex: 'id',
       key: 'id',
-      sorter: (a, b) => a.id - b.id,
+      width: 100,
+      render: (id: string) => <Text code>{id.slice(0, 8)}</Text>,
     },
     {
       title: 'Endpoint',
       key: 'endpoint',
       render: (_: any, record: TaskItem) => (
         <Space>
-          <DesktopOutlined style={{ color: '#ff4d4f' }} />
+          <DesktopOutlined style={{ color: record.status === 'SUCCESS' ? '#52c41a' : record.status === 'FAILED' ? '#ff4d4f' : '#faad14' }} />
           {record.endpointOS === 'Windows' && <WindowsOutlined style={{ color: '#1890ff' }} />}
           {record.endpointOS === 'Mac' && <AppleOutlined />}
           {record.endpointOS === 'Linux' && <LinuxOutlined />}
@@ -671,7 +754,7 @@ export const SoftwareJobsDeployed = () => {
       ),
     },
     {
-      title: 'Name',
+      title: 'Package',
       dataIndex: 'name',
       key: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
@@ -680,39 +763,51 @@ export const SoftwareJobsDeployed = () => {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => {
+      render: (status: string, record: TaskItem) => {
         const colors: Record<string, string> = {
           SUCCESS: 'green',
           FAILED: 'red',
           PENDING: 'orange',
           IN_PROGRESS: 'blue',
         };
-        return <Tag color={colors[status] || 'default'}>{status}</Tag>;
+        return (
+          <Space direction="vertical" size={0}>
+            <Tag color={colors[status] || 'default'}>{status}</Tag>
+            {record.errorMessage && <Text type="danger" style={{ fontSize: 11 }}>{record.errorMessage}</Text>}
+          </Space>
+        );
       },
-    },
-    {
-      title: 'Created By',
-      dataIndex: 'createdBy',
-      key: 'createdBy',
-      render: (createdBy: string) => (
-        <Space>
-          <EyeOutlined />
-          <Text>{createdBy}</Text>
-        </Space>
-      ),
-      sorter: (a, b) => a.createdBy.localeCompare(b.createdBy),
     },
     {
       title: 'Last Updated',
       dataIndex: 'lastUpdated',
       key: 'lastUpdated',
-      sorter: (a, b) => new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime(),
     },
     {
       title: 'Created On',
       dataIndex: 'createdOn',
       key: 'createdOn',
-      sorter: (a, b) => new Date(a.createdOn).getTime() - new Date(b.createdOn).getTime(),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 100,
+      render: (_: any, record: TaskItem) => (
+        <Space>
+          {(record.status === 'FAILED' || record.status === 'SUCCESS') && (
+            <Tooltip title="Rollback installation">
+              <Button
+                type="text"
+                size="small"
+                icon={<RollbackOutlined />}
+                loading={rollbackLoading === record.id}
+                onClick={() => handleRollback(record)}
+                style={{ color: record.status === 'FAILED' ? '#ff4d4f' : '#faad14' }}
+              />
+            </Tooltip>
+          )}
+        </Space>
+      ),
     },
   ];
 
@@ -728,7 +823,7 @@ export const SoftwareJobsDeployed = () => {
         Endpoint: task.endpointName,
         Name: task.name,
         Status: task.status,
-        'Created By': task.createdBy,
+        'Error': task.errorMessage || '',
         'Last Updated': task.lastUpdated,
         'Created On': task.createdOn,
       }));
@@ -916,10 +1011,35 @@ export const SoftwareJobsDeployed = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item name="endpoints" label="Endpoints">
-            <Select placeholder="Please Select" style={{ width: '100%' }}>
-              <Option value="endpoint1">Endpoint 1</Option>
-              <Option value="endpoint2">Endpoint 2</Option>
+          <Form.Item
+            name="endpoints"
+            label={
+              <span>
+                Target Agents <Text type="danger">*</Text>
+              </span>
+            }
+            rules={[{ required: true, message: 'Please select target agents' }]}
+          >
+            <Select
+              mode="multiple"
+              placeholder="Select target agents"
+              style={{ width: '100%' }}
+              value={selectedAgents}
+              onChange={setSelectedAgents}
+              optionFilterProp="children"
+              showSearch
+            >
+              {agents.map(agent => (
+                <Option key={agent.id} value={agent.id}>
+                  <Space>
+                    {agent.osType === 'windows' && <WindowsOutlined style={{ color: '#1890ff' }} />}
+                    {agent.osType === 'darwin' && <AppleOutlined />}
+                    {agent.osType === 'linux' && <LinuxOutlined />}
+                    {agent.hostname} ({agent.agentId})
+                    <Tag color={agent.status === 'online' ? 'green' : 'orange'}>{agent.status}</Tag>
+                  </Space>
+                </Option>
+              ))}
             </Select>
           </Form.Item>
 
@@ -1077,10 +1197,9 @@ export const SoftwareJobsDeployed = () => {
             </Dropdown>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
-            <Button icon={<ReloadOutlined />} onClick={() => {
+            <Button icon={<ReloadOutlined />} onClick={async () => {
               if (selectedDeployment) {
-                const deploymentTasks = getMockTasksForDeployment(selectedDeployment.deploymentId);
-                setTasks(deploymentTasks);
+                await fetchTasks(selectedDeployment.deploymentId);
                 message.success('Tasks refreshed successfully');
               }
             }}>

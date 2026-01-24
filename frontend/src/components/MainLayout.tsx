@@ -252,6 +252,11 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
 
   const settingsMenuItems: MenuItem[] = [
     {
+      key: 'software-hub',
+      icon: <AppstoreOutlined />,
+      label: 'Software Hub',
+    },
+    {
       key: 'user-management',
       icon: <UserOutlined />,
       label: 'User Management',
@@ -458,6 +463,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     // Discovery - now under Settings
     else if (key === 'discovery-ip-discovery') navigate('/discovery/ip-discovery');
     else if (key === 'discovery-device-credentials') navigate('/discovery/device-credentials');
+    // Software Hub
+    else if (key === 'software-hub') navigate('/hub');
     // Settings - User Management sub-menus
     else if (key === 'user-management-organization') navigate('/settings/user-management/organization');
     else if (key === 'user-management-department') navigate('/settings/user-management/department');
@@ -561,6 +568,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     if (location.pathname.startsWith('/assets')) return ['/assets'];
     if (location.pathname.startsWith('/vulnerability')) return ['/vulnerability'];
     if (location.pathname.startsWith('/jobs')) return ['/jobs'];
+    if (location.pathname.startsWith('/hub')) return ['/settings'];
     if (location.pathname.startsWith('/settings')) return ['/settings'];
     return [location.pathname];
   };
@@ -627,6 +635,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     if (location.pathname === '/settings/patch-management/computer-groups') return ['patch-management-computer-groups'];
     if (location.pathname === '/settings/patch-management/patch-preferences') return ['patch-management-patch-preferences'];
     if (location.pathname === '/settings/patch-management/distribution-server') return ['patch-management-distribution-server'];
+    // Software Hub
+    if (location.pathname === '/hub') return ['software-hub'];
     // Settings
     if (location.pathname === '/settings/system-settings') return ['system-settings'];
     if (location.pathname === '/settings/vulnerability-preference') return ['vulnerability-preference'];
@@ -653,7 +663,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     if (location.pathname.startsWith('/jobs')) {
       return { title: 'Jobs', items: jobsMenuItems };
     }
-    if (location.pathname.startsWith('/discovery') || location.pathname.startsWith('/settings')) {
+    if (location.pathname.startsWith('/hub') || location.pathname.startsWith('/discovery') || location.pathname.startsWith('/settings')) {
       return { title: 'Settings', items: settingsMenuItems };
     }
     return null;

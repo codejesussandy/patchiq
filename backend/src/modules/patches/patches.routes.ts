@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '@middleware/auth';
 import { validateBody, validateQuery, validateParams } from '@middleware/validation';
 import * as controller from './patches.controller';
+import { deploymentController } from '@modules/deployments';
 import {
   createPatchSchema,
   updatePatchSchema,
@@ -158,6 +159,49 @@ router.post(
 // ============================================
 
 const deploymentsRouter = Router();
+
+// ============================================
+// Software Deployment Routes (MUST be before /:id routes)
+// ============================================
+
+// GET /v1/deployments/software - List software deployments
+deploymentsRouter.get(
+  '/software',
+  authenticate,
+  deploymentController.listSoftwareDeployments.bind(deploymentController)
+);
+
+// POST /v1/deployments/software - Create software deployment
+deploymentsRouter.post(
+  '/software',
+  authenticate,
+  deploymentController.createSoftwareDeployment.bind(deploymentController)
+);
+
+// GET /v1/deployments/software/:deploymentId - Get software deployment status
+deploymentsRouter.get(
+  '/software/:deploymentId',
+  authenticate,
+  deploymentController.getSoftwareDeploymentStatus.bind(deploymentController)
+);
+
+// POST /v1/deployments/software/:deploymentId/cancel - Cancel software deployment
+deploymentsRouter.post(
+  '/software/:deploymentId/cancel',
+  authenticate,
+  deploymentController.cancelSoftwareDeployment.bind(deploymentController)
+);
+
+// POST /v1/deployments/software/:deploymentId/tasks/:taskId/rollback - Trigger rollback
+deploymentsRouter.post(
+  '/software/:deploymentId/tasks/:taskId/rollback',
+  authenticate,
+  deploymentController.triggerRollback.bind(deploymentController)
+);
+
+// ============================================
+// Patch Deployment Routes
+// ============================================
 
 // GET /v1/deployments - List deployments
 deploymentsRouter.get(

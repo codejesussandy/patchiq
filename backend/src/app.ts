@@ -19,6 +19,7 @@ import { dashboardRoutes } from '@modules/dashboard';
 import { reportsRoutes } from '@modules/reports';
 import { settingsRoutes } from '@modules/settings';
 import { patchRepositoryRoutes } from '@modules/patch-repository';
+import { hubRoutes } from '@modules/hub';
 
 export function createApp(): Application {
   const app = express();
@@ -158,6 +159,9 @@ export function createApp(): Application {
 
   // Patch Repository routes (Central patch storage with MinIO)
   app.use(`/${config.apiVersion}/patch-repository`, patchRepositoryRoutes);
+
+  // Hub routes (Software package repository with MinIO)
+  app.use(`/${config.apiVersion}/hub`, hubRoutes);
 
   // Tags routes (included in assets module)
 

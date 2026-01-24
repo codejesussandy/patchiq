@@ -18,6 +18,19 @@ import (
 	"github.com/patchify/agent/internal/models"
 )
 
+// JobHistoryEntry represents a completed job/command
+type JobHistoryEntry struct {
+	ID           string      `json:"id"`
+	Type         string      `json:"type"`
+	Payload      interface{} `json:"payload,omitempty"`
+	Status       string      `json:"status"` // completed, failed, in_progress
+	Result       string      `json:"result,omitempty"`
+	ErrorMessage string      `json:"errorMessage,omitempty"`
+	StartedAt    time.Time   `json:"startedAt"`
+	CompletedAt  time.Time   `json:"completedAt,omitempty"`
+	Duration     string      `json:"duration,omitempty"`
+}
+
 // Manager handles communication with the PatchIQ backend
 type Manager struct {
 	config     *config.Config
@@ -34,6 +47,11 @@ type Manager struct {
 	startTime        time.Time
 	consecutiveErrors int
 
+	// Job tracking
+	jobHistory     []JobHistoryEntry
+	activeJobs     map[string]*JobHistoryEntry
+	maxJobHistory  int
+
 	stopCh chan struct{}
 	wg     sync.WaitGroup
 }
@@ -41,12 +59,15 @@ type Manager struct {
 // New creates a new backend manager
 func New(cfg *config.Config, cm *collectors.CollectorManager, em *executors.ExecutorManager) *Manager {
 	return &Manager{
-		config:     cfg,
-		client:     client.New(cfg.ServerURL, "1.0.0"),
-		collectors: cm,
-		executors:  em,
-		startTime:  time.Now(),
-		stopCh:     make(chan struct{}),
+		config:        cfg,
+		client:        client.New(cfg.ServerURL, "1.0.0"),
+		collectors:    cm,
+		executors:     em,
+		startTime:     time.Now(),
+		stopCh:        make(chan struct{}),
+		jobHistory:    make([]JobHistoryEntry, 0),
+		activeJobs:    make(map[string]*JobHistoryEntry),
+		maxJobHistory: 100, // Keep last 100 jobs
 	}
 }
 
@@ -402,6 +423,19 @@ func (m *Manager) fetchAndExecuteCommands() {
 }
 
 func (m *Manager) executeCommand(cmd client.PendingCommand) {
+	// Start tracking this job
+	job := &JobHistoryEntry{
+		ID:        cmd.ID,
+		Type:      cmd.Type,
+		Payload:   cmd.Payload,
+		Status:    "in_progress",
+		StartedAt: time.Now(),
+	}
+
+	m.mu.Lock()
+	m.activeJobs[cmd.ID] = job
+	m.mu.Unlock()
+
 	result := &client.CommandResultRequest{
 		Status: "completed",
 	}
@@ -480,10 +514,24 @@ func (m *Manager) executeCommand(cmd client.PendingCommand) {
 			result.Status = "failed"
 			result.ErrorMessage = "Invalid payload: " + err.Error()
 		} else {
+			// Create rollback info before installation
+			rollbackInfo, _ := m.executors.Rollback().CreateRollbackInfoForInstall(
+				params.Name, params.Source, cmd.ID, m.executors.Software())
+
+			// Execute installation
 			execResult := m.executors.Software().InstallSoftware(params)
 			result.Status = boolToStatus(execResult.Success)
 			result.Result = execResult.Message
 			result.ErrorMessage = execResult.ErrorMessage
+
+			// Save rollback info if installation succeeded
+			if execResult.Success && rollbackInfo != nil {
+				// Get installed version
+				if version, err := m.executors.Software().GetInstalledVersion(params.Name); err == nil {
+					rollbackInfo.InstalledVersion = version
+				}
+				m.executors.Rollback().SaveRollbackInfo(*rollbackInfo)
+			}
 		}
 
 	case "software_uninstall":
@@ -498,6 +546,32 @@ func (m *Manager) executeCommand(cmd client.PendingCommand) {
 			result.Status = boolToStatus(execResult.Success)
 			result.Result = execResult.Message
 			result.ErrorMessage = execResult.ErrorMessage
+		}
+
+	// Rollback commands
+	case "rollback_execute":
+		var params struct {
+			RollbackID string `json:"rollbackId"`
+			Force      bool   `json:"force"`
+		}
+		if err := parsePayload(cmd.Payload, &params); err != nil {
+			result.Status = "failed"
+			result.ErrorMessage = "Invalid payload: " + err.Error()
+		} else {
+			execResult := m.executors.Rollback().ExecuteRollback(params.RollbackID, params.Force)
+			result.Status = boolToStatus(execResult.Success)
+			result.Result = execResult.Message
+			result.ErrorMessage = execResult.ErrorMessage
+		}
+
+	case "rollback_list":
+		rollbacks, err := m.executors.Rollback().ListRollbackInfo()
+		if err != nil {
+			result.Status = "failed"
+			result.ErrorMessage = err.Error()
+		} else {
+			rollbackJSON, _ := json.Marshal(rollbacks)
+			result.Result = string(rollbackJSON)
 		}
 
 	// Remote access commands
@@ -547,6 +621,24 @@ func (m *Manager) executeCommand(cmd client.PendingCommand) {
 	if err := m.client.ReportCommandResult(cmd.ID, result); err != nil {
 		log.Printf("Failed to report command result: %v", err)
 	}
+
+	// Update job history
+	m.mu.Lock()
+	job.Status = result.Status
+	job.Result = result.Result
+	job.ErrorMessage = result.ErrorMessage
+	job.CompletedAt = time.Now()
+	job.Duration = formatDuration(job.CompletedAt.Sub(job.StartedAt))
+
+	// Move from active to history
+	delete(m.activeJobs, cmd.ID)
+	m.jobHistory = append([]JobHistoryEntry{*job}, m.jobHistory...)
+
+	// Trim history if needed
+	if len(m.jobHistory) > m.maxJobHistory {
+		m.jobHistory = m.jobHistory[:m.maxJobHistory]
+	}
+	m.mu.Unlock()
 }
 
 // parsePayload converts command payload to typed struct
@@ -596,6 +688,62 @@ type Status struct {
 	LastTelemetry     time.Time
 	LastError         string
 	ConsecutiveErrors int
+}
+
+// JobsStatus represents the current jobs status
+type JobsStatus struct {
+	ActiveJobs   []JobHistoryEntry `json:"activeJobs"`
+	JobHistory   []JobHistoryEntry `json:"jobHistory"`
+	TotalPending int               `json:"totalPending"`
+	TotalRunning int               `json:"totalRunning"`
+}
+
+// GetJobsStatus returns the current jobs status
+func (m *Manager) GetJobsStatus() *JobsStatus {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	activeJobs := make([]JobHistoryEntry, 0, len(m.activeJobs))
+	for _, job := range m.activeJobs {
+		activeJobs = append(activeJobs, *job)
+	}
+
+	historyCopy := make([]JobHistoryEntry, len(m.jobHistory))
+	copy(historyCopy, m.jobHistory)
+
+	return &JobsStatus{
+		ActiveJobs:   activeJobs,
+		JobHistory:   historyCopy,
+		TotalRunning: len(activeJobs),
+	}
+}
+
+// GetRollbacks returns available rollback options
+func (m *Manager) GetRollbacks() ([]models.RollbackInfo, error) {
+	return m.executors.Rollback().ListRollbackInfo()
+}
+
+// ExecuteRollback executes a rollback operation
+func (m *Manager) ExecuteRollback(rollbackID string, force bool) models.ExecutionResult {
+	return m.executors.Rollback().ExecuteRollback(rollbackID, force)
+}
+
+// formatDuration formats a duration for display
+func formatDuration(d time.Duration) string {
+	if d < time.Second {
+		return fmt.Sprintf("%dms", d.Milliseconds())
+	}
+	if d < time.Minute {
+		return fmt.Sprintf("%.1fs", d.Seconds())
+	}
+	if d < time.Hour {
+		m := int(d.Minutes())
+		s := int(d.Seconds()) % 60
+		return fmt.Sprintf("%dm %ds", m, s)
+	}
+	h := int(d.Hours())
+	m := int(d.Minutes()) % 60
+	return fmt.Sprintf("%dh %dm", h, m)
 }
 
 // Helper functions

@@ -437,6 +437,7 @@ export class AgentsService {
 
   /**
    * Update command result
+   * This also syncs the result to any associated deployment tasks
    */
   async updateCommandResult(commandId: string, input: CommandResultInput): Promise<void> {
     const command = await prisma.agentCommand.findUnique({
@@ -447,14 +448,27 @@ export class AgentsService {
       throw new NotFoundError('Command not found');
     }
 
+    // Update the command
     await prisma.agentCommand.update({
       where: { id: commandId },
       data: {
         status: input.status,
-        result: input.result || input.errorMessage,
+        result: input.result as Prisma.InputJsonValue | undefined,
+        errorMessage: input.errorMessage || undefined,
         executedAt: new Date(),
         completedAt: new Date(),
       },
+    });
+
+    // Sync result to deployment tasks
+    // Import dynamically to avoid circular dependency
+    const { deploymentExecutorService } = await import('@modules/deployments');
+    await deploymentExecutorService.processCommandResult({
+      commandId,
+      status: input.status as 'in_progress' | 'completed' | 'failed',
+      result: input.result as Record<string, unknown> | undefined,
+      errorMessage: input.errorMessage,
+      output: typeof input.result === 'string' ? input.result : undefined,
     });
   }
 
@@ -983,6 +997,87 @@ export class AgentsService {
         timestamp: new Date(telemetry.collectedAt),
       },
     });
+  }
+
+  /**
+   * Create a command for an agent
+   * This is the core method used by deployment executors to queue commands
+   */
+  async createCommand(
+    agentId: string,
+    type: string,
+    payload?: Record<string, unknown>,
+    scheduledAt?: Date
+  ): Promise<{ id: string; type: string; status: string }> {
+    const agent = await prisma.agent.findUnique({
+      where: { id: agentId },
+    });
+
+    if (!agent) {
+      throw new NotFoundError('Agent not found');
+    }
+
+    const command = await prisma.agentCommand.create({
+      data: {
+        agentId,
+        type,
+        payload: (payload || {}) as Prisma.InputJsonValue,
+        status: 'pending',
+        scheduledAt: scheduledAt || new Date(),
+      },
+    });
+
+    return {
+      id: command.id,
+      type: command.type,
+      status: command.status,
+    };
+  }
+
+  /**
+   * Create multiple commands for multiple agents (batch operation)
+   * Returns map of agentId -> commandId for linking to deployment tasks
+   */
+  async createBatchCommands(
+    commands: Array<{
+      agentId: string;
+      type: string;
+      payload?: Record<string, unknown>;
+    }>
+  ): Promise<Map<string, string>> {
+    const results = new Map<string, string>();
+
+    // Verify all agents exist
+    const agentIds = [...new Set(commands.map(c => c.agentId))];
+    const agents = await prisma.agent.findMany({
+      where: { id: { in: agentIds } },
+      select: { id: true },
+    });
+
+    const existingAgentIds = new Set(agents.map(a => a.id));
+    const missingAgents = agentIds.filter(id => !existingAgentIds.has(id));
+
+    if (missingAgents.length > 0) {
+      throw new NotFoundError(`Agents not found: ${missingAgents.join(', ')}`);
+    }
+
+    // Create commands in a transaction
+    await prisma.$transaction(async (tx) => {
+      for (const cmd of commands) {
+        const command = await tx.agentCommand.create({
+          data: {
+            agentId: cmd.agentId,
+            type: cmd.type,
+            payload: (cmd.payload || {}) as Prisma.InputJsonValue,
+            status: 'pending',
+            scheduledAt: new Date(),
+          },
+        });
+        results.set(cmd.agentId, command.id);
+      }
+    });
+
+    return results;
   }
 
   /**

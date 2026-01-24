@@ -140,3 +140,40 @@ import { config } from '@config/index';         // src/config/
 
 - Scalar API docs: http://localhost:3000/api-docs (when backend running)
 - `make api-endpoints` - Quick endpoint reference
+
+---
+
+## Implementation Task Tracking
+
+**IMPORTANT:** Before starting any implementation work on agent deployment, software installation, patching, or hub management features, you MUST:
+
+1. **Read the task document:** `/IMPLEMENTATION_TASKS.md`
+2. **Follow the task order:** Complete tasks in the order specified (Phase 1 → Phase 2 → etc.)
+3. **Update task status:** Mark tasks as IN_PROGRESS when starting, COMPLETED when done
+4. **Test before proceeding:** Each task must be tested and verified working before moving to the next
+5. **Don't skip phases:** Dependencies exist between phases
+
+### Two UI Systems
+
+- **Agent UI** (localhost:8080): Local web UI embedded in Go agent binary. Shows detailed, frequent updates about the local endpoint. More in-depth monitoring and job status.
+- **PatchIQ UI** (localhost:5173): Central management platform. Overview of all agents, deployments, and system-wide status.
+
+### Current Implementation Focus
+
+The deployment execution engine connects:
+1. User creates deployment in PatchIQ UI
+2. Backend creates `SoftwareDeployment` + `SoftwareDeploymentTask` records
+3. Backend creates `AgentCommand` records for each target agent
+4. Agent picks up commands on heartbeat and executes
+5. Agent reports results back
+6. Backend updates task status
+7. Agent UI shows detailed local progress
+8. PatchIQ UI shows aggregate deployment status
+
+### Key Models for Deployment
+
+```
+SoftwareDeployment (1) → (many) SoftwareDeploymentTask
+SoftwareDeploymentTask (1) → (1) AgentCommand (via commandId field)
+AgentCommand → Agent executes → Reports result
+```

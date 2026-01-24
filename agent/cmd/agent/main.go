@@ -338,3 +338,82 @@ func (a *BackendAdapter) GetStatus() *server.BackendStatusInfo {
 		ConsecutiveErrors: status.ConsecutiveErrors,
 	}
 }
+
+func (a *BackendAdapter) GetJobsStatus() *server.JobsStatus {
+	jobsStatus := a.mgr.GetJobsStatus()
+	if jobsStatus == nil {
+		return nil
+	}
+
+	// Convert backend.JobHistoryEntry to server.JobHistoryEntry
+	activeJobs := make([]server.JobHistoryEntry, len(jobsStatus.ActiveJobs))
+	for i, job := range jobsStatus.ActiveJobs {
+		activeJobs[i] = server.JobHistoryEntry{
+			ID:           job.ID,
+			Type:         job.Type,
+			Payload:      job.Payload,
+			Status:       job.Status,
+			Result:       job.Result,
+			ErrorMessage: job.ErrorMessage,
+			StartedAt:    job.StartedAt,
+			CompletedAt:  job.CompletedAt,
+			Duration:     job.Duration,
+		}
+	}
+
+	jobHistory := make([]server.JobHistoryEntry, len(jobsStatus.JobHistory))
+	for i, job := range jobsStatus.JobHistory {
+		jobHistory[i] = server.JobHistoryEntry{
+			ID:           job.ID,
+			Type:         job.Type,
+			Payload:      job.Payload,
+			Status:       job.Status,
+			Result:       job.Result,
+			ErrorMessage: job.ErrorMessage,
+			StartedAt:    job.StartedAt,
+			CompletedAt:  job.CompletedAt,
+			Duration:     job.Duration,
+		}
+	}
+
+	return &server.JobsStatus{
+		ActiveJobs:   activeJobs,
+		JobHistory:   jobHistory,
+		TotalPending: jobsStatus.TotalPending,
+		TotalRunning: jobsStatus.TotalRunning,
+	}
+}
+
+func (a *BackendAdapter) GetRollbacks() ([]server.RollbackInfo, error) {
+	rollbacks, err := a.mgr.GetRollbacks()
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert models.RollbackInfo to server.RollbackInfo
+	result := make([]server.RollbackInfo, len(rollbacks))
+	for i, r := range rollbacks {
+		result[i] = server.RollbackInfo{
+			ID:               r.ID,
+			PackageName:      r.PackageName,
+			PreviousVersion:  r.PreviousVersion,
+			InstalledVersion: r.InstalledVersion,
+			InstallSource:    r.InstallSource,
+			WasInstalled:     r.WasInstalled,
+			InstalledAt:      r.InstalledAt,
+			CommandID:        r.CommandID,
+			SupportsRollback: r.SupportsRollback,
+		}
+	}
+
+	return result, nil
+}
+
+func (a *BackendAdapter) ExecuteRollback(rollbackID string, force bool) server.ExecutionResult {
+	result := a.mgr.ExecuteRollback(rollbackID, force)
+	return server.ExecutionResult{
+		Success:      result.Success,
+		Message:      result.Message,
+		ErrorMessage: result.ErrorMessage,
+	}
+}

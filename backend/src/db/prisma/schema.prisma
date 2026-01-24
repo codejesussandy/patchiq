@@ -196,14 +196,19 @@ model AgentCommand {
   id          String    @id @default(uuid())
   agentId     String    @map("agent_id")
   agent       Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  type        String
+  type        String    // software_install, software_uninstall, patch_install, etc.
   payload     Json?
-  status      String    @default("pending")
+  status      String    @default("pending") // pending, in_progress, completed, failed
   result      Json?
+  errorMessage String?  @map("error_message")
   scheduledAt DateTime? @map("scheduled_at")
   executedAt  DateTime? @map("executed_at")
   completedAt DateTime? @map("completed_at")
   createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations to deployment tasks
+  softwareTask SoftwareDeploymentTask?
+  patchTask    PatchDeploymentTask?
 
   @@index([agentId, status])
   @@map("agent_commands")
@@ -712,12 +717,20 @@ model PatchDeploymentTask {
   deployment   PatchDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
   assetId      String          @map("asset_id")
   asset        Asset           @relation(fields: [assetId], references: [id])
-  status       String          @default("pending")
+  status       String          @default("pending") // pending, in_progress, completed, failed
+
+  // Link to agent command for tracking execution
+  commandId    String?         @unique @map("command_id")
+  command      AgentCommand?   @relation(fields: [commandId], references: [id])
+
+  // Execution details
   startedAt    DateTime?       @map("started_at")
   completedAt  DateTime?       @map("completed_at")
   errorMessage String?         @map("error_message")
+  output       String?         // Execution output/logs
 
   @@index([deploymentId, status])
+  @@index([commandId])
   @@map("patch_deployment_tasks")
 }
 
@@ -1237,6 +1250,104 @@ model VulnerabilityDBSync {
   @@map("vulnerability_db_sync")
 }
 
+// ============================================
+// Hub / Software Package Repository
+// ============================================
+
+model SoftwarePackage {
+  id              String   @id @default(uuid())
+  packageId       String   @unique @map("package_id") // e.g., "SWP-001"
+  name            String
+  displayName     String   @map("display_name")
+  version         String
+  vendor          String?
+  category        String?  // browser, utility, enterprise, runtime, security, etc.
+  platform        String   // windows, macos, linux, cross-platform
+  architecture    String?  // x64, arm64, universal
+
+  // Installation details
+  installSource   String   @map("install_source") // apt, brew, pkg, dmg, deb, rpm, msi, exe, url
+  installCommand  String?  @map("install_command") // Custom install command if needed
+  installArgs     String?  @map("install_args")    // Additional arguments
+  silentInstall   Boolean  @default(true) @map("silent_install")
+  requiresReboot  Boolean  @default(false) @map("requires_reboot")
+
+  // MinIO storage
+  minioObjectKey  String?  @map("minio_object_key")
+  minioBucket     String?  @map("minio_bucket")
+  fileName        String?  @map("file_name")
+  fileSize        BigInt?  @map("file_size")
+  checksum        String?
+  checksumType    String?  @default("sha256") @map("checksum_type")
+
+  // External URL (if not stored in MinIO)
+  downloadUrl     String?  @map("download_url")
+
+  // Metadata
+  description     String?
+  releaseNotes    String?  @map("release_notes")
+  iconUrl         String?  @map("icon_url")
+  tags            String[] @default([])
+
+  // Pre/Post scripts
+  preInstallScript   String?  @map("pre_install_script")
+  postInstallScript  String?  @map("post_install_script")
+  uninstallCommand   String?  @map("uninstall_command")
+
+  // Rollback support
+  supportsRollback   Boolean @default(false) @map("supports_rollback")
+  rollbackCommand    String? @map("rollback_command")
+
+  // Status
+  isActive        Boolean  @default(true) @map("is_active")
+  isVerified      Boolean  @default(false) @map("is_verified")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdBy       String?  @map("created_by")
+
+  // Relations
+  bundleItems     HubBundleItem[]
+
+  @@index([platform])
+  @@index([category])
+  @@index([vendor])
+  @@index([isActive])
+  @@map("software_packages")
+}
+
+model HubBundle {
+  id           String   @id @default(uuid())
+  bundleId     String   @unique @map("bundle_id")
+  name         String
+  description  String?
+  platform     String   // windows, macos, linux, cross-platform
+  createdBy    String?  @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  items HubBundleItem[]
+
+  @@index([platform])
+  @@map("hub_bundles")
+}
+
+model HubBundleItem {
+  id        String          @id @default(uuid())
+  bundleId  String          @map("bundle_id")
+  bundle    HubBundle       @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  packageId String          @map("package_id")
+  package   SoftwarePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  order     Int             @default(0) // Installation order within bundle
+
+  @@unique([bundleId, packageId])
+  @@map("hub_bundle_items")
+}
+
+// ============================================
+// Legacy Software Catalog (to be migrated)
+// ============================================
+
 model SoftwareCatalog {
   id                      String   @id @default(uuid())
   deploymentId            String   @unique @map("deployment_id")
@@ -1322,17 +1433,29 @@ model SoftwareDeploymentTask {
   id           String             @id @default(uuid())
   deploymentId String             @map("deployment_id")
   deployment   SoftwareDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-  endpointId   String?            @map("endpoint_id")
+  endpointId   String?            @map("endpoint_id")   // Agent ID
   endpointName String             @map("endpoint_name")
   endpointOs   String             @map("endpoint_os")
   itemName     String             @map("item_name")
   status       String             @default("PENDING") // SUCCESS | FAILED | PENDING | IN_PROGRESS
+
+  // Link to agent command for tracking execution
+  commandId    String?            @unique @map("command_id")
+  command      AgentCommand?      @relation(fields: [commandId], references: [id])
+
+  // Execution details
+  startedAt    DateTime?          @map("started_at")
+  completedAt  DateTime?          @map("completed_at")
+  errorMessage String?            @map("error_message")
+  output       String?            // Execution output/logs
+
   createdBy    String?            @map("created_by")
   createdAt    DateTime           @default(now()) @map("created_at")
   updatedAt    DateTime           @updatedAt @map("updated_at")
 
   @@index([deploymentId])
   @@index([status])
+  @@index([commandId])
   @@map("software_deployment_tasks")
 }
 

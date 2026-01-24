@@ -40,11 +40,28 @@ type RemoteAccessExecutor interface {
 	SetPassword(password string) models.ExecutionResult
 }
 
+// RollbackExecutor handles rollback operations
+type RollbackExecutor interface {
+	// SaveRollbackInfo stores rollback information for a software installation
+	SaveRollbackInfo(info models.RollbackInfo) error
+	// GetRollbackInfo retrieves rollback information by ID
+	GetRollbackInfo(rollbackID string) (*models.RollbackInfo, error)
+	// ListRollbackInfo returns all available rollbacks
+	ListRollbackInfo() ([]models.RollbackInfo, error)
+	// ExecuteRollback performs a rollback to previous state
+	ExecuteRollback(rollbackID string, force bool) models.ExecutionResult
+	// DeleteRollbackInfo removes a rollback entry
+	DeleteRollbackInfo(rollbackID string) error
+	// CreateRollbackInfoForInstall creates and saves rollback info before installation
+	CreateRollbackInfoForInstall(packageName, source, commandID string, software SoftwareExecutor) (*models.RollbackInfo, error)
+}
+
 // ExecutorManager provides access to all executors
 type ExecutorManager struct {
 	patch        PatchExecutor
 	software     SoftwareExecutor
 	remoteAccess RemoteAccessExecutor
+	rollback     RollbackExecutor
 }
 
 // NewExecutorManager is defined in platform-specific files:
@@ -65,4 +82,9 @@ func (em *ExecutorManager) Software() SoftwareExecutor {
 // RemoteAccess returns the remote access executor
 func (em *ExecutorManager) RemoteAccess() RemoteAccessExecutor {
 	return em.remoteAccess
+}
+
+// Rollback returns the rollback executor
+func (em *ExecutorManager) Rollback() RollbackExecutor {
+	return em.rollback
 }

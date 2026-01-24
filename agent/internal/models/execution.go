@@ -57,3 +57,23 @@ type RemoteAccessConfig struct {
 	LocalOnly    bool     `json:"localOnly"`
 	AllowedUsers []string `json:"allowedUsers,omitempty"`
 }
+
+// RollbackInfo stores information needed to rollback an installation
+type RollbackInfo struct {
+	ID               string `json:"id"`
+	PackageName      string `json:"packageName"`
+	PreviousVersion  string `json:"previousVersion,omitempty"` // Empty if was not installed
+	InstalledVersion string `json:"installedVersion"`
+	InstallSource    string `json:"installSource"` // apt, brew, etc.
+	WasInstalled     bool   `json:"wasInstalled"`  // True if package existed before
+	InstalledAt      string `json:"installedAt"`
+	CommandID        string `json:"commandId,omitempty"` // Original command that installed this
+	SupportsRollback bool   `json:"supportsRollback"`
+	RollbackCommand  string `json:"rollbackCommand,omitempty"`
+}
+
+// RollbackRequest represents a request to rollback an installation
+type RollbackRequest struct {
+	RollbackID string `json:"rollbackId"`
+	Force      bool   `json:"force"`
+}

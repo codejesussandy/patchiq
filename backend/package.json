@@ -46,6 +46,7 @@
   "dependencies": {
     "@prisma/client": "^5.10.0",
     "@scalar/express-api-reference": "^0.8.35",
+    "@types/multer": "^2.0.0",
     "archiver": "^7.0.1",
     "axios": "^1.6.7",
     "bcryptjs": "^2.4.3",
@@ -60,6 +61,7 @@
     "jsonwebtoken": "^9.0.2",
     "minio": "^8.0.0",
     "morgan": "^1.10.0",
+    "multer": "^2.0.2",
     "uuid": "^9.0.1",
     "zod": "^3.22.4"
   },

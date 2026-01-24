@@ -4,9 +4,11 @@ package executors
 
 // NewExecutorManager creates macOS-specific executors
 func NewExecutorManager() *ExecutorManager {
+	software := NewDarwinSoftwareExecutor()
 	return &ExecutorManager{
 		patch:        NewDarwinPatchExecutor(),
-		software:     NewDarwinSoftwareExecutor(),
+		software:     software,
 		remoteAccess: NewDarwinRemoteAccessExecutor(),
+		rollback:     NewBaseRollbackExecutor("", software),
 	}
 }

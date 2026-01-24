@@ -34,11 +34,55 @@ type BackendStatusInfo struct {
 	ConsecutiveErrors int
 }
 
+// JobHistoryEntry represents a completed job/command
+type JobHistoryEntry struct {
+	ID           string      `json:"id"`
+	Type         string      `json:"type"`
+	Payload      interface{} `json:"payload,omitempty"`
+	Status       string      `json:"status"`
+	Result       string      `json:"result,omitempty"`
+	ErrorMessage string      `json:"errorMessage,omitempty"`
+	StartedAt    time.Time   `json:"startedAt"`
+	CompletedAt  time.Time   `json:"completedAt,omitempty"`
+	Duration     string      `json:"duration,omitempty"`
+}
+
+// JobsStatus represents the current jobs status
+type JobsStatus struct {
+	ActiveJobs   []JobHistoryEntry `json:"activeJobs"`
+	JobHistory   []JobHistoryEntry `json:"jobHistory"`
+	TotalPending int               `json:"totalPending"`
+	TotalRunning int               `json:"totalRunning"`
+}
+
+// RollbackInfo represents information about a rollback option
+type RollbackInfo struct {
+	ID               string `json:"id"`
+	PackageName      string `json:"packageName"`
+	PreviousVersion  string `json:"previousVersion,omitempty"`
+	InstalledVersion string `json:"installedVersion"`
+	InstallSource    string `json:"installSource"`
+	WasInstalled     bool   `json:"wasInstalled"`
+	InstalledAt      string `json:"installedAt"`
+	CommandID        string `json:"commandId,omitempty"`
+	SupportsRollback bool   `json:"supportsRollback"`
+}
+
+// ExecutionResult represents the result of an execution
+type ExecutionResult struct {
+	Success      bool   `json:"success"`
+	Message      string `json:"message"`
+	ErrorMessage string `json:"errorMessage,omitempty"`
+}
+
 // BackendStatus interface for accessing backend manager status
 type BackendStatus interface {
 	IsRegistered() bool
 	GetAgentID() string
 	GetStatus() *BackendStatusInfo
+	GetJobsStatus() *JobsStatus
+	GetRollbacks() ([]RollbackInfo, error)
+	ExecuteRollback(rollbackID string, force bool) ExecutionResult
 }
 
 // Server represents the agent web server
@@ -102,6 +146,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/security", s.handleSecurity)
 	mux.HandleFunc("/peripherals", s.handlePeripherals)
 	mux.HandleFunc("/telemetry", s.handleTelemetryPage)
+	mux.HandleFunc("/jobs", s.handleJobs)
 	mux.HandleFunc("/settings", s.handleSettings)
 
 	// API routes
@@ -117,6 +162,9 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/agent", s.handleGetAgent)
 	mux.HandleFunc("/api/config", s.handleGetConfig)
 	mux.HandleFunc("/api/status", s.handleGetStatus)
+	mux.HandleFunc("/api/jobs", s.handleGetJobs)
+	mux.HandleFunc("/api/rollbacks", s.handleGetRollbacks)
+	mux.HandleFunc("/api/rollbacks/execute", s.handleExecuteRollback)
 
 	addr := fmt.Sprintf(":%d", s.config.WebUIPort)
 	log.Printf("Starting agent web UI on http://localhost%s", addr)
@@ -598,6 +646,145 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	s.jsonResponse(w, s.config)
+}
+
+func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+
+	// Get jobs data
+	var jobsData *JobsStatus
+	if s.backendMgr != nil {
+		jobsData = s.backendMgr.GetJobsStatus()
+	}
+
+	// Get rollback data
+	var rollbacks []RollbackInfo
+	if s.backendMgr != nil {
+		if rb, err := s.backendMgr.GetRollbacks(); err == nil {
+			rollbacks = rb
+		}
+	}
+
+	// Build server connection info for header
+	var serverInfo *ServerConnectionInfo
+	if s.backendMgr != nil {
+		status := s.backendMgr.GetStatus()
+		if status != nil {
+			serverInfo = &ServerConnectionInfo{
+				URL:               s.config.ServerURL,
+				Registered:        status.Registered,
+				AgentID:           status.AgentID,
+				ConsecutiveErrors: status.ConsecutiveErrors,
+			}
+			if status.Registered {
+				if status.ConsecutiveErrors > 0 {
+					serverInfo.Status = "error"
+				} else {
+					serverInfo.Status = "connected"
+				}
+			} else {
+				serverInfo.Status = "connecting"
+			}
+		}
+	}
+
+	// Count stats
+	completedCount := 0
+	failedCount := 0
+	if jobsData != nil {
+		for _, job := range jobsData.JobHistory {
+			if job.Status == "completed" {
+				completedCount++
+			} else if job.Status == "failed" {
+				failedCount++
+			}
+		}
+	}
+
+	data := struct {
+		Agent          *models.AgentInfo
+		Jobs           *JobsStatus
+		Rollbacks      []RollbackInfo
+		Server         *ServerConnectionInfo
+		CompletedCount int
+		FailedCount    int
+	}{
+		Agent:          s.agentInfo,
+		Jobs:           jobsData,
+		Rollbacks:      rollbacks,
+		Server:         serverInfo,
+		CompletedCount: completedCount,
+		FailedCount:    failedCount,
+	}
+	s.mu.RUnlock()
+
+	s.renderTemplate(w, "jobs.html", data)
+}
+
+func (s *Server) handleGetJobs(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.backendMgr == nil {
+		s.jsonResponse(w, &JobsStatus{
+			ActiveJobs: []JobHistoryEntry{},
+			JobHistory: []JobHistoryEntry{},
+		})
+		return
+	}
+
+	s.jsonResponse(w, s.backendMgr.GetJobsStatus())
+}
+
+func (s *Server) handleGetRollbacks(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.backendMgr == nil {
+		s.jsonResponse(w, []RollbackInfo{})
+		return
+	}
+
+	rollbacks, err := s.backendMgr.GetRollbacks()
+	if err != nil {
+		s.jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	s.jsonResponse(w, rollbacks)
+}
+
+func (s *Server) handleExecuteRollback(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.backendMgr == nil {
+		s.jsonError(w, "Backend not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		RollbackID string `json:"rollbackId"`
+		Force      bool   `json:"force"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.jsonError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.RollbackID == "" {
+		s.jsonError(w, "rollbackId is required", http.StatusBadRequest)
+		return
+	}
+
+	result := s.backendMgr.ExecuteRollback(req.RollbackID, req.Force)
+	s.jsonResponse(w, result)
 }
 
 func (s *Server) handleGetStatus(w http.ResponseWriter, r *http.Request) {
