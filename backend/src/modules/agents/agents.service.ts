@@ -4,6 +4,7 @@ import { NotFoundError } from '@shared/errors';
 import { generateTokenPair } from '@shared/utils/jwt';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import { getRelativeTime } from '@shared/utils/date';
+import { cveDatabase } from '@shared/services/cve-database.service';
 import type {
   RegisterAgentInput,
   HeartbeatInput,
@@ -946,6 +947,12 @@ export class AgentsService {
           rawPayload: softwareData as Prisma.InputJsonValue,
           collectedAt: new Date(),
         },
+      });
+
+      // Trigger vulnerability check for this asset (non-blocking)
+      // This matches installed software against known CVEs
+      cveDatabase.checkAssetVulnerabilities(agent.assetId).catch((err) => {
+        console.error(`[Vulnerability Check] Failed for asset ${agent.assetId}:`, err);
       });
     }
   }

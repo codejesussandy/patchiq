@@ -56,12 +56,22 @@ type RollbackExecutor interface {
 	CreateRollbackInfoForInstall(packageName, source, commandID string, software SoftwareExecutor) (*models.RollbackInfo, error)
 }
 
+// ScriptExecutor handles script-based package installation (Hub-centric approach)
+// This executor downloads bundles from the Hub and executes the appropriate script
+type ScriptExecutor interface {
+	// ExecuteBundle downloads a bundle, extracts it, and runs the specified script
+	ExecuteBundle(request models.ScriptBundleRequest) models.ExecutionResult
+	// ExecuteInlineScript runs a script directly (without bundle download)
+	ExecuteInlineScript(script string, operationType string, requiresRoot bool, env map[string]string) models.ExecutionResult
+}
+
 // ExecutorManager provides access to all executors
 type ExecutorManager struct {
 	patch        PatchExecutor
 	software     SoftwareExecutor
 	remoteAccess RemoteAccessExecutor
 	rollback     RollbackExecutor
+	script       ScriptExecutor
 }
 
 // NewExecutorManager is defined in platform-specific files:
@@ -87,4 +97,9 @@ func (em *ExecutorManager) RemoteAccess() RemoteAccessExecutor {
 // Rollback returns the rollback executor
 func (em *ExecutorManager) Rollback() RollbackExecutor {
 	return em.rollback
+}
+
+// Script returns the script executor for Hub-centric package installation
+func (em *ExecutorManager) Script() ScriptExecutor {
+	return em.script
 }

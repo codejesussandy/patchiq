@@ -119,12 +119,18 @@ export const patchService = {
   },
 
   async createDeployment(deployment: Partial<Deployment>): Promise<Deployment> {
-    const response = await api.post(`/deployments`, deployment);
-    return response.data;
+    // Use the patch deployment endpoint
+    const response = await api.post(`/deployments/patch`, deployment);
+    return response.data.data || response.data;
   },
 
   async deleteDeployment(id: string): Promise<void> {
     await api.delete(`/deployments/${id}`);
+  },
+
+  async getDeploymentTasks(id: string): Promise<any[]> {
+    const response = await api.get(`/deployments/${id}`);
+    return response.data.tasks || [];
   },
 
   async previewDeployment(id: string): Promise<any> {

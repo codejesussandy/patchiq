@@ -96,6 +96,10 @@ export const AssetDetails = () => {
   const [alertsLoading] = useState(false);
   const [alertsViewMode, setAlertsViewMode] = useState<'list' | 'grid'>('list');
 
+  // Audit log state
+  const [auditLog, setAuditLog] = useState<Array<{ key: string; date: string; user: string; action: string; changes: string }>>([]);
+  const [loadingAuditLog, setLoadingAuditLog] = useState(false);
+
   useEffect(() => {
     if (id) {
       fetchAssetDetails();
@@ -109,6 +113,7 @@ export const AssetDetails = () => {
       fetchSoftwareData();
       fetchVulnerabilitiesData();
       fetchTelemetryData();
+      fetchAuditLogData();
       setSelectedTags(asset.tagIds || []);
     }
   }, [asset]);
@@ -222,6 +227,33 @@ export const AssetDetails = () => {
       setTelemetry(null);
     } finally {
       setLoadingTelemetry(false);
+    }
+  };
+
+  const fetchAuditLogData = async () => {
+    if (!asset) return;
+    setLoadingAuditLog(true);
+    try {
+      const data = await assetService.getAssetAuditLog(asset.id);
+      setAuditLog(data.map((log, idx) => ({
+        key: log.id || String(idx),
+        date: log.createdAt ? new Date(log.createdAt).toLocaleString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: '2-digit',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        }) : '',
+        user: log.user || 'System',
+        action: log.action || '',
+        changes: log.changes || log.description || '',
+      })));
+    } catch (error) {
+      console.error('Failed to fetch audit log data:', error);
+      setAuditLog([]);
+    } finally {
+      setLoadingAuditLog(false);
     }
   };
 
@@ -2542,22 +2574,8 @@ export const AssetDetails = () => {
                 { title: 'Action', dataIndex: 'action', key: 'action' },
                 { title: 'Changes', dataIndex: 'changes', key: 'changes' },
               ]}
-              dataSource={[
-                {
-                  key: '1',
-                  date: 'May 05, 2025 3:45pm',
-                  user: 'Admin',
-                  action: 'Updated',
-                  changes: 'Status changed from Available to In Use',
-                },
-                {
-                  key: '2',
-                  date: 'Feb 14, 2022 10:00am',
-                  user: 'System',
-                  action: 'Created',
-                  changes: 'Asset created',
-                },
-              ]}
+              dataSource={auditLog}
+              loading={loadingAuditLog}
               pagination={{ pageSize: 10 }}
               size="small"
             />

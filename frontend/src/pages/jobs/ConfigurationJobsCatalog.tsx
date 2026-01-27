@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Input,
   Button,
@@ -29,6 +29,7 @@ import {
   CloseOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
+import { jobsService, type ConfigCatalogItem } from '../../services/jobs.service';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -39,80 +40,67 @@ type ConfigurationItem = {
   configurationId: string;
   name: string;
   description: string;
-  architecture: 'x64' | 'x86';
+  architecture: 'x64' | 'x86' | 'ARM64';
   os: ('Windows' | 'Mac' | 'Linux')[];
   createdBy: string;
+  configurationType?: string;
+  commandType?: string;
+  command?: string;
+  isRemediation?: boolean;
+  tags?: string[];
 };
 
-const mockConfigurationItems: ConfigurationItem[] = [
-  {
-    id: '1',
-    configurationId: 'CFG-001',
-    name: 'Turns off Automated Adobe Acrobat X Updater',
-    description: 'Disables the automatic updates of Adobe Acrobat X',
-    architecture: 'x64',
-    os: ['Windows'],
-    createdBy: 'Admin',
-  },
-  {
-    id: '2',
-    configurationId: 'CFG-002',
-    name: 'Turns off Automated Adobe Acrobat XI Updater',
-    description: 'Disables the automatic updates of Adobe Acrobat XI',
-    architecture: 'x64',
-    os: ['Windows'],
-    createdBy: 'Admin',
-  },
-  {
-    id: '3',
-    configurationId: 'CFG-003',
-    name: 'Turns off Automated Adobe Acrobat Reader DC updater',
-    description: 'Disables the automatic updates of Adobe Acrobat Reader DC',
-    architecture: 'x64',
-    os: ['Windows'],
-    createdBy: 'Admin',
-  },
-  {
-    id: '4',
-    configurationId: 'CFG-004',
-    name: 'Turns off automated Adobe AIR Updater',
-    description: 'Disables the automatic updates of Adobe AIR that is installed at the system level',
-    architecture: 'x64',
-    os: ['Windows'],
-    createdBy: 'Admin',
-  },
-  {
-    id: '5',
-    configurationId: 'CFG-005',
-    name: 'Turns off Automated Adobe Reader 10 updater',
-    description: 'Disables the automatic updates of Adobe Reader 10',
-    architecture: 'x64',
-    os: ['Windows'],
-    createdBy: 'Admin',
-  },
-  {
-    id: '6',
-    configurationId: 'CFG-006',
-    name: 'Turns off Automated Adobe Reader 11 update',
-    description: 'Disables automatic updates for Adobe Reader 11',
-    architecture: 'x64',
-    os: ['Windows'],
-    createdBy: 'Admin',
-  },
-];
+// Map API response to local type
+const mapApiToLocal = (item: ConfigCatalogItem): ConfigurationItem => ({
+  id: item.id,
+  configurationId: item.configurationId,
+  name: item.name,
+  description: item.description || '',
+  architecture: item.architecture,
+  os: [item.os],
+  createdBy: item.createdBy || 'System',
+  configurationType: item.configurationType,
+  commandType: item.commandType,
+  command: item.command,
+  isRemediation: item.isRemediation,
+  tags: item.tags,
+});
 
 export const ConfigurationJobsCatalog = () => {
   const [searchText, setSearchText] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const [configurationItems, setConfigurationItems] = useState<ConfigurationItem[]>(mockConfigurationItems);
+  const [configurationItems, setConfigurationItems] = useState<ConfigurationItem[]>([]);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<ConfigurationItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
-  const handleDelete = (id: string) => {
-    setConfigurationItems(configurationItems.filter(item => item.id !== id));
-    message.success('Configuration item deleted successfully');
+  const fetchConfigItems = async () => {
+    setLoading(true);
+    try {
+      const data = await jobsService.getConfigCatalog();
+      setConfigurationItems(data.map(mapApiToLocal));
+    } catch (error) {
+      console.error('Failed to fetch configuration items:', error);
+      message.error('Failed to load configuration items');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchConfigItems();
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await jobsService.deleteConfigCatalog(id);
+      setConfigurationItems(configurationItems.filter(item => item.id !== id));
+      message.success('Configuration item deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete configuration:', error);
+      message.error('Failed to delete configuration item');
+    }
   };
 
   const handleEdit = (id: string) => {
@@ -124,6 +112,11 @@ export const ConfigurationJobsCatalog = () => {
         description: item.description,
         architecture: item.architecture,
         os: item.os.length === 1 ? item.os[0] : item.os,
+        configurationType: item.configurationType || 'command',
+        commandType: item.commandType || 'powershell',
+        command: item.command || '',
+        isRemediation: item.isRemediation || false,
+        tags: item.tags || [],
       });
       setCreateModalVisible(true);
     }
@@ -136,58 +129,40 @@ export const ConfigurationJobsCatalog = () => {
   };
 
   const handleRefresh = async () => {
-    setLoading(true);
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // In real implementation, fetch data from API
-      message.success('Data refreshed successfully');
-    } catch (error) {
-      message.error('Failed to refresh data');
-    } finally {
-      setLoading(false);
-    }
+    await fetchConfigItems();
+    message.success('Data refreshed successfully');
   };
 
   const handleSubmit = async () => {
     try {
       await form.validateFields();
       const values = form.getFieldsValue();
-      
+
+      const apiData = {
+        name: values.name,
+        os: Array.isArray(values.os) ? values.os[0] : values.os,
+        description: values.description,
+        tags: values.tags || [],
+        configurationType: values.configurationType || 'command',
+        architecture: values.architecture || 'x64',
+        isRemediation: values.isRemediation || false,
+        commandType: values.commandType || 'powershell',
+        command: values.command || '',
+      };
+
       if (editingItem) {
-        // Update existing item
-        setConfigurationItems(
-          configurationItems.map(item =>
-            item.id === editingItem.id
-              ? {
-                  ...item,
-                  name: values.name,
-                  description: values.description,
-                  architecture: values.architecture,
-                  os: Array.isArray(values.os) ? values.os : [values.os],
-                }
-              : item
-          )
-        );
+        await jobsService.updateConfigCatalog(editingItem.id, apiData);
         message.success('Configuration item updated successfully');
       } else {
-        // Create new item
-        const newItem: ConfigurationItem = {
-          id: Date.now().toString(),
-          configurationId: `CFG-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-          name: values.name,
-          description: values.description,
-          architecture: values.architecture,
-          os: Array.isArray(values.os) ? values.os : [values.os],
-          createdBy: 'Current User', // In real app, get from auth context
-        };
-        setConfigurationItems([newItem, ...configurationItems]);
+        await jobsService.createConfigCatalog(apiData);
         message.success('Configuration item created successfully');
       }
-      
+
       handleModalClose();
+      fetchConfigItems();
     } catch (error) {
-      console.error('Form validation failed:', error);
+      console.error('Form validation/submission failed:', error);
+      message.error('Failed to save configuration item');
     }
   };
 

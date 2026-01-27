@@ -77,3 +77,49 @@ type RollbackRequest struct {
 	RollbackID string `json:"rollbackId"`
 	Force      bool   `json:"force"`
 }
+
+// ============================================
+// Script Bundle Types (Hub-Centric Approach)
+// ============================================
+
+// ScriptManifest represents the manifest.json structure inside a package bundle
+type ScriptManifest struct {
+	ID           string            `json:"id"`
+	Name         string            `json:"name"`
+	DisplayName  string            `json:"displayName"`
+	Version      string            `json:"version"`
+	Vendor       string            `json:"vendor,omitempty"`
+	Category     string            `json:"category,omitempty"`
+	Platform     string            `json:"platform"` // windows, macos, linux, cross-platform
+	Architecture string            `json:"architecture,omitempty"`
+	Description  string            `json:"description,omitempty"`
+	RequiresRoot bool              `json:"requiresRoot"`
+	RequiresReboot bool            `json:"requiresReboot"`
+	Scripts      ScriptPaths       `json:"scripts"`
+	Environment  map[string]string `json:"environment,omitempty"`
+	Dependencies []string          `json:"dependencies,omitempty"`
+	Conflicts    []string          `json:"conflicts,omitempty"`
+}
+
+// ScriptPaths contains paths to scripts within the bundle
+type ScriptPaths struct {
+	Install   string `json:"install,omitempty"`
+	Update    string `json:"update,omitempty"`
+	Rollback  string `json:"rollback,omitempty"`
+	Uninstall string `json:"uninstall,omitempty"`
+}
+
+// ScriptBundleRequest represents a request to execute a script bundle
+type ScriptBundleRequest struct {
+	OperationType string            `json:"operationType"` // install, update, rollback, uninstall
+	PackageID     string            `json:"packageId"`
+	PackageName   string            `json:"packageName"`
+	Version       string            `json:"version"`
+	BundleURL     string            `json:"bundleUrl,omitempty"`     // URL to download bundle
+	BundleChecksum string           `json:"bundleChecksum,omitempty"` // SHA256 of bundle
+	Manifest      *ScriptManifest   `json:"manifest,omitempty"`      // Manifest from backend
+	Script        string            `json:"script,omitempty"`        // Inline script (alternative to bundle)
+	RequiresRoot  bool              `json:"requiresRoot"`
+	Timeout       int               `json:"timeout,omitempty"`       // seconds
+	Environment   map[string]string `json:"environment,omitempty"`
+}

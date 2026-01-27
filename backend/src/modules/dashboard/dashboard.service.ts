@@ -117,6 +117,8 @@ export class DashboardService {
       totalAgents,
       vulnerabilityCounts,
       unmitigatedVulnerabilities,
+      exploitableCounts,
+      nonExploitableCounts,
     ] = await Promise.all([
       // Total assets/endpoints
       prisma.asset.count(),
@@ -157,6 +159,18 @@ export class DashboardService {
       prisma.assetVulnerability.count({
         where: { status: { not: 'Resolved' } },
       }),
+      // Exploitable vulnerability counts by severity
+      prisma.vulnerability.groupBy({
+        by: ['severity'],
+        where: { exploitable: true },
+        _count: true,
+      }),
+      // Non-exploitable vulnerability counts by severity
+      prisma.vulnerability.groupBy({
+        by: ['severity'],
+        where: { exploitable: false },
+        _count: true,
+      }),
     ]);
 
     // Calculate data loss endpoints (endpoints with high/critical vulnerabilities)
@@ -183,6 +197,26 @@ export class DashboardService {
 
     const totalVulnerabilities = Object.values(severityCounts).reduce((a, b) => a + b, 0);
 
+    // Map exploitable counts
+    const exploitableSeverityCounts = exploitableCounts.reduce(
+      (acc, item) => {
+        acc[item.severity.toLowerCase()] = item._count;
+        return acc;
+      },
+      { critical: 0, high: 0, medium: 0, low: 0 } as Record<string, number>
+    );
+    const exploitableTotal = Object.values(exploitableSeverityCounts).reduce((a, b) => a + b, 0);
+
+    // Map non-exploitable counts
+    const nonExploitableSeverityCounts = nonExploitableCounts.reduce(
+      (acc, item) => {
+        acc[item.severity.toLowerCase()] = item._count;
+        return acc;
+      },
+      { critical: 0, high: 0, medium: 0, low: 0 } as Record<string, number>
+    );
+    const nonExploitableTotal = Object.values(nonExploitableSeverityCounts).reduce((a, b) => a + b, 0);
+
     return {
       totalEndpoints,
       dataLossEndpoints,
@@ -196,6 +230,20 @@ export class DashboardService {
       highVulnerabilities: severityCounts.high || 0,
       mediumVulnerabilities: severityCounts.medium || 0,
       lowVulnerabilities: severityCounts.low || 0,
+      exploitableVulnerabilities: {
+        critical: exploitableSeverityCounts.critical || 0,
+        high: exploitableSeverityCounts.high || 0,
+        medium: exploitableSeverityCounts.medium || 0,
+        low: exploitableSeverityCounts.low || 0,
+        total: exploitableTotal,
+      },
+      nonExploitableVulnerabilities: {
+        critical: nonExploitableSeverityCounts.critical || 0,
+        high: nonExploitableSeverityCounts.high || 0,
+        medium: nonExploitableSeverityCounts.medium || 0,
+        low: nonExploitableSeverityCounts.low || 0,
+        total: nonExploitableTotal,
+      },
     };
   }
 

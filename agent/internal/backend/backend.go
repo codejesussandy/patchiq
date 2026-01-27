@@ -613,6 +613,78 @@ func (m *Manager) executeCommand(cmd client.PendingCommand) {
 		rebootRequired := m.executors.Patch().CheckRebootRequired()
 		result.Result = fmt.Sprintf(`{"rebootRequired":%t}`, rebootRequired)
 
+	// Script bundle commands (Hub-centric approach)
+	case "script_bundle", "hub_install", "hub_update", "hub_rollback", "hub_uninstall":
+		var params models.ScriptBundleRequest
+		if err := parsePayload(cmd.Payload, &params); err != nil {
+			result.Status = "failed"
+			result.ErrorMessage = "Invalid payload: " + err.Error()
+		} else {
+			// Determine operation type from command type if not set in payload
+			if params.OperationType == "" {
+				switch cmd.Type {
+				case "hub_install":
+					params.OperationType = "install"
+				case "hub_update":
+					params.OperationType = "update"
+				case "hub_rollback":
+					params.OperationType = "rollback"
+				case "hub_uninstall":
+					params.OperationType = "uninstall"
+				default:
+					params.OperationType = "install" // default
+				}
+			}
+
+			// Create rollback info before installation (for install/update operations)
+			var rollbackInfo *models.RollbackInfo
+			if params.OperationType == "install" || params.OperationType == "update" {
+				rollbackInfo, _ = m.executors.Rollback().CreateRollbackInfoForInstall(
+					params.PackageName, "script_bundle", cmd.ID, m.executors.Software())
+			}
+
+			// Execute script bundle
+			execResult := m.executors.Script().ExecuteBundle(params)
+			result.Status = boolToStatus(execResult.Success)
+			result.Result = execResult.Message
+			result.ErrorMessage = execResult.ErrorMessage
+			result.Output = execResult.Output
+
+			// Save rollback info if successful
+			if execResult.Success && rollbackInfo != nil {
+				rollbackInfo.InstalledVersion = params.Version
+				rollbackInfo.SupportsRollback = params.Manifest != nil && params.Manifest.Scripts.Rollback != ""
+				m.executors.Rollback().SaveRollbackInfo(*rollbackInfo)
+			}
+		}
+
+	// Inline script execution
+	case "script_inline":
+		var params struct {
+			Script        string            `json:"script"`
+			OperationType string            `json:"operationType"`
+			RequiresRoot  bool              `json:"requiresRoot"`
+			Environment   map[string]string `json:"environment,omitempty"`
+		}
+		if err := parsePayload(cmd.Payload, &params); err != nil {
+			result.Status = "failed"
+			result.ErrorMessage = "Invalid payload: " + err.Error()
+		} else if params.Script == "" {
+			result.Status = "failed"
+			result.ErrorMessage = "Script content is required"
+		} else {
+			execResult := m.executors.Script().ExecuteInlineScript(
+				params.Script,
+				params.OperationType,
+				params.RequiresRoot,
+				params.Environment,
+			)
+			result.Status = boolToStatus(execResult.Success)
+			result.Result = execResult.Message
+			result.ErrorMessage = execResult.ErrorMessage
+			result.Output = execResult.Output
+		}
+
 	default:
 		result.Status = "failed"
 		result.ErrorMessage = "Unknown command type: " + cmd.Type

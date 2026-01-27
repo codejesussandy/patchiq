@@ -1265,20 +1265,34 @@ model SoftwarePackage {
   platform        String   // windows, macos, linux, cross-platform
   architecture    String?  // x64, arm64, universal
 
-  // Installation details
-  installSource   String   @map("install_source") // apt, brew, pkg, dmg, deb, rpm, msi, exe, url
+  // Installation details (legacy - for non-bundle packages)
+  installSource   String   @map("install_source") // apt, brew, pkg, dmg, deb, rpm, msi, exe, url, bundle
   installCommand  String?  @map("install_command") // Custom install command if needed
   installArgs     String?  @map("install_args")    // Additional arguments
   silentInstall   Boolean  @default(true) @map("silent_install")
   requiresReboot  Boolean  @default(false) @map("requires_reboot")
+  requiresRoot    Boolean  @default(false) @map("requires_root") // Needs sudo/admin
 
-  // MinIO storage
+  // MinIO storage (single file - legacy)
   minioObjectKey  String?  @map("minio_object_key")
   minioBucket     String?  @map("minio_bucket")
   fileName        String?  @map("file_name")
   fileSize        BigInt?  @map("file_size")
   checksum        String?
   checksumType    String?  @default("sha256") @map("checksum_type")
+
+  // Bundle storage (new Hub-centric approach)
+  bundleObjectKey String?  @map("bundle_object_key") // MinIO key for bundle archive (e.g., packages/linux/chrome/120/bundle.tar.gz)
+  bundleChecksum  String?  @map("bundle_checksum")   // SHA256 of the bundle archive
+  bundleSize      BigInt?  @map("bundle_size")       // Size of bundle in bytes
+  manifestJson    Json?    @map("manifest_json")     // Parsed manifest.json contents
+  scriptsIncluded Boolean  @default(false) @map("scripts_included") // True if bundle contains scripts
+
+  // Inline scripts (alternative to bundle - stored directly in DB)
+  scriptInstall   String?  @map("script_install")    // Bash/PowerShell install script
+  scriptUpdate    String?  @map("script_update")     // Bash/PowerShell update script
+  scriptRollback  String?  @map("script_rollback")   // Bash/PowerShell rollback script
+  scriptUninstall String?  @map("script_uninstall")  // Bash/PowerShell uninstall script
 
   // External URL (if not stored in MinIO)
   downloadUrl     String?  @map("download_url")
@@ -1289,7 +1303,7 @@ model SoftwarePackage {
   iconUrl         String?  @map("icon_url")
   tags            String[] @default([])
 
-  // Pre/Post scripts
+  // Pre/Post scripts (legacy - for non-bundle packages)
   preInstallScript   String?  @map("pre_install_script")
   postInstallScript  String?  @map("post_install_script")
   uninstallCommand   String?  @map("uninstall_command")
@@ -1313,6 +1327,7 @@ model SoftwarePackage {
   @@index([category])
   @@index([vendor])
   @@index([isActive])
+  @@index([scriptsIncluded])
   @@map("software_packages")
 }
 

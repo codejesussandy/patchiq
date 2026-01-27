@@ -299,7 +299,7 @@
             <button class="btn" onclick="refreshTelemetry()">Refresh Telemetry</button>
         </div>
 
-        {{if .Inventory.Errors}}
+        {{if and .Inventory .Inventory.Errors}}
         <div class="section">
             <h3>Collection Errors</h3>
             <div class="card">

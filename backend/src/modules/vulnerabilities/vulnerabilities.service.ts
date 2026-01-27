@@ -204,7 +204,7 @@ export class VulnerabilitiesService {
     ]);
 
     const data = endpoints.map((ep) => ({
-      key: ep.asset.id,
+      id: ep.asset.id,
       hostName: ep.asset.name,
       platformVersion: ep.asset.osVersion ? `${ep.asset.os} ${ep.asset.osVersion}` : ep.asset.os,
       hardwareModel: ep.asset.model,
@@ -248,7 +248,7 @@ export class VulnerabilitiesService {
     ]);
 
     const data = software.map((sw) => ({
-      key: sw.id,
+      id: sw.id,
       name: sw.name,
       version: sw.version,
       release: sw.releaseVersion,
@@ -260,13 +260,17 @@ export class VulnerabilitiesService {
   }
 
   /**
-   * Get vulnerability statistics
+   * Get vulnerability statistics (excludes zero-day for consistency with list)
    */
   async getStats() {
+    // Filter for non-zero-day vulnerabilities (consistent with listVulnerabilities)
+    const baseWhere = { isZeroDay: false };
+
     const [total, bySeverity, zeroDay, exceptions] = await Promise.all([
-      prisma.vulnerability.count(),
+      prisma.vulnerability.count({ where: baseWhere }),
       prisma.vulnerability.groupBy({
         by: ['severity'],
+        where: baseWhere,
         _count: true,
       }),
       prisma.vulnerability.count({ where: { isZeroDay: true } }),
@@ -292,7 +296,9 @@ export class VulnerabilitiesService {
 
     const publishedStats = await Promise.all(
       ranges.map(async (range) => {
-        const where: Prisma.VulnerabilityWhereInput = {};
+        const where: Prisma.VulnerabilityWhereInput = {
+          isZeroDay: false, // Exclude zero-day for consistency
+        };
 
         if (range.min !== null && range.max !== null) {
           where.publishedDate = {

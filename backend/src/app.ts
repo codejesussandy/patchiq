@@ -118,6 +118,19 @@ export function createApp(): Application {
   // Agent API routes (for agents to communicate)
   app.use('/api/agent', agentApiRoutes);
 
+  // Public bundle download endpoint (must be before assets routes which have global auth)
+  app.get(`/${config.apiVersion}/bundles/:packageId/download`, (req, res, next) => {
+    console.log(`[BUNDLE] Public download request for package: ${req.params.packageId}`);
+    import('@modules/hub/hub.service').then(({ hubService }) => {
+      const { packageId } = req.params;
+      return hubService.getBundleStream(packageId).then((stream) => {
+        res.setHeader('Content-Type', 'application/gzip');
+        res.setHeader('Content-Disposition', `attachment; filename="${packageId}-bundle.tar.gz"`);
+        stream.pipe(res);
+      });
+    }).catch(next);
+  });
+
   // Assets module routes (includes assets, categories, subcategories, tags, licenses)
   app.use(`/${config.apiVersion}`, assetsRoutes);
 

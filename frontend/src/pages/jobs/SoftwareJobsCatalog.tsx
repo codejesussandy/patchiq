@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Input,
   Button,
@@ -9,14 +9,10 @@ import {
   Col,
   Table,
   Dropdown,
-  Select,
   Typography,
-  Modal,
-  Form,
-  Upload,
-  Switch,
   Popconfirm,
   message,
+  Tooltip,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
@@ -31,204 +27,145 @@ import {
   LinuxOutlined,
   AppstoreOutlined,
   UnorderedListOutlined,
-  UploadOutlined,
+  ExportOutlined,
   MoreOutlined,
+  RocketOutlined,
+  CloudServerOutlined,
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { hubService } from '../../services/hub.service';
+import type { SoftwarePackage } from '../../types/hub.types';
 
 const { Text } = Typography;
-const { TextArea } = Input;
-const { Option } = Select;
 
 type SoftwareItem = {
   id: string;
-  deploymentId: string;
+  packageId: string;  // Hub packageId
+  deploymentId: string;  // Alias for display
   name: string;
+  displayName: string;
   description: string;
   version: string;
-  type: 'MSI' | 'EXE' | 'APPLICATION' | 'ZIP';
+  type: 'MSI' | 'EXE' | 'APPLICATION' | 'ZIP' | 'BUNDLE';
   os: ('Windows' | 'Mac' | 'Linux')[];
   logo?: string;
   tags?: string[];
   createdBy: string;
+  hasBundle: boolean;  // Whether this has Hub scripts
+  installSource: string;
 };
-
-const mockSoftwareItems: SoftwareItem[] = [
-  {
-    id: '1',
-    deploymentId: 'SWP-017',
-    name: 'TightVNC',
-    description: 'TightVNC',
-    version: 'latest',
-    type: 'MSI',
-    os: ['Windows'],
-    createdBy: 'Admi',
-  },
-  {
-    id: '2',
-    deploymentId: 'SWP-016',
-    name: 'Google Chrome',
-    description: 'Google Chrome for Ubuntu',
-    version: 'latest',
-    type: 'APPLICATION',
-    os: ['Linux'],
-    createdBy: 'Admi',
-  },
-  {
-    id: '3',
-    deploymentId: 'SWP-015',
-    name: 'TEST',
-    description: 'Test application installer',
-    version: '7.4.0.1658',
-    type: 'EXE',
-    os: ['Windows'],
-    createdBy: 'Abhij',
-  },
-  {
-    id: '4',
-    deploymentId: 'SWP-014',
-    name: 'Zoom desktop client',
-    description: 'Install Zoom desktop client for Meetings x64',
-    version: 'latest',
-    type: 'MSI',
-    os: ['Windows'],
-    createdBy: 'Admi',
-  },
-  {
-    id: '5',
-    deploymentId: 'SWP-013',
-    name: 'WinRAR',
-    description: 'Install winrar x64 700',
-    version: '700',
-    type: 'EXE',
-    os: ['Windows'],
-    createdBy: 'Admi',
-  },
-  {
-    id: '6',
-    deploymentId: 'SWP-012',
-    name: 'VLC For Mac',
-    description: 'Install VLC 3.0.20',
-    version: '3.0.20',
-    type: 'APPLICATION',
-    os: ['Mac'],
-    createdBy: 'Admi',
-  },
-  {
-    id: '7',
-    deploymentId: 'SWP-011',
-    name: 'VLC',
-    description: 'Install VLC 3.0.20 x64',
-    version: '3.0.20',
-    type: 'EXE',
-    os: ['Windows'],
-    createdBy: 'Admi',
-  },
-  {
-    id: '8',
-    deploymentId: 'SWP-010',
-    name: 'Slack Windows',
-    description: 'Install Slack for Window 64 bit',
-    version: '1',
-    type: 'EXE',
-    os: ['Windows'],
-    createdBy: 'Admi',
-  },
-  {
-    id: '9',
-    deploymentId: 'SWP-009',
-    name: 'O365 Mac',
-    description: 'Install Mac Office 365 Setup',
-    version: '1',
-    type: 'APPLICATION',
-    os: ['Mac'],
-    createdBy: 'Admi',
-  },
-  {
-    id: '10',
-    deploymentId: 'SWP-008',
-    name: 'O365 Windows',
-    description: 'Install Microsoft Office 365 Setup',
-    version: '1',
-    type: 'EXE',
-    os: ['Windows'],
-    createdBy: 'Admi',
-  },
-  {
-    id: '11',
-    deploymentId: 'SWP-007',
-    name: 'Notepad++',
-    description: 'Install Notepad++ v8.6.4 x64',
-    version: '8.6.4',
-    type: 'EXE',
-    os: ['Windows'],
-    createdBy: 'Admi',
-  },
-  {
-    id: '12',
-    deploymentId: 'SWP-006',
-    name: 'Microsoft Teams',
-    description: 'Install Microsoft Teams x64',
-    version: 'latest',
-    type: 'MSI',
-    os: ['Windows'],
-    createdBy: 'Admi',
-  },
-];
 
 export const SoftwareJobsCatalog = () => {
   const [searchText, setSearchText] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [softwareItems, setSoftwareItems] = useState<SoftwareItem[]>(mockSoftwareItems);
-  const [createModalVisible, setCreateModalVisible] = useState(false);
-  const [editingItem, setEditingItem] = useState<SoftwareItem | null>(null);
+  const [softwareItems, setSoftwareItems] = useState<SoftwareItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [form] = Form.useForm();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const navigate = useNavigate();
 
-  const handleDelete = (id: string) => {
-    setSoftwareItems(softwareItems.filter(item => item.id !== id));
-    message.success('Software item deleted successfully');
+  // Convert Hub platform to display OS
+  const platformToOs = (platform: string): ('Windows' | 'Mac' | 'Linux')[] => {
+    switch (platform) {
+      case 'windows': return ['Windows'];
+      case 'macos': return ['Mac'];
+      case 'linux': return ['Linux'];
+      case 'cross-platform': return ['Windows', 'Mac', 'Linux'];
+      default: return ['Linux'];
+    }
+  };
+
+  // Convert install source to display type
+  const installSourceToType = (source: string): 'MSI' | 'EXE' | 'APPLICATION' | 'ZIP' | 'BUNDLE' => {
+    switch (source) {
+      case 'msi': return 'MSI';
+      case 'exe': return 'EXE';
+      case 'zip': return 'ZIP';
+      case 'bundle': return 'BUNDLE';
+      default: return 'APPLICATION';
+    }
+  };
+
+  // Fetch software packages from Hub
+  const fetchSoftwareCatalog = async () => {
+    setLoading(true);
+    try {
+      const response = await hubService.listPackages({ limit: 100 });
+      const packages = response.data || [];
+      const mapped: SoftwareItem[] = packages.map((pkg: SoftwarePackage) => ({
+        id: pkg.id,
+        packageId: pkg.packageId,
+        deploymentId: pkg.packageId,  // Use packageId for display
+        name: pkg.name,
+        displayName: pkg.displayName,
+        description: pkg.description || '',
+        version: pkg.version,
+        type: installSourceToType(pkg.installSource),
+        os: platformToOs(pkg.platform),
+        tags: pkg.tags || [],
+        createdBy: pkg.vendor || 'System',
+        hasBundle: pkg.hasBundle || pkg.scriptsIncluded,
+        installSource: pkg.installSource,
+      }));
+      setSoftwareItems(mapped);
+    } catch (error) {
+      console.error('Failed to fetch software packages:', error);
+      message.error('Failed to load software packages from Hub');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSoftwareCatalog();
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    const item = softwareItems.find(i => i.id === id);
+    if (!item) return;
+
+    try {
+      await hubService.deletePackage(item.packageId);
+      setSoftwareItems(softwareItems.filter(item => item.id !== id));
+      message.success('Software package deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete software:', error);
+      message.error('Failed to delete software package');
+    }
   };
 
   const handleEdit = (id: string) => {
     const item = softwareItems.find(i => i.id === id);
     if (item) {
-      setEditingItem(item);
-      // Pre-fill form with item data
-      form.setFieldsValue({
-        applicationName: item.name,
-        description: item.description,
-        tags: item.tags || [],
-        os: item.os.length === 1 ? item.os[0] : item.os,
-        version: item.version,
-        applicationType: item.type,
-        // Note: Other fields like architecture, applicationLocationType, etc.
-        // would need to be stored in the SoftwareItem type if they exist
-      });
-      setCreateModalVisible(true);
+      // For Hub packages, navigate to Hub page for editing
+      message.info('Redirecting to Hub for package editing...');
+      navigate('/hub');
     }
   };
 
-  const handleModalClose = () => {
-    setCreateModalVisible(false);
-    setEditingItem(null);
-    form.resetFields();
+  // Navigate to Software Deployed page with package pre-selected
+  const handleDeploy = (item: SoftwareItem) => {
+    // Navigate to software deployed page with deployment context
+    // The SoftwareJobsDeployed page will handle deployment creation
+    navigate('/jobs/software/deployed', {
+      state: {
+        createDeployment: true,
+        selectedPackage: {
+          id: item.id,
+          packageId: item.packageId,
+          name: item.name,
+          displayName: item.displayName,
+          version: item.version,
+          installSource: item.installSource,
+          hasBundle: item.hasBundle,
+        },
+      },
+    });
   };
+
 
   const handleRefresh = async () => {
-    setLoading(true);
-    try {
-      // In a real application, this would fetch from an API
-      // For now, we'll simulate a refresh by resetting to mock data
-      // await fetchSoftwareItems(); // Replace with actual API call
-      message.success('Data refreshed successfully');
-      // For demonstration, just reload the mock data
-      setSoftwareItems([...mockSoftwareItems]);
-    } catch (error) {
-      message.error('Failed to refresh data');
-    } finally {
-      setLoading(false);
-    }
+    await fetchSoftwareCatalog();
+    message.success('Data refreshed successfully');
   };
 
   const handleExport = () => {
@@ -285,47 +222,8 @@ export const SoftwareJobsCatalog = () => {
     }
   };
 
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      if (editingItem) {
-        // Update existing item
-        const updatedItems = softwareItems.map(item =>
-          item.id === editingItem.id
-            ? {
-                ...item,
-                name: values.applicationName,
-                description: values.description || '',
-                version: values.version || 'latest',
-                type: values.applicationType || 'EXE',
-                os: Array.isArray(values.os) ? values.os : [values.os],
-                tags: values.tags || [],
-              }
-            : item
-        );
-        setSoftwareItems(updatedItems);
-        message.success('Application updated successfully');
-      } else {
-        // Create new item
-        const newItem: SoftwareItem = {
-          id: `SWP-${String(softwareItems.length + 1).padStart(3, '0')}`,
-          deploymentId: `SWP-${String(softwareItems.length + 1).padStart(3, '0')}`,
-          name: values.applicationName,
-          description: values.description || '',
-          version: values.version || 'latest',
-          type: values.applicationType || 'EXE',
-          os: Array.isArray(values.os) ? values.os : [values.os],
-          createdBy: 'Admin',
-          tags: values.tags || [],
-        };
-        setSoftwareItems([newItem, ...softwareItems]);
-        message.success('Application created successfully');
-      }
-      handleModalClose();
-    } catch (error) {
-      console.error('Validation failed:', error);
-    }
-  };
+  // Package creation/editing is handled via Hub page
+  // This catalog is now read-only with deploy actions
 
   const getOSIcon = (os: string) => {
     switch (os) {
@@ -350,6 +248,8 @@ export const SoftwareJobsCatalog = () => {
         return 'cyan';
       case 'ZIP':
         return 'orange';
+      case 'BUNDLE':
+        return 'green';
       default:
         return 'default';
     }
@@ -369,8 +269,9 @@ export const SoftwareJobsCatalog = () => {
   ];
 
   const tableActionMenuItems: MenuProps['items'] = [
-    { key: '1', label: 'Edit', icon: <EditOutlined /> },
-    { key: '2', label: 'Delete', icon: <DeleteOutlined />, danger: true },
+    { key: 'deploy', label: 'Deploy', icon: <RocketOutlined /> },
+    { key: 'edit', label: 'Edit in Hub', icon: <EditOutlined /> },
+    { key: 'delete', label: 'Delete', icon: <DeleteOutlined />, danger: true },
   ];
 
 
@@ -407,9 +308,20 @@ export const SoftwareJobsCatalog = () => {
     },
     {
       title: 'Name',
-      dataIndex: 'name',
       key: 'name',
-      sorter: (a, b) => a.name.localeCompare(b.name),
+      sorter: (a, b) => (a.displayName || a.name).localeCompare(b.displayName || b.name),
+      render: (_, record) => (
+        <Space>
+          <Text>{record.displayName || record.name}</Text>
+          {record.hasBundle && (
+            <Tooltip title="Hub-managed with deployment scripts">
+              <Tag color="green" style={{ fontSize: 10 }}>
+                <CloudServerOutlined /> BUNDLE
+              </Tag>
+            </Tooltip>
+          )}
+        </Space>
+      ),
     },
     {
       title: 'Description',
@@ -461,26 +373,40 @@ export const SoftwareJobsCatalog = () => {
       sorter: (a, b) => a.createdBy.localeCompare(b.createdBy),
     },
     {
-      title: '',
+      title: 'Actions',
       key: 'action',
-      width: 60,
+      width: 120,
       fixed: 'right',
       render: (_, record) => (
-        <Dropdown
-          menu={{
-            items: tableActionMenuItems,
-            onClick: ({ key }) => {
-              if (key === '1') {
-                handleEdit(record.id);
-              } else if (key === '2') {
-                handleDelete(record.id);
-              }
-            },
-          }}
-          trigger={['click']}
-        >
-          <Button type="text" icon={<MoreOutlined />} />
-        </Dropdown>
+        <Space>
+          <Tooltip title="Deploy this package">
+            <Button
+              type="primary"
+              size="small"
+              icon={<RocketOutlined />}
+              onClick={() => handleDeploy(record)}
+            >
+              Deploy
+            </Button>
+          </Tooltip>
+          <Dropdown
+            menu={{
+              items: tableActionMenuItems,
+              onClick: ({ key }) => {
+                if (key === 'deploy') {
+                  handleDeploy(record);
+                } else if (key === 'edit') {
+                  handleEdit(record.id);
+                } else if (key === 'delete') {
+                  handleDelete(record.id);
+                }
+              },
+            }}
+            trigger={['click']}
+          >
+            <Button type="text" icon={<MoreOutlined />} />
+          </Dropdown>
+        </Space>
       ),
     },
   ];
@@ -512,21 +438,23 @@ export const SoftwareJobsCatalog = () => {
           <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading}>
             Refresh
           </Button>
-          <Button icon={<UploadOutlined />} onClick={handleExport}>
+          <Button icon={<ExportOutlined />} onClick={handleExport}>
             Export
           </Button>
-          <Button
-            type="primary"
-            htmlType="button"
-            icon={<PlusOutlined />}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setCreateModalVisible(true);
-            }}
-          >
-            Create
-          </Button>
+          <Tooltip title="Add new packages via Hub">
+            <Button
+              type="primary"
+              htmlType="button"
+              icon={<PlusOutlined />}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigate('/hub');
+              }}
+            >
+              Add Package
+            </Button>
+          </Tooltip>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button
@@ -552,18 +480,20 @@ export const SoftwareJobsCatalog = () => {
                 style={{ height: '100%', position: 'relative' }}
                 bodyStyle={{ padding: 16 }}
               >
-                {/* Edit and Delete Buttons */}
+                {/* Action Buttons */}
                 <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4 }}>
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<EditOutlined />}
-                    onClick={() => handleEdit(item.id)}
-                    style={{ padding: '4px 8px' }}
-                  />
+                  <Tooltip title="Deploy this package">
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<RocketOutlined />}
+                      onClick={() => handleDeploy(item)}
+                      style={{ padding: '4px 8px' }}
+                    />
+                  </Tooltip>
                   <Popconfirm
-                    title="Delete software item"
-                    description="Are you sure you want to delete this item?"
+                    title="Delete software package"
+                    description="Are you sure you want to delete this package?"
                     onConfirm={() => handleDelete(item.id)}
                     okText="Yes"
                     cancelText="No"
@@ -577,6 +507,17 @@ export const SoftwareJobsCatalog = () => {
                     />
                   </Popconfirm>
                 </div>
+
+                {/* Bundle indicator */}
+                {item.hasBundle && (
+                  <div style={{ position: 'absolute', top: 8, left: 8 }}>
+                    <Tooltip title="Hub-managed with deployment scripts">
+                      <Tag color="green" style={{ fontSize: 10 }}>
+                        <CloudServerOutlined /> BUNDLE
+                      </Tag>
+                    </Tooltip>
+                  </div>
+                )}
 
                 {/* Logo Placeholder */}
                 <div
@@ -600,7 +541,7 @@ export const SoftwareJobsCatalog = () => {
                 {/* Name */}
                 <div style={{ marginBottom: 8 }}>
                   <Text strong style={{ fontSize: 14 }}>
-                    {item.name}
+                    {item.displayName || item.name}
                   </Text>
                 </div>
 
@@ -647,191 +588,6 @@ export const SoftwareJobsCatalog = () => {
         />
       )}
 
-      {/* Create/Edit Application Modal */}
-      <Modal
-        title={editingItem ? 'Edit Application' : 'Create Application'}
-        open={createModalVisible}
-        onCancel={handleModalClose}
-        footer={[
-          <Button key="reset" onClick={() => form.resetFields()}>
-            Reset
-          </Button>,
-          <Button key="submit" type="primary" onClick={handleSubmit}>
-            {editingItem ? 'Update' : 'Create'}
-          </Button>,
-        ]}
-        width={900}
-      >
-        <Form form={form} layout="vertical" style={{ marginTop: 24 }}>
-          <Row gutter={24}>
-            {/* Left Column */}
-            <Col span={12}>
-              <Form.Item
-                name="applicationName"
-                label={
-                  <span>
-                    Application Name <Text type="danger">*</Text>
-                  </span>
-                }
-                rules={[{ required: true, message: 'Please enter application name' }]}
-              >
-                <Input placeholder="displayName" />
-              </Form.Item>
-
-              <Form.Item
-                name="description"
-                label={
-                  <span>
-                    Description <Text type="danger">*</Text>
-                  </span>
-                }
-                rules={[{ required: true, message: 'Please enter description' }]}
-              >
-                <TextArea rows={3} placeholder="Description" />
-              </Form.Item>
-
-              <Form.Item name="tags" label="Tags">
-                <Select mode="tags" placeholder="Please select" />
-              </Form.Item>
-
-              <Form.Item
-                name="os"
-                label={
-                  <span>
-                    OS <Text type="danger">*</Text>
-                  </span>
-                }
-                rules={[{ required: true, message: 'Please select OS' }]}
-                initialValue="Linux"
-              >
-                <Select placeholder="Select OS">
-                  <Option value="Windows">
-                    <Space>
-                      <WindowsOutlined />
-                      Windows
-                    </Space>
-                  </Option>
-                  <Option value="Mac">
-                    <Space>
-                      <AppleOutlined />
-                      Mac
-                    </Space>
-                  </Option>
-                  <Option value="Linux">
-                    <Space>
-                      <LinuxOutlined />
-                      Linux
-                    </Space>
-                  </Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                name="version"
-                label={
-                  <span>
-                    Version <Text type="danger">*</Text>
-                  </span>
-                }
-                rules={[{ required: true, message: 'Please enter version' }]}
-              >
-                <Input placeholder="ex. 1.0.0" />
-              </Form.Item>
-
-              <Form.Item
-                name="applicationLocationType"
-                label={
-                  <span>
-                    Application Location Type <Text type="danger">*</Text>
-                  </span>
-                }
-                rules={[{ required: true, message: 'Please select location type' }]}
-                initialValue="Local Directory"
-              >
-                <Select placeholder="Select location type">
-                  <Option value="Local Directory">Local Directory</Option>
-                  <Option value="Network Share">Network Share</Option>
-                  <Option value="URL">URL</Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item name="installationCommand" label="Installation Command">
-                <Input placeholder="Installation Command" />
-              </Form.Item>
-
-              <Form.Item name="uninstallationCommand" label="Uninstallation Command">
-                <Input placeholder="Uninstallation Command" />
-              </Form.Item>
-
-              <Form.Item name="upgradeCommand" label="Upgrade Command">
-                <Input placeholder="Upgrade Command" />
-              </Form.Item>
-            </Col>
-
-            {/* Right Column */}
-            <Col span={12}>
-              <Form.Item name="iconFile" label="Icon File">
-                <Upload maxCount={1}>
-                  <Button icon={<UploadOutlined />}>Upload (Max: 1)</Button>
-                </Upload>
-              </Form.Item>
-
-              <Form.Item name="selfService" label="Self Service" valuePropName="checked" initialValue={true}>
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name="architecture"
-                label={
-                  <span>
-                    Architecture <Text type="danger">*</Text>
-                  </span>
-                }
-                rules={[{ required: true, message: 'Please select architecture' }]}
-                initialValue="x64"
-              >
-                <Select placeholder="Select architecture">
-                  <Option value="x64">x64</Option>
-                  <Option value="x86">x86</Option>
-                  <Option value="ARM64">ARM64</Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                name="applicationType"
-                label={
-                  <span>
-                    Application Type <Text type="danger">*</Text>
-                  </span>
-                }
-                rules={[{ required: true, message: 'Please select application type' }]}
-                initialValue="zip"
-              >
-                <Select placeholder="Select application type">
-                  <Option value="MSI">MSI</Option>
-                  <Option value="EXE">EXE</Option>
-                  <Option value="APPLICATION">APPLICATION</Option>
-                  <Option value="ZIP">ZIP</Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                name="applicationFile"
-                label={
-                  <span>
-                    Application File <Text type="danger">*</Text>
-                  </span>
-                }
-                rules={[{ required: true, message: 'Please upload application file' }]}
-              >
-                <Upload maxCount={1}>
-                  <Button icon={<UploadOutlined />}>Upload (Max: 1)</Button>
-                </Upload>
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-      </Modal>
     </div>
   );
 };

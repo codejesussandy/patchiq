@@ -16,8 +16,22 @@ import {
   PackageDownloadUrl,
   CreateBundleInput,
   BundleResponse,
+  PackageManifest,
+  BundleUploadResult,
+  BundleDownloadResponse,
+  ScriptExecutionPayload,
+  CreatePackageWithScriptsInput,
 } from './hub.types';
 import crypto from 'crypto';
+import * as tar from 'tar';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { promisify } from 'util';
+import { pipeline } from 'stream';
+import { createGunzip } from 'zlib';
+
+const pipelineAsync = promisify(pipeline);
 
 class HubService {
   // ============================================
@@ -119,6 +133,386 @@ class HubService {
       checksum,
       size: BigInt(file.length),
     };
+  }
+
+  // ============================================
+  // Script Bundle Operations (Hub-Centric)
+  // ============================================
+
+  /**
+   * Upload a package bundle (.tar.gz or .zip) containing scripts and files
+   * The bundle is extracted to validate manifest.json and scripts
+   */
+  async uploadPackageBundle(
+    file: Buffer,
+    fileName: string,
+    createdBy?: string
+  ): Promise<BundleUploadResult> {
+    // Create temp directory for extraction
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patchiq-bundle-'));
+
+    try {
+      // Write buffer to temp file
+      const tempFile = path.join(tempDir, fileName);
+      fs.writeFileSync(tempFile, file);
+
+      // Extract based on file type
+      const extractDir = path.join(tempDir, 'extracted');
+      fs.mkdirSync(extractDir);
+
+      if (fileName.endsWith('.tar.gz') || fileName.endsWith('.tgz')) {
+        await tar.extract({
+          file: tempFile,
+          cwd: extractDir,
+        });
+      } else if (fileName.endsWith('.zip')) {
+        // For zip files, we'd need unzipper package
+        // For now, throw an error suggesting tar.gz
+        throw new BadRequestError('Please use .tar.gz format for bundles. ZIP support coming soon.');
+      } else {
+        throw new BadRequestError('Bundle must be .tar.gz or .tgz format');
+      }
+
+      // Find manifest.json (might be in root or a subdirectory)
+      const manifestPath = this.findFileInDir(extractDir, 'manifest.json');
+      if (!manifestPath) {
+        throw new BadRequestError('Bundle must contain a manifest.json file');
+      }
+
+      // Parse and validate manifest
+      const manifestContent = fs.readFileSync(manifestPath, 'utf-8');
+      let manifest: PackageManifest;
+      try {
+        manifest = JSON.parse(manifestContent);
+      } catch {
+        throw new BadRequestError('Invalid manifest.json: must be valid JSON');
+      }
+
+      // Validate required manifest fields
+      this.validateManifest(manifest);
+
+      // Check scripts exist
+      const bundleDir = path.dirname(manifestPath);
+      const scriptsFound: string[] = [];
+
+      if (manifest.scripts.install) {
+        const scriptPath = path.join(bundleDir, manifest.scripts.install);
+        if (!fs.existsSync(scriptPath)) {
+          throw new BadRequestError(`Install script not found: ${manifest.scripts.install}`);
+        }
+        scriptsFound.push('install');
+      }
+      if (manifest.scripts.update) {
+        const scriptPath = path.join(bundleDir, manifest.scripts.update);
+        if (fs.existsSync(scriptPath)) scriptsFound.push('update');
+      }
+      if (manifest.scripts.rollback) {
+        const scriptPath = path.join(bundleDir, manifest.scripts.rollback);
+        if (fs.existsSync(scriptPath)) scriptsFound.push('rollback');
+      }
+      if (manifest.scripts.uninstall) {
+        const scriptPath = path.join(bundleDir, manifest.scripts.uninstall);
+        if (fs.existsSync(scriptPath)) scriptsFound.push('uninstall');
+      }
+
+      // Calculate bundle checksum
+      const bundleChecksum = crypto.createHash('sha256').update(file).digest('hex');
+
+      // Generate package ID and object key
+      const packageId = `SWP-${uuidv4().slice(0, 8).toUpperCase()}`;
+      const vendor = (manifest.vendor || 'unknown').toLowerCase().replace(/[^a-z0-9]/g, '-');
+      const name = manifest.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      const platform = manifest.platform.toLowerCase();
+      const bundleObjectKey = `packages/${platform}/${vendor}/${name}/${manifest.version}/bundle.tar.gz`;
+
+      // Upload bundle to MinIO
+      await minioStorage.uploadBuffer(bundleObjectKey, file, {
+        contentType: 'application/gzip',
+        metadata: {
+          'x-package-id': packageId,
+          'x-package-name': manifest.name,
+          'x-package-version': manifest.version,
+          'x-checksum-sha256': bundleChecksum,
+          'x-manifest': JSON.stringify(manifest),
+        },
+      });
+
+      // Create package record in database
+      await prisma.softwarePackage.create({
+        data: {
+          packageId,
+          name: manifest.name,
+          displayName: manifest.displayName,
+          version: manifest.version,
+          vendor: manifest.vendor,
+          category: manifest.category,
+          platform: manifest.platform,
+          architecture: manifest.architecture,
+          installSource: 'bundle',
+          requiresReboot: manifest.requiresReboot ?? false,
+          requiresRoot: manifest.requiresRoot ?? false,
+          description: manifest.description,
+
+          // Bundle storage
+          bundleObjectKey,
+          bundleChecksum,
+          bundleSize: BigInt(file.length),
+          manifestJson: JSON.parse(JSON.stringify(manifest)),
+          scriptsIncluded: true,
+
+          // Status
+          isActive: true,
+          isVerified: false,
+          supportsRollback: !!manifest.scripts.rollback,
+          createdBy,
+        },
+      });
+
+      return {
+        packageId,
+        bundleObjectKey,
+        bundleChecksum,
+        bundleSize: file.length,
+        manifest,
+        scriptsFound,
+      };
+    } finally {
+      // Cleanup temp directory
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  }
+
+  /**
+   * Create a package with inline scripts (no bundle file needed)
+   */
+  async createPackageWithScripts(
+    input: CreatePackageWithScriptsInput,
+    createdBy?: string
+  ): Promise<PackageResponse> {
+    const packageId = `SWP-${uuidv4().slice(0, 8).toUpperCase()}`;
+
+    const hasScripts = !!(input.scriptInstall || input.scriptUpdate || input.scriptRollback || input.scriptUninstall);
+
+    const pkg = await prisma.softwarePackage.create({
+      data: {
+        packageId,
+        name: input.name,
+        displayName: input.displayName,
+        version: input.version,
+        vendor: input.vendor,
+        category: input.category,
+        platform: input.platform,
+        architecture: input.architecture,
+        installSource: hasScripts ? 'bundle' : input.installSource,
+        installCommand: input.installCommand,
+        installArgs: input.installArgs,
+        silentInstall: input.silentInstall ?? true,
+        requiresReboot: input.requiresReboot ?? false,
+        requiresRoot: input.requiresRoot ?? false,
+        downloadUrl: input.downloadUrl,
+        description: input.description,
+        releaseNotes: input.releaseNotes,
+        iconUrl: input.iconUrl,
+        tags: input.tags || [],
+
+        // Inline scripts
+        scriptInstall: input.scriptInstall,
+        scriptUpdate: input.scriptUpdate,
+        scriptRollback: input.scriptRollback,
+        scriptUninstall: input.scriptUninstall,
+        scriptsIncluded: hasScripts,
+
+        // Legacy scripts (for backward compatibility)
+        preInstallScript: input.preInstallScript,
+        postInstallScript: input.postInstallScript,
+        uninstallCommand: input.uninstallCommand,
+        supportsRollback: !!input.scriptRollback || input.supportsRollback,
+        rollbackCommand: input.rollbackCommand,
+
+        isActive: true,
+        isVerified: false,
+        createdBy,
+      },
+    });
+
+    return this.formatPackageResponse(pkg);
+  }
+
+  /**
+   * Get bundle download info for agent deployment
+   * Returns presigned URL, checksum, and manifest for script execution
+   */
+  async getBundleDownloadInfo(packageId: string): Promise<BundleDownloadResponse> {
+    const pkg = await prisma.softwarePackage.findUnique({
+      where: { packageId },
+    });
+
+    if (!pkg) {
+      throw new NotFoundError('Package not found');
+    }
+
+    if (!pkg.bundleObjectKey) {
+      throw new BadRequestError('Package does not have a bundle. Use inline scripts or upload a bundle first.');
+    }
+
+    // Generate presigned URL for bundle (valid for 1 hour)
+    const bundleUrl = await minioStorage.getPresignedUrl(
+      pkg.bundleObjectKey,
+      {
+        expirySeconds: 3600,
+        responseContentDisposition: `attachment; filename="bundle.tar.gz"`,
+      },
+      pkg.minioBucket || undefined
+    );
+
+    const manifest = pkg.manifestJson as unknown as PackageManifest;
+
+    return {
+      packageId,
+      bundleUrl,
+      bundleChecksum: pkg.bundleChecksum || '',
+      bundleSize: Number(pkg.bundleSize || 0),
+      manifest,
+      expiresAt: new Date(Date.now() + 3600 * 1000),
+    };
+  }
+
+  /**
+   * Get bundle as a stream for proxy download
+   * Used when agents can't directly access MinIO
+   */
+  async getBundleStream(packageId: string) {
+    const pkg = await prisma.softwarePackage.findUnique({
+      where: { packageId },
+    });
+
+    if (!pkg) {
+      throw new NotFoundError('Package not found');
+    }
+
+    if (!pkg.bundleObjectKey) {
+      throw new BadRequestError('Package does not have a bundle');
+    }
+
+    return minioStorage.downloadStream(pkg.bundleObjectKey, pkg.minioBucket || undefined);
+  }
+
+  /**
+   * Get execution payload for agent - supports both bundle and inline script modes
+   */
+  async getExecutionPayload(
+    packageId: string,
+    operationType: 'install' | 'update' | 'rollback' | 'uninstall'
+  ): Promise<ScriptExecutionPayload> {
+    const pkg = await prisma.softwarePackage.findUnique({
+      where: { packageId },
+    });
+
+    if (!pkg) {
+      throw new NotFoundError('Package not found');
+    }
+
+    // Check if this is a bundle-based package
+    if (pkg.bundleObjectKey && pkg.manifestJson) {
+      // Bundle mode: agent will download and extract bundle
+      const bundleUrl = await minioStorage.getPresignedUrl(
+        pkg.bundleObjectKey,
+        { expirySeconds: 3600 },
+        pkg.minioBucket || undefined
+      );
+
+      const manifest = pkg.manifestJson as unknown as PackageManifest;
+
+      return {
+        operationType,
+        packageId: pkg.packageId,
+        packageName: pkg.name,
+        version: pkg.version,
+        bundleUrl,
+        bundleChecksum: pkg.bundleChecksum || undefined,
+        manifest,
+        requiresRoot: pkg.requiresRoot,
+        environment: manifest.environment,
+      };
+    }
+
+    // Inline script mode: send script content directly
+    let script: string | undefined;
+    switch (operationType) {
+      case 'install':
+        script = pkg.scriptInstall || undefined;
+        break;
+      case 'update':
+        script = pkg.scriptUpdate || undefined;
+        break;
+      case 'rollback':
+        script = pkg.scriptRollback || undefined;
+        break;
+      case 'uninstall':
+        script = pkg.scriptUninstall || pkg.uninstallCommand || undefined;
+        break;
+    }
+
+    if (!script && pkg.installSource !== 'bundle') {
+      // Fall back to legacy mode - agent will use package manager commands
+      throw new BadRequestError(
+        `Package "${pkg.name}" does not have scripts. Legacy mode not supported for ${operationType}.`
+      );
+    }
+
+    return {
+      operationType,
+      packageId: pkg.packageId,
+      packageName: pkg.name,
+      version: pkg.version,
+      script,
+      requiresRoot: pkg.requiresRoot,
+    };
+  }
+
+  // ============================================
+  // Helper Methods for Bundle Operations
+  // ============================================
+
+  private findFileInDir(dir: string, filename: string): string | null {
+    const files = fs.readdirSync(dir);
+
+    for (const file of files) {
+      const fullPath = path.join(dir, file);
+      const stat = fs.statSync(fullPath);
+
+      if (stat.isFile() && file === filename) {
+        return fullPath;
+      } else if (stat.isDirectory()) {
+        const found = this.findFileInDir(fullPath, filename);
+        if (found) return found;
+      }
+    }
+
+    return null;
+  }
+
+  private validateManifest(manifest: PackageManifest): void {
+    if (!manifest.name) {
+      throw new BadRequestError('Manifest must include "name" field');
+    }
+    if (!manifest.displayName) {
+      throw new BadRequestError('Manifest must include "displayName" field');
+    }
+    if (!manifest.version) {
+      throw new BadRequestError('Manifest must include "version" field');
+    }
+    if (!manifest.platform) {
+      throw new BadRequestError('Manifest must include "platform" field');
+    }
+    if (!manifest.scripts || !manifest.scripts.install) {
+      throw new BadRequestError('Manifest must include "scripts.install" field');
+    }
+
+    const validPlatforms = ['windows', 'macos', 'linux', 'cross-platform'];
+    if (!validPlatforms.includes(manifest.platform)) {
+      throw new BadRequestError(`Invalid platform "${manifest.platform}". Must be one of: ${validPlatforms.join(', ')}`);
+    }
   }
 
   /**
@@ -429,7 +823,7 @@ class HubService {
   async getStats(): Promise<{
     totalPackages: number;
     activePackages: number;
-    totalSize: bigint;
+    totalSize: number;
     byPlatform: Record<string, number>;
     byCategory: Record<string, number>;
     totalBundles: number;
@@ -474,7 +868,7 @@ class HubService {
     return {
       totalPackages,
       activePackages,
-      totalSize: sizeStats._sum.fileSize || BigInt(0),
+      totalSize: Number(sizeStats._sum.fileSize || BigInt(0)),
       byPlatform,
       byCategory,
       totalBundles,
@@ -498,6 +892,7 @@ class HubService {
     installSource: string;
     silentInstall: boolean;
     requiresReboot: boolean;
+    requiresRoot?: boolean;
     minioObjectKey: string | null;
     fileName: string | null;
     fileSize: bigint | null;
@@ -509,6 +904,16 @@ class HubService {
     isVerified: boolean;
     createdAt: Date;
     updatedAt: Date;
+    // Bundle fields
+    bundleObjectKey?: string | null;
+    bundleChecksum?: string | null;
+    bundleSize?: bigint | null;
+    scriptsIncluded?: boolean;
+    scriptInstall?: string | null;
+    scriptUpdate?: string | null;
+    scriptRollback?: string | null;
+    scriptUninstall?: string | null;
+    manifestJson?: unknown;
   }): PackageResponse {
     return {
       id: pkg.id,
@@ -523,10 +928,13 @@ class HubService {
       installSource: pkg.installSource,
       silentInstall: pkg.silentInstall,
       requiresReboot: pkg.requiresReboot,
+      requiresRoot: pkg.requiresRoot ?? false,
       fileName: pkg.fileName,
       fileSize: pkg.fileSize ? this.formatFileSize(pkg.fileSize) : null,
-      fileSizeBytes: pkg.fileSize,
-      hasFile: !!pkg.minioObjectKey,
+      fileSizeBytes: pkg.fileSize ? Number(pkg.fileSize) : null,
+      hasFile: !!(pkg.minioObjectKey || pkg.bundleObjectKey),
+      hasBundle: !!pkg.bundleObjectKey,
+      scriptsIncluded: pkg.scriptsIncluded ?? false,
       downloadUrl: pkg.downloadUrl,
       description: pkg.description,
       tags: pkg.tags,
@@ -535,7 +943,7 @@ class HubService {
       isVerified: pkg.isVerified,
       createdAt: pkg.createdAt.toISOString(),
       updatedAt: pkg.updatedAt.toISOString(),
-    };
+    } as PackageResponse;
   }
 
   private formatBundleResponse(bundle: {

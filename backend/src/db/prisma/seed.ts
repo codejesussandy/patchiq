@@ -77,7 +77,7 @@ async function main() {
   // ============================================
 
   // Create admin role
-  const adminRole = await prisma.role.upsert({
+  await prisma.role.upsert({
     where: { name: 'admin' },
     update: {},
     create: {
@@ -100,7 +100,7 @@ async function main() {
   console.log('Created admin role');
 
   // Create user role
-  const userRole = await prisma.role.upsert({
+  await prisma.role.upsert({
     where: { name: 'user' },
     update: {},
     create: {
@@ -147,7 +147,7 @@ async function main() {
 
   // Create demo user
   const demoPasswordHash = await bcrypt.hash('demo123', 12);
-  const demoUser = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: 'demo@patchiq.io' },
     update: {},
     create: {
@@ -162,7 +162,7 @@ async function main() {
       isOnboarded: true,
     },
   });
-  console.log('Created demo user:', demoUser.email);
+  console.log('Created demo user: demo@patchiq.io');
 
   // ============================================
   // Tags
@@ -186,62 +186,8 @@ async function main() {
   }
   console.log('Created', tags.length, 'tags');
 
-  // ============================================
-  // Sample Vulnerabilities
-  // ============================================
-
-  const vulnerabilities = [
-    {
-      cveId: 'CVE-2024-21351',
-      title: 'Windows SmartScreen Security Feature Bypass Vulnerability',
-      description:
-        'A security feature bypass vulnerability exists in Windows SmartScreen that could allow an attacker to bypass security warnings.',
-      severity: 'HIGH',
-      cvss3BaseScore: 7.6,
-      cvss3VectorString: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N',
-      cvss3AttackVector: 'NETWORK',
-      cvss3AttackComplexity: 'LOW',
-      publishedDate: new Date('2024-02-13'),
-      exploitable: true,
-      patchAvailable: true,
-    },
-    {
-      cveId: 'CVE-2024-21412',
-      title: 'Internet Shortcut Files Security Feature Bypass',
-      description:
-        'A security feature bypass vulnerability exists when handling Internet Shortcut Files.',
-      severity: 'CRITICAL',
-      cvss3BaseScore: 8.1,
-      cvss3VectorString: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N',
-      cvss3AttackVector: 'NETWORK',
-      cvss3AttackComplexity: 'LOW',
-      publishedDate: new Date('2024-02-13'),
-      exploitable: true,
-      patchAvailable: true,
-    },
-    {
-      cveId: 'CVE-2024-0001',
-      title: 'Example Low Severity Vulnerability',
-      description: 'An example low severity vulnerability for testing.',
-      severity: 'LOW',
-      cvss3BaseScore: 3.1,
-      cvss3VectorString: 'CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:U/C:L/I:N/A:N',
-      cvss3AttackVector: 'LOCAL',
-      cvss3AttackComplexity: 'HIGH',
-      publishedDate: new Date('2024-01-15'),
-      exploitable: false,
-      patchAvailable: false,
-    },
-  ];
-
-  for (const vuln of vulnerabilities) {
-    await prisma.vulnerability.upsert({
-      where: { cveId: vuln.cveId },
-      update: {},
-      create: vuln,
-    });
-  }
-  console.log('Created', vulnerabilities.length, 'sample vulnerabilities');
+  // NOTE: Vulnerabilities are populated from real CVE database sync (NVD, CISA KEV, etc.)
+  // No fake vulnerability data is seeded. Run CVE sync to populate vulnerabilities.
 
   // ============================================
   // Sample Patches
@@ -251,8 +197,7 @@ async function main() {
     {
       patchId: 'KB5034441',
       title: 'Windows 11 Security Update February 2024',
-      description:
-        'This security update addresses vulnerabilities in Windows 11.',
+      description: 'This security update addresses vulnerabilities in Windows 11.',
       severity: 'CRITICAL',
       category: 'Security',
       vendor: 'Microsoft',

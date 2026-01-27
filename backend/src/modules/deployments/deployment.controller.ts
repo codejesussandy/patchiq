@@ -18,15 +18,19 @@ export class DeploymentController {
         name,
         description,
         deploymentType,
+        type, // Frontend sends 'type', accept both
         targetAgentIds,
         package: packageInfo,
         retryCount,
       } = req.body;
 
+      // Accept both 'deploymentType' and 'type' for compatibility
+      const resolvedType = deploymentType || type || 'install';
+
       const options: CreateSoftwareDeploymentOptions = {
         name,
         description,
-        deploymentType: deploymentType || 'install',
+        deploymentType: resolvedType,
         targetAgentIds,
         package: packageInfo,
         retryCount,

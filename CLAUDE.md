@@ -143,37 +143,33 @@ import { config } from '@config/index';         // src/config/
 
 ---
 
-## Implementation Task Tracking
+## Current Implementation Task: Jobs Functional Integration
 
-**IMPORTANT:** Before starting any implementation work on agent deployment, software installation, patching, or hub management features, you MUST:
+**IMPORTANT:** Before starting implementation work, you MUST:
 
-1. **Read the task document:** `/IMPLEMENTATION_TASKS.md`
-2. **Follow the task order:** Complete tasks in the order specified (Phase 1 → Phase 2 → etc.)
+1. **Read the task document:** `/JOBS_IMPLEMENTATION.md`
+2. **Follow the task order:** Complete tasks in phase order (Phase 1 → Phase 2 → etc.)
 3. **Update task status:** Mark tasks as IN_PROGRESS when starting, COMPLETED when done
 4. **Test before proceeding:** Each task must be tested and verified working before moving to the next
-5. **Don't skip phases:** Dependencies exist between phases
+
+### Related Documentation
+- `/DEPLOYMENT_PIPELINE_ISSUES.md` - Known issues with field mismatches
+- `/HUB_IMPLEMENTATION.md` - Hub architecture (COMPLETED phases 1-5)
 
 ### Two UI Systems
 
-- **Agent UI** (localhost:8080): Local web UI embedded in Go agent binary. Shows detailed, frequent updates about the local endpoint. More in-depth monitoring and job status.
-- **PatchIQ UI** (localhost:5173): Central management platform. Overview of all agents, deployments, and system-wide status.
+- **Agent UI** (localhost:8080): Local web UI embedded in Go agent binary. Shows job status, installation progress, and local endpoint details.
+- **PatchIQ UI** (localhost:5173): Central management platform. Hub management, deployment creation, and aggregate status.
 
-### Current Implementation Focus
+### Architecture Notes
 
-The deployment execution engine connects:
-1. User creates deployment in PatchIQ UI
-2. Backend creates `SoftwareDeployment` + `SoftwareDeploymentTask` records
-3. Backend creates `AgentCommand` records for each target agent
-4. Agent picks up commands on heartbeat and executes
-5. Agent reports results back
-6. Backend updates task status
-7. Agent UI shows detailed local progress
-8. PatchIQ UI shows aggregate deployment status
+**Hub-Centric Deployment:**
+- Software packages stored in MinIO with bundled scripts (install.sh, update.sh, rollback.sh, uninstall.sh)
+- Agent downloads package + scripts from Hub, executes appropriate script
+- No hardcoded package manager commands in agent
 
-### Key Models for Deployment
+**Two Module Pattern:**
+- `jobs` module = Catalog/Policy management (create what to deploy)
+- `deployments` module = Execution (actually deploy it via Hub)
 
-```
-SoftwareDeployment (1) → (many) SoftwareDeploymentTask
-SoftwareDeploymentTask (1) → (1) AgentCommand (via commandId field)
-AgentCommand → Agent executes → Reports result
-```
+**Current Focus:** Making Jobs pages functional by connecting them to the deployment executor.

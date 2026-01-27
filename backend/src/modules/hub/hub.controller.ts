@@ -205,6 +205,109 @@ export class HubController {
       next(error);
     }
   }
+
+  // ============================================
+  // Script Bundle Endpoints
+  // ============================================
+
+  /**
+   * Upload a package bundle (.tar.gz with scripts and manifest)
+   * POST /v1/hub/packages/upload-bundle
+   */
+  async uploadPackageBundle(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file) {
+        res.status(400).json({ success: false, error: 'No file provided. Upload a .tar.gz bundle.' });
+        return;
+      }
+
+      const result = await hubService.uploadPackageBundle(
+        req.file.buffer,
+        req.file.originalname,
+        req.user?.id
+      );
+
+      res.status(201).json({
+        success: true,
+        data: result,
+        message: `Package bundle uploaded successfully. Scripts found: ${result.scriptsFound.join(', ')}`,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Create a package with inline scripts (no bundle file)
+   * POST /v1/hub/packages/with-scripts
+   */
+  async createPackageWithScripts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await hubService.createPackageWithScripts(req.body, req.user?.id);
+      res.status(201).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get bundle download info (for agent deployment)
+   * GET /v1/hub/packages/:packageId/bundle
+   */
+  async getBundleDownloadInfo(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { packageId } = req.params;
+      const result = await hubService.getBundleDownloadInfo(packageId);
+      res.json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Proxy download bundle directly (for agents that can't access MinIO)
+   * GET /v1/hub/packages/:packageId/bundle/download
+   */
+  async downloadBundle(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { packageId } = req.params;
+      const stream = await hubService.getBundleStream(packageId);
+
+      res.setHeader('Content-Type', 'application/gzip');
+      res.setHeader('Content-Disposition', `attachment; filename="${packageId}-bundle.tar.gz"`);
+
+      stream.pipe(res);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get execution payload for agent
+   * GET /v1/hub/packages/:packageId/execution-payload/:operationType
+   */
+  async getExecutionPayload(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { packageId, operationType } = req.params;
+
+      const validOps = ['install', 'update', 'rollback', 'uninstall'];
+      if (!validOps.includes(operationType)) {
+        res.status(400).json({
+          success: false,
+          error: `Invalid operation type. Must be one of: ${validOps.join(', ')}`,
+        });
+        return;
+      }
+
+      const result = await hubService.getExecutionPayload(
+        packageId,
+        operationType as 'install' | 'update' | 'rollback' | 'uninstall'
+      );
+      res.json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const hubController = new HubController();

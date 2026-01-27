@@ -41,7 +41,7 @@ export interface PatchInstallPayload {
 export interface CreateSoftwareDeploymentOptions {
   name: string;
   description?: string;
-  deploymentType: 'install' | 'uninstall' | 'upgrade';
+  deploymentType: 'install' | 'uninstall' | 'upgrade' | 'rollback';
   targetAgentIds: string[];
   package: SoftwareInstallPayload | SoftwareUninstallPayload;
   retryCount?: number;
@@ -78,15 +78,71 @@ export interface TaskStatusUpdate {
 
 // Command types that map to agent executors
 export const COMMAND_TYPES = {
+  // Legacy software commands (package manager based)
   SOFTWARE_INSTALL: 'software_install',
   SOFTWARE_UNINSTALL: 'software_uninstall',
+
+  // Hub-centric commands (script bundle based)
+  HUB_INSTALL: 'hub_install',
+  HUB_UPDATE: 'hub_update',
+  HUB_ROLLBACK: 'hub_rollback',
+  HUB_UNINSTALL: 'hub_uninstall',
+  SCRIPT_BUNDLE: 'script_bundle',
+  SCRIPT_INLINE: 'script_inline',
+
+  // Patch commands
   PATCH_INSTALL: 'patch_install',
   PATCH_UNINSTALL: 'patch_uninstall',
   PATCH_LIST: 'patch_list',
   PATCH_INSTALL_ALL: 'patch_install_all',
+
+  // Utility commands
   CHECK_REBOOT: 'check_reboot_required',
   ROLLBACK_EXECUTE: 'rollback_execute',
   ROLLBACK_LIST: 'rollback_list',
 } as const;
 
 export type CommandType = typeof COMMAND_TYPES[keyof typeof COMMAND_TYPES];
+
+// ============================================
+// Script Bundle Types (Hub-Centric Approach)
+// ============================================
+
+// Manifest structure (matches agent's ScriptManifest)
+export interface ScriptManifest {
+  id: string;
+  name: string;
+  displayName: string;
+  version: string;
+  vendor?: string;
+  category?: string;
+  platform: 'windows' | 'macos' | 'linux' | 'cross-platform';
+  architecture?: string;
+  description?: string;
+  requiresRoot?: boolean;
+  requiresReboot?: boolean;
+  scripts: {
+    install?: string;
+    update?: string;
+    rollback?: string;
+    uninstall?: string;
+  };
+  environment?: Record<string, string>;
+  dependencies?: string[];
+  conflicts?: string[];
+}
+
+// Script bundle payload sent to agent (Hub-centric approach)
+export interface ScriptBundlePayload {
+  operationType: 'install' | 'update' | 'rollback' | 'uninstall';
+  packageId: string;
+  packageName: string;
+  version: string;
+  bundleUrl?: string;           // Presigned URL for bundle download
+  bundleChecksum?: string;      // SHA256 of the bundle
+  manifest?: ScriptManifest;    // Parsed manifest
+  script?: string;              // Inline script (fallback if no bundle)
+  requiresRoot: boolean;
+  timeout?: number;             // Execution timeout in seconds
+  environment?: Record<string, string>;
+}

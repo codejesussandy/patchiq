@@ -12,6 +12,10 @@ const minioConfig = {
   secretKey: env.MINIO_SECRET_KEY,
 };
 
+// Public endpoint for presigned URLs (for agents outside Docker network)
+const publicEndpoint = env.MINIO_PUBLIC_ENDPOINT || env.MINIO_ENDPOINT;
+const publicPort = env.MINIO_PUBLIC_PORT || env.MINIO_PORT;
+
 // Default bucket for patches
 const DEFAULT_BUCKET = env.MINIO_BUCKET;
 
@@ -213,6 +217,7 @@ class MinioStorageService {
 
   /**
    * Generate a presigned URL for download
+   * If MINIO_PUBLIC_ENDPOINT is set, replaces internal endpoint with public one
    */
   async getPresignedUrl(
     objectKey: string,
@@ -227,7 +232,16 @@ class MinioStorageService {
       requestParams['response-content-disposition'] = options.responseContentDisposition;
     }
 
-    return client.presignedGetObject(bucket, objectKey, expiry, requestParams);
+    let url = await client.presignedGetObject(bucket, objectKey, expiry, requestParams);
+
+    // Replace internal endpoint with public endpoint if different
+    if (publicEndpoint !== env.MINIO_ENDPOINT || publicPort !== env.MINIO_PORT) {
+      const internalUrl = `${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`;
+      const externalUrl = `${publicEndpoint}:${publicPort}`;
+      url = url.replace(internalUrl, externalUrl);
+    }
+
+    return url;
   }
 
   /**

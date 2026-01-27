@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Input,
   Button,
@@ -22,6 +22,7 @@ import {
   DeleteOutlined,
   FileTextOutlined,
 } from '@ant-design/icons';
+import { reportsService } from '../services/reports.service';
 
 const { Text } = Typography;
 
@@ -34,52 +35,44 @@ type ReportItem = {
   createdOn?: string;
 };
 
-const mockReports: ReportItem[] = [
-  {
-    id: '1',
-    name: 'Endpoint Summary Report',
-    description: 'This is system generated report on th...',
-    downloadFormats: ['PDF'],
-    createdBy: 'Admin',
-  },
-  {
-    id: '2',
-    name: 'Vulnerability Report',
-    description: 'Vulnerability Report',
-    downloadFormats: ['PDF', 'XLS'],
-    createdBy: 'Admin',
-  },
-  {
-    id: '3',
-    name: 'Patch Compliance Report',
-    description: 'This report is design to provide inform...',
-    downloadFormats: ['PDF'],
-    createdBy: 'Admin',
-  },
-  {
-    id: '4',
-    name: 'Hardware Inventory Report',
-    description: 'The report provides the information on...',
-    downloadFormats: ['PDF', 'XLS'],
-    createdBy: 'Admin',
-  },
-];
+// Map backend format to display format
+const mapDownloadFormats = (formats: ('pdf' | 'excel')[]): ('PDF' | 'XLS')[] => {
+  return formats.map(f => f === 'pdf' ? 'PDF' : 'XLS');
+};
 
 export const Reports = () => {
   const [searchText, setSearchText] = useState('');
-  const [reports, setReports] = useState<ReportItem[]>(mockReports);
+  const [reports, setReports] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const handleRefresh = async () => {
+  const fetchReports = async () => {
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      message.success('Data refreshed successfully');
+      const data = await reportsService.getReports();
+      const mapped: ReportItem[] = data.map(r => ({
+        id: r.id,
+        name: r.name,
+        description: r.description || '',
+        downloadFormats: mapDownloadFormats(r.downloadFormats || ['pdf']),
+        createdBy: r.createdBy || 'System',
+        createdOn: r.createdOn || r.createdDate,
+      }));
+      setReports(mapped);
     } catch (error) {
-      message.error('Failed to refresh data');
+      console.error('Failed to fetch reports:', error);
+      message.error('Failed to load reports');
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const handleRefresh = async () => {
+    await fetchReports();
+    message.success('Data refreshed successfully');
   };
 
   const handleExport = () => {
@@ -137,13 +130,34 @@ export const Reports = () => {
     message.info(`Editing report: ${record.name}`);
   };
 
-  const handleDelete = (id: string) => {
-    setReports(reports.filter(item => item.id !== id));
-    message.success('Report deleted successfully');
+  const handleDelete = async (id: string) => {
+    try {
+      await reportsService.deleteReport(id);
+      setReports(reports.filter(item => item.id !== id));
+      message.success('Report deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete report:', error);
+      message.error('Failed to delete report');
+    }
   };
 
-  const handleDownload = (format: 'PDF' | 'XLS', report: ReportItem) => {
-    message.info(`Downloading ${report.name} as ${format}`);
+  const handleDownload = async (format: 'PDF' | 'XLS', report: ReportItem) => {
+    try {
+      const apiFormat = format === 'PDF' ? 'pdf' : 'excel';
+      const blob = await reportsService.downloadReport(report.id, apiFormat);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${report.name}.${format.toLowerCase()}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      message.success(`Downloaded ${report.name} as ${format}`);
+    } catch (error) {
+      console.error('Failed to download report:', error);
+      message.error(`Failed to download ${report.name}`);
+    }
   };
 
   const columns: ColumnsType<ReportItem> = [

@@ -19,13 +19,26 @@ import (
 // LinuxSoftwareExecutor handles Linux software installation
 type LinuxSoftwareExecutor struct {
 	packageManager string
+	isRoot         bool // cached check for root privileges
 }
 
 // NewLinuxSoftwareExecutor creates a new Linux software executor
 func NewLinuxSoftwareExecutor() *LinuxSoftwareExecutor {
 	return &LinuxSoftwareExecutor{
 		packageManager: detectPackageManager(),
+		isRoot:         os.Getuid() == 0,
 	}
+}
+
+// runElevated runs a command with root privileges (sudo if needed)
+func (e *LinuxSoftwareExecutor) runElevated(name string, args ...string) *exec.Cmd {
+	if e.isRoot {
+		// Already running as root, execute directly
+		return exec.Command(name, args...)
+	}
+	// Need to use sudo
+	allArgs := append([]string{name}, args...)
+	return exec.Command("sudo", allArgs...)
 }
 
 // InstallSoftware installs software on Linux
@@ -66,18 +79,18 @@ func (e *LinuxSoftwareExecutor) InstallSoftware(pkg models.SoftwarePackage) mode
 func (e *LinuxSoftwareExecutor) installWithApt(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
-	// Update package list (with sudo)
-	exec.Command("sudo", "apt-get", "update", "-qq").Run()
+	// Update package list (with elevation if needed)
+	e.runElevated("apt-get", "update", "-qq").Run()
 
-	// Build install command (with sudo for root permissions)
-	args := []string{"apt-get", "install", "-y"}
+	// Build install command
+	args := []string{"install", "-y"}
 	if pkg.Version != "" && pkg.Version != "latest" {
 		args = append(args, fmt.Sprintf("%s=%s", pkg.Name, pkg.Version))
 	} else {
 		args = append(args, pkg.Name)
 	}
 
-	cmd := exec.Command("sudo", args...)
+	cmd := e.runElevated("apt-get", args...)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
@@ -102,14 +115,14 @@ func (e *LinuxSoftwareExecutor) installWithApt(pkg models.SoftwarePackage, start
 func (e *LinuxSoftwareExecutor) installWithDnf(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
-	args := []string{"dnf", "install", "-y"}
+	args := []string{"install", "-y"}
 	if pkg.Version != "" && pkg.Version != "latest" {
 		args = append(args, fmt.Sprintf("%s-%s", pkg.Name, pkg.Version))
 	} else {
 		args = append(args, pkg.Name)
 	}
 
-	cmd := exec.Command("sudo", args...)
+	cmd := e.runElevated("dnf", args...)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
@@ -134,14 +147,14 @@ func (e *LinuxSoftwareExecutor) installWithDnf(pkg models.SoftwarePackage, start
 func (e *LinuxSoftwareExecutor) installWithYum(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
-	args := []string{"yum", "install", "-y"}
+	args := []string{"install", "-y"}
 	if pkg.Version != "" && pkg.Version != "latest" {
 		args = append(args, fmt.Sprintf("%s-%s", pkg.Name, pkg.Version))
 	} else {
 		args = append(args, pkg.Name)
 	}
 
-	cmd := exec.Command("sudo", args...)
+	cmd := e.runElevated("yum", args...)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
@@ -174,12 +187,12 @@ func (e *LinuxSoftwareExecutor) installWithSnap(pkg models.SoftwarePackage, star
 		return result
 	}
 
-	args := []string{snapPath, "install", pkg.Name}
+	args := []string{"install", pkg.Name}
 	if pkg.Arguments != "" {
 		args = append(args, strings.Fields(pkg.Arguments)...)
 	}
 
-	cmd := exec.Command("sudo", args...)
+	cmd := e.runElevated(snapPath, args...)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
@@ -212,7 +225,7 @@ func (e *LinuxSoftwareExecutor) installWithFlatpak(pkg models.SoftwarePackage, s
 		return result
 	}
 
-	cmd := exec.Command("sudo", flatpakPath, "install", "-y", pkg.Name)
+	cmd := e.runElevated(flatpakPath, "install", "-y", pkg.Name)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
@@ -254,13 +267,13 @@ func (e *LinuxSoftwareExecutor) installDeb(pkg models.SoftwarePackage, startTime
 		defer os.Remove(tempFile)
 	}
 
-	// Install using dpkg (with sudo)
-	cmd := exec.Command("sudo", "dpkg", "-i", debPath)
+	// Install using dpkg (with elevation if needed)
+	cmd := e.runElevated("dpkg", "-i", debPath)
 	output, err := cmd.CombinedOutput()
 
 	// Try to fix dependencies if dpkg fails (common with .deb packages)
 	if err != nil {
-		fixCmd := exec.Command("sudo", "apt-get", "install", "-f", "-y")
+		fixCmd := e.runElevated("apt-get", "install", "-f", "-y")
 		fixOutput, fixErr := fixCmd.CombinedOutput()
 		output = append(output, fixOutput...)
 
@@ -315,14 +328,14 @@ func (e *LinuxSoftwareExecutor) installRpm(pkg models.SoftwarePackage, startTime
 		defer os.Remove(tempFile)
 	}
 
-	// Try dnf/yum first, then rpm (all with sudo)
+	// Try dnf/yum first, then rpm (with elevation if needed)
 	var cmd *exec.Cmd
 	if _, err := exec.LookPath("dnf"); err == nil {
-		cmd = exec.Command("sudo", "dnf", "install", "-y", rpmPath)
+		cmd = e.runElevated("dnf", "install", "-y", rpmPath)
 	} else if _, err := exec.LookPath("yum"); err == nil {
-		cmd = exec.Command("sudo", "yum", "install", "-y", rpmPath)
+		cmd = e.runElevated("yum", "install", "-y", rpmPath)
 	} else {
-		cmd = exec.Command("sudo", "rpm", "-i", rpmPath)
+		cmd = e.runElevated("rpm", "-i", rpmPath)
 	}
 
 	output, err := cmd.CombinedOutput()
@@ -403,11 +416,11 @@ func (e *LinuxSoftwareExecutor) UninstallSoftware(name string) models.ExecutionR
 
 	switch e.packageManager {
 	case "apt-get":
-		cmd = exec.Command("sudo", "apt-get", "remove", "-y", name)
+		cmd = e.runElevated("apt-get", "remove", "-y", name)
 	case "dnf":
-		cmd = exec.Command("sudo", "dnf", "remove", "-y", name)
+		cmd = e.runElevated("dnf", "remove", "-y", name)
 	case "yum":
-		cmd = exec.Command("sudo", "yum", "remove", "-y", name)
+		cmd = e.runElevated("yum", "remove", "-y", name)
 	default:
 		result.ErrorMessage = "No supported package manager"
 		result.Message = "Cannot uninstall - package manager not found"
@@ -423,7 +436,7 @@ func (e *LinuxSoftwareExecutor) UninstallSoftware(name string) models.ExecutionR
 	if err != nil {
 		// Try snap
 		if snapPath, _ := exec.LookPath("snap"); snapPath != "" {
-			snapCmd := exec.Command("sudo", snapPath, "remove", name)
+			snapCmd := e.runElevated(snapPath, "remove", name)
 			snapOutput, snapErr := snapCmd.CombinedOutput()
 			if snapErr == nil {
 				result.Success = true
@@ -435,7 +448,7 @@ func (e *LinuxSoftwareExecutor) UninstallSoftware(name string) models.ExecutionR
 
 		// Try flatpak
 		if flatpakPath, _ := exec.LookPath("flatpak"); flatpakPath != "" {
-			flatpakCmd := exec.Command("sudo", flatpakPath, "uninstall", "-y", name)
+			flatpakCmd := e.runElevated(flatpakPath, "uninstall", "-y", name)
 			flatpakOutput, flatpakErr := flatpakCmd.CombinedOutput()
 			if flatpakErr == nil {
 				result.Success = true

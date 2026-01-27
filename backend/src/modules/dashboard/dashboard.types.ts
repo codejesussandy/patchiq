@@ -15,6 +15,17 @@ export interface DashboardStats {
   highVulnerabilities: number;
   mediumVulnerabilities: number;
   lowVulnerabilities: number;
+  // Exploitability breakdown
+  exploitableVulnerabilities: ExploitabilityBreakdown;
+  nonExploitableVulnerabilities: ExploitabilityBreakdown;
+}
+
+export interface ExploitabilityBreakdown {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  total: number;
 }
 
 export interface SankeyLink {

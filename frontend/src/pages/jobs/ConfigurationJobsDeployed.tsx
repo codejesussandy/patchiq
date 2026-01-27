@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Input,
   Button,
@@ -27,6 +27,7 @@ import {
   LeftOutlined,
   CloseOutlined,
 } from '@ant-design/icons';
+import { jobsService } from '../../services/jobs.service';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -59,46 +60,11 @@ type ConfigurationBundleItem = {
   os: string[];
 };
 
-// Mock configurations - these would come from the catalog
-const mockConfigurations: ConfigurationItem[] = [
-  { key: '1', configurationId: 'CNF-023', title: 'Turns off Automated Adobe Acrol', os: ['Windows'], architecture: 'x64' },
-  { key: '2', configurationId: 'CNF-022', title: 'Turns off Automated Adobe', os: ['Windows'], architecture: 'x64' },
-  { key: '3', configurationId: 'CNF-021', title: 'Turns off Automated Adobe', os: ['Windows'], architecture: 'x64' },
-  { key: '4', configurationId: 'CNF-020', title: 'Turns off automated Adobe', os: ['Windows'], architecture: 'x64' },
-  { key: '5', configurationId: 'CNF-019', title: 'Turns off Automated Adobe', os: ['Windows'], architecture: 'x64' },
-  { key: '6', configurationId: 'CNF-018', title: 'Turns off Automated Adobe', os: ['Windows'], architecture: 'x64' },
-  { key: '7', configurationId: 'CNF-017', title: 'Turns Off Automated Adobe Read', os: ['Windows'], architecture: 'x64' },
-  { key: '8', configurationId: 'CNF-016', title: 'Turns off automatic updates for Ac', os: ['Windows'], architecture: 'x64' },
-  { key: '9', configurationId: 'CNF-015', title: 'Stop Auto Update of Google Chro', os: ['Windows'], architecture: 'x64' },
-  { key: '10', configurationId: 'CNF-014', title: 'Stop Automated App Updates', os: ['Windows'], architecture: 'x64' },
-  { key: '11', configurationId: 'CNF-013', title: 'Stop Automatic Delivery of IE 10', os: ['Windows'], architecture: 'x64' },
-  { key: '12', configurationId: 'CNF-012', title: 'Turn Off Automated upgrade of IE', os: ['Windows'], architecture: 'x64' },
-  { key: '13', configurationId: 'CNF-011', title: 'Turn Off automatic updates for Wi', os: ['Windows'], architecture: 'x64' },
-  { key: '14', configurationId: 'CNF-010', title: 'Stop Automated Java Updates', os: ['Windows'], architecture: 'x64' },
-  { key: '15', configurationId: 'CNF-009', title: 'Turns off Automated Adobe Acrobat X Updater', os: ['Windows'], architecture: 'x64' },
-  { key: '16', configurationId: 'CNF-008', title: 'Turns off Automated Adobe Acrobat XI Updater', os: ['Windows'], architecture: 'x64' },
-  { key: '17', configurationId: 'CNF-007', title: 'Turns off Automated Adobe Acrobat Reader DC updater', os: ['Windows'], architecture: 'x64' },
-  { key: '18', configurationId: 'CNF-006', title: 'Turns off automated Adobe AIR Updater', os: ['Windows'], architecture: 'x64' },
-  { key: '19', configurationId: 'CNF-005', title: 'Turns off Automated Adobe Reader 10 updater', os: ['Windows'], architecture: 'x64' },
-  { key: '20', configurationId: 'CNF-004', title: 'Turns off Automated Adobe Reader 11 update', os: ['Windows'], architecture: 'x64' },
-  { key: '21', configurationId: 'CNF-003', title: 'Disable Windows Update Auto Restart', os: ['Windows'], architecture: 'x64' },
-  { key: '22', configurationId: 'CNF-002', title: 'Configure Windows Firewall', os: ['Windows'], architecture: 'x64' },
-  { key: '23', configurationId: 'CNF-001', title: 'Enable BitLocker Drive Encryption', os: ['Windows'], architecture: 'x64' },
-];
-
-// Mock bundles - these would come from the bundle page
-const mockBundles: ConfigurationBundleItem[] = [
-  { key: 'b1', bundleId: 'BND-001', name: 'Security Hardening for Windows', os: ['Windows'] },
-  { key: 'b2', bundleId: 'BND-002', name: 'Mac Security Bundle', os: ['Mac'] },
-  { key: 'b3', bundleId: 'BND-003', name: 'Linux Compliance Bundle', os: ['Linux'] },
-];
-
-// Start with empty array to show "No data" state
-const mockDeployedItems: ConfigurationDeployedItem[] = [];
-
 export const ConfigurationJobsDeployed = () => {
   const [searchText, setSearchText] = useState('');
-  const [deployedItems, setDeployedItems] = useState<ConfigurationDeployedItem[]>(mockDeployedItems);
+  const [deployedItems, setDeployedItems] = useState<ConfigurationDeployedItem[]>([]);
+  const [configurations, setConfigurations] = useState<ConfigurationItem[]>([]);
+  const [bundles, setBundles] = useState<ConfigurationBundleItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [form] = Form.useForm();
@@ -108,6 +74,62 @@ export const ConfigurationJobsDeployed = () => {
   const [selectedSearch, setSelectedSearch] = useState('');
   const [selectedAvailableKeys, setSelectedAvailableKeys] = useState<string[]>([]);
   const [selectedSelectedKeys, setSelectedSelectedKeys] = useState<string[]>([]);
+
+  const fetchDeployments = async () => {
+    setLoading(true);
+    try {
+      const data = await jobsService.getConfigDeployments();
+      const mapped: ConfigurationDeployedItem[] = data.map((d: any) => ({
+        id: d.id,
+        deploymentId: d.deploymentId || d.id,
+        name: d.name,
+        stage: d.status || 'IN_PROGRESS',
+        pending: { current: d.pending || 0, total: d.pending + d.succeeded + d.failed || 0 },
+        succeeded: { current: d.succeeded || 0, total: d.pending + d.succeeded + d.failed || 0 },
+        failed: { current: d.failed || 0, total: d.pending + d.succeeded + d.failed || 0 },
+        createdBy: d.createdBy || 'System',
+        createdOn: d.createdOn || d.createdAt || '',
+      }));
+      setDeployedItems(mapped);
+    } catch (error) {
+      console.error('Failed to fetch deployments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchConfigurationsAndBundles = async () => {
+    try {
+      const [configData, bundleData] = await Promise.all([
+        jobsService.getConfigCatalog(),
+        jobsService.getConfigBundles(),
+      ]);
+
+      const mappedConfigs: ConfigurationItem[] = configData.map((c: any) => ({
+        key: c.id,
+        configurationId: c.configurationId || c.id,
+        title: c.name,
+        os: [c.os || 'Windows'],
+        architecture: c.architecture || 'x64',
+      }));
+      setConfigurations(mappedConfigs);
+
+      const mappedBundles: ConfigurationBundleItem[] = bundleData.map((b: any) => ({
+        key: b.id,
+        bundleId: b.bundleId || b.id,
+        name: b.bundleName || b.name,
+        os: [b.os || 'Windows'],
+      }));
+      setBundles(mappedBundles);
+    } catch (error) {
+      console.error('Failed to fetch configurations/bundles:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchDeployments();
+    fetchConfigurationsAndBundles();
+  }, []);
 
   const handleCreate = () => {
     setCreateModalVisible(true);
@@ -134,50 +156,31 @@ export const ConfigurationJobsDeployed = () => {
     try {
       await form.validateFields();
       const values = form.getFieldsValue();
-      
-      // Create new deployment
-      const newDeployment: ConfigurationDeployedItem = {
-        id: Date.now().toString(),
-        deploymentId: `CFG-ADR-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+
+      const apiData = {
         name: values.deploymentName,
-        stage: 'IN_PROGRESS',
-        pending: { current: selectedConfigurations.length, total: selectedConfigurations.length },
-        succeeded: { current: 0, total: selectedConfigurations.length },
-        failed: { current: 0, total: selectedConfigurations.length },
-        createdBy: 'Current User', // In real app, get from auth context
-        createdOn: new Date().toLocaleString('en-US', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: true,
-        }).replace(',', ''),
+        description: values.description || '',
+        configurationIds: selectionType === 'configuration' ? selectedConfigurations : undefined,
+        bundleIds: selectionType === 'bundle' ? selectedConfigurations : undefined,
+        targetAgentIds: values.targetAgentIds || [],
       };
 
-      setDeployedItems([newDeployment, ...deployedItems]);
+      await jobsService.createConfigDeployment(apiData);
       setCreateModalVisible(false);
       form.resetFields();
       setSelectedConfigurations([]);
       message.success('Configuration deployment created successfully');
+      fetchDeployments();
     } catch (error) {
-      console.error('Form validation failed:', error);
+      console.error('Submission failed:', error);
+      message.error('Failed to create deployment');
     }
   };
 
   const handleRefresh = async () => {
-    setLoading(true);
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // In real implementation, fetch data from API
-      message.success('Data refreshed successfully');
-    } catch (error) {
-      message.error('Failed to refresh data');
-    } finally {
-      setLoading(false);
-    }
+    await fetchDeployments();
+    await fetchConfigurationsAndBundles();
+    message.success('Data refreshed successfully');
   };
 
   const handleExport = () => {
@@ -231,9 +234,9 @@ export const ConfigurationJobsDeployed = () => {
   };
 
   // Get available and selected items (configurations or bundles)
-  const currentItems = selectionType === 'configuration' 
-    ? mockConfigurations 
-    : mockBundles;
+  const currentItems = selectionType === 'configuration'
+    ? configurations
+    : bundles;
   
   const availableItems = currentItems.filter(item => !selectedConfigurations.includes(item.key));
   const selectedItems = currentItems.filter(item => selectedConfigurations.includes(item.key));

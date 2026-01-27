@@ -44,6 +44,8 @@ import {
   FileOutlined,
   AppstoreOutlined,
   RocketOutlined,
+  CodeOutlined,
+  InboxOutlined,
 } from '@ant-design/icons';
 import { hubService } from '../../services/hub.service';
 import { softwareJobsService } from '../../services/softwareJobs.service';
@@ -96,6 +98,10 @@ export const Hub = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
   const [deployLoading, setDeployLoading] = useState(false);
+
+  // Bundle upload modal state
+  const [bundleUploadVisible, setBundleUploadVisible] = useState(false);
+  const [bundleUploading, setBundleUploading] = useState(false);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -214,6 +220,34 @@ export const Hub = () => {
     }
   };
 
+  // Handle script bundle upload (.tar.gz with manifest and scripts)
+  const handleBundleUpload = async (file: File) => {
+    if (!file.name.endsWith('.tar.gz') && !file.name.endsWith('.tgz')) {
+      message.error('Please upload a .tar.gz or .tgz file');
+      return false;
+    }
+
+    setBundleUploading(true);
+    try {
+      const result = await hubService.uploadPackageBundle(file);
+      message.success(
+        <span>
+          Bundle uploaded successfully! Package <strong>{result.manifest.displayName}</strong> v{result.manifest.version} created.
+          Scripts found: {result.scriptsFound.join(', ')}
+        </span>
+      );
+      setBundleUploadVisible(false);
+      fetchPackages();
+      fetchStats();
+    } catch (error: any) {
+      console.error('Failed to upload bundle:', error);
+      message.error(error.response?.data?.error || 'Failed to upload bundle');
+    } finally {
+      setBundleUploading(false);
+    }
+    return false; // Prevent default upload behavior
+  };
+
   const handleEdit = (pkg: SoftwarePackage) => {
     setEditingPackage(pkg);
     form.setFieldsValue({
@@ -309,6 +343,7 @@ export const Hub = () => {
         type: values.deploymentType,
         targetAgentIds: selectedAgents,
         package: {
+          packageId: deployingPackage.packageId, // Include packageId for Hub package detection
           name: deployingPackage.name,
           source: deployingPackage.installSource,
           version: deployingPackage.version,
@@ -397,8 +432,18 @@ export const Hub = () => {
       title: 'Source',
       dataIndex: 'installSource',
       key: 'installSource',
-      width: 100,
-      render: (source) => <Tag color="purple">{source.toUpperCase()}</Tag>,
+      width: 120,
+      render: (source, record) => (
+        <Space>
+          {record.scriptsIncluded ? (
+            <Tooltip title="Script bundle - includes install/update/rollback scripts">
+              <Tag icon={<CodeOutlined />} color="green">BUNDLE</Tag>
+            </Tooltip>
+          ) : (
+            <Tag color="purple">{source.toUpperCase()}</Tag>
+          )}
+        </Space>
+      ),
     },
     {
       title: 'File',
@@ -585,13 +630,21 @@ export const Hub = () => {
               Refresh
             </Button>
           </Space>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setCreateModalVisible(true)}
-          >
-            Add Package
-          </Button>
+          <Space>
+            <Button
+              type="primary"
+              icon={<UploadOutlined />}
+              onClick={() => setBundleUploadVisible(true)}
+            >
+              Upload Bundle
+            </Button>
+            <Button
+              icon={<PlusOutlined />}
+              onClick={() => setCreateModalVisible(true)}
+            >
+              Add Package
+            </Button>
+          </Space>
         </Space>
       </Card>
 
@@ -1006,6 +1059,65 @@ export const Hub = () => {
             </Form>
           </>
         )}
+      </Modal>
+
+      {/* Bundle Upload Modal */}
+      <Modal
+        title={
+          <Space>
+            <CodeOutlined style={{ color: '#52c41a' }} />
+            <span>Upload Script Bundle</span>
+          </Space>
+        }
+        open={bundleUploadVisible}
+        onCancel={() => setBundleUploadVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          <Upload.Dragger
+            accept=".tar.gz,.tgz"
+            showUploadList={false}
+            beforeUpload={handleBundleUpload}
+            disabled={bundleUploading}
+          >
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined style={{ fontSize: 48, color: bundleUploading ? '#999' : '#52c41a' }} />
+            </p>
+            <p className="ant-upload-text">
+              {bundleUploading ? 'Uploading...' : 'Click or drag bundle file to upload'}
+            </p>
+            <p className="ant-upload-hint">
+              Upload a .tar.gz bundle containing manifest.json and installation scripts
+            </p>
+          </Upload.Dragger>
+
+          <Divider />
+
+          <Card size="small" style={{ textAlign: 'left', background: '#f9f9f9' }}>
+            <Title level={5}>Bundle Structure</Title>
+            <Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 12 }}>
+              <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+{`package-bundle/
+  manifest.json       # Required: Package metadata
+  scripts/
+    install.sh        # Required: Installation script
+    update.sh         # Optional: Update script
+    rollback.sh       # Optional: Rollback script
+    uninstall.sh      # Optional: Uninstall script
+  files/
+    package.deb       # Optional: Package files`}
+              </pre>
+            </Text>
+          </Card>
+
+          <div style={{ marginTop: 16 }}>
+            <Text type="secondary">
+              Script bundles provide full control over installation behavior.
+              The agent will execute the appropriate script based on the operation type.
+            </Text>
+          </div>
+        </div>
       </Modal>
     </div>
   );

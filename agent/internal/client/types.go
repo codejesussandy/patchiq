@@ -76,6 +76,7 @@ type CommandResultRequest struct {
 	Status       string `json:"status"` // completed, failed
 	Result       string `json:"result,omitempty"`
 	ErrorMessage string `json:"errorMessage,omitempty"`
+	Output       string `json:"output,omitempty"` // Script/command output for debugging
 }
 
 // InventoryRequest represents the inventory payload sent to the backend

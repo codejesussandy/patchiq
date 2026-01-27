@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import archiver from 'archiver';
 import { AgentsService } from './agents.service';
 import { minioStorage } from '@shared/services/minio.service';
+import { env } from '@config/env';
 import type { ListAgentsQuery } from './agents.validators';
 
 // Bucket for agent binaries
@@ -219,10 +220,18 @@ export class AgentsController {
       // Initialize MinIO
       await minioStorage.initialize();
 
-      // Determine server URL from request
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-      const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
-      const serverUrl = `${protocol}://${host}/api`;
+      // Determine server URL - prefer configured public URL, fall back to request headers
+      let serverUrl: string;
+      if (env.BACKEND_PUBLIC_URL && env.BACKEND_PUBLIC_URL !== 'http://localhost:3000') {
+        // Use configured public URL (remove trailing slash if present, add /api)
+        const baseUrl = env.BACKEND_PUBLIC_URL.replace(/\/+$/, '');
+        serverUrl = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
+      } else {
+        // Fall back to request headers for local development
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+        const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
+        serverUrl = `${protocol}://${host}/api`;
+      }
 
       // Generate filenames
       const isWindows = version.platform === 'Windows';

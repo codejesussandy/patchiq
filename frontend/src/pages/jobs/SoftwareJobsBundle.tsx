@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Input,
   Button,
@@ -30,6 +30,8 @@ import {
   RightOutlined,
   LeftOutlined,
 } from '@ant-design/icons';
+import { hubService } from '../../services/hub.service';
+import { jobsService } from '../../services/jobs.service';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -54,40 +56,11 @@ type ApplicationItem = {
   type: string;
 };
 
-const mockBundleItems: BundleItem[] = [
-  {
-    id: '1',
-    name: 'HR Team',
-    description: 'HR team Software bundle',
-    os: ['Windows'],
-    softwares: 3,
-    softwaresList: ['1', '4', '5'],
-    createdBy: 'Admin',
-    createdOn: '2026/01/12 12:25:41 PM',
-  },
-];
-
-// Mock applications - these would come from the catalog
-const mockApplications: ApplicationItem[] = [
-  { key: '1', title: 'TightVNC', description: 'TightVNC', os: ['Windows'], type: 'MSI' },
-  { key: '2', title: 'Google Chrome', description: 'Google Chrome for Ubuntu', os: ['Linux'], type: 'APPLICATION' },
-  { key: '3', title: 'TEST', description: 'Test application installer', os: ['Windows'], type: 'EXE' },
-  { key: '4', title: 'Zoom desktop client', description: 'Install Zoom desktop client for Meetings x64', os: ['Windows'], type: 'MSI' },
-  { key: '5', title: 'WinRAR', description: 'Install winrar x64 700', os: ['Windows'], type: 'EXE' },
-  { key: '6', title: 'VLC For Mac', description: 'Install VLC 3.0.20', os: ['Mac'], type: 'APPLICATION' },
-  { key: '7', title: 'VLC', description: 'Install VLC 3.0.20 x64', os: ['Windows'], type: 'EXE' },
-  { key: '8', title: 'Slack Windows', description: 'Install Slack for Window 64 bit', os: ['Windows'], type: 'EXE' },
-  { key: '9', title: 'O365 Mac', description: 'Install Mac Office 365 Setup', os: ['Mac'], type: 'APPLICATION' },
-  { key: '10', title: 'O365 Windows', description: 'Install Microsoft Office 365 Setup', os: ['Windows'], type: 'EXE' },
-  { key: '11', title: 'Notepad++', description: 'Install Notepad++ v8.6.4 x64', os: ['Windows'], type: 'EXE' },
-  { key: '12', title: 'Microsoft Teams', description: 'Install Microsoft Teams x64', os: ['Windows'], type: 'MSI' },
-  { key: '13', title: 'Firefox', description: 'Mozilla Firefox Browser', os: ['Windows', 'Mac', 'Linux'], type: 'EXE' },
-];
-
 export const SoftwareJobsBundle = () => {
   const [searchText, setSearchText] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [bundleItems, setBundleItems] = useState<BundleItem[]>(mockBundleItems);
+  const [bundleItems, setBundleItems] = useState<BundleItem[]>([]);
+  const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<BundleItem | null>(null);
@@ -98,10 +71,79 @@ export const SoftwareJobsBundle = () => {
   const [selectedAvailableKeys, setSelectedAvailableKeys] = useState<string[]>([]);
   const [selectedSelectedKeys, setSelectedSelectedKeys] = useState<string[]>([]);
 
-  const handleDelete = (id: string) => {
-    setBundleItems(bundleItems.filter(item => item.id !== id));
-    message.success('Bundle deleted successfully');
-    setSelectedRowKeys([]);
+  const fetchBundles = async () => {
+    setLoading(true);
+    try {
+      const data = await jobsService.getSoftwareBundles();
+      const mapped: BundleItem[] = data.map((b: any) => ({
+        id: b.id,
+        name: b.name || b.bundleName,
+        description: b.description || '',
+        os: [b.os || 'Windows'],
+        softwares: b.softwareCount || b.softwaresList?.length || 0,
+        softwaresList: b.softwaresList || [],
+        createdBy: b.createdBy || 'System',
+        createdOn: b.createdOn || b.createdAt || '',
+      }));
+      setBundleItems(mapped);
+    } catch (error) {
+      console.error('Failed to fetch bundles:', error);
+      message.error('Failed to load bundles');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Convert Hub platform to display OS format
+  const platformToDisplayOs = (platform: string): string => {
+    switch (platform?.toLowerCase()) {
+      case 'windows': return 'Windows';
+      case 'macos':
+      case 'darwin': return 'Mac';
+      case 'linux': return 'Linux';
+      case 'cross-platform': return 'cross-platform'; // Special case for all platforms
+      default: return 'Linux';
+    }
+  };
+
+  const fetchApplications = async () => {
+    try {
+      const response = await hubService.listPackages({ limit: 100 });
+      const packages = response.data || [];
+      const mapped: ApplicationItem[] = packages.map((p: any) => {
+        const displayOs = platformToDisplayOs(p.platform);
+        return {
+          key: p.id,
+          title: p.displayName || p.name,
+          description: p.description || p.name,
+          // For cross-platform packages, include all OS options
+          os: displayOs === 'cross-platform'
+            ? ['Windows', 'Mac', 'Linux']
+            : [displayOs],
+          type: p.installSource || 'APPLICATION',
+        };
+      });
+      setApplications(mapped);
+    } catch (error) {
+      console.error('Failed to fetch applications:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchBundles();
+    fetchApplications();
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await jobsService.deleteSoftwareBundle(id);
+      setBundleItems(bundleItems.filter(item => item.id !== id));
+      message.success('Bundle deleted successfully');
+      setSelectedRowKeys([]);
+    } catch (error) {
+      console.error('Failed to delete bundle:', error);
+      message.error('Failed to delete bundle');
+    }
   };
 
   const handleEdit = (record: BundleItem) => {
@@ -129,60 +171,38 @@ export const SoftwareJobsBundle = () => {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      
+
       if (selectedApplications.length === 0) {
         message.error('Please select at least one application');
         return;
       }
 
+      const apiData = {
+        name: values.bundleName,
+        os: Array.isArray(values.os) ? values.os[0] : values.os,
+        description: values.description || '',
+        softwaresList: selectedApplications,
+      };
+
       if (editingItem) {
-        // Update existing bundle
-        const updatedItems = bundleItems.map(item =>
-          item.id === editingItem.id
-            ? {
-                ...item,
-                name: values.bundleName,
-                description: values.description || '',
-                os: Array.isArray(values.os) ? values.os : [values.os],
-                softwares: selectedApplications.length,
-                softwaresList: selectedApplications,
-              }
-            : item
-        );
-        setBundleItems(updatedItems);
+        await jobsService.updateSoftwareBundle(editingItem.id, apiData);
         message.success('Bundle updated successfully');
       } else {
-        // Create new bundle
-        const newItem: BundleItem = {
-          id: String(bundleItems.length + 1),
-          name: values.bundleName,
-          description: values.description || '',
-          os: Array.isArray(values.os) ? values.os : [values.os],
-          softwares: selectedApplications.length,
-          softwaresList: selectedApplications,
-          createdBy: 'Admin',
-          createdOn: new Date().toLocaleString(),
-        };
-        setBundleItems([newItem, ...bundleItems]);
+        await jobsService.createSoftwareBundle(apiData);
         message.success('Bundle created successfully');
       }
       handleModalClose();
+      fetchBundles();
     } catch (error) {
-      console.error('Validation failed:', error);
+      console.error('Submission failed:', error);
+      message.error('Failed to save bundle');
     }
   };
 
   const handleRefresh = async () => {
-    setLoading(true);
-    try {
-      // In a real application, this would fetch from an API
-      message.success('Data refreshed successfully');
-      setBundleItems([...mockBundleItems]);
-    } catch (error) {
-      message.error('Failed to refresh data');
-    } finally {
-      setLoading(false);
-    }
+    await fetchBundles();
+    await fetchApplications();
+    message.success('Data refreshed successfully');
   };
 
   const handleExport = () => {
@@ -354,8 +374,8 @@ export const SoftwareJobsBundle = () => {
   // Filter applications based on selected OS
   const getFilteredApplications = () => {
     const osValue = form.getFieldValue('os');
-    if (!osValue) return mockApplications;
-    return mockApplications.filter(app => app.os.includes(osValue));
+    if (!osValue) return applications;
+    return applications.filter(app => app.os.includes(osValue));
   };
 
   // Get available and selected applications for Transfer
@@ -458,8 +478,8 @@ export const SoftwareJobsBundle = () => {
                   <Checkbox checked={isSelected} />
                   {getOSIcon()}
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, color: '#666' }}>{item.key}</div>
                     <div style={{ fontWeight: 500 }}>{item.title}</div>
+                    <div style={{ fontSize: 11, color: '#999' }}>{item.type}</div>
                   </div>
                 </div>
               );

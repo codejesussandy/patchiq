@@ -10,5 +10,6 @@ func NewExecutorManager() *ExecutorManager {
 		software:     software,
 		remoteAccess: NewDarwinRemoteAccessExecutor(),
 		rollback:     NewBaseRollbackExecutor("", software),
+		script:       NewBaseScriptExecutor(""),
 	}
 }

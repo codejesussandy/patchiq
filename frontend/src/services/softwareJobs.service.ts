@@ -49,6 +49,7 @@ export interface CreateSoftwareDeploymentInput {
   type: 'install' | 'uninstall' | 'upgrade';
   targetAgentIds: string[];
   package: {
+    packageId?: string;  // For Hub package detection (script bundles)
     name: string;
     source: string;
     version?: string;

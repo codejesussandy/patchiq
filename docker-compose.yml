@@ -135,10 +135,14 @@ services:
       - MINIO_SECRET_KEY=patchiq_secret_key
       - MINIO_BUCKET=patches
       - MINIO_USE_SSL=false
+      - MINIO_PUBLIC_ENDPOINT=dev.skenzeriq.com
+      - MINIO_PUBLIC_PORT=5001
       - JWT_SECRET=dev-jwt-secret-change-in-production
       - JWT_ACCESS_TOKEN_EXPIRY=15m
       - JWT_REFRESH_TOKEN_EXPIRY=7d
       - CORS_ORIGIN=http://localhost:5173
+      # Backend public URL for agent downloads (agents connect to this address)
+      - BACKEND_PUBLIC_URL=http://dev.skenzeriq.com:4080
       # Mock services for local development
       - MOCK_NVD=true
       - MOCK_EMAIL=true

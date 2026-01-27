@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Input,
   Button,
@@ -15,8 +15,8 @@ import {
   Radio,
   Row,
   Col,
-  InputNumber,
   Divider,
+  InputNumber,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
@@ -29,8 +29,13 @@ import {
   DeleteOutlined,
   FilterOutlined,
   CloseOutlined,
+  WindowsOutlined,
+  AppleOutlined,
+  LinuxOutlined,
 } from '@ant-design/icons';
 import { patchService, type Patch } from '../../services/patch.service';
+import { jobsService } from '../../services/jobs.service';
+import { softwareJobsService } from '../../services/softwareJobs.service';
 import { SeverityBadge, OSIcon } from '../../components/patches';
 
 const { Text, Title } = Typography;
@@ -47,31 +52,36 @@ type PolicyItem = {
   createdOn: string;
 };
 
-const mockPolicies: PolicyItem[] = [
-  {
-    id: '1',
-    policyId: 'POLICY-2',
-    name: 'Scheduled Patch Deployment',
-    description: 'Scheduled Patch Deployment policy for automated updates',
-    type: 'SCHEDULE',
-    createdBy: 'Admin',
-    createdOn: '2026/01/12 12:14:27 PM',
-  },
-  {
-    id: '2',
-    policyId: 'POLICY-1',
-    name: 'OOB Instant deployment policy',
-    description: '',
-    type: 'INSTANT',
-    createdBy: 'Admin',
-    createdOn: '2025/11/27 10:15:32 PM',
-  },
-];
-
 export const PatchJobs = () => {
   const [searchText, setSearchText] = useState('');
-  const [policies, setPolicies] = useState<PolicyItem[]>(mockPolicies);
+  const [policies, setPolicies] = useState<PolicyItem[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const fetchPolicies = async () => {
+    setLoading(true);
+    try {
+      const data = await jobsService.getDeploymentPolicies();
+      const mapped: PolicyItem[] = data.map((p: any) => ({
+        id: p.id,
+        policyId: p.policyId || p.id,
+        name: p.name,
+        description: p.description || '',
+        type: p.type || 'INSTANT',
+        createdBy: p.createdBy || 'System',
+        createdOn: p.createdOn || p.createdAt || '',
+      }));
+      setPolicies(mapped);
+    } catch (error) {
+      console.error('Failed to fetch policies:', error);
+      message.error('Failed to load policies');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPolicies();
+  }, []);
 
   // Install/Deployment Modal
   const [installModalVisible, setInstallModalVisible] = useState(false);
@@ -86,9 +96,38 @@ export const PatchJobs = () => {
   const [selectedPatchIds, setSelectedPatchIds] = useState<React.Key[]>([]);
   const [patchesLoading, setPatchesLoading] = useState(false);
 
-  const handleDelete = (id: string) => {
-    setPolicies(policies.filter(item => item.id !== id));
-    message.success('Policy deleted successfully');
+  // Agents state for target selection
+  const [agents, setAgents] = useState<{ id: string; agentId: string; hostname: string; osType: string; status: string }[]>([]);
+
+  // Fetch available agents
+  const fetchAgents = async () => {
+    try {
+      const data = await softwareJobsService.listAgents();
+      setAgents(data.map((a: any) => ({
+        id: a.id,
+        agentId: a.agentId,
+        hostname: a.hostname,
+        osType: a.osType,
+        status: a.status,
+      })));
+    } catch (error) {
+      console.error('Failed to fetch agents:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAgents();
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await jobsService.deleteDeploymentPolicy(id);
+      setPolicies(policies.filter(item => item.id !== id));
+      message.success('Policy deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete policy:', error);
+      message.error('Failed to delete policy');
+    }
   };
 
   const handleEdit = (record: PolicyItem) => {
@@ -148,44 +187,49 @@ export const PatchJobs = () => {
       message.warning('Please add at least one patch');
       return;
     }
-    
+
     try {
       const values = await installForm.validateFields();
+
+      // Ensure endpoints are selected
+      if (!values.endpoints || values.endpoints.length === 0) {
+        message.warning('Please select at least one target endpoint');
+        return;
+      }
+
+      // Build patches array with required info for deployment executor
+      const patchesPayload = selectedPatches.map(p => ({
+        id: p.id,
+        patchId: p.patchId,
+        name: p.software,  // Use software field as name
+        description: p.description,
+        severity: p.severity,
+        type: configType,  // install or rollback
+      }));
+
       const deploymentPayload = {
         name: values.name,
         description: values.description,
-        type: configType.toUpperCase() as 'INSTALL' | 'ROLLBACK',
-        patchIds: selectedPatches.map(p => p.id),
-        scope: values.scope,
-        endpointIds: values.endpoints || [],
-        deploymentPolicy: values.deploymentPolicy,
-        retryCount: values.retryCount,
-        batchSize: values.batchSize,
-        notifyTo: values.notifyTo,
+        targetAgentIds: values.endpoints,  // Backend expects targetAgentIds
+        patches: patchesPayload,  // Backend expects patches array
+        retryCount: values.retryCount || 1,
       };
 
-      await patchService.createDeployment(deploymentPayload);
-      message.success('Patch deployment created successfully');
+      const result = await patchService.createDeployment(deploymentPayload);
+      message.success(`Patch deployment created: ${result.deploymentId || 'Success'}`);
       setInstallModalVisible(false);
       installForm.resetFields();
       setSelectedPatches([]);
       setSelectedPatchIds([]);
-    } catch (error) {
-      message.error('Failed to create patch deployment');
+    } catch (error: any) {
+      console.error('Failed to create patch deployment:', error);
+      message.error(error.response?.data?.message || 'Failed to create patch deployment');
     }
   };
 
   const handleRefresh = async () => {
-    setLoading(true);
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      message.success('Data refreshed successfully');
-    } catch (error) {
-      message.error('Failed to refresh data');
-    } finally {
-      setLoading(false);
-    }
+    await fetchPolicies();
+    message.success('Data refreshed successfully');
   };
 
   const handleExport = () => {
@@ -482,12 +526,31 @@ export const PatchJobs = () => {
             <Col span={12}>
               <Form.Item
                 name="endpoints"
-                label="Endpoints"
+                label={
+                  <span>
+                    Target Endpoints <Text type="danger">*</Text>
+                  </span>
+                }
+                rules={[{ required: true, message: 'Please select at least one endpoint' }]}
               >
-                <Select placeholder="Please Select" style={{ width: '100%' }} mode="multiple">
-                  <Option value="endpoint1">Endpoint 1</Option>
-                  <Option value="endpoint2">Endpoint 2</Option>
-                  <Option value="endpoint3">Endpoint 3</Option>
+                <Select
+                  placeholder="Select target endpoints"
+                  style={{ width: '100%' }}
+                  mode="multiple"
+                  showSearch
+                  optionFilterProp="children"
+                >
+                  {agents.map(agent => (
+                    <Option key={agent.id} value={agent.id}>
+                      <Space>
+                        {agent.osType === 'windows' && <WindowsOutlined style={{ color: '#1890ff' }} />}
+                        {agent.osType === 'darwin' && <AppleOutlined />}
+                        {agent.osType === 'linux' && <LinuxOutlined />}
+                        {agent.hostname} ({agent.agentId})
+                        <Tag color={agent.status === 'online' ? 'green' : 'orange'}>{agent.status}</Tag>
+                      </Space>
+                    </Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>

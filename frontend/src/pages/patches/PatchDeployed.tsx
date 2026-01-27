@@ -102,71 +102,29 @@ export const PatchDeployed = () => {
     createdOn: string;
   };
 
-  const fetchTasks = async (_deploymentId: string) => {
+  const fetchTasks = async (deploymentId: string) => {
     setTasksLoading(true);
     try {
-      // In real implementation, fetch tasks from API
-      // For now, using mock data
-      const mockTasks: DeploymentTask[] = [
-        {
-          id: 855,
-          endpoint: { name: 'DESKTOP-7CC6ETJ', os: 'Ubuntu', status: 'Online' },
-          name: 'ubuntu-drivers-cc',
-          status: 'SUCCESS',
-          createdBy: 'Admin',
-          lastUpdated: '2026/01/12 02:02:08 PM',
-          createdOn: '2026/01/12 02:01:36 PM',
+      const tasksData = await patchService.getDeploymentTasks(deploymentId);
+      // Map backend response to DeploymentTask format
+      const mappedTasks: DeploymentTask[] = tasksData.map((task: any) => ({
+        id: task.id,
+        endpoint: {
+          name: task.endpoint?.name || 'Unknown',
+          os: task.endpoint?.os || 'Unknown',
+          status: task.endpoint?.status || 'Unknown',
         },
-        {
-          id: 854,
-          endpoint: { name: 'DESKTOP-7CC6ETJ', os: 'Ubuntu', status: 'Online' },
-          name: 'gir1.2-nm-1.0',
-          status: 'SUCCESS',
-          createdBy: 'Admin',
-          lastUpdated: '2026/01/12 02:01:46 PM',
-          createdOn: '2026/01/12 02:01:29 PM',
-        },
-        {
-          id: 853,
-          endpoint: { name: 'DESKTOP-7CC6ETJ', os: 'Ubuntu', status: 'Online' },
-          name: 'libnm0',
-          status: 'SUCCESS',
-          createdBy: 'Admin',
-          lastUpdated: '2026/01/12 02:01:36 PM',
-          createdOn: '2026/01/12 02:01:23 PM',
-        },
-        {
-          id: 852,
-          endpoint: { name: 'DESKTOP-7CC6ETJ', os: 'Ubuntu', status: 'Online' },
-          name: 'network-manager',
-          status: 'SUCCESS',
-          createdBy: 'Admin',
-          lastUpdated: '2026/01/12 02:01:27 PM',
-          createdOn: '2026/01/12 02:00:54 PM',
-        },
-        {
-          id: 851,
-          endpoint: { name: 'DESKTOP-7CC6ETJ', os: 'Ubuntu', status: 'Online' },
-          name: 'network-manager',
-          status: 'SUCCESS',
-          createdBy: 'Admin',
-          lastUpdated: '2026/01/12 02:01:09 PM',
-          createdOn: '2026/01/12 02:00:27 PM',
-        },
-        {
-          id: 850,
-          endpoint: { name: 'DESKTOP-7CC6ETJ', os: 'Ubuntu', status: 'Online' },
-          name: 'snapd',
-          status: 'SUCCESS',
-          createdBy: 'Admin',
-          lastUpdated: '2026/01/12 02:01:05 PM',
-          createdOn: '2026/01/12 02:00:00 PM',
-        },
-      ];
-      setTasks(mockTasks);
-      // await patchService.getDeploymentTasks(deploymentId);
+        name: task.name || 'Unknown',
+        status: task.status?.toUpperCase() || 'PENDING',
+        createdBy: task.createdBy || 'System',
+        lastUpdated: task.lastUpdated || task.updatedAt || '',
+        createdOn: task.createdOn || task.createdAt || '',
+      }));
+      setTasks(mappedTasks);
     } catch (error) {
+      console.error('Failed to fetch tasks:', error);
       message.error('Failed to fetch tasks');
+      setTasks([]);
     } finally {
       setTasksLoading(false);
     }

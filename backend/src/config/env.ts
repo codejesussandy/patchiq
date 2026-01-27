@@ -106,6 +106,10 @@ const envSchema = z.object({
   // Redis (for BullMQ job queue)
   REDIS_URL: z.string().url().optional().default('redis://localhost:6379'),
 
+  // Backend Public URL (for agent downloads)
+  // This is the URL agents use to reach the backend from outside the Docker network
+  BACKEND_PUBLIC_URL: z.string().url().optional().default('http://localhost:3000'),
+
   // MinIO (Patch Repository Storage)
   MINIO_ENDPOINT: z.string().optional().default('localhost'),
   MINIO_PORT: z.string().transform(Number).optional().default('9000'),
@@ -117,6 +121,9 @@ const envSchema = z.object({
     .transform((v) => v === 'true')
     .optional()
     .default('false'),
+  // Public MinIO endpoint for agents outside Docker network
+  MINIO_PUBLIC_ENDPOINT: z.string().optional(),
+  MINIO_PUBLIC_PORT: z.string().transform(Number).optional(),
 });
 
 // Validate environment variables

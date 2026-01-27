@@ -1,5 +1,13 @@
 // Dashboard Types
 
+export interface ExploitabilityBreakdown {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  total: number;
+}
+
 export interface DashboardStats {
   totalEndpoints: number;
   dataLossEndpoints: number;
@@ -13,6 +21,8 @@ export interface DashboardStats {
   highVulnerabilities: number;
   mediumVulnerabilities: number;
   lowVulnerabilities: number;
+  exploitableVulnerabilities?: ExploitabilityBreakdown;
+  nonExploitableVulnerabilities?: ExploitabilityBreakdown;
 }
 
 export interface VulnerabilityClassification {

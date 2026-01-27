@@ -14,6 +14,7 @@ import type {
   HubBundle,
   CreateBundleInput,
   HubStats,
+  BundleUploadResult,
 } from '../types/hub.types';
 
 export const hubService = {
@@ -71,7 +72,40 @@ export const hubService = {
   },
 
   // ============================================
-  // Bundle Operations
+  // Script Bundle Operations (Hub-Centric)
+  // ============================================
+
+  /**
+   * Upload a package bundle (.tar.gz containing scripts and manifest)
+   * This creates a new package automatically based on the manifest
+   */
+  async uploadPackageBundle(file: File): Promise<BundleUploadResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/hub/packages/upload-bundle', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data.data;
+  },
+
+  /**
+   * Get bundle download info for a package (includes manifest and presigned URL)
+   */
+  async getBundleDownloadInfo(packageId: string): Promise<{
+    packageId: string;
+    bundleUrl: string;
+    bundleChecksum: string;
+    bundleSize: number;
+    expiresAt: string;
+  }> {
+    const response = await api.get(`/hub/packages/${packageId}/bundle`);
+    return response.data.data;
+  },
+
+  // ============================================
+  // Package Group (Bundle) Operations
   // ============================================
 
   async listBundles(platform?: string): Promise<HubBundle[]> {

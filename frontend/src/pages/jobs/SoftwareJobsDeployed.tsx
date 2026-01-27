@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Input,
   Button,
@@ -40,6 +41,20 @@ import {
 } from '../../services/softwareJobs.service';
 import type { SoftwarePackage, HubBundle } from '../../types/hub.types';
 
+// Navigation state type from SoftwareJobsCatalog
+interface LocationState {
+  createDeployment?: boolean;
+  selectedPackage?: {
+    id: string;
+    packageId: string;
+    name: string;
+    displayName: string;
+    version: string;
+    installSource: string;
+    hasBundle: boolean;
+  };
+}
+
 const { Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
@@ -62,7 +77,8 @@ type ApplicationItem = {
   key: string;
   id: string;
   deploymentId: string;
-  title: string;
+  name: string;  // Actual package name (lowercase, used for apt/brew)
+  title: string; // Display name
   os: string[];
   architecture: string;
   installSource: string;
@@ -115,6 +131,7 @@ const convertPackage = (p: SoftwarePackage): ApplicationItem => ({
   key: p.id,
   id: p.id,
   deploymentId: p.packageId,
+  name: p.name,  // Actual package name (lowercase)
   title: p.displayName,
   os: [p.platform === 'macos' ? 'Mac' : p.platform === 'windows' ? 'Windows' : 'Linux'],
   architecture: p.architecture || 'x64',
@@ -130,21 +147,40 @@ const convertBundle = (b: HubBundle): BundleItem => ({
 });
 
 // Helper to convert task to display type
-const convertTask = (t: SoftwareDeploymentTask): TaskItem => ({
-  id: t.id,
-  endpointId: t.agentId,
-  endpointName: t.agentName || t.agentId,
-  endpointOS: (t.agentOs === 'darwin' ? 'Mac' : t.agentOs === 'windows' ? 'Windows' : 'Linux') as TaskItem['endpointOS'],
-  name: t.packageName,
-  status: (t.status === 'completed' ? 'SUCCESS' : t.status === 'failed' ? 'FAILED' : t.status === 'in_progress' ? 'IN_PROGRESS' : 'PENDING') as TaskItem['status'],
-  errorMessage: t.errorMessage,
-  lastUpdated: t.updatedAt ? new Date(t.updatedAt).toLocaleString() : '-',
-  createdOn: new Date(t.createdAt).toLocaleString(),
-});
+const convertTask = (t: SoftwareDeploymentTask): TaskItem => {
+  // Handle both backend field name formats (endpoint* and agent*)
+  const agentId = t.agentId || (t as any).endpointId || '';
+  const agentName = t.agentName || (t as any).endpointName || agentId;
+  const agentOs = t.agentOs || (t as any).endpointOs || 'linux';
+  const packageName = t.packageName || (t as any).itemName || '';
+
+  // Normalize status (handle both uppercase and lowercase)
+  const normalizedStatus = (t.status || 'pending').toLowerCase();
+  const displayStatus = normalizedStatus === 'completed' || normalizedStatus === 'success' ? 'SUCCESS'
+    : normalizedStatus === 'failed' ? 'FAILED'
+    : normalizedStatus === 'in_progress' ? 'IN_PROGRESS'
+    : 'PENDING';
+
+  return {
+    id: t.id,
+    endpointId: agentId,
+    endpointName: agentName,
+    endpointOS: (agentOs === 'darwin' || agentOs === 'macos' ? 'Mac' : agentOs === 'windows' ? 'Windows' : 'Linux') as TaskItem['endpointOS'],
+    name: packageName,
+    status: displayStatus as TaskItem['status'],
+    errorMessage: t.errorMessage,
+    lastUpdated: t.updatedAt ? new Date(t.updatedAt).toLocaleString() : '-',
+    createdOn: t.createdAt ? new Date(t.createdAt).toLocaleString() : '-',
+  };
+};
 
 // API data will be loaded into state
 
 export const SoftwareJobsDeployed = () => {
+  // Get navigation state from SoftwareJobsCatalog
+  const location = useLocation();
+  const locationState = location.state as LocationState | null;
+
   const [searchText, setSearchText] = useState('');
   const [deployedItems, setDeployedItems] = useState<DeployedItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -171,6 +207,9 @@ export const SoftwareJobsDeployed = () => {
 
   // Rollback state
   const [rollbackLoading, setRollbackLoading] = useState<string | null>(null);
+
+  // Track if we've handled the navigation state (to prevent re-triggering)
+  const [navigationHandled, setNavigationHandled] = useState(false);
 
   // Handle rollback for a task
   const handleRollback = async (task: TaskItem) => {
@@ -284,6 +323,34 @@ export const SoftwareJobsDeployed = () => {
     fetchAgents();
   }, [fetchDeployments, fetchPackages, fetchBundles, fetchAgents]);
 
+  // Handle navigation state from SoftwareJobsCatalog (auto-open create modal with selected package)
+  useEffect(() => {
+    // Only handle once, and only after packages are loaded
+    if (navigationHandled || applications.length === 0 || !locationState?.createDeployment) {
+      return;
+    }
+
+    const selectedPkg = locationState.selectedPackage;
+    if (selectedPkg) {
+      // Find the matching application in our loaded list
+      const matchingApp = applications.find(
+        app => app.id === selectedPkg.id || app.deploymentId === selectedPkg.packageId
+      );
+
+      if (matchingApp) {
+        // Pre-select the application and open modal
+        setSelectedApplications([matchingApp.key]);
+        form.setFieldsValue({
+          deploymentName: `Deploy ${selectedPkg.displayName || selectedPkg.name}`,
+          description: `Deployment of ${selectedPkg.displayName || selectedPkg.name} v${selectedPkg.version}`,
+        });
+        setCreateModalVisible(true);
+        setNavigationHandled(true);
+        message.info(`Package "${selectedPkg.displayName || selectedPkg.name}" pre-selected. Choose target agents and publish.`);
+      }
+    }
+  }, [applications, locationState, navigationHandled, form]);
+
   const handleView = async (record: DeployedItem) => {
     setSelectedDeployment(record);
     setTasksModalVisible(true);
@@ -300,8 +367,15 @@ export const SoftwareJobsDeployed = () => {
 
   const handleExport = () => {
     try {
-      const dataToExport = filteredItems.length > 0 ? filteredItems : deployedItems;
-      
+      // Filter inline to avoid use-before-definition issue
+      const currentFilteredItems = deployedItems.filter(
+        item =>
+          item.name.toLowerCase().includes(searchText.toLowerCase()) ||
+          item.deploymentId.toLowerCase().includes(searchText.toLowerCase()) ||
+          item.createdBy.toLowerCase().includes(searchText.toLowerCase())
+      );
+      const dataToExport = currentFilteredItems.length > 0 ? currentFilteredItems : deployedItems;
+
       if (dataToExport.length === 0) {
         message.warning('No data to export');
         return;
@@ -386,7 +460,7 @@ export const SoftwareJobsDeployed = () => {
         type: deploymentType,
         targetAgentIds: selectedAgents,
         package: selectedPackage ? {
-          name: selectedPackage.title,
+          name: selectedPackage.name,  // Use actual package name, not display title
           source: selectedPackage.installSource,
           version: 'latest',
         } : {
@@ -721,13 +795,14 @@ export const SoftwareJobsDeployed = () => {
 
   // Filter tasks
   const filteredTasks = tasks.filter(task => {
-    const matchesSearch = 
-      task.endpointName.toLowerCase().includes(tasksSearchText.toLowerCase()) ||
-      task.name.toLowerCase().includes(tasksSearchText.toLowerCase()) ||
-      task.id.toString().includes(tasksSearchText);
-    
-    const matchesFilter = tasksFilter === 'All' || task.status === tasksFilter.toUpperCase();
-    
+    const matchesSearch =
+      (task.endpointName || '').toLowerCase().includes(tasksSearchText.toLowerCase()) ||
+      (task.name || '').toLowerCase().includes(tasksSearchText.toLowerCase()) ||
+      (task.id || '').toString().includes(tasksSearchText);
+
+    // Compare with uppercase since task.status is now uppercase (SUCCESS, FAILED, etc.)
+    const matchesFilter = tasksFilter === 'All' || task.status === tasksFilter;
+
     return matchesSearch && matchesFilter;
   });
 

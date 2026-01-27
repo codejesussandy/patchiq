@@ -15,10 +15,13 @@ export interface SoftwarePackage {
   installSource: string;
   silentInstall: boolean;
   requiresReboot: boolean;
+  requiresRoot: boolean;
   fileName: string | null;
   fileSize: string | null;
   fileSizeBytes: bigint | null;
   hasFile: boolean;
+  hasBundle: boolean;           // True if this is a script-based bundle
+  scriptsIncluded: boolean;     // True if scripts are included
   downloadUrl: string | null;
   description: string | null;
   tags: string[];
@@ -130,6 +133,7 @@ export const PLATFORM_OPTIONS = [
 
 // Install source options
 export const INSTALL_SOURCE_OPTIONS = [
+  { value: 'bundle', label: 'Script Bundle (Recommended)' },
   { value: 'apt', label: 'APT (Debian/Ubuntu)' },
   { value: 'brew', label: 'Homebrew (macOS)' },
   { value: 'pkg', label: 'PKG (macOS)' },
@@ -142,6 +146,47 @@ export const INSTALL_SOURCE_OPTIONS = [
   { value: 'snap', label: 'Snap' },
   { value: 'flatpak', label: 'Flatpak' },
 ];
+
+// ============================================
+// Script Bundle Types
+// ============================================
+
+export interface BundleUploadResult {
+  packageId: string;
+  bundleObjectKey: string;
+  bundleChecksum: string;
+  bundleSize: number;
+  manifest: ScriptManifest;
+  scriptsFound: string[];
+}
+
+export interface ScriptManifest {
+  id: string;
+  name: string;
+  displayName: string;
+  version: string;
+  vendor?: string;
+  category?: string;
+  platform: 'windows' | 'macos' | 'linux' | 'cross-platform';
+  architecture?: string;
+  description?: string;
+  requiresRoot?: boolean;
+  requiresReboot?: boolean;
+  scripts: {
+    install?: string;
+    update?: string;
+    rollback?: string;
+    uninstall?: string;
+  };
+  files?: Array<{
+    name: string;
+    checksum: string;
+    size: number;
+  }>;
+  environment?: Record<string, string>;
+  dependencies?: string[];
+  conflicts?: string[];
+}
 
 // Category options
 export const CATEGORY_OPTIONS = [

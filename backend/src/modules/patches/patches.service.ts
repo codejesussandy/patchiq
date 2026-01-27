@@ -887,6 +887,20 @@ function transformDeployment(deployment: any) {
     createdAt: deployment.createdAt.toISOString(),
     updatedAt: deployment.updatedAt.toISOString(),
     patches: deployment.patches?.map(transformPatch) || [],
+    tasks: deployment.tasks?.map((task: any) => ({
+      id: task.id,
+      endpoint: {
+        id: task.asset?.id || task.assetId,
+        name: task.asset?.hostname || task.asset?.name || 'Unknown',
+        os: task.asset?.osName || task.asset?.platform || 'Unknown',
+        status: task.asset?.status || 'Unknown',
+      },
+      name: task.patchName || task.name || 'Unknown Patch',
+      status: task.status,
+      createdBy: deployment.createdBy || 'System',
+      lastUpdated: task.updatedAt?.toISOString() || task.createdAt?.toISOString(),
+      createdOn: task.createdAt?.toISOString(),
+    })) || [],
   };
 }
 

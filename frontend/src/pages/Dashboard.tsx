@@ -209,7 +209,7 @@ export const Dashboard = () => {
             />
           </Col>
           <Col xs={12} sm={8} md={4} lg={4}>
-            <StatCard title="Total Software" value={9063} />
+            <StatCard title="Total Software" value={data.totalSoftwareByPlatform?.reduce((sum, p) => sum + p.value, 0) || 0} />
           </Col>
         </Row>
       ) : null}
@@ -226,9 +226,27 @@ export const Dashboard = () => {
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart
                   data={[
-                    { name: 'Total', critical: 45, high: 234, medium: 423, low: 156 },
-                    { name: 'Non Exploit', critical: 32, high: 189, medium: 389, low: 89 },
-                    { name: 'Exploit', critical: 28, high: 156, medium: 374, low: 70 },
+                    {
+                      name: 'Total',
+                      critical: data.stats.criticalVulnerabilities || 0,
+                      high: data.stats.highVulnerabilities || 0,
+                      medium: data.stats.mediumVulnerabilities || 0,
+                      low: data.stats.lowVulnerabilities || 0,
+                    },
+                    {
+                      name: 'Non Exploit',
+                      critical: data.stats.nonExploitableVulnerabilities?.critical || 0,
+                      high: data.stats.nonExploitableVulnerabilities?.high || 0,
+                      medium: data.stats.nonExploitableVulnerabilities?.medium || 0,
+                      low: data.stats.nonExploitableVulnerabilities?.low || 0,
+                    },
+                    {
+                      name: 'Exploit',
+                      critical: data.stats.exploitableVulnerabilities?.critical || 0,
+                      high: data.stats.exploitableVulnerabilities?.high || 0,
+                      medium: data.stats.exploitableVulnerabilities?.medium || 0,
+                      low: data.stats.exploitableVulnerabilities?.low || 0,
+                    },
                   ]}
                   layout="vertical"
                   margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
@@ -379,10 +397,10 @@ export const Dashboard = () => {
             <ResponsiveContainer width="100%" height={250}>
               <BarChart
                 data={[
-                  { name: 'Critical', value: 127 },
-                  { name: 'High', value: 1181 },
-                  { name: 'Medium', value: 1542 },
-                  { name: 'Low', value: 315 },
+                  { name: 'Critical', value: data.stats.criticalVulnerabilities || 0 },
+                  { name: 'High', value: data.stats.highVulnerabilities || 0 },
+                  { name: 'Medium', value: data.stats.mediumVulnerabilities || 0 },
+                  { name: 'Low', value: data.stats.lowVulnerabilities || 0 },
                 ]}
               >
                 <CartesianGrid strokeDasharray="3 3" />

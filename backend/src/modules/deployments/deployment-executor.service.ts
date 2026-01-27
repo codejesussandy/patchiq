@@ -20,7 +20,11 @@ import {
   TaskStatusUpdate,
   COMMAND_TYPES,
   SoftwareInstallPayload,
+  ScriptBundlePayload,
+  ScriptManifest,
 } from './deployment-executor.types';
+import { hubService } from '@modules/hub/hub.service';
+import { env } from '@/config/env';
 
 class DeploymentExecutorService {
   /**
@@ -61,17 +65,119 @@ class DeploymentExecutorService {
     const foundAgentIds = new Set(agents.map(a => a.id));
     const missingAgents = targetAgentIds.filter(id => !foundAgentIds.has(id));
 
-    // Determine command type based on deployment type
-    const commandType = deploymentType === 'uninstall'
-      ? COMMAND_TYPES.SOFTWARE_UNINSTALL
-      : COMMAND_TYPES.SOFTWARE_INSTALL;
-
-    // Create deployment, tasks, and commands in a transaction
     const deploymentId = `SD-${uuidv4().slice(0, 8).toUpperCase()}`;
     const errors: string[] = [];
 
     if (missingAgents.length > 0) {
       errors.push(`Agents not found: ${missingAgents.join(', ')}`);
+    }
+
+    // Check if this is a Hub package by looking for packageId in the payload
+    const pkgPayload = packageInfo as SoftwareInstallPayload & { packageId?: string };
+    let hubPackage: {
+      bundleUrl?: string;
+      bundleChecksum?: string;
+      manifest?: ScriptManifest;
+      scriptsIncluded?: boolean;
+      scriptInstall?: string;
+      scriptUninstall?: string;
+      scriptUpdate?: string;
+      scriptRollback?: string;
+      requiresRoot?: boolean;
+    } | null = null;
+
+    // Try to fetch Hub package info if packageId is provided
+    if (pkgPayload.packageId) {
+      try {
+        const pkg = await prisma.softwarePackage.findUnique({
+          where: { packageId: pkgPayload.packageId },
+        });
+
+        if (pkg && (pkg.bundleObjectKey || pkg.scriptsIncluded)) {
+          // This is a Hub package with scripts
+          if (pkg.bundleObjectKey) {
+            // Get bundle download info
+            const bundleInfo = await hubService.getBundleDownloadInfo(pkg.packageId);
+
+            // Use backend proxy URL instead of MinIO presigned URL
+            // This ensures agents outside Docker can download bundles
+            const backendUrl = env.BACKEND_PUBLIC_URL.replace(/\/$/, ''); // Remove trailing slash
+            const proxyBundleUrl = `${backendUrl}/v1/bundles/${pkg.packageId}/download`;
+
+            hubPackage = {
+              bundleUrl: proxyBundleUrl,
+              bundleChecksum: bundleInfo.bundleChecksum,
+              manifest: bundleInfo.manifest,
+              scriptsIncluded: true,
+              requiresRoot: pkg.requiresRoot,
+            };
+          } else if (pkg.scriptInstall || pkg.scriptUninstall) {
+            // Inline scripts mode
+            hubPackage = {
+              scriptsIncluded: true,
+              scriptInstall: pkg.scriptInstall || undefined,
+              scriptUninstall: pkg.scriptUninstall || undefined,
+              scriptUpdate: pkg.scriptUpdate || undefined,
+              scriptRollback: pkg.scriptRollback || undefined,
+              requiresRoot: pkg.requiresRoot,
+            };
+          }
+        }
+      } catch (err) {
+        // Package not found in Hub, fall back to legacy mode
+        console.log(`Package ${pkgPayload.packageId} not found in Hub, using legacy mode`);
+      }
+    }
+
+    // Determine command type and payload based on package type
+    let commandType: string;
+    let commandPayload: Prisma.InputJsonValue;
+
+    if (hubPackage?.scriptsIncluded) {
+      // Hub-centric mode: use script bundle commands
+      // Map deployment type to operation type
+      let operationType: 'install' | 'update' | 'rollback' | 'uninstall' = 'install';
+      if (deploymentType === 'uninstall') {
+        operationType = 'uninstall';
+      } else if (deploymentType === 'upgrade') {
+        operationType = 'update';
+      } else if (deploymentType === 'rollback') {
+        operationType = 'rollback';
+      }
+
+      // Map deployment type to command type
+      if (deploymentType === 'uninstall') {
+        commandType = COMMAND_TYPES.HUB_UNINSTALL;
+      } else if (deploymentType === 'upgrade') {
+        commandType = COMMAND_TYPES.HUB_UPDATE;
+      } else if (deploymentType === 'rollback') {
+        commandType = COMMAND_TYPES.HUB_ROLLBACK;
+      } else {
+        commandType = COMMAND_TYPES.HUB_INSTALL;
+      }
+
+      const bundlePayload: ScriptBundlePayload = {
+        operationType,
+        packageId: pkgPayload.packageId || pkgPayload.name,
+        packageName: pkgPayload.name,
+        version: pkgPayload.version || 'latest',
+        bundleUrl: hubPackage.bundleUrl,
+        bundleChecksum: hubPackage.bundleChecksum,
+        manifest: hubPackage.manifest,
+        script: operationType === 'install' ? hubPackage.scriptInstall
+          : operationType === 'uninstall' ? hubPackage.scriptUninstall
+          : operationType === 'rollback' ? hubPackage.scriptRollback
+          : hubPackage.scriptUpdate,
+        requiresRoot: hubPackage.requiresRoot || false,
+      };
+
+      commandPayload = bundlePayload as unknown as Prisma.InputJsonValue;
+    } else {
+      // Legacy mode: use package manager commands
+      commandType = deploymentType === 'uninstall'
+        ? COMMAND_TYPES.SOFTWARE_UNINSTALL
+        : COMMAND_TYPES.SOFTWARE_INSTALL;
+      commandPayload = packageInfo as unknown as Prisma.InputJsonValue;
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -105,7 +211,7 @@ class DeploymentExecutorService {
           data: {
             agentId: agent.id,
             type: commandType,
-            payload: packageInfo as unknown as Prisma.InputJsonValue,
+            payload: commandPayload,
             status: 'pending',
             scheduledAt: new Date(),
           },
@@ -487,15 +593,24 @@ class DeploymentExecutorService {
       createdAt: deployment.createdAt,
       tasks: deployment.tasks.map(task => ({
         id: task.id,
+        // Return both field name formats for frontend compatibility
         endpointId: task.endpointId,
         endpointName: task.endpointName,
         endpointOs: task.endpointOs,
         itemName: task.itemName,
-        status: task.status,
+        // Frontend-expected field names (aliases)
+        agentId: task.endpointId,
+        agentName: task.endpointName,
+        agentOs: task.endpointOs,
+        packageName: task.itemName,
+        // Normalize status to lowercase for frontend compatibility
+        status: task.status.toLowerCase(),
         startedAt: task.startedAt,
         completedAt: task.completedAt,
         errorMessage: task.errorMessage,
         output: task.output,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
         command: task.command,
       })),
     };
