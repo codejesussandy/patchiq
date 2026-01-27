@@ -98,6 +98,10 @@ export const AssetDetails = () => {
 
   // Audit log state
   const [auditLog, setAuditLog] = useState<Array<{ key: string; date: string; user: string; action: string; changes: string }>>([]);
+
+  // Software tab filter state
+  const [appVendorFilters, setAppVendorFilters] = useState<string[]>([]);
+  const [appPatchStatusFilters, setAppPatchStatusFilters] = useState<string[]>([]);
   const [loadingAuditLog, setLoadingAuditLog] = useState(false);
 
   useEffect(() => {
@@ -1015,6 +1019,9 @@ export const AssetDetails = () => {
 
     const { Panel } = Collapse;
 
+    // Get unique vendors for filter options
+    const uniqueVendors = [...new Set(software.applications.map((app) => app.vendor).filter(Boolean))];
+
     const applicationColumns = [
       {
         title: 'Application Name',
@@ -1046,16 +1053,29 @@ export const AssetDetails = () => {
           </Space>
         ),
       },
-      { title: 'Vendor', dataIndex: 'vendor', key: 'vendor' },
+      {
+        title: 'Vendor',
+        dataIndex: 'vendor',
+        key: 'vendor',
+        filters: uniqueVendors.map((vendor) => ({ text: vendor, value: vendor })),
+        filteredValue: appVendorFilters.length > 0 ? appVendorFilters : null,
+        onFilter: (value: unknown, record: { vendor?: string }) => record.vendor === value,
+      },
       { title: 'Version', dataIndex: 'version', key: 'version' },
       {
         title: 'Patch Status',
         dataIndex: 'patchStatus',
         key: 'patchStatus',
+        filters: [
+          { text: 'Available', value: 'Available' },
+          { text: 'Not Available', value: 'Not Available' },
+        ],
+        filteredValue: appPatchStatusFilters.length > 0 ? appPatchStatusFilters : null,
+        onFilter: (value: unknown, record: { patchStatus?: string }) => record.patchStatus === value,
         render: (status: string) => (
           <Space>
-            <span>{status === 'Available' ? '●' : '○'}</span>
-            <span>{status}</span>
+            <span style={{ color: status === 'Available' ? '#52c41a' : '#d9d9d9' }}>●</span>
+            <span>{status || 'Unknown'}</span>
           </Space>
         ),
       },
@@ -1095,6 +1115,105 @@ export const AssetDetails = () => {
       { title: 'Value', dataIndex: 'value', key: 'value' },
     ];
 
+    // Handle table filter changes for applications
+    const handleAppTableChange = (
+      _pagination: unknown,
+      filters: Record<string, (string | number | boolean)[] | null>
+    ) => {
+      setAppVendorFilters((filters.vendor as string[]) || []);
+      setAppPatchStatusFilters((filters.patchStatus as string[]) || []);
+    };
+
+    // Clear all application filters
+    const clearAppFilters = () => {
+      setAppVendorFilters([]);
+      setAppPatchStatusFilters([]);
+    };
+
+    const hasActiveFilters = appVendorFilters.length > 0 || appPatchStatusFilters.length > 0;
+
+    // CSV export utility
+    const exportToCSV = (
+      data: Record<string, unknown>[],
+      columns: { key: string; title: string }[],
+      filename: string
+    ) => {
+      if (data.length === 0) {
+        message.warning('No data to export');
+        return;
+      }
+
+      const headers = columns.map((col) => col.title);
+      const keys = columns.map((col) => col.key);
+
+      const csvRows = [
+        headers.join(','),
+        ...data.map((row) =>
+          keys
+            .map((key) => {
+              const value = row[key];
+              // Handle null/undefined, escape quotes, wrap in quotes if contains comma
+              const stringValue = value == null ? '' : String(value);
+              const escaped = stringValue.replace(/"/g, '""');
+              return escaped.includes(',') || escaped.includes('"') || escaped.includes('\n')
+                ? `"${escaped}"`
+                : escaped;
+            })
+            .join(',')
+        ),
+      ];
+
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      message.success(`Exported ${data.length} rows to ${filename}`);
+    };
+
+    // Export handlers for each tab
+    const exportApplications = () => {
+      const columns = [
+        { key: 'name', title: 'Application Name' },
+        { key: 'vendor', title: 'Vendor' },
+        { key: 'version', title: 'Version' },
+        { key: 'patchStatus', title: 'Patch Status' },
+        { key: 'lastPatched', title: 'Last Patched' },
+        { key: 'appInstalledOn', title: 'Installed On' },
+      ];
+      const hostname = asset?.name || 'asset';
+      exportToCSV(software.applications, columns, `${hostname}-applications.csv`);
+    };
+
+    const exportServices = () => {
+      const columns = [
+        { key: 'name', title: 'Service Name' },
+        { key: 'state', title: 'State' },
+        { key: 'type', title: 'Type' },
+        { key: 'status', title: 'Status' },
+      ];
+      const hostname = asset?.name || 'asset';
+      exportToCSV(software.services, columns, `${hostname}-services.csv`);
+    };
+
+    const exportEnvironment = () => {
+      const columns = [
+        { key: 'key', title: 'Key' },
+        { key: 'value', title: 'Value' },
+      ];
+      const data = Object.entries(software?.systemEnvironment ?? {}).map(([key, value]) => ({
+        key,
+        value: value ?? 'N/A',
+      }));
+      const hostname = asset?.name || 'asset';
+      exportToCSV(data, columns, `${hostname}-environment.csv`);
+    };
+
     const softwareSubTabs = [
       {
         key: 'applications',
@@ -1104,14 +1223,21 @@ export const AssetDetails = () => {
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
               <Space>
                 <Input.Search placeholder="Search" style={{ width: 300 }} />
-                <Button icon={<FilterOutlined />}>Filter</Button>
+                {hasActiveFilters && (
+                  <Button size="small" onClick={clearAppFilters}>
+                    Clear Filters
+                  </Button>
+                )}
               </Space>
-              <Button icon={<DownloadOutlined />} />
+              <Tooltip title="Export to CSV">
+                <Button icon={<DownloadOutlined />} onClick={exportApplications} />
+              </Tooltip>
             </div>
             <Table
               columns={applicationColumns}
               dataSource={software.applications}
               rowKey="id"
+              onChange={handleAppTableChange}
               pagination={{
                 pageSize: 25,
                 showSizeChanger: true,
@@ -1128,11 +1254,10 @@ export const AssetDetails = () => {
         children: (
           <div>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-              <Space>
-                <Input.Search placeholder="Search" style={{ width: 300 }} />
-                <Button icon={<FilterOutlined />}>Filter</Button>
-              </Space>
-              <Button icon={<DownloadOutlined />} />
+              <Input.Search placeholder="Search" style={{ width: 300 }} />
+              <Tooltip title="Export to CSV">
+                <Button icon={<DownloadOutlined />} onClick={exportEnvironment} />
+              </Tooltip>
             </div>
             <Table
               columns={environmentColumns}
@@ -1156,11 +1281,10 @@ export const AssetDetails = () => {
         children: (
           <div>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-              <Space>
-                <Input.Search placeholder="Search" style={{ width: 300 }} />
-                <Button icon={<FilterOutlined />}>Filter</Button>
-              </Space>
-              <Button icon={<DownloadOutlined />} />
+              <Input.Search placeholder="Search" style={{ width: 300 }} />
+              <Tooltip title="Export to CSV">
+                <Button icon={<DownloadOutlined />} onClick={exportServices} />
+              </Tooltip>
             </div>
             <Table
               columns={serviceColumns}
