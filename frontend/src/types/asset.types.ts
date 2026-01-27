@@ -158,24 +158,27 @@ export type Storage = {
 };
 
 export type Procurement = {
-  amcCost: string;
-  amcExpiryDate: string;
-  amcVendor: string;
-  endOfLife: string;
-  expiryDate: string;
-  warrantyExpiryDate: string;
-  warrantyYearAndMonth: string;
+  vendor?: string | null;
+  purchaseOrderNumber?: string | null;
+  amcCost?: string | null;
+  amcExpiryDate?: string | null;
+  amcVendor?: string | null;
+  endOfLife?: string | null;
+  endOfSupport?: string | null;
+  expiryDate?: string | null;
+  warrantyExpiryDate?: string | null;
+  warrantyYearAndMonth?: string | null;
 };
 
 export type Cost = {
-  age: string;
-  cost: string;
-  currency: string;
-  currentCost: string;
-  depreciationType: string;
-  invoiceNumber: string;
-  purchaseDate: string;
-  salvageValue: string;
+  age?: string | null;
+  cost?: string | null;
+  currency?: string | null;
+  currentCost?: string | null;
+  depreciationType?: string | null;
+  invoiceNumber?: string | null;
+  purchaseDate?: string | null;
+  salvageValue?: string | null;
 };
 
 export type Asset = {
@@ -249,6 +252,7 @@ export type DepreciationPoint = {
   date: string;
   value: number;
   label: string;
+  year?: number;                         // Year number (1, 2, 3...)
 };
 
 export type AssetLifeCycle = {
@@ -261,6 +265,14 @@ export type AssetLifeCycle = {
   endOfLife: string;
   endOfLifeValue: number;
   depreciationTimeline: DepreciationPoint[];
+  // Extended depreciation fields
+  depreciationMethod?: string;           // "Straight Line", "Double Declining Balance", etc.
+  totalDepreciation?: number;            // Total depreciation to date
+  annualDepreciation?: number;           // Current year's depreciation expense
+  yearsElapsed?: number;                 // Years since purchase
+  yearsRemaining?: number;               // Years until end of life
+  usefulLifeYears?: number;              // Total useful life in years
+  currency?: string;                     // Currency code (INR, USD, etc.)
 };
 
 // Hardware
@@ -534,20 +546,32 @@ export type ExpandedHardware = {
 export type Application = {
   id: string;
   name: string;
-  vendor: string;
-  version: string;
-  patchStatus: 'Available' | 'Not Available';
-  lastPatched: string;
-  appInstalledOn: string;
+  vendor?: string;
+  version?: string;
+  patchStatus?: 'Available' | 'Not Available';
+  lastPatched?: string;
+  appInstalledOn?: string;
+  installSource?: string;
   icon?: string;
 };
 
 export type Service = {
   id: string;
   name: string;
-  state: 'Running' | 'Stopped';
-  type: string;
-  status: 'OK' | 'Error' | 'Warning';
+  displayName?: string;
+  state?: 'Running' | 'Stopped';
+  startupType?: string;
+  type?: string;
+  status?: string;
+};
+
+export type StartupProgram = {
+  id: string;
+  name: string;
+  command?: string;
+  location?: string;
+  enabled: boolean;
+  vendor?: string;
 };
 
 export type SystemEnvironment = {
@@ -576,20 +600,20 @@ export type SystemEnvironment = {
 export type Software = {
   os: {
     name: string;
-    version: string;
+    version?: string;
   };
-  licenseDetails: {
+  licenseDetails?: {
     alias?: string;
-    buildNumber: string;
-    deviceType: string;
-    lastBootUpTime: string;
-    licenseStatus: string;
-    osInstalledBy: string;
-    partialProductKey: string;
-    productKey: string;
-    systemDrive: string;
-    version: string;
-    virtualMemory: string;
+    buildNumber?: string;
+    deviceType?: string;
+    lastBootUpTime?: string;
+    licenseStatus?: string;
+    osInstalledBy?: string;
+    partialProductKey?: string;
+    productKey?: string;
+    systemDrive?: string;
+    version?: string;
+    virtualMemory?: string;
     bootDevice?: string;
     description?: string;
     hostname?: string;
@@ -602,7 +626,7 @@ export type Software = {
   };
   applications: Application[];
   services: Service[];
-  systemEnvironment: SystemEnvironment;
+  startupPrograms: StartupProgram[];
 };
 
 // Audit Log

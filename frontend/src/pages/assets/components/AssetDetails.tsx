@@ -1085,34 +1085,39 @@ export const AssetDetails = () => {
 
     const serviceColumns = [
       { title: 'Name', dataIndex: 'name', key: 'name' },
+      { title: 'Display Name', dataIndex: 'displayName', key: 'displayName', ellipsis: true },
       {
         title: 'State',
         dataIndex: 'state',
         key: 'state',
         render: (state: string) => (
           <Space>
-            <span style={{ color: state === 'Running' ? '#faad14' : '#ff4d4f' }}>●</span>
-            <span>{state}</span>
+            <span style={{ color: state === 'Running' ? '#52c41a' : '#d9d9d9' }}>●</span>
+            <span>{state || 'Unknown'}</span>
           </Space>
         ),
       },
-      { title: 'Type', dataIndex: 'type', key: 'type' },
       {
-        title: 'Status',
-        dataIndex: 'status',
-        key: 'status',
-        render: (status: string) => (
-          <Space>
-            <span style={{ color: '#52c41a' }}>●</span>
-            <span>{status}</span>
-          </Space>
-        ),
+        title: 'Startup Type',
+        dataIndex: 'startupType',
+        key: 'startupType',
+        render: (type: string) => type || '-',
       },
     ];
 
-    const environmentColumns = [
-      { title: 'Key', dataIndex: 'key', key: 'key' },
-      { title: 'Value', dataIndex: 'value', key: 'value' },
+    const startupProgramColumns = [
+      { title: 'Name', dataIndex: 'name', key: 'name' },
+      { title: 'Command', dataIndex: 'command', key: 'command', ellipsis: true },
+      { title: 'Location', dataIndex: 'location', key: 'location', ellipsis: true },
+      {
+        title: 'Status',
+        dataIndex: 'enabled',
+        key: 'enabled',
+        render: (enabled: boolean) => (
+          <Tag color={enabled ? 'green' : 'default'}>{enabled ? 'Enabled' : 'Disabled'}</Tag>
+        ),
+      },
+      { title: 'Vendor', dataIndex: 'vendor', key: 'vendor' },
     ];
 
     // Handle table filter changes for applications
@@ -1193,25 +1198,24 @@ export const AssetDetails = () => {
     const exportServices = () => {
       const columns = [
         { key: 'name', title: 'Service Name' },
+        { key: 'displayName', title: 'Display Name' },
         { key: 'state', title: 'State' },
-        { key: 'type', title: 'Type' },
-        { key: 'status', title: 'Status' },
+        { key: 'startupType', title: 'Startup Type' },
       ];
       const hostname = asset?.name || 'asset';
       exportToCSV(software.services, columns, `${hostname}-services.csv`);
     };
 
-    const exportEnvironment = () => {
+    const exportStartupPrograms = () => {
       const columns = [
-        { key: 'key', title: 'Key' },
-        { key: 'value', title: 'Value' },
+        { key: 'name', title: 'Name' },
+        { key: 'command', title: 'Command' },
+        { key: 'location', title: 'Location' },
+        { key: 'enabled', title: 'Enabled' },
+        { key: 'vendor', title: 'Vendor' },
       ];
-      const data = Object.entries(software?.systemEnvironment ?? {}).map(([key, value]) => ({
-        key,
-        value: value ?? 'N/A',
-      }));
       const hostname = asset?.name || 'asset';
-      exportToCSV(data, columns, `${hostname}-environment.csv`);
+      exportToCSV(software.startupPrograms || [], columns, `${hostname}-startup-programs.csv`);
     };
 
     const softwareSubTabs = [
@@ -1249,26 +1253,24 @@ export const AssetDetails = () => {
         ),
       },
       {
-        key: 'environment',
-        label: `System Environment (${Object.keys(software?.systemEnvironment ?? {}).length})`,
+        key: 'startup',
+        label: `System Environment (${software.startupPrograms?.length || 0})`,
         children: (
           <div>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
               <Input.Search placeholder="Search" style={{ width: 300 }} />
               <Tooltip title="Export to CSV">
-                <Button icon={<DownloadOutlined />} onClick={exportEnvironment} />
+                <Button icon={<DownloadOutlined />} onClick={exportStartupPrograms} />
               </Tooltip>
             </div>
             <Table
-              columns={environmentColumns}
-              dataSource={Object.entries(software?.systemEnvironment ?? {}).map(([key, value]) => ({
-                key,
-                value: value ?? 'N/A',
-              }))}
-              rowKey="key"
+              columns={startupProgramColumns}
+              dataSource={software.startupPrograms || []}
+              rowKey="id"
               pagination={{
-                pageSize: 10,
-                showTotal: (total) => `Total ${total} System Environment found`,
+                pageSize: 25,
+                showSizeChanger: true,
+                showTotal: (total) => `Total ${total} Startup Programs found`,
               }}
               size="small"
             />

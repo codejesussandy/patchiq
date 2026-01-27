@@ -12,6 +12,29 @@ export interface AgentStatus {
   heartbeatInterval: number;
 }
 
+export interface AssetCostInfo {
+  cost?: string | null;
+  currency?: string | null;
+  currentCost?: string | null;
+  depreciationType?: string | null;
+  invoiceNumber?: string | null;
+  purchaseDate?: string | null;
+  salvageValue?: string | null;
+  age?: string | null;
+}
+
+export interface AssetProcurementInfo {
+  vendor?: string | null;
+  purchaseOrderNumber?: string | null;
+  amcCost?: string | null;
+  amcExpiryDate?: string | null;
+  amcVendor?: string | null;
+  warrantyExpiryDate?: string | null;
+  warrantyYearAndMonth?: string | null;
+  endOfLife?: string | null;
+  endOfSupport?: string | null;
+}
+
 export interface AssetResponse {
   id: string;
   assetId: string;
@@ -40,6 +63,9 @@ export interface AssetResponse {
   tags?: TagResponse[];
   createdAt: string;
   updatedAt: string;
+  // Cost and Procurement
+  cost?: AssetCostInfo;
+  procurement?: AssetProcurementInfo;
 }
 
 export interface AssetCreateInput {
@@ -176,12 +202,21 @@ export interface AssetLifeCycle {
   endOfLife?: string | null;
   endOfLifeValue?: number | null;
   depreciationTimeline: DepreciationPoint[];
+  // Extended depreciation fields
+  depreciationMethod?: string;           // "Straight Line", "Double Declining Balance", etc.
+  totalDepreciation?: number;            // Total depreciation to date
+  annualDepreciation?: number;           // Current year's depreciation expense
+  yearsElapsed?: number;                 // Years since purchase
+  yearsRemaining?: number;               // Years until end of life
+  usefulLifeYears?: number;              // Total useful life in years
+  currency?: string;                     // Currency code (INR, USD, etc.)
 }
 
 export interface DepreciationPoint {
   date: string;
   value: number;
   label: string;
+  year?: number;                         // Year number (1, 2, 3...)
 }
 
 export interface AssetHardware {
@@ -283,6 +318,7 @@ export interface AssetSoftware {
   licenseDetails?: Record<string, string>;
   applications: ApplicationInfo[];
   services: ServiceInfo[];
+  startupPrograms: StartupProgramInfo[];
 }
 
 export interface ApplicationInfo {
@@ -298,9 +334,20 @@ export interface ApplicationInfo {
 export interface ServiceInfo {
   id: string;
   name: string;
+  displayName?: string;
   state?: 'Running' | 'Stopped';
+  startupType?: string;
   type?: string;
   status?: string;
+}
+
+export interface StartupProgramInfo {
+  id: string;
+  name: string;
+  command?: string;
+  location?: string;
+  enabled: boolean;
+  vendor?: string;
 }
 
 export interface AssetSecurity {

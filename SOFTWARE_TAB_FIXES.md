@@ -153,52 +153,45 @@ const getAppColor = (name: string) => {
 
 ---
 
-### FIX-5: System Environment Tab
+### FIX-5: System Environment Tab (Three-Tab Segregation)
 
 **Priority:** Medium
 **Effort:** Medium
-**Status:** [ ] Not Started
+**Status:** [x] Completed (2026-01-27)
 
 **Problem:**
-Backend doesn't return `systemEnvironment` data. Frontend expects a key-value object but receives nothing.
+Data not properly segregated into Applications, Services, and System Environment tabs.
 
-**Location:**
-- Backend: `backend/src/modules/assets/assets.service.ts` lines 1337-1378
-- Frontend: `frontend/src/pages/assets/components/AssetDetails.tsx` lines 1126-1151
+**Solution:**
+Implemented proper data segregation using agent's `rawPayload`:
 
-**Options:**
+| Tab | Data Source | Content |
+|-----|-------------|---------|
+| Applications | `rawPayload.applications` | User-installed software |
+| Services | `rawPayload.services` | System services with state |
+| System Environment | `rawPayload.startupPrograms` | Startup/login programs |
 
-| Option | Description | Recommendation |
-|--------|-------------|----------------|
-| A | Store environment variables in DB, populate from agent | If env vars needed |
-| B | Map existing asset fields into key-value format | Quick win |
-| C | Remove tab entirely | If not needed |
+**Changes Made:**
 
-**Recommended Implementation (Option B):**
-1. Update `getAssetSoftware()` in backend to include system environment data
-2. Map from existing asset fields:
-   - Install paths from software records
-   - System directories
-   - Configuration values
+**Backend (`assets.service.ts`):**
+- Updated `getAssetSoftware()` to read from `AssetSoftwareInventory.rawPayload`
+- Returns `applications`, `services`, and `startupPrograms` arrays
+- Properly maps agent data to typed interfaces
 
-```typescript
-// In assets.service.ts getAssetSoftware()
-const systemEnvironment: Record<string, string> = {};
+**Backend Types (`assets.types.ts`):**
+- Added `StartupProgramInfo` interface
+- Updated `AssetSoftware` to include `startupPrograms`
+- Updated `ServiceInfo` with `displayName` and `startupType`
 
-// Add install paths
-asset.software.forEach(s => {
-  if (s.installPath) {
-    systemEnvironment[`${s.name}_PATH`] = s.installPath;
-  }
-});
+**Frontend Types (`asset.types.ts`):**
+- Added `StartupProgram` type
+- Updated `Software` type to include `startupPrograms`
+- Made optional fields properly optional
 
-return {
-  os: { ... },
-  applications: [ ... ],
-  services: [ ... ],
-  systemEnvironment,
-};
-```
+**Frontend UI (`AssetDetails.tsx`):**
+- Updated Services columns: Name, Display Name, State, Startup Type
+- Replaced System Environment key-value display with Startup Programs table
+- Updated export functions for new data structures
 
 ---
 
@@ -258,7 +251,7 @@ Requires integration with patches/vulnerabilities modules. The patch status shou
 | 2 | FIX-2: Download/Export | Low | Medium | [x] Completed |
 | 3 | FIX-3: Filter Buttons | Low-Medium | Medium | [x] Completed |
 | 4 | FIX-4: Application Icons | Low | Low | [ ] |
-| 5 | FIX-5: System Environment | Medium | Medium | [ ] |
+| 5 | FIX-5: System Environment | Medium | Medium | [x] Completed |
 | 6 | FIX-6: License Details | Medium | Low | [ ] Deferred |
 | 7 | FIX-7: Patch Status | High | High | [ ] Deferred |
 
@@ -274,7 +267,7 @@ After implementing fixes, verify:
 - [x] Clear Filters button appears when filters are active
 - [x] Filter buttons removed from Services and System Environment tabs
 - [ ] Application icons render with consistent colors
-- [ ] System Environment tab shows key-value pairs
+- [x] System Environment tab shows startup programs (3-tab segregation implemented)
 - [ ] No console errors in browser
 - [ ] Loading states work correctly
 - [ ] Empty states handled gracefully (no data scenarios)

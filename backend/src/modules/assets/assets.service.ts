@@ -40,6 +40,12 @@ import {
   transformHardwareForAPI,
   transformTelemetryForAPI,
 } from './assets.transformer';
+import {
+  calculateDepreciation,
+  mapDepreciationMethod,
+  getMethodDisplayName,
+  type DepreciationMethod,
+} from './depreciation.utils';
 
 // Helper to generate asset display ID
 function generateAssetId(count: number): string {
@@ -918,7 +924,61 @@ function transformAsset(asset: any): AssetResponse {
     tags: asset.tags?.map((at: any) => transformTag(at.tag)),
     createdAt: asset.createdAt.toISOString(),
     updatedAt: asset.updatedAt.toISOString(),
+    // Cost properties
+    cost: {
+      cost: asset.purchaseCost?.toString() || null,
+      currency: asset.currency || 'INR',
+      currentCost: asset.currentValue?.toString() || null,
+      depreciationType: asset.depreciationType || null,
+      invoiceNumber: asset.invoiceNumber || null,
+      purchaseDate: asset.purchaseDate?.toISOString() || null,
+      salvageValue: asset.salvageValue?.toString() || null,
+      age: asset.purchaseDate ? calculateAssetAge(asset.purchaseDate) : null,
+    },
+    // Procurement properties
+    procurement: {
+      vendor: asset.vendor || null,
+      purchaseOrderNumber: asset.purchaseOrderNumber || null,
+      amcCost: asset.amcCost || null,
+      amcExpiryDate: asset.amcExpiryDate?.toISOString() || null,
+      amcVendor: asset.amcVendor || null,
+      warrantyExpiryDate: asset.warrantyExpiry?.toISOString() || null,
+      warrantyYearAndMonth: asset.warrantyExpiry ? calculateWarrantyRemaining(asset.warrantyExpiry) : null,
+      endOfLife: asset.endOfLife?.toISOString() || null,
+      endOfSupport: asset.endOfSupport?.toISOString() || null,
+    },
   };
+}
+
+// Helper to calculate asset age
+function calculateAssetAge(purchaseDate: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - purchaseDate.getTime();
+  const years = Math.floor(diffMs / (365.25 * 24 * 60 * 60 * 1000));
+  const months = Math.floor((diffMs % (365.25 * 24 * 60 * 60 * 1000)) / (30.44 * 24 * 60 * 60 * 1000));
+
+  if (years > 0) {
+    return months > 0 ? `${years} year${years > 1 ? 's' : ''} ${months} month${months > 1 ? 's' : ''}` : `${years} year${years > 1 ? 's' : ''}`;
+  }
+  return `${months} month${months > 1 ? 's' : ''}`;
+}
+
+// Helper to calculate warranty remaining
+function calculateWarrantyRemaining(warrantyExpiry: Date): string {
+  const now = new Date();
+  const diffMs = warrantyExpiry.getTime() - now.getTime();
+
+  if (diffMs <= 0) {
+    return 'Expired';
+  }
+
+  const years = Math.floor(diffMs / (365.25 * 24 * 60 * 60 * 1000));
+  const months = Math.floor((diffMs % (365.25 * 24 * 60 * 60 * 1000)) / (30.44 * 24 * 60 * 60 * 1000));
+
+  if (years > 0) {
+    return months > 0 ? `${years}y ${months}m remaining` : `${years}y remaining`;
+  }
+  return `${months}m remaining`;
 }
 
 // ============================================
@@ -929,8 +989,18 @@ export async function getAssetLifeCycle(id: string): Promise<AssetLifeCycle> {
   const asset = await prisma.asset.findUnique({
     where: { id },
     select: {
+      name: true,
       purchaseDate: true,
       warrantyExpiry: true,
+      endOfLife: true,
+      amcExpiryDate: true,
+      // Cost fields
+      purchaseCost: true,
+      salvageValue: true,
+      currentValue: true,
+      depreciationType: true,
+      depreciationRate: true,
+      currency: true,
     },
   });
 
@@ -940,23 +1010,84 @@ export async function getAssetLifeCycle(id: string): Promise<AssetLifeCycle> {
 
   const now = new Date();
   const purchaseDate = asset.purchaseDate;
-  const purchaseValue = 40000; // Mock value
-  const depreciationRate = 0.2; // 20% per year
 
-  // Calculate current value based on straight-line depreciation
-  let currentValue = purchaseValue;
-  if (purchaseDate) {
-    const yearsOwned = (now.getTime() - purchaseDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
-    currentValue = Math.max(purchaseValue * (1 - depreciationRate * yearsOwned), purchaseValue * 0.2);
+  // Get values from database, with sensible defaults
+  const purchaseCost = asset.purchaseCost ? Number(asset.purchaseCost) : null;
+  const salvageValue = asset.salvageValue ? Number(asset.salvageValue) : null;
+  const depreciationMethod = mapDepreciationMethod(asset.depreciationType);
+
+  // Calculate useful life from purchase date and end of life
+  let usefulLifeYears = 5; // Default: 5 years
+  if (purchaseDate && asset.endOfLife) {
+    const msPerYear = 365.25 * 24 * 60 * 60 * 1000;
+    usefulLifeYears = Math.max(1, Math.round((asset.endOfLife.getTime() - purchaseDate.getTime()) / msPerYear));
   }
 
+  // If we have all required data, use the depreciation algorithm
+  if (purchaseCost && purchaseCost > 0 && purchaseDate) {
+    const effectiveSalvageValue = salvageValue ?? Math.round(purchaseCost * 0.1); // Default: 10% salvage
+
+    try {
+      const depreciation = calculateDepreciation({
+        purchaseCost,
+        salvageValue: effectiveSalvageValue,
+        usefulLifeYears,
+        purchaseDate,
+        method: depreciationMethod,
+        currentDate: now,
+      });
+
+      // Calculate end of life date
+      const endOfLifeDate = asset.endOfLife
+        ? asset.endOfLife.toISOString().split('T')[0]
+        : new Date(purchaseDate.getTime() + usefulLifeYears * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      return {
+        purchaseDate: purchaseDate.toISOString().split('T')[0],
+        purchaseValue: Math.round(purchaseCost),
+        currentDate: now.toISOString().split('T')[0],
+        currentValue: depreciation.currentValue,
+        amcExpiryDate: asset.amcExpiryDate?.toISOString().split('T')[0] ?? null,
+        warrantyExpiryDate: asset.warrantyExpiry?.toISOString().split('T')[0] ?? null,
+        endOfLife: endOfLifeDate,
+        endOfLifeValue: Math.round(effectiveSalvageValue),
+        depreciationTimeline: depreciation.depreciationTimeline,
+        // Extended fields for UI
+        depreciationMethod: getMethodDisplayName(depreciationMethod),
+        totalDepreciation: depreciation.totalDepreciation,
+        annualDepreciation: depreciation.annualDepreciation,
+        yearsElapsed: depreciation.yearsElapsed,
+        yearsRemaining: depreciation.yearsRemaining,
+        usefulLifeYears,
+        currency: asset.currency ?? 'INR',
+      };
+    } catch {
+      // Fall through to default calculation if depreciation fails
+    }
+  }
+
+  // Fallback: Use simple calculation with defaults when data is missing
+  const defaultPurchaseValue = purchaseCost ?? 40000;
+  const defaultSalvageValue = salvageValue ?? Math.round(defaultPurchaseValue * 0.1);
+  const depreciationRate = 0.2; // 20% per year for fallback
+
+  let currentValue = defaultPurchaseValue;
+  if (purchaseDate) {
+    const yearsOwned = (now.getTime() - purchaseDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+    currentValue = Math.max(
+      defaultPurchaseValue * (1 - depreciationRate * yearsOwned),
+      defaultSalvageValue
+    );
+  }
+
+  // Build simple timeline for fallback
   const depreciationTimeline: Array<{ date: string; value: number; label: string }> = [];
 
   if (purchaseDate) {
     depreciationTimeline.push({
       date: purchaseDate.toISOString().split('T')[0],
-      value: purchaseValue,
-      label: 'Purchased on',
+      value: Math.round(defaultPurchaseValue),
+      label: 'Purchase',
     });
   }
 
@@ -966,26 +1097,37 @@ export async function getAssetLifeCycle(id: string): Promise<AssetLifeCycle> {
     label: 'Today',
   });
 
-  if (asset.warrantyExpiry) {
+  // Add end of life point
+  const endOfLifeDate = purchaseDate
+    ? new Date(purchaseDate.getTime() + usefulLifeYears * 365.25 * 24 * 60 * 60 * 1000)
+    : null;
+
+  if (endOfLifeDate) {
     depreciationTimeline.push({
-      date: asset.warrantyExpiry.toISOString().split('T')[0],
-      value: Math.round(currentValue * 0.8),
-      label: 'Warranty Expiry Date',
+      date: endOfLifeDate.toISOString().split('T')[0],
+      value: Math.round(defaultSalvageValue),
+      label: 'End of Life',
     });
   }
 
   return {
-    purchaseDate: purchaseDate?.toISOString().split('T')[0],
-    purchaseValue,
+    purchaseDate: purchaseDate?.toISOString().split('T')[0] ?? null,
+    purchaseValue: Math.round(defaultPurchaseValue),
     currentDate: now.toISOString().split('T')[0],
     currentValue: Math.round(currentValue),
-    amcExpiryDate: null,
-    warrantyExpiryDate: asset.warrantyExpiry?.toISOString().split('T')[0],
-    endOfLife: purchaseDate
-      ? new Date(purchaseDate.getTime() + 5 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-      : null,
-    endOfLifeValue: Math.round(purchaseValue * 0.2),
+    amcExpiryDate: asset.amcExpiryDate?.toISOString().split('T')[0] ?? null,
+    warrantyExpiryDate: asset.warrantyExpiry?.toISOString().split('T')[0] ?? null,
+    endOfLife: endOfLifeDate?.toISOString().split('T')[0] ?? null,
+    endOfLifeValue: Math.round(defaultSalvageValue),
     depreciationTimeline,
+    // Extended fields with defaults
+    depreciationMethod: 'Straight Line (Default)',
+    totalDepreciation: Math.round(defaultPurchaseValue - currentValue),
+    annualDepreciation: Math.round((defaultPurchaseValue - defaultSalvageValue) / usefulLifeYears),
+    yearsElapsed: purchaseDate ? Math.round((now.getTime() - purchaseDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000) * 100) / 100 : 0,
+    yearsRemaining: purchaseDate ? Math.max(0, usefulLifeYears - (now.getTime() - purchaseDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : usefulLifeYears,
+    usefulLifeYears,
+    currency: asset.currency ?? 'INR',
   };
 }
 
@@ -1193,45 +1335,68 @@ export async function getAssetHardware(id: string): Promise<AssetHardware | null
 }
 
 export async function getAssetSoftware(id: string): Promise<AssetSoftware | null> {
+  // First, get the asset for OS info
   const asset = await prisma.asset.findUnique({
     where: { id },
-    include: {
-      software: true,
-    },
   });
 
   if (!asset) {
     throw new NotFoundError('Asset not found');
   }
 
-  const applications = asset.software
-    .filter((s) => !s.isSystem)
-    .map((s, i) => ({
-      id: s.id,
-      name: s.name,
-      vendor: s.vendor || undefined,
-      version: s.version || undefined,
-      appInstalledOn: s.installDate?.toISOString(),
-    }));
+  // Get the full software inventory from rawPayload
+  const softwareInventory = await prisma.assetSoftwareInventory.findUnique({
+    where: { assetId: id },
+  });
 
-  const services = asset.software
-    .filter((s) => s.isSystem)
-    .map((s) => ({
-      id: s.id,
-      name: s.name,
-      version: s.version || undefined,
-      type: 'System',
-    }));
+  // Extract data from rawPayload if available
+  const rawPayload = softwareInventory?.rawPayload as Record<string, unknown> | null;
+
+  // Parse applications from rawPayload
+  const rawApplications = (rawPayload?.applications as Array<Record<string, unknown>>) || [];
+  const applications = rawApplications.map((app, index) => ({
+    id: `app-${index}`,
+    name: (app.name as string) || 'Unknown',
+    vendor: app.vendor as string | undefined,
+    version: app.version as string | undefined,
+    appInstalledOn: app.installDate as string | undefined,
+    installSource: app.installSource as string | undefined,
+  }));
+
+  // Parse services from rawPayload
+  const rawServices = (rawPayload?.services as Array<Record<string, unknown>>) || [];
+  const services = rawServices.map((svc, index) => ({
+    id: `svc-${index}`,
+    name: (svc.name as string) || 'Unknown',
+    displayName: svc.displayName as string | undefined,
+    state: (svc.status as 'Running' | 'Stopped') || undefined,
+    startupType: svc.startupType as string | undefined,
+    type: 'Service',
+    status: svc.status as string | undefined,
+  }));
+
+  // Parse startup programs from rawPayload
+  const rawStartupPrograms = (rawPayload?.startupPrograms as Array<Record<string, unknown>>) || [];
+  const startupPrograms = rawStartupPrograms.map((prog, index) => ({
+    id: `startup-${index}`,
+    name: (prog.name as string) || 'Unknown',
+    command: prog.command as string | undefined,
+    location: prog.location as string | undefined,
+    enabled: (prog.enabled as boolean) ?? true,
+    vendor: prog.vendor as string | undefined,
+  }));
+
+  // Get OS info from rawPayload or fall back to asset fields
+  const rawOS = rawPayload?.operatingSystem as Record<string, unknown> | undefined;
 
   return {
-    os: asset.os
-      ? {
-          name: asset.os,
-          version: asset.osVersion || undefined,
-        }
-      : undefined,
+    os: {
+      name: (rawOS?.name as string) || asset.os || 'Unknown',
+      version: (rawOS?.version as string) || asset.osVersion || undefined,
+    },
     applications,
     services,
+    startupPrograms,
   };
 }
 
