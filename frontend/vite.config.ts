@@ -14,12 +14,10 @@ export default defineConfig({
   server: {
     port: 5173,
     host: '0.0.0.0',  // Allow connections from any host
-    allowedHosts: ['dev.skenzeriq.com'],
+    allowedHosts: ['dev.skenzeriq.com', 'localhost'],
     hmr: {
-      // HMR through nginx reverse proxy
-      host: 'dev.skenzeriq.com',
-      port: 4080,
-      protocol: 'ws',
+      // Use client-side detection for HMR
+      clientPort: 5173,
     },
     strictPort: false,
     proxy: {

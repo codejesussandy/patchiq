@@ -84,6 +84,7 @@ export interface AssetCreateInput {
 }
 
 export interface AssetUpdateInput {
+  // Basic info
   name?: string;
   categoryId?: string | null;
   subCategoryId?: string | null;
@@ -95,7 +96,29 @@ export interface AssetUpdateInput {
   model?: string | null;
   osType?: string | null;
   osVersion?: string | null;
+  hostname?: string | null;
   tags?: string[];
+
+  // Owner info
+  ownerName?: string | null;
+  ownerEmail?: string | null;
+  ownerDepartment?: string | null;
+
+  // Procurement info
+  vendor?: string | null;
+  purchaseDate?: string | null;
+  warrantyExpiry?: string | null;
+  purchaseOrderNumber?: string | null;
+  amcVendor?: string | null;
+  amcCost?: string | null;
+  amcExpiryDate?: string | null;
+  endOfLife?: string | null;
+  endOfSupport?: string | null;
+
+  // Cost info
+  purchaseCost?: number | null;
+  invoiceNumber?: string | null;
+  currency?: string | null;
 }
 
 export interface AssetFilters {
@@ -203,13 +226,14 @@ export interface AssetLifeCycle {
   endOfLifeValue?: number | null;
   depreciationTimeline: DepreciationPoint[];
   // Extended depreciation fields
-  depreciationMethod?: string;           // "Straight Line", "Double Declining Balance", etc.
-  totalDepreciation?: number;            // Total depreciation to date
-  annualDepreciation?: number;           // Current year's depreciation expense
-  yearsElapsed?: number;                 // Years since purchase
-  yearsRemaining?: number;               // Years until end of life
-  usefulLifeYears?: number;              // Total useful life in years
+  depreciationMethod?: string | null;    // "Straight Line", "Double Declining Balance", etc.
+  totalDepreciation?: number | null;     // Total depreciation to date
+  annualDepreciation?: number | null;    // Current year's depreciation expense
+  yearsElapsed?: number | null;          // Years since purchase
+  yearsRemaining?: number | null;        // Years until end of life
+  usefulLifeYears?: number | null;       // Total useful life in years
   currency?: string;                     // Currency code (INR, USD, etc.)
+  hasFinancialData?: boolean;            // True if asset has real financial data
 }
 
 export interface DepreciationPoint {
@@ -314,11 +338,26 @@ export interface AssetSoftware {
   os?: {
     name: string;
     version?: string;
+    buildNumber?: string;
+    architecture?: string;
+    installDate?: string;
+    licenseStatus?: string;
   };
   licenseDetails?: Record<string, string>;
   applications: ApplicationInfo[];
   services: ServiceInfo[];
   startupPrograms: StartupProgramInfo[];
+}
+
+export interface SoftwareLicenseInfo {
+  type?: string; // Perpetual, Subscription, Trial, Freeware, OpenSource, OEM, Volume, Unknown
+  status?: string; // Licensed, Expired, Trial, GracePeriod, Unlicensed, Unknown
+  key?: string; // Masked license key (last 5 chars visible)
+  expirationDate?: string; // ISO8601 for subscription/trial
+  daysRemaining?: number; // Days until expiration
+  licensedTo?: string; // User/organization name
+  productId?: string; // Vendor product ID
+  channel?: string; // Retail, Volume, OEM, NFR
 }
 
 export interface ApplicationInfo {
@@ -329,6 +368,9 @@ export interface ApplicationInfo {
   patchStatus?: 'Available' | 'Not Available';
   lastPatched?: string;
   appInstalledOn?: string;
+  installSource?: string;
+  isSystemApp?: boolean;
+  license?: SoftwareLicenseInfo;
 }
 
 export interface ServiceInfo {

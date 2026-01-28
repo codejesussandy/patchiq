@@ -2,6 +2,12 @@ import { prisma } from '@/db/client';
 import { NotFoundError, ConflictError, BadRequestError } from '@shared/errors';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import { PaginationParams } from '@shared/types';
+import {
+  createAuditLog,
+  diffObjects,
+  AuditAction,
+  AuditResource,
+} from '@middleware/audit';
 import type {
   AssetResponse,
   AssetLifeCycle,
@@ -525,7 +531,7 @@ export async function getPopularTags(limit: number = 10): Promise<TagResponse[]>
   }).filter(Boolean);
 }
 
-export async function addTagsToAsset(assetId: string, tagIds: string[]): Promise<TagResponse[]> {
+export async function addTagsToAsset(assetId: string, tagIds: string[], userId?: string): Promise<TagResponse[]> {
   // Verify asset exists
   const asset = await prisma.asset.findUnique({
     where: { id: assetId },
@@ -550,10 +556,23 @@ export async function addTagsToAsset(assetId: string, tagIds: string[]): Promise
     skipDuplicates: true,
   });
 
+  // Create audit log with tag names
+  await createAuditLog({
+    userId,
+    action: AuditAction.UPDATE,
+    resource: AuditResource.ASSET,
+    resourceId: assetId,
+    details: {
+      assetName: asset.name,
+      action: 'add_tags',
+      tagsAdded: tags.map((t) => ({ id: t.id, name: t.name })),
+    },
+  });
+
   return getAssetTags(assetId);
 }
 
-export async function removeTagFromAsset(assetId: string, tagId: string): Promise<void> {
+export async function removeTagFromAsset(assetId: string, tagId: string, userId?: string): Promise<void> {
   // Verify asset exists
   const asset = await prisma.asset.findUnique({
     where: { id: assetId },
@@ -562,6 +581,11 @@ export async function removeTagFromAsset(assetId: string, tagId: string): Promis
   if (!asset) {
     throw new NotFoundError('Asset not found');
   }
+
+  // Get tag info for audit log
+  const tag = await prisma.tag.findUnique({
+    where: { id: tagId },
+  });
 
   // Verify tag association exists
   const assetTag = await prisma.assetTag.findUnique({
@@ -577,6 +601,19 @@ export async function removeTagFromAsset(assetId: string, tagId: string): Promis
   await prisma.assetTag.delete({
     where: {
       assetId_tagId: { assetId, tagId },
+    },
+  });
+
+  // Create audit log with tag name
+  await createAuditLog({
+    userId,
+    action: AuditAction.UPDATE,
+    resource: AuditResource.ASSET,
+    resourceId: assetId,
+    details: {
+      assetName: asset.name,
+      action: 'remove_tag',
+      tagRemoved: tag ? { id: tag.id, name: tag.name } : { id: tagId },
     },
   });
 }
@@ -719,7 +756,7 @@ export async function getAssetById(id: string): Promise<AssetResponse> {
   return transformAsset(asset);
 }
 
-export async function createAsset(data: AssetCreateInput): Promise<AssetResponse> {
+export async function createAsset(data: AssetCreateInput, userId?: string): Promise<AssetResponse> {
   // Check for unique serial number
   if (data.serialNumber) {
     const existingSerial = await prisma.asset.findUnique({
@@ -761,12 +798,34 @@ export async function createAsset(data: AssetCreateInput): Promise<AssetResponse
     },
   });
 
+  // Create audit log with full details
+  await createAuditLog({
+    userId,
+    action: AuditAction.CREATE,
+    resource: AuditResource.ASSET,
+    resourceId: asset.id,
+    details: {
+      assetName: asset.name,
+      assetTag: asset.assetTag,
+      type: asset.type,
+      status: asset.status,
+      os: asset.os,
+      osVersion: asset.osVersion,
+      ipAddress: asset.ipAddress,
+      macAddress: asset.macAddress,
+      manufacturer: asset.manufacturer,
+      model: asset.model,
+      serialNumber: asset.serialNumber,
+    },
+  });
+
   return transformAsset(asset);
 }
 
-export async function updateAsset(id: string, data: AssetUpdateInput): Promise<AssetResponse> {
+export async function updateAsset(id: string, data: AssetUpdateInput, userId?: string): Promise<AssetResponse> {
   const existing = await prisma.asset.findUnique({
     where: { id },
+    include: { tags: { include: { tag: true } } },
   });
 
   if (!existing) {
@@ -807,6 +866,7 @@ export async function updateAsset(id: string, data: AssetUpdateInput): Promise<A
   const asset = await prisma.asset.update({
     where: { id },
     data: {
+      // Basic info
       name: data.name,
       status: data.status,
       serialNumber: data.serialNumber,
@@ -816,6 +876,28 @@ export async function updateAsset(id: string, data: AssetUpdateInput): Promise<A
       macAddress: data.macAddress,
       manufacturer: data.manufacturer,
       model: data.model,
+      hostname: data.hostname,
+
+      // Owner info
+      ownerName: data.ownerName,
+      ownerEmail: data.ownerEmail,
+      ownerDepartment: data.ownerDepartment,
+
+      // Procurement info
+      vendor: data.vendor,
+      purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : undefined,
+      warrantyExpiry: data.warrantyExpiry ? new Date(data.warrantyExpiry) : undefined,
+      purchaseOrderNumber: data.purchaseOrderNumber,
+      amcVendor: data.amcVendor,
+      amcCost: data.amcCost,
+      amcExpiryDate: data.amcExpiryDate ? new Date(data.amcExpiryDate) : undefined,
+      endOfLife: data.endOfLife ? new Date(data.endOfLife) : undefined,
+      endOfSupport: data.endOfSupport ? new Date(data.endOfSupport) : undefined,
+
+      // Cost info
+      purchaseCost: data.purchaseCost,
+      invoiceNumber: data.invoiceNumber,
+      currency: data.currency,
     },
     include: {
       tags: { include: { tag: true } },
@@ -823,10 +905,92 @@ export async function updateAsset(id: string, data: AssetUpdateInput): Promise<A
     },
   });
 
+  // Track changes for audit log - include all editable fields
+  const fieldsToTrack = [
+    'name', 'status', 'serialNumber', 'os', 'osVersion', 'ipAddress', 'macAddress', 'manufacturer', 'model', 'hostname',
+    'ownerName', 'ownerEmail', 'ownerDepartment',
+    'vendor', 'purchaseDate', 'warrantyExpiry', 'purchaseOrderNumber', 'amcVendor', 'amcCost', 'amcExpiryDate', 'endOfLife', 'endOfSupport',
+    'purchaseCost', 'invoiceNumber', 'currency',
+  ];
+  const beforeData: Record<string, unknown> = {
+    name: existing.name,
+    status: existing.status,
+    serialNumber: existing.serialNumber,
+    os: existing.os,
+    osVersion: existing.osVersion,
+    ipAddress: existing.ipAddress,
+    macAddress: existing.macAddress,
+    manufacturer: existing.manufacturer,
+    model: existing.model,
+    hostname: existing.hostname,
+    ownerName: existing.ownerName,
+    ownerEmail: existing.ownerEmail,
+    ownerDepartment: existing.ownerDepartment,
+    vendor: existing.vendor,
+    purchaseDate: existing.purchaseDate?.toISOString(),
+    warrantyExpiry: existing.warrantyExpiry?.toISOString(),
+    purchaseOrderNumber: existing.purchaseOrderNumber,
+    amcVendor: existing.amcVendor,
+    amcCost: existing.amcCost,
+    amcExpiryDate: existing.amcExpiryDate?.toISOString(),
+    endOfLife: existing.endOfLife?.toISOString(),
+    endOfSupport: existing.endOfSupport?.toISOString(),
+    purchaseCost: existing.purchaseCost?.toString(),
+    invoiceNumber: existing.invoiceNumber,
+    currency: existing.currency,
+  };
+  const afterData: Record<string, unknown> = {
+    name: asset.name,
+    status: asset.status,
+    serialNumber: asset.serialNumber,
+    os: asset.os,
+    osVersion: asset.osVersion,
+    ipAddress: asset.ipAddress,
+    macAddress: asset.macAddress,
+    manufacturer: asset.manufacturer,
+    model: asset.model,
+    hostname: asset.hostname,
+    ownerName: asset.ownerName,
+    ownerEmail: asset.ownerEmail,
+    ownerDepartment: asset.ownerDepartment,
+    vendor: asset.vendor,
+    purchaseDate: asset.purchaseDate?.toISOString(),
+    warrantyExpiry: asset.warrantyExpiry?.toISOString(),
+    purchaseOrderNumber: asset.purchaseOrderNumber,
+    amcVendor: asset.amcVendor,
+    amcCost: asset.amcCost,
+    amcExpiryDate: asset.amcExpiryDate?.toISOString(),
+    endOfLife: asset.endOfLife?.toISOString(),
+    endOfSupport: asset.endOfSupport?.toISOString(),
+    purchaseCost: asset.purchaseCost?.toString(),
+    invoiceNumber: asset.invoiceNumber,
+    currency: asset.currency,
+  };
+
+  const changes = diffObjects(beforeData, afterData, fieldsToTrack);
+
+  // Create audit log with change details
+  await createAuditLog({
+    userId,
+    action: AuditAction.UPDATE,
+    resource: AuditResource.ASSET,
+    resourceId: id,
+    details: {
+      assetName: asset.name,
+      assetTag: asset.assetTag,
+      changes: changes.map((c) => ({
+        field: c.field,
+        from: c.from,
+        to: c.to,
+      })),
+      changeCount: changes.length,
+    },
+  });
+
   return transformAsset(asset);
 }
 
-export async function deleteAsset(id: string): Promise<void> {
+export async function deleteAsset(id: string, userId?: string): Promise<void> {
   const existing = await prisma.asset.findUnique({
     where: { id },
   });
@@ -839,11 +1003,52 @@ export async function deleteAsset(id: string): Promise<void> {
   await prisma.asset.delete({
     where: { id },
   });
+
+  // Create audit log with deleted asset info
+  await createAuditLog({
+    userId,
+    action: AuditAction.DELETE,
+    resource: AuditResource.ASSET,
+    resourceId: id,
+    details: {
+      deletedAsset: {
+        name: existing.name,
+        assetTag: existing.assetTag,
+        type: existing.type,
+        status: existing.status,
+        os: existing.os,
+        ipAddress: existing.ipAddress,
+        serialNumber: existing.serialNumber,
+      },
+    },
+  });
 }
 
-export async function bulkDeleteAssets(ids: string[]): Promise<{ deleted: number }> {
+export async function bulkDeleteAssets(ids: string[], userId?: string): Promise<{ deleted: number }> {
+  // Get asset info before deletion for audit log
+  const assetsToDelete = await prisma.asset.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, name: true, assetTag: true, type: true },
+  });
+
   const result = await prisma.asset.deleteMany({
     where: { id: { in: ids } },
+  });
+
+  // Create audit log for bulk delete
+  await createAuditLog({
+    userId,
+    action: AuditAction.DELETE,
+    resource: AuditResource.ASSET,
+    details: {
+      bulkDelete: true,
+      count: result.count,
+      deletedAssets: assetsToDelete.map((a) => ({
+        id: a.id,
+        name: a.name,
+        assetTag: a.assetTag,
+      })),
+    },
   });
 
   return { deleted: result.count };
@@ -985,7 +1190,7 @@ function calculateWarrantyRemaining(warrantyExpiry: Date): string {
 // Asset Details Service
 // ============================================
 
-export async function getAssetLifeCycle(id: string): Promise<AssetLifeCycle> {
+export async function getAssetLifeCycle(id: string, method?: string): Promise<AssetLifeCycle> {
   const asset = await prisma.asset.findUnique({
     where: { id },
     select: {
@@ -1014,7 +1219,8 @@ export async function getAssetLifeCycle(id: string): Promise<AssetLifeCycle> {
   // Get values from database, with sensible defaults
   const purchaseCost = asset.purchaseCost ? Number(asset.purchaseCost) : null;
   const salvageValue = asset.salvageValue ? Number(asset.salvageValue) : null;
-  const depreciationMethod = mapDepreciationMethod(asset.depreciationType);
+  // Use passed method if provided, otherwise use the database stored method
+  const depreciationMethod = method ? mapDepreciationMethod(method) : mapDepreciationMethod(asset.depreciationType);
 
   // Calculate useful life from purchase date and end of life
   let usefulLifeYears = 5; // Default: 5 years
@@ -1060,6 +1266,7 @@ export async function getAssetLifeCycle(id: string): Promise<AssetLifeCycle> {
         yearsRemaining: depreciation.yearsRemaining,
         usefulLifeYears,
         currency: asset.currency ?? 'INR',
+        hasFinancialData: true,
       };
     } catch {
       // Fall through to default calculation if depreciation fails
@@ -1112,22 +1319,23 @@ export async function getAssetLifeCycle(id: string): Promise<AssetLifeCycle> {
 
   return {
     purchaseDate: purchaseDate?.toISOString().split('T')[0] ?? null,
-    purchaseValue: Math.round(defaultPurchaseValue),
+    purchaseValue: null,
     currentDate: now.toISOString().split('T')[0],
-    currentValue: Math.round(currentValue),
+    currentValue: null,
     amcExpiryDate: asset.amcExpiryDate?.toISOString().split('T')[0] ?? null,
     warrantyExpiryDate: asset.warrantyExpiry?.toISOString().split('T')[0] ?? null,
-    endOfLife: endOfLifeDate?.toISOString().split('T')[0] ?? null,
-    endOfLifeValue: Math.round(defaultSalvageValue),
-    depreciationTimeline,
-    // Extended fields with defaults
-    depreciationMethod: 'Straight Line (Default)',
-    totalDepreciation: Math.round(defaultPurchaseValue - currentValue),
-    annualDepreciation: Math.round((defaultPurchaseValue - defaultSalvageValue) / usefulLifeYears),
-    yearsElapsed: purchaseDate ? Math.round((now.getTime() - purchaseDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000) * 100) / 100 : 0,
-    yearsRemaining: purchaseDate ? Math.max(0, usefulLifeYears - (now.getTime() - purchaseDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : usefulLifeYears,
-    usefulLifeYears,
+    endOfLife: asset.endOfLife?.toISOString().split('T')[0] ?? null,
+    endOfLifeValue: null,
+    depreciationTimeline: [],
+    // Extended fields - null when no data
+    depreciationMethod: null,
+    totalDepreciation: null,
+    annualDepreciation: null,
+    yearsElapsed: null,
+    yearsRemaining: null,
+    usefulLifeYears: null,
     currency: asset.currency ?? 'INR',
+    hasFinancialData: false,
   };
 }
 
@@ -1352,16 +1560,206 @@ export async function getAssetSoftware(id: string): Promise<AssetSoftware | null
   // Extract data from rawPayload if available
   const rawPayload = softwareInventory?.rawPayload as Record<string, unknown> | null;
 
+  // Whitelist of known commercial software (case-insensitive partial match)
+  const commercialSoftwareWhitelist = [
+    // Microsoft
+    'microsoft office',
+    'microsoft 365',
+    'office 365',
+    'microsoft word',
+    'microsoft excel',
+    'microsoft powerpoint',
+    'microsoft outlook',
+    'microsoft access',
+    'microsoft publisher',
+    'microsoft visio',
+    'microsoft project',
+    'visual studio',
+    'sql server',
+    // Adobe
+    'adobe',
+    'acrobat',
+    'photoshop',
+    'illustrator',
+    'premiere',
+    'after effects',
+    'indesign',
+    'lightroom',
+    'creative cloud',
+    // JetBrains
+    'jetbrains',
+    'intellij',
+    'pycharm',
+    'webstorm',
+    'phpstorm',
+    'rider',
+    'clion',
+    'goland',
+    'rubymine',
+    'datagrip',
+    // Autodesk
+    'autodesk',
+    'autocad',
+    'maya',
+    '3ds max',
+    'revit',
+    'inventor',
+    // Other commercial
+    'vmware',
+    'parallels',
+    'zoom',
+    'slack',
+    'dropbox',
+    'box',
+    'salesforce',
+    'tableau',
+    'splunk',
+    'datadog',
+    'newrelic',
+    'jira',
+    'confluence',
+    'bitbucket',
+    'github enterprise',
+    'gitlab',
+    'teamviewer',
+    'anydesk',
+    'norton',
+    'mcafee',
+    'kaspersky',
+    'bitdefender',
+    'avast',
+    'avg',
+    'eset',
+    'sophos',
+    'crowdstrike',
+    'sentinelone',
+    'carbon black',
+    'malwarebytes',
+    'webroot',
+    'trend micro',
+    '1password',
+    'lastpass',
+    'dashlane',
+    'keeper',
+    'bitwarden',
+    'nordvpn',
+    'expressvpn',
+    'cisco',
+    'fortinet',
+    'palo alto',
+    'oracle',
+    'sap',
+    'servicenow',
+    'workday',
+    'docusign',
+    'adobe sign',
+    'figma',
+    'sketch',
+    'canva',
+    'notion',
+    'asana',
+    'monday.com',
+    'trello',
+    'basecamp',
+    'evernote',
+    'onenote',
+    'grammarly',
+    'snagit',
+    'camtasia',
+    'screenflow',
+    'final cut',
+    'logic pro',
+    'ableton',
+    'fl studio',
+    'pro tools',
+    'cubase',
+    'matlab',
+    'mathematica',
+    'stata',
+    'spss',
+    'endnote',
+    'mendeley',
+    'zotero',
+  ];
+
+  // System/built-in app patterns - matches native OS apps
+  const systemAppPatterns = [
+    // Windows built-in apps
+    /^microsoft\s+(store|edge|photos|camera|calculator|clock|calendar|mail|maps|weather|news|people|groove|movies|xbox|cortana|feedback|get help|tips|voice recorder|screen sketch|snipping|sticky notes|your phone|phone link|to do|whiteboard|3d|paint 3d|mixed reality|windows|onedrive|solitaire|minesweeper|mahjong)/i,
+    /^windows\s+(security|defender|update|backup|terminal|powershell|notepad|wordpad|media player|fax|dvd|photo viewer)/i,
+    /^(internet explorer|microsoft solitaire|microsoft minesweeper|microsoft mahjong|microsoft jigsaw|microsoft sudoku|microsoft treasure hunt|xbox game bar|xbox identity|groove music|movies & tv|mixed reality portal|3d viewer|paint 3d)/i,
+
+    // macOS built-in apps
+    /^apple\s+(music|tv|books|podcasts|news|arcade|fitness|wallet|weather|clock|calendar|contacts|reminders|notes|freeform|home|find my|photos|facetime|messages|mail|safari|maps|compass|measure|voice memos|stocks|translate|shortcuts|files|health|journal|configurator|developer)/i,
+    /^(safari|finder|preview|textedit|font book|digital color meter|grapher|keychain access|migration assistant|system (preferences|settings|information)|disk utility|activity monitor|console|terminal|screenshot|archive utility|automator|bluetooth file exchange|boot camp|colorsync|dvd player|image capture|launchpad|photo booth|quicktime|siri|time machine|xcode)/i,
+
+    // Linux system apps (GNOME, KDE, etc.)
+    /^(gnome-|kde-|systemd|dbus|gvfs|evolution|nautilus|gedit|evince|eog|totem|rhythmbox|cheese|baobab|seahorse|network-manager|bluetooth-manager)/i,
+    /^(settings|system settings|software center|software updater|ubuntu software|snap store|flatpak|packagekit|synaptic|update manager|software & updates)/i,
+
+    // Common system utilities
+    /^(control panel|device manager|task manager|resource monitor|event viewer|services|registry editor|group policy|disk management|computer management)/i,
+  ];
+
   // Parse applications from rawPayload
   const rawApplications = (rawPayload?.applications as Array<Record<string, unknown>>) || [];
-  const applications = rawApplications.map((app, index) => ({
-    id: `app-${index}`,
-    name: (app.name as string) || 'Unknown',
-    vendor: app.vendor as string | undefined,
-    version: app.version as string | undefined,
-    appInstalledOn: app.installDate as string | undefined,
-    installSource: app.installSource as string | undefined,
-  }));
+  const applications = rawApplications.map((app, index) => {
+    // Parse license data if present and has meaningful data
+    const rawLicense = app.license as Record<string, unknown> | undefined;
+    let license = undefined;
+
+    if (rawLicense) {
+      const licenseData = {
+        type: rawLicense.type as string | undefined,
+        status: rawLicense.status as string | undefined,
+        key: rawLicense.key as string | undefined,
+        expirationDate: rawLicense.expirationDate as string | undefined,
+        daysRemaining: rawLicense.daysRemaining as number | undefined,
+        licensedTo: rawLicense.licensedTo as string | undefined,
+        productId: rawLicense.productId as string | undefined,
+        channel: rawLicense.channel as string | undefined,
+      };
+
+      const appName = ((app.name as string) || '').toLowerCase();
+      const licenseType = (licenseData.type || '').toLowerCase();
+
+      // Check if app is in whitelist (commercial software)
+      const isWhitelisted = commercialSoftwareWhitelist.some((name) =>
+        appName.includes(name.toLowerCase())
+      );
+
+      // Check if license type is free/opensource - exclude these
+      const isFreeware = ['freeware', 'opensource', 'open source', 'free', 'unknown'].includes(
+        licenseType
+      );
+
+      // Has an actual tracked license key (masked key like XXXXX-XXXXX-...)
+      const hasLicenseKey = !!(licenseData.key && licenseData.key.length > 5);
+
+      // STRICT FILTERING: Only include if:
+      // 1. App is in commercial whitelist (regardless of license data), OR
+      // 2. Has an actual license key AND is not freeware
+      if ((isWhitelisted && !isFreeware) || (hasLicenseKey && !isFreeware)) {
+        license = licenseData;
+      }
+    }
+
+    const appName = (app.name as string) || 'Unknown';
+
+    // Check if app matches system app patterns
+    const isSystemApp = systemAppPatterns.some((pattern) => pattern.test(appName));
+
+    return {
+      id: `app-${index}`,
+      name: appName,
+      vendor: app.vendor as string | undefined,
+      version: app.version as string | undefined,
+      appInstalledOn: app.installDate as string | undefined,
+      installSource: app.installSource as string | undefined,
+      isSystemApp,
+      license,
+    };
+  });
 
   // Parse services from rawPayload
   const rawServices = (rawPayload?.services as Array<Record<string, unknown>>) || [];
@@ -1393,6 +1791,10 @@ export async function getAssetSoftware(id: string): Promise<AssetSoftware | null
     os: {
       name: (rawOS?.name as string) || asset.os || 'Unknown',
       version: (rawOS?.version as string) || asset.osVersion || undefined,
+      buildNumber: rawOS?.buildNumber as string | undefined,
+      architecture: rawOS?.architecture as string | undefined,
+      installDate: rawOS?.installDate as string | undefined,
+      licenseStatus: rawOS?.licenseStatus as string | undefined,
     },
     applications,
     services,
@@ -1696,7 +2098,7 @@ export async function getAssetAuditLog(id: string): Promise<AssetAuditLog[]> {
 
   const logs = await prisma.auditLog.findMany({
     where: {
-      resource: 'Asset',
+      resource: 'asset',
       resourceId: id,
     },
     orderBy: { timestamp: 'desc' },

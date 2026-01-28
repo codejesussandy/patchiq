@@ -111,6 +111,7 @@ export const assetCreateSchema = z.object({
 });
 
 export const assetUpdateSchema = z.object({
+  // Basic info
   name: z.string().min(1).max(255).optional(),
   categoryId: uuidSchema.optional().nullable(),
   subCategoryId: uuidSchema.optional().nullable(),
@@ -122,7 +123,29 @@ export const assetUpdateSchema = z.object({
   model: z.string().max(100).optional().nullable(),
   osType: z.string().max(50).optional().nullable(),
   osVersion: z.string().max(100).optional().nullable(),
-  tags: z.array(uuidSchema).optional(),
+  hostname: z.string().max(255).optional().nullable(),
+  tags: z.array(z.string()).optional(),
+
+  // Owner info
+  ownerName: z.string().max(255).optional().nullable(),
+  ownerEmail: z.string().email().optional().nullable().or(z.literal('')),
+  ownerDepartment: z.string().max(255).optional().nullable(),
+
+  // Procurement info
+  vendor: z.string().max(255).optional().nullable(),
+  purchaseDate: z.string().optional().nullable(), // ISO date string
+  warrantyExpiry: z.string().optional().nullable(), // ISO date string
+  purchaseOrderNumber: z.string().max(100).optional().nullable(),
+  amcVendor: z.string().max(255).optional().nullable(),
+  amcCost: z.string().max(50).optional().nullable(),
+  amcExpiryDate: z.string().optional().nullable(), // ISO date string
+  endOfLife: z.string().optional().nullable(), // ISO date string
+  endOfSupport: z.string().optional().nullable(), // ISO date string
+
+  // Cost info
+  purchaseCost: z.union([z.number(), z.string().transform(v => parseFloat(v))]).optional().nullable(),
+  invoiceNumber: z.string().max(100).optional().nullable(),
+  currency: z.string().max(10).optional().nullable(),
 });
 
 export const assetIdParamSchema = z.object({

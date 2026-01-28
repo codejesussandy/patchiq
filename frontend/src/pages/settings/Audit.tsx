@@ -198,15 +198,111 @@ export const Audit = () => {
       },
     },
     {
-      title: 'Message',
+      title: 'Details',
       dataIndex: 'message',
       key: 'message',
+      render: (value: string) => {
+        if (!value) return '-';
+
+        const formatDetails = (): string => {
+          try {
+            const data = JSON.parse(value);
+            if (typeof data !== 'object') return value;
+
+            // Handle update with changes array - each change on new line
+            if (data.changes && Array.isArray(data.changes)) {
+              if (data.changes.length === 0) return 'No changes';
+              return data.changes.map((c: { field: string; from: unknown; to: unknown }) => {
+                const fromVal = c.from === null || c.from === undefined || c.from === '' ? '(empty)' : String(c.from);
+                const toVal = c.to === null || c.to === undefined || c.to === '' ? '(empty)' : String(c.to);
+                return `• ${c.field}: "${fromVal}" → "${toVal}"`;
+              }).join('\n');
+            }
+
+            // Handle delete with deletedAsset info
+            if (data.deletedAsset) {
+              const asset = data.deletedAsset;
+              const lines = ['Deleted Asset:'];
+              if (asset.name) lines.push(`  • Name: ${asset.name}`);
+              if (asset.assetTag) lines.push(`  • Tag: ${asset.assetTag}`);
+              if (asset.type) lines.push(`  • Type: ${asset.type}`);
+              if (asset.os) lines.push(`  • OS: ${asset.os}`);
+              return lines.join('\n');
+            }
+
+            // Handle bulk delete
+            if (data.bulkDelete) {
+              const count = data.count || data.deletedAssets?.length || 0;
+              const lines = [`Bulk Delete: ${count} asset(s)`];
+              if (data.deletedAssets) {
+                data.deletedAssets.slice(0, 3).forEach((a: { name: string }) => {
+                  lines.push(`  • ${a.name}`);
+                });
+                if (count > 3) lines.push(`  • ... and ${count - 3} more`);
+              }
+              return lines.join('\n');
+            }
+
+            // Handle add tags
+            if (data.action === 'add_tags' && data.tagsAdded) {
+              const lines = ['Tags Added:'];
+              data.tagsAdded.forEach((t: { name: string }) => {
+                lines.push(`  • ${t.name}`);
+              });
+              return lines.join('\n');
+            }
+
+            // Handle remove tag
+            if (data.action === 'remove_tag' && data.tagRemoved) {
+              return `Tag Removed:\n  • ${data.tagRemoved.name || data.tagRemoved.id}`;
+            }
+
+            // Handle create - show key fields
+            if (data.assetName || data.assetTag) {
+              const lines = ['Asset Created:'];
+              if (data.assetName) lines.push(`  • Name: ${data.assetName}`);
+              if (data.assetTag) lines.push(`  • Tag: ${data.assetTag}`);
+              if (data.type) lines.push(`  • Type: ${data.type}`);
+              if (data.os) lines.push(`  • OS: ${data.os}`);
+              if (data.ipAddress) lines.push(`  • IP: ${data.ipAddress}`);
+              return lines.join('\n');
+            }
+
+            // Fallback: show as key-value pairs
+            const entries = Object.entries(data).filter(([k]) => !['changeCount'].includes(k)).slice(0, 4);
+            return entries.map(([k, v]) => `• ${k}: ${v}`).join('\n');
+          } catch {
+            return value.length > 100 ? value.substring(0, 100) + '...' : value;
+          }
+        };
+
+        return (
+          <div style={{ whiteSpace: 'pre-wrap', fontSize: '13px', lineHeight: '1.5' }}>
+            {formatDetails()}
+          </div>
+        );
+      },
     },
     {
       title: 'Created At',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 140,
+      width: 180,
+      render: (value: string) => {
+        if (!value) return '-';
+        try {
+          return new Date(value).toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          });
+        } catch {
+          return value;
+        }
+      },
     },
   ];
 
@@ -216,14 +312,14 @@ export const Audit = () => {
 
   const handleExport = () => {
     const csvContent = [
-      ['Module', 'Operation', 'User', 'Status', 'Message', 'Created At'],
+      ['Module', 'Operation', 'User', 'Status', 'Details', 'Created At'],
       ...filteredLogs.map((log) => [
         log.module,
         log.operation,
         log.user,
         log.status,
         log.message,
-        log.createdAt,
+        log.createdAt ? new Date(log.createdAt).toLocaleString() : '',
       ]),
     ]
       .map((row) => row.map((cell) => `"${cell}"`).join(','))

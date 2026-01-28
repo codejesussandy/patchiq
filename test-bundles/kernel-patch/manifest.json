@@ -1,0 +1,24 @@
+{
+  "id": "linux-kernel-security-6.8.0-50",
+  "name": "kernel-patch",
+  "displayName": "Linux Kernel Security Update",
+  "version": "6.8.0-50",
+  "vendor": "Linux",
+  "category": "security-patch",
+  "platform": "linux",
+  "architecture": "x64",
+  "description": "Critical kernel security update - addresses multiple CVEs including privilege escalation vulnerabilities",
+  "requiresRoot": true,
+  "requiresReboot": true,
+  "scripts": {
+    "install": "scripts/install.sh",
+    "update": "scripts/update.sh",
+    "rollback": "scripts/rollback.sh",
+    "uninstall": "scripts/uninstall.sh"
+  },
+  "environment": {
+    "KERNEL_VERSION": "6.8.0-50",
+    "CVE_IDS": "CVE-2024-50302,CVE-2024-50264,CVE-2024-50267",
+    "STATUS_DIR": "/var/lib/patchiq/kernel-patch"
+  }
+}

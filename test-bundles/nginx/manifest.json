@@ -1,0 +1,24 @@
+{
+  "id": "nginx-linux-v1.24.0",
+  "name": "nginx",
+  "displayName": "Nginx Web Server",
+  "version": "1.24.0",
+  "vendor": "Nginx Inc",
+  "category": "enterprise",
+  "platform": "linux",
+  "architecture": "x64",
+  "description": "High-performance web server and reverse proxy",
+  "requiresRoot": true,
+  "requiresReboot": false,
+  "scripts": {
+    "install": "scripts/install.sh",
+    "update": "scripts/update.sh",
+    "rollback": "scripts/rollback.sh",
+    "uninstall": "scripts/uninstall.sh"
+  },
+  "environment": {
+    "NGINX_VERSION": "1.24.0"
+  },
+  "dependencies": [],
+  "conflicts": ["apache2"]
+}

@@ -73,8 +73,9 @@ export const assetService = {
   },
 
   // Asset Details
-  async getAssetLifeCycle(id: string): Promise<AssetLifeCycle> {
-    const response = await api.get(`/assets/${id}/lifecycle`);
+  async getAssetLifeCycle(id: string, method?: string): Promise<AssetLifeCycle> {
+    const params = method ? { method } : {};
+    const response = await api.get(`/assets/${id}/lifecycle`, { params });
     return response.data;
   },
 

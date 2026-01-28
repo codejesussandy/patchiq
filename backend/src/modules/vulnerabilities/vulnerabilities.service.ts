@@ -13,12 +13,79 @@ import type {
 
 export class VulnerabilitiesService {
   /**
+   * Zero-Day Classification Criteria (Lightweight Dynamic Classification)
+   *
+   * A vulnerability is classified as zero-day if ANY of these conditions are met:
+   * 1. Manually flagged as zero-day (isZeroDay: true) - backward compatibility
+   * 2. Actively exploited (CISA KEV) AND no patch available AND critical/high severity
+   * 3. Very high EPSS (>=80%) AND no patch available AND critical severity
+   *
+   * This provides dynamic classification based on real threat intelligence while
+   * maintaining backward compatibility with the static flag.
+   */
+  private getZeroDayWhereClause(): Prisma.VulnerabilityWhereInput {
+    return {
+      OR: [
+        // Backward compatibility: manually flagged zero-days
+        { isZeroDay: true },
+        // Dynamic: Actively exploited (CISA KEV) + no patch + high severity
+        {
+          exploitable: true,
+          patchAvailable: false,
+          severity: { in: ['CRITICAL', 'HIGH'] },
+        },
+        // Dynamic: Very high EPSS + no patch + critical severity
+        {
+          epss: { gte: 80 },
+          patchAvailable: false,
+          severity: 'CRITICAL',
+        },
+      ],
+    };
+  }
+
+  /**
+   * Get the inverse of zero-day criteria (for filtering out zero-days from regular list)
+   */
+  private getNonZeroDayWhereClause(): Prisma.VulnerabilityWhereInput {
+    return {
+      AND: [
+        // Not manually flagged
+        { isZeroDay: false },
+        // Not dynamically detected as zero-day
+        {
+          OR: [
+            // Has a patch available
+            { patchAvailable: true },
+            // Not exploitable AND not high EPSS
+            {
+              AND: [
+                { exploitable: false },
+                { OR: [{ epss: null }, { epss: { lt: 80 } }] },
+              ],
+            },
+            // Exploitable but lower severity
+            {
+              exploitable: true,
+              severity: { in: ['MEDIUM', 'LOW'] },
+            },
+            // High EPSS but not critical
+            {
+              epss: { gte: 80 },
+              severity: { in: ['HIGH', 'MEDIUM', 'LOW'] },
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  /**
    * List vulnerabilities with filters (excludes zero-day)
    */
   async listVulnerabilities(params: ListVulnerabilitiesQuery) {
-    const where: Prisma.VulnerabilityWhereInput = {
-      isZeroDay: false,
-    };
+    // Use dynamic non-zero-day classification
+    const where: Prisma.VulnerabilityWhereInput = this.getNonZeroDayWhereClause();
 
     // Search filter
     if (params.search) {
@@ -98,24 +165,34 @@ export class VulnerabilitiesService {
   }
 
   /**
-   * List zero-day vulnerabilities
+   * List zero-day vulnerabilities using dynamic classification
    */
   async listZeroDayVulnerabilities(params: ListZeroDayQuery) {
+    // Use dynamic zero-day classification
+    const zeroDayCriteria = this.getZeroDayWhereClause();
     const where: Prisma.VulnerabilityWhereInput = {
-      isZeroDay: true,
+      AND: [zeroDayCriteria],
     };
 
     if (params.search) {
-      where.OR = [
-        { cveId: { contains: params.search, mode: 'insensitive' } },
-        { title: { contains: params.search, mode: 'insensitive' } },
-        { description: { contains: params.search, mode: 'insensitive' } },
+      where.AND = [
+        ...(where.AND as Prisma.VulnerabilityWhereInput[]),
+        {
+          OR: [
+            { cveId: { contains: params.search, mode: 'insensitive' } },
+            { title: { contains: params.search, mode: 'insensitive' } },
+            { description: { contains: params.search, mode: 'insensitive' } },
+          ],
+        },
       ];
     }
 
     if (params.severity) {
       const severities = params.severity.split(',').map((s) => s.trim().toUpperCase());
-      where.severity = { in: severities };
+      where.AND = [
+        ...(where.AND as Prisma.VulnerabilityWhereInput[]),
+        { severity: { in: severities } },
+      ];
     }
 
     const paginationParams = { page: params.page, limit: params.limit };
@@ -268,13 +345,16 @@ export class VulnerabilitiesService {
    * Get vulnerability statistics (excludes zero-day for consistency with list)
    */
   async getStats(affectsAssets?: boolean) {
-    // Filter for non-zero-day vulnerabilities (consistent with listVulnerabilities)
-    const baseWhere: Prisma.VulnerabilityWhereInput = { isZeroDay: false };
+    // Filter for non-zero-day vulnerabilities using dynamic classification
+    const baseWhere: Prisma.VulnerabilityWhereInput = this.getNonZeroDayWhereClause();
 
     // Only count CVEs that affect your assets when filter is enabled
     if (affectsAssets === true) {
-      baseWhere.affectedAssets = { some: {} };
+      (baseWhere.AND as Prisma.VulnerabilityWhereInput[]).push({ affectedAssets: { some: {} } });
     }
+
+    // Use dynamic zero-day classification for count
+    const zeroDayWhere = this.getZeroDayWhereClause();
 
     const [total, bySeverity, zeroDay, exceptions] = await Promise.all([
       prisma.vulnerability.count({ where: baseWhere }),
@@ -283,7 +363,7 @@ export class VulnerabilitiesService {
         where: baseWhere,
         _count: true,
       }),
-      prisma.vulnerability.count({ where: { isZeroDay: true } }),
+      prisma.vulnerability.count({ where: zeroDayWhere }),
       prisma.vulnerabilityException.count({ where: { deletedAt: null } }),
     ]);
 
@@ -306,28 +386,34 @@ export class VulnerabilitiesService {
 
     const publishedStats = await Promise.all(
       ranges.map(async (range) => {
-        const where: Prisma.VulnerabilityWhereInput = {
-          isZeroDay: false, // Exclude zero-day for consistency
-        };
+        // Use dynamic non-zero-day classification for consistency
+        const where: Prisma.VulnerabilityWhereInput = this.getNonZeroDayWhereClause();
 
         // Apply affectsAssets filter to published stats too
         if (affectsAssets === true) {
-          where.affectedAssets = { some: {} };
+          (where.AND as Prisma.VulnerabilityWhereInput[]).push({ affectedAssets: { some: {} } });
         }
 
+        // Add date range filter to the AND array
         if (range.min !== null && range.max !== null) {
-          where.publishedDate = {
-            gte: new Date(now.getTime() - range.max * 24 * 60 * 60 * 1000),
-            lt: new Date(now.getTime() - range.min * 24 * 60 * 60 * 1000),
-          };
+          (where.AND as Prisma.VulnerabilityWhereInput[]).push({
+            publishedDate: {
+              gte: new Date(now.getTime() - range.max * 24 * 60 * 60 * 1000),
+              lt: new Date(now.getTime() - range.min * 24 * 60 * 60 * 1000),
+            },
+          });
         } else if (range.min !== null) {
-          where.publishedDate = {
-            lt: new Date(now.getTime() - range.min * 24 * 60 * 60 * 1000),
-          };
+          (where.AND as Prisma.VulnerabilityWhereInput[]).push({
+            publishedDate: {
+              lt: new Date(now.getTime() - range.min * 24 * 60 * 60 * 1000),
+            },
+          });
         } else if (range.max !== null) {
-          where.publishedDate = {
-            gte: new Date(now.getTime() - range.max * 24 * 60 * 60 * 1000),
-          };
+          (where.AND as Prisma.VulnerabilityWhereInput[]).push({
+            publishedDate: {
+              gte: new Date(now.getTime() - range.max * 24 * 60 * 60 * 1000),
+            },
+          });
         }
 
         const stats = await prisma.vulnerability.groupBy({
@@ -367,12 +453,16 @@ export class VulnerabilitiesService {
   }
 
   /**
-   * Get vulnerability type counts
+   * Get vulnerability type counts using dynamic classification
    */
   async getTypes() {
+    // Use dynamic zero-day classification
+    const zeroDayWhere = this.getZeroDayWhereClause();
+    const nonZeroDayWhere = this.getNonZeroDayWhereClause();
+
     const [zeroDayCount, knownCount, exploitableCount] = await Promise.all([
-      prisma.vulnerability.count({ where: { isZeroDay: true } }),
-      prisma.vulnerability.count({ where: { isZeroDay: false } }),
+      prisma.vulnerability.count({ where: zeroDayWhere }),
+      prisma.vulnerability.count({ where: nonZeroDayWhere }),
       prisma.vulnerability.count({ where: { exploitable: true } }),
     ]);
 
@@ -696,6 +786,39 @@ export class VulnerabilitiesService {
   }
 
   /**
+   * Determine why a vulnerability is classified as zero-day
+   */
+  private getZeroDayReason(vuln: {
+    isZeroDay: boolean;
+    exploitable: boolean;
+    patchAvailable?: boolean;
+    severity: string;
+    epss: number | null;
+  }): string | null {
+    // Check manual flag first
+    if (vuln.isZeroDay) {
+      return 'Manually flagged as zero-day';
+    }
+
+    const noPatch = vuln.patchAvailable === false;
+    const isHighSeverity = ['CRITICAL', 'HIGH'].includes(vuln.severity);
+    const isCritical = vuln.severity === 'CRITICAL';
+    const highEpss = (vuln.epss ?? 0) >= 80;
+
+    // Actively exploited + no patch + high severity
+    if (vuln.exploitable && noPatch && isHighSeverity) {
+      return 'Actively exploited (CISA KEV) with no patch available';
+    }
+
+    // Very high EPSS + no patch + critical
+    if (highEpss && noPatch && isCritical) {
+      return `High exploitation probability (EPSS: ${vuln.epss}%) with no patch available`;
+    }
+
+    return null;
+  }
+
+  /**
    * Transform vulnerability for list response
    */
   private transformVulnerability(vuln: {
@@ -710,10 +833,14 @@ export class VulnerabilitiesService {
     cvss2BaseScore: number | null;
     exploitable: boolean;
     isZeroDay: boolean;
+    patchAvailable?: boolean;
     publishedDate: Date | null;
     affectedAssets?: { id: string }[];
     affectedSoftware?: { id: string }[];
   }) {
+    const zeroDayReason = this.getZeroDayReason(vuln);
+    const isClassifiedAsZeroDay = zeroDayReason !== null;
+
     return {
       id: vuln.id,
       cve: vuln.cveId,
@@ -728,7 +855,9 @@ export class VulnerabilitiesService {
       endpoints: vuln.affectedAssets?.length ?? 0,
       affectedSoftwares: vuln.affectedSoftware?.length ?? 0,
       published: vuln.publishedDate ? this.formatDate(vuln.publishedDate) : '',
-      isZeroDay: vuln.isZeroDay,
+      isZeroDay: isClassifiedAsZeroDay, // Use dynamic classification
+      zeroDayReason, // Why it's classified as zero-day (null if not)
+      patchAvailable: vuln.patchAvailable ?? false,
     };
   }
 

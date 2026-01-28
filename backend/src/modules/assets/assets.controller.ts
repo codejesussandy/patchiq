@@ -169,7 +169,7 @@ export async function getPopularTags(req: Request, res: Response, next: NextFunc
 
 export async function addTagsToAsset(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const tags = await assetsService.addTagsToAsset(req.params.id, req.body.tagIds);
+    const tags = await assetsService.addTagsToAsset(req.params.id, req.body.tagIds, req.user?.id);
     res.json(tags);
   } catch (error) {
     next(error);
@@ -178,7 +178,7 @@ export async function addTagsToAsset(req: Request, res: Response, next: NextFunc
 
 export async function removeTagFromAsset(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    await assetsService.removeTagFromAsset(req.params.id, req.params.tagId);
+    await assetsService.removeTagFromAsset(req.params.id, req.params.tagId, req.user?.id);
     res.status(200).json({ message: 'Tag removed from asset' });
   } catch (error) {
     next(error);
@@ -265,7 +265,7 @@ export async function getAssetFull(req: Request, res: Response, next: NextFuncti
 
 export async function createAsset(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const asset = await assetsService.createAsset(req.body);
+    const asset = await assetsService.createAsset(req.body, req.user?.id);
     res.status(201).json(asset);
   } catch (error) {
     next(error);
@@ -274,7 +274,7 @@ export async function createAsset(req: Request, res: Response, next: NextFunctio
 
 export async function updateAsset(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const asset = await assetsService.updateAsset(req.params.id, req.body);
+    const asset = await assetsService.updateAsset(req.params.id, req.body, req.user?.id);
     res.json(asset);
   } catch (error) {
     next(error);
@@ -283,7 +283,7 @@ export async function updateAsset(req: Request, res: Response, next: NextFunctio
 
 export async function deleteAsset(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    await assetsService.deleteAsset(req.params.id);
+    await assetsService.deleteAsset(req.params.id, req.user?.id);
     res.status(204).send();
   } catch (error) {
     next(error);
@@ -292,7 +292,7 @@ export async function deleteAsset(req: Request, res: Response, next: NextFunctio
 
 export async function bulkDeleteAssets(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const result = await assetsService.bulkDeleteAssets(req.body.ids);
+    const result = await assetsService.bulkDeleteAssets(req.body.ids, req.user?.id);
     res.json(result);
   } catch (error) {
     next(error);
@@ -305,7 +305,8 @@ export async function bulkDeleteAssets(req: Request, res: Response, next: NextFu
 
 export async function getAssetLifeCycle(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const lifecycle = await assetsService.getAssetLifeCycle(req.params.id);
+    const method = req.query.method as string | undefined;
+    const lifecycle = await assetsService.getAssetLifeCycle(req.params.id, method);
     res.json(lifecycle);
   } catch (error) {
     next(error);

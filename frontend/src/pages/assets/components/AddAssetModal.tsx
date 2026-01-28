@@ -24,16 +24,17 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
    useEffect(() => {
      if (visible && mode === 'edit' && asset) {
        const assetData = asset as any;
-        form.setFieldsValue({
+       const formValues = {
+          // Step 1: Define Assets
           assetName: asset.name,
-          category: assetData.category,
-          os: assetData.os,
-          assetTags: assetData.assetTags || [],
-          make: assetData.make,
+          category: assetData.category || assetData.categoryId,
+          os: asset.osType, // Backend returns osType, map to form's "os" field
+          assetTags: assetData.tagIds || [],
+          make: asset.manufacturer, // Backend returns manufacturer, map to form's "make" field
           model: asset.model,
           serialNumber: asset.serialNumber,
           uuid: assetData.uuid,
-          ownerTechnician: assetData.ownerTechnician,
+          ownerTechnician: assetData.ownerName, // Backend returns ownerName
           ownerTags: assetData.ownerTags || [],
           endUserRequesters: assetData.endUserRequesters || [],
           customerName: assetData.customerName,
@@ -41,6 +42,11 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
           baseLocation: assetData.baseLocation || asset.location?.base?.address,
           installedLocation: assetData.installedLocation,
           installedDate: assetData.installedDate ? dayjs(assetData.installedDate) : undefined,
+          hostname: asset.hostname,
+          ipAddress: asset.ipAddress,
+          macAddress: asset.macAddress,
+
+          // Step 2: OS Properties
           osType: asset.osType,
           osName: assetData.osName || asset.osType,
           osVersion: asset.osVersion,
@@ -50,6 +56,8 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
           productId: assetData.productId,
           productKey: assetData.productKey,
           virtualNumber: assetData.virtualNumber,
+
+          // Step 3: Additional Properties
           status: asset.status,
           criticality: assetData.criticality,
           serviceStatus: assetData.serviceStatus,
@@ -61,7 +69,23 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
           warrantyYears: assetData.warrantyYears,
           warrantyMonths: assetData.warrantyMonths,
           warrantyExpiryDate: asset.procurement?.warrantyExpiryDate ? dayjs(asset.procurement.warrantyExpiryDate) : undefined,
-        });
+
+          // Procurement fields
+          vendor: asset.procurement?.vendor,
+          purchaseOrderNumber: asset.procurement?.purchaseOrderNumber,
+          amcVendor: asset.procurement?.amcVendor,
+          amcCost: asset.procurement?.amcCost,
+          amcExpiryDate: asset.procurement?.amcExpiryDate ? dayjs(asset.procurement.amcExpiryDate) : undefined,
+          endOfLife: asset.procurement?.endOfLife ? dayjs(asset.procurement.endOfLife) : undefined,
+          endOfSupport: asset.procurement?.endOfSupport ? dayjs(asset.procurement.endOfSupport) : undefined,
+
+          // Cost fields
+          currency: asset.cost?.currency,
+        };
+        form.setFieldsValue(formValues);
+     } else if (visible && mode === 'add') {
+       // Reset form for add mode
+       form.resetFields();
      }
    }, [visible, mode, asset, form]);
 
@@ -81,28 +105,65 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
   const handleSubmit = async () => {
     try {
       setLoading(true);
-      const values = form.getFieldsValue();
+      // Get ALL field values including those not currently rendered
+      const values = form.getFieldsValue(true);
 
       // Transform form values to match backend API expectations
+      // Include ALL editable fields that exist in the database schema
       const transformedData = {
+        // Basic info
         name: values.assetName,
         osType: values.os || values.osType,
         osVersion: values.osVersion,
-        category: values.category,
         model: values.model,
         serialNumber: values.serialNumber,
-        status: values.status || 'Available',
-        operationalStatus: values.operationalStatus || 'Disconnected',
-        // Include other fields as needed
+        status: values.status,
         manufacturer: values.make,
         tags: values.assetTags || [],
+        hostname: values.hostname,
+        ipAddress: values.ipAddress,
+        macAddress: values.macAddress,
+
+        // Owner info
+        ownerName: values.ownerTechnician,
+        ownerEmail: values.ownerEmail,
+        ownerDepartment: values.ownerDepartment,
+
+        // Procurement info
+        vendor: values.vendor,
+        purchaseDate: values.purchaseDate?.toISOString?.() || values.purchaseDate,
+        warrantyExpiry: values.warrantyExpiryDate?.toISOString?.() || values.warrantyExpiryDate,
+        purchaseOrderNumber: values.purchaseOrderNumber,
+
+        // Cost info
+        purchaseCost: values.cost && !isNaN(parseFloat(values.cost)) ? parseFloat(values.cost) : undefined,
+        invoiceNumber: values.invoiceNo,
+        currency: values.currency,
+
+        // AMC info
+        amcVendor: values.amcVendor,
+        amcCost: values.amcCost,
+        amcExpiryDate: values.amcExpiryDate?.toISOString?.() || values.amcExpiryDate,
+
+        // End of life
+        endOfLife: values.endOfLife?.toISOString?.() || values.endOfLife,
+        endOfSupport: values.endOfSupport?.toISOString?.() || values.endOfSupport,
       };
 
+      // Remove undefined and empty string values to avoid validation errors
+      // Keep arrays (like tags) even if empty
+      const cleanedData = Object.fromEntries(
+        Object.entries(transformedData).filter(([, v]) => {
+          if (Array.isArray(v)) return true; // Keep arrays
+          return v !== undefined && v !== '';
+        })
+      );
+
        if (mode === 'edit' && asset) {
-         await assetService.updateAsset(asset.id, transformedData as any);
+         await assetService.updateAsset(asset.id, cleanedData as any);
          message.success('Asset updated successfully');
        } else {
-         await assetService.createAsset(transformedData as any);
+         await assetService.createAsset(cleanedData as any);
          message.success('Asset created successfully');
        }
 
@@ -381,8 +442,6 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
     { title: 'Additional Properties' },
   ];
 
-  const stepContent = [renderStep1(), renderStep2(), renderStep3()];
-
   return (
     <Modal
       title={mode === 'edit' ? 'Edit Asset' : 'Add New Asset'}
@@ -405,8 +464,16 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
       }
     >
       <Steps current={currentStep} items={stepItems} style={{ marginBottom: 24 }} />
-      <Form form={form} layout="vertical">
-        {stepContent[currentStep]}
+      <Form
+        form={form}
+        layout="vertical"
+        preserve={true}
+        name="addAssetForm"
+      >
+        {/* Render all steps but hide non-active ones to preserve form values */}
+        <div style={{ display: currentStep === 0 ? 'block' : 'none' }}>{renderStep1()}</div>
+        <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>{renderStep2()}</div>
+        <div style={{ display: currentStep === 2 ? 'block' : 'none' }}>{renderStep3()}</div>
       </Form>
     </Modal>
   );

@@ -21,6 +21,7 @@ import {
   Divider,
   Switch,
   Tooltip,
+  Select,
 } from 'antd';
 import {
   WindowsOutlined,
@@ -69,6 +70,7 @@ export const AssetDetails = () => {
   const [software, setSoftware] = useState<Software | null>(null);
   const [vulnerabilities, setVulnerabilities] = useState<any[]>([]);
   const [loadingLifecycle, setLoadingLifecycle] = useState(false);
+  const [selectedDepreciationMethod, setSelectedDepreciationMethod] = useState<string | undefined>(undefined);
   const [loadingHardware, setLoadingHardware] = useState(false);
   const [loadingSoftware, setLoadingSoftware] = useState(false);
   const [loadingVulnerabilities, setLoadingVulnerabilities] = useState(false);
@@ -98,6 +100,7 @@ export const AssetDetails = () => {
 
   // Audit log state
   const [auditLog, setAuditLog] = useState<Array<{ key: string; date: string; user: string; action: string; changes: string }>>([]);
+  const [auditLogSearch, setAuditLogSearch] = useState('');
 
   // Software tab filter state
   const [appVendorFilters, setAppVendorFilters] = useState<string[]>([]);
@@ -163,11 +166,11 @@ export const AssetDetails = () => {
     }
   };
 
-  const fetchLifecycleData = async () => {
+  const fetchLifecycleData = async (method?: string) => {
     if (!asset) return;
     setLoadingLifecycle(true);
     try {
-      const data = await assetService.getAssetLifeCycle(asset.id);
+      const data = await assetService.getAssetLifeCycle(asset.id, method);
       setLifecycle(data);
     } catch (error) {
       console.error('Failed to fetch lifecycle data:', error);
@@ -232,6 +235,87 @@ export const AssetDetails = () => {
     }
   };
 
+  // Helper function to format audit log details into human-readable text
+  const formatAuditDetails = (details: string | object | null): string => {
+    if (!details) return '-';
+
+    try {
+      const data = typeof details === 'string' ? JSON.parse(details) : details;
+
+      // Handle update with changes array - each change on new line
+      if (data.changes && Array.isArray(data.changes)) {
+        if (data.changes.length === 0) return 'No changes';
+        return data.changes.map((c: { field: string; from: unknown; to: unknown }) => {
+          const fromVal = c.from === null || c.from === undefined || c.from === '' ? '(empty)' : String(c.from);
+          const toVal = c.to === null || c.to === undefined || c.to === '' ? '(empty)' : String(c.to);
+          return `• ${c.field}: "${fromVal}" → "${toVal}"`;
+        }).join('\n');
+      }
+
+      // Handle delete with deletedAsset info - structured
+      if (data.deletedAsset) {
+        const asset = data.deletedAsset;
+        const lines = ['Deleted Asset:'];
+        if (asset.name) lines.push(`  • Name: ${asset.name}`);
+        if (asset.assetTag) lines.push(`  • Tag: ${asset.assetTag}`);
+        if (asset.type) lines.push(`  • Type: ${asset.type}`);
+        if (asset.os) lines.push(`  • OS: ${asset.os}`);
+        if (asset.ipAddress) lines.push(`  • IP: ${asset.ipAddress}`);
+        return lines.join('\n');
+      }
+
+      // Handle bulk delete
+      if (data.bulkDelete) {
+        const count = data.count || data.deletedAssets?.length || 0;
+        const lines = [`Bulk Delete: ${count} asset(s)`];
+        if (data.deletedAssets) {
+          data.deletedAssets.slice(0, 5).forEach((a: { name: string; assetTag?: string }) => {
+            lines.push(`  • ${a.name}${a.assetTag ? ` (${a.assetTag})` : ''}`);
+          });
+          if (count > 5) lines.push(`  • ... and ${count - 5} more`);
+        }
+        return lines.join('\n');
+      }
+
+      // Handle add tags
+      if (data.action === 'add_tags' && data.tagsAdded) {
+        const lines = ['Tags Added:'];
+        data.tagsAdded.forEach((t: { name: string }) => {
+          lines.push(`  • ${t.name}`);
+        });
+        return lines.join('\n');
+      }
+
+      // Handle remove tag
+      if (data.action === 'remove_tag' && data.tagRemoved) {
+        return `Tag Removed:\n  • ${data.tagRemoved.name || data.tagRemoved.id}`;
+      }
+
+      // Handle create - show key fields structured
+      if (data.assetName || data.assetTag) {
+        const lines = ['Asset Created:'];
+        if (data.assetName) lines.push(`  • Name: ${data.assetName}`);
+        if (data.assetTag) lines.push(`  • Tag: ${data.assetTag}`);
+        if (data.type) lines.push(`  • Type: ${data.type}`);
+        if (data.os) lines.push(`  • OS: ${data.os}`);
+        if (data.osVersion) lines.push(`  • Version: ${data.osVersion}`);
+        if (data.ipAddress) lines.push(`  • IP: ${data.ipAddress}`);
+        if (data.status) lines.push(`  • Status: ${data.status}`);
+        return lines.join('\n');
+      }
+
+      // Fallback: show as key-value pairs
+      const entries = Object.entries(data).filter(([k]) => !['changeCount'].includes(k)).slice(0, 6);
+      if (entries.length > 0) {
+        return entries.map(([k, v]) => `• ${k}: ${v}`).join('\n');
+      }
+
+      return typeof details === 'string' ? details : JSON.stringify(data);
+    } catch {
+      return typeof details === 'string' ? details : String(details);
+    }
+  };
+
   const fetchAuditLogData = async () => {
     if (!asset) return;
     setLoadingAuditLog(true);
@@ -239,7 +323,7 @@ export const AssetDetails = () => {
       const data = await assetService.getAssetAuditLog(asset.id);
       setAuditLog(data.map((log, idx) => ({
         key: log.id || String(idx),
-        date: log.createdAt ? new Date(log.createdAt).toLocaleString('en-US', {
+        date: log.timestamp ? new Date(log.timestamp).toLocaleString('en-US', {
           year: 'numeric',
           month: 'short',
           day: '2-digit',
@@ -249,7 +333,7 @@ export const AssetDetails = () => {
         }) : '',
         user: log.user || 'System',
         action: log.action || '',
-        changes: log.changes || log.description || '',
+        changes: formatAuditDetails(log.details),
       })));
     } catch (error) {
       console.error('Failed to fetch audit log data:', error);
@@ -266,6 +350,8 @@ export const AssetDetails = () => {
   const handleEditSuccess = () => {
     setEditModalVisible(false);
     fetchAssetDetails();
+    // Refresh audit log to show the new changes
+    setTimeout(() => fetchAuditLogData(), 500);
   };
 
   const handleDuplicateAsset = () => {
@@ -422,16 +508,107 @@ export const AssetDetails = () => {
     },
   ];
 
+  // Handle depreciation method change
+  const handleDepreciationMethodChange = (method: string) => {
+    setSelectedDepreciationMethod(method);
+    fetchLifecycleData(method);
+  };
+
   // Render Life Cycle Tab
   const renderLifecycleTab = () => {
     if (loadingLifecycle) return <div>Loading lifecycle data...</div>;
     if (!lifecycle) return <div>No lifecycle data available</div>;
 
+    // Check if asset has financial data
+    if (!lifecycle.hasFinancialData) {
+      return (
+        <div>
+          <Card title="Depreciation Timeline" style={{ marginBottom: 24 }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '60px 20px',
+                textAlign: 'center',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '48px',
+                  marginBottom: '16px',
+                  color: '#d9d9d9',
+                }}
+              >
+                📊
+              </div>
+              <Title level={4} style={{ marginBottom: '8px', color: '#595959' }}>
+                No Financial Data Available
+              </Title>
+              <Text type="secondary" style={{ marginBottom: '24px', maxWidth: '400px' }}>
+                Add purchase cost, salvage value, and end of life date to see depreciation analysis using different calculation methods.
+              </Text>
+              <Button type="primary" icon={<EditOutlined />} onClick={() => setEditModalVisible(true)}>
+                Add Financial Data
+              </Button>
+            </div>
+          </Card>
+
+          {/* Still show basic lifecycle dates if available */}
+          {(lifecycle.purchaseDate || lifecycle.amcExpiryDate || lifecycle.warrantyExpiryDate || lifecycle.endOfLife) && (
+            <Card title="Lifecycle Dates" style={{ marginBottom: 24 }}>
+              <Row gutter={[24, 16]}>
+                {lifecycle.purchaseDate && (
+                  <Col span={6}>
+                    <Text type="secondary" style={{ display: 'block', fontSize: '12px' }}>Purchase Date</Text>
+                    <Text strong>{lifecycle.purchaseDate}</Text>
+                  </Col>
+                )}
+                {lifecycle.amcExpiryDate && (
+                  <Col span={6}>
+                    <Text type="secondary" style={{ display: 'block', fontSize: '12px' }}>AMC Expiry Date</Text>
+                    <Text strong>{lifecycle.amcExpiryDate}</Text>
+                  </Col>
+                )}
+                {lifecycle.warrantyExpiryDate && (
+                  <Col span={6}>
+                    <Text type="secondary" style={{ display: 'block', fontSize: '12px' }}>Warranty Expiry Date</Text>
+                    <Text strong>{lifecycle.warrantyExpiryDate}</Text>
+                  </Col>
+                )}
+                {lifecycle.endOfLife && (
+                  <Col span={6}>
+                    <Text type="secondary" style={{ display: 'block', fontSize: '12px' }}>End of Life</Text>
+                    <Text strong>{lifecycle.endOfLife}</Text>
+                  </Col>
+                )}
+              </Row>
+            </Card>
+          )}
+        </div>
+      );
+    }
+
     const maxValue = Math.max(...lifecycle.depreciationTimeline.map((p) => p.value));
+
+    const depreciationMethodSelector = (
+      <Select
+        value={selectedDepreciationMethod || 'default'}
+        onChange={(value) => handleDepreciationMethodChange(value === 'default' ? '' : value)}
+        style={{ width: 220 }}
+        options={[
+          { value: 'default', label: 'Asset Default Method' },
+          { value: 'straight-line', label: 'Straight Line (SLM)' },
+          { value: 'double-declining', label: 'Double Declining Balance (DDB)' },
+          { value: 'sum-of-years', label: 'Sum of Years Digits (SYD)' },
+        ]}
+      />
+    );
 
     return (
       <div>
-        <Card title="Depreciation Timeline" style={{ marginBottom: 24 }}>
+        <Card title="Depreciation Timeline" extra={depreciationMethodSelector} style={{ marginBottom: 24 }}>
           {/* Timeline */}
           <div style={{ position: 'relative', marginBottom: 40 }}>
             <div
@@ -473,7 +650,7 @@ export const AssetDetails = () => {
                   </Text>
                   <Text strong>{lifecycle.purchaseDate}</Text>
                   <div>
-                    <Tag color="blue">₹{lifecycle.purchaseValue.toLocaleString()}</Tag>
+                    <Tag color="blue">₹{lifecycle.purchaseValue?.toLocaleString()}</Tag>
                   </div>
                 </div>
               </div>
@@ -495,7 +672,7 @@ export const AssetDetails = () => {
                   </Text>
                   <Text strong>{lifecycle.currentDate}</Text>
                   <div>
-                    <Tag color="blue">₹{lifecycle.currentValue.toLocaleString()}</Tag>
+                    <Tag color="blue">₹{lifecycle.currentValue?.toLocaleString()}</Tag>
                   </div>
                 </div>
               </div>
@@ -539,7 +716,7 @@ export const AssetDetails = () => {
                   </Text>
                   <Text strong>{lifecycle.endOfLife}</Text>
                   <div>
-                    <Tag color="red">₹{lifecycle.endOfLifeValue.toLocaleString()}</Tag>
+                    <Tag color="red">₹{lifecycle.endOfLifeValue?.toLocaleString()}</Tag>
                   </div>
                 </div>
               </div>
@@ -639,12 +816,30 @@ export const AssetDetails = () => {
             <div
               style={{
                 display: 'flex',
-                justifyContent: 'flex-end',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 paddingTop: '12px',
                 paddingRight: '0px',
                 marginLeft: '76px',
               }}
             >
+              <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  <strong>Method:</strong> {lifecycle.depreciationMethod}
+                </Text>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  <strong>Annual Depreciation:</strong> ₹{lifecycle.annualDepreciation?.toLocaleString() || 'N/A'}
+                </Text>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  <strong>Total Depreciation:</strong> ₹{lifecycle.totalDepreciation?.toLocaleString() || 'N/A'}
+                </Text>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  <strong>Years Elapsed:</strong> {lifecycle.yearsElapsed?.toFixed(1) || 'N/A'}
+                </Text>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  <strong>Years Remaining:</strong> {lifecycle.yearsRemaining?.toFixed(1) || 'N/A'}
+                </Text>
+              </div>
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 Year(s)
               </Text>
@@ -1177,6 +1372,10 @@ export const AssetDetails = () => {
     };
 
     // Export handlers for each tab
+    // Split applications into user apps and system apps
+    const userApps = software.applications.filter((app) => !app.isSystemApp);
+    const systemApps = software.applications.filter((app) => app.isSystemApp);
+
     const exportApplications = () => {
       const columns = [
         { key: 'name', title: 'Application Name' },
@@ -1187,7 +1386,20 @@ export const AssetDetails = () => {
         { key: 'appInstalledOn', title: 'Installed On' },
       ];
       const hostname = asset?.name || 'asset';
-      exportToCSV(software.applications, columns, `${hostname}-applications.csv`);
+      exportToCSV(userApps, columns, `${hostname}-applications.csv`);
+    };
+
+    const exportSystemApps = () => {
+      const columns = [
+        { key: 'name', title: 'Application Name' },
+        { key: 'vendor', title: 'Vendor' },
+        { key: 'version', title: 'Version' },
+        { key: 'patchStatus', title: 'Patch Status' },
+        { key: 'lastPatched', title: 'Last Patched' },
+        { key: 'appInstalledOn', title: 'Installed On' },
+      ];
+      const hostname = asset?.name || 'asset';
+      exportToCSV(systemApps, columns, `${hostname}-system-apps.csv`);
     };
 
     const exportServices = () => {
@@ -1204,7 +1416,7 @@ export const AssetDetails = () => {
     const softwareSubTabs = [
       {
         key: 'applications',
-        label: `Applications (${software.applications.length})`,
+        label: `Applications (${userApps.length})`,
         children: (
           <div>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
@@ -1222,13 +1434,38 @@ export const AssetDetails = () => {
             </div>
             <Table
               columns={applicationColumns}
-              dataSource={software.applications}
+              dataSource={userApps}
               rowKey="id"
               onChange={handleAppTableChange}
               pagination={{
                 pageSize: 25,
                 showSizeChanger: true,
-                showTotal: (total) => `Total ${total} Application found`,
+                showTotal: (total) => `Total ${total} applications found`,
+              }}
+              size="small"
+            />
+          </div>
+        ),
+      },
+      {
+        key: 'system-apps',
+        label: `System Apps (${systemApps.length})`,
+        children: (
+          <div>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+              <Input.Search placeholder="Search" style={{ width: 300 }} />
+              <Tooltip title="Export to CSV">
+                <Button icon={<DownloadOutlined />} onClick={exportSystemApps} />
+              </Tooltip>
+            </div>
+            <Table
+              columns={applicationColumns}
+              dataSource={systemApps}
+              rowKey="id"
+              pagination={{
+                pageSize: 25,
+                showSizeChanger: true,
+                showTotal: (total) => `Total ${total} system apps found`,
               }}
               size="small"
             />
@@ -1337,8 +1574,228 @@ export const AssetDetails = () => {
         </Collapse>
 
         <Collapse defaultActiveKey={[]} style={{ marginBottom: 16 }}>
-          <Panel header={<Text strong>System Information</Text>} key="system">
-            <Text type="secondary">Detailed system information from agent inventory</Text>
+          <Panel
+            header={
+              <Space>
+                <Text strong>Software Licenses</Text>
+                {software.os?.licenseStatus && (
+                  <Tag color="blue">OS: {software.os.licenseStatus}</Tag>
+                )}
+              </Space>
+            }
+            key="licenses"
+          >
+            {/* OS License Section */}
+            {software.os?.licenseStatus && (
+              <Card
+                size="small"
+                title={
+                  <Space>
+                    <DesktopOutlined />
+                    <Text strong>Operating System License</Text>
+                  </Space>
+                }
+                style={{ marginBottom: 16 }}
+              >
+                <Row gutter={[16, 8]}>
+                  <Col span={6}>
+                    <Text type="secondary">OS Name</Text>
+                    <div>
+                      <Text strong>{software.os.name}</Text>
+                    </div>
+                  </Col>
+                  <Col span={4}>
+                    <Text type="secondary">Version</Text>
+                    <div>{software.os.version || '-'}</div>
+                  </Col>
+                  <Col span={4}>
+                    <Text type="secondary">Build</Text>
+                    <div>{software.os.buildNumber || '-'}</div>
+                  </Col>
+                  <Col span={4}>
+                    <Text type="secondary">Architecture</Text>
+                    <div>{software.os.architecture || '-'}</div>
+                  </Col>
+                  <Col span={6}>
+                    <Text type="secondary">License Status</Text>
+                    <div>
+                      <Tag
+                        color={
+                          software.os.licenseStatus?.toLowerCase() === 'licensed'
+                            ? 'green'
+                            : software.os.licenseStatus?.toLowerCase() === 'trial'
+                              ? 'orange'
+                              : 'red'
+                        }
+                      >
+                        {software.os.licenseStatus}
+                      </Tag>
+                    </div>
+                  </Col>
+                </Row>
+              </Card>
+            )}
+
+            {/* Application Licenses Section */}
+            {(() => {
+              // Only include apps with meaningful license data (status, type, or key must exist)
+              const licensedApps = software.applications.filter(
+                (app) =>
+                  app.license &&
+                  (app.license.status || app.license.type || app.license.key)
+              );
+
+              const getLicenseStatusColor = (status?: string) => {
+                switch (status?.toLowerCase()) {
+                  case 'licensed':
+                    return 'green';
+                  case 'trial':
+                    return 'blue';
+                  case 'graceperiod':
+                    return 'orange';
+                  case 'expired':
+                  case 'unlicensed':
+                    return 'red';
+                  default:
+                    return 'default';
+                }
+              };
+
+              const getLicenseTypeColor = (type?: string) => {
+                switch (type?.toLowerCase()) {
+                  case 'perpetual':
+                    return 'green';
+                  case 'subscription':
+                    return 'blue';
+                  case 'trial':
+                    return 'orange';
+                  case 'freeware':
+                  case 'opensource':
+                    return 'cyan';
+                  case 'oem':
+                  case 'volume':
+                    return 'purple';
+                  default:
+                    return 'default';
+                }
+              };
+
+              if (licensedApps.length === 0 && !software.os?.licenseStatus) {
+                return (
+                  <Text type="secondary">
+                    No license information collected. License data is detected for commercial
+                    software like Microsoft Office, Adobe products, and other licensed
+                    applications.
+                  </Text>
+                );
+              }
+
+              if (licensedApps.length === 0) {
+                return null; // OS license shown above, no app licenses
+              }
+
+              const licenseColumns = [
+                {
+                  title: 'Application',
+                  dataIndex: 'name',
+                  key: 'name',
+                  width: 200,
+                  render: (name: string, record: (typeof licensedApps)[0]) => (
+                    <Space direction="vertical" size={0}>
+                      <Text strong>{name}</Text>
+                      {record.vendor && (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {record.vendor}
+                        </Text>
+                      )}
+                    </Space>
+                  ),
+                },
+                {
+                  title: 'License Type',
+                  dataIndex: ['license', 'type'],
+                  key: 'type',
+                  width: 120,
+                  render: (type?: string) =>
+                    type ? <Tag color={getLicenseTypeColor(type)}>{type}</Tag> : '-',
+                },
+                {
+                  title: 'Status',
+                  dataIndex: ['license', 'status'],
+                  key: 'status',
+                  width: 100,
+                  render: (status?: string) =>
+                    status ? <Tag color={getLicenseStatusColor(status)}>{status}</Tag> : '-',
+                },
+                {
+                  title: 'License Key',
+                  dataIndex: ['license', 'key'],
+                  key: 'key',
+                  width: 220,
+                  render: (key?: string) =>
+                    key ? (
+                      <Text code style={{ fontSize: 11 }}>
+                        {key}
+                      </Text>
+                    ) : (
+                      '-'
+                    ),
+                },
+                {
+                  title: 'Expiration',
+                  dataIndex: ['license', 'expirationDate'],
+                  key: 'expiration',
+                  width: 140,
+                  render: (date: string | undefined, record: (typeof licensedApps)[0]) => {
+                    if (!date) return '-';
+                    const days = record.license?.daysRemaining;
+                    return (
+                      <Space direction="vertical" size={0}>
+                        <Text>{new Date(date).toLocaleDateString()}</Text>
+                        {days !== undefined && (
+                          <Text
+                            type={days <= 30 ? 'danger' : 'secondary'}
+                            style={{ fontSize: 11 }}
+                          >
+                            {days} days remaining
+                          </Text>
+                        )}
+                      </Space>
+                    );
+                  },
+                },
+                {
+                  title: 'Licensed To',
+                  dataIndex: ['license', 'licensedTo'],
+                  key: 'licensedTo',
+                  width: 150,
+                  render: (value?: string) => value || '-',
+                },
+                {
+                  title: 'Channel',
+                  dataIndex: ['license', 'channel'],
+                  key: 'channel',
+                  width: 100,
+                  render: (channel?: string) => (channel ? <Tag>{channel}</Tag> : '-'),
+                },
+              ];
+
+              return (
+                <>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                    Application Licenses ({licensedApps.length})
+                  </Text>
+                  <Table
+                    columns={licenseColumns}
+                    dataSource={licensedApps}
+                    rowKey="id"
+                    size="small"
+                    pagination={{ pageSize: 10, showSizeChanger: true }}
+                    scroll={{ x: 1000 }}
+                  />
+                </>
+              );
+            })()}
           </Panel>
         </Collapse>
 
@@ -2663,14 +3120,55 @@ export const AssetDetails = () => {
       children: (
         <div>
           <Card title="Audit Log">
+            <div style={{ marginBottom: 16 }}>
+              <Input.Search
+                placeholder="Search by user, action, or details..."
+                allowClear
+                value={auditLogSearch}
+                onChange={(e) => setAuditLogSearch(e.target.value)}
+                style={{ width: 300 }}
+              />
+            </div>
             <Table
               columns={[
-                { title: 'Date', dataIndex: 'date', key: 'date' },
-                { title: 'User', dataIndex: 'user', key: 'user' },
-                { title: 'Action', dataIndex: 'action', key: 'action' },
-                { title: 'Changes', dataIndex: 'changes', key: 'changes' },
+                { title: 'Date', dataIndex: 'date', key: 'date', width: 180 },
+                { title: 'User', dataIndex: 'user', key: 'user', width: 150 },
+                {
+                  title: 'Action',
+                  dataIndex: 'action',
+                  key: 'action',
+                  width: 100,
+                  render: (action: string) => (
+                    <Tag color={
+                      action === 'create' ? 'green' :
+                      action === 'update' ? 'blue' :
+                      action === 'delete' ? 'red' : 'default'
+                    }>
+                      {action.toUpperCase()}
+                    </Tag>
+                  ),
+                },
+                {
+                  title: 'Details',
+                  dataIndex: 'changes',
+                  key: 'changes',
+                  render: (text: string) => (
+                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '13px', lineHeight: '1.6' }}>
+                      {text}
+                    </div>
+                  ),
+                },
               ]}
-              dataSource={auditLog}
+              dataSource={auditLog.filter((log) => {
+                if (!auditLogSearch) return true;
+                const search = auditLogSearch.toLowerCase();
+                return (
+                  log.user.toLowerCase().includes(search) ||
+                  log.action.toLowerCase().includes(search) ||
+                  log.changes.toLowerCase().includes(search) ||
+                  log.date.toLowerCase().includes(search)
+                );
+              })}
               loading={loadingAuditLog}
               pagination={{ pageSize: 10 }}
               size="small"

@@ -637,8 +637,19 @@ export const settingsService = {
 
   // Audit Log APIs
   async getAuditLogs(): Promise<any[]> {
-    const response = await api.get(`/settings/audit-logs`);
-    return Array.isArray(response.data) ? response.data : (response.data.data || []);
+    const response = await api.get(`/settings/audit`);
+    const rawData = Array.isArray(response.data) ? response.data : (response.data.data || []);
+    // Transform backend fields to frontend expected format
+    return rawData.map((log: any) => ({
+      id: log.id,
+      module: log.resource || '',
+      operation: log.action || '',
+      user: log.userEmail || 'System',
+      status: 'success' as const, // Backend doesn't track status, assume success for logged actions
+      message: log.details ? (typeof log.details === 'string' ? log.details : JSON.stringify(log.details)) : '',
+      createdAt: log.timestamp || '',
+      resourceId: log.resourceId || null,
+    }));
   },
 
   async getAuditFilterOptions(): Promise<{
@@ -646,8 +657,14 @@ export const settingsService = {
     users: string[];
     operations: string[];
   }> {
-    const response = await api.get(`/settings/audit-logs/filter-options`);
-    return response.data;
+    const response = await api.get(`/settings/audit/filter-options`);
+    const data = response.data || {};
+    // Transform backend fields to frontend expected format
+    return {
+      modules: data.resources || [],
+      operations: data.actions || [],
+      users: Array.isArray(data.users) ? data.users.map((u: any) => typeof u === 'string' ? u : u.email) : [],
+    };
   },
 
   // Platform License APIs

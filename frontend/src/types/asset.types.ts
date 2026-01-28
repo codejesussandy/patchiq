@@ -256,23 +256,24 @@ export type DepreciationPoint = {
 };
 
 export type AssetLifeCycle = {
-  purchaseDate: string;
-  purchaseValue: number;
+  purchaseDate: string | null;
+  purchaseValue: number | null;
   currentDate: string;
-  currentValue: number;
-  amcExpiryDate: string;
-  warrantyExpiryDate: string;
-  endOfLife: string;
-  endOfLifeValue: number;
+  currentValue: number | null;
+  amcExpiryDate: string | null;
+  warrantyExpiryDate: string | null;
+  endOfLife: string | null;
+  endOfLifeValue: number | null;
   depreciationTimeline: DepreciationPoint[];
   // Extended depreciation fields
-  depreciationMethod?: string;           // "Straight Line", "Double Declining Balance", etc.
-  totalDepreciation?: number;            // Total depreciation to date
-  annualDepreciation?: number;           // Current year's depreciation expense
-  yearsElapsed?: number;                 // Years since purchase
-  yearsRemaining?: number;               // Years until end of life
-  usefulLifeYears?: number;              // Total useful life in years
+  depreciationMethod?: string | null;    // "Straight Line", "Double Declining Balance", etc.
+  totalDepreciation?: number | null;     // Total depreciation to date
+  annualDepreciation?: number | null;    // Current year's depreciation expense
+  yearsElapsed?: number | null;          // Years since purchase
+  yearsRemaining?: number | null;        // Years until end of life
+  usefulLifeYears?: number | null;       // Total useful life in years
   currency?: string;                     // Currency code (INR, USD, etc.)
+  hasFinancialData?: boolean;            // True if asset has real financial data
 };
 
 // Hardware
@@ -542,6 +543,18 @@ export type ExpandedHardware = {
   graphicsCards?: GraphicsCard[];
 };
 
+// Application License (from agent inventory)
+export type ApplicationLicense = {
+  type?: string; // Perpetual, Subscription, Trial, Freeware, OpenSource, OEM, Volume, Unknown
+  status?: string; // Licensed, Expired, Trial, GracePeriod, Unlicensed, Unknown
+  key?: string; // Masked license key (last 5 chars visible)
+  expirationDate?: string; // ISO8601 for subscription/trial
+  daysRemaining?: number; // Days until expiration
+  licensedTo?: string; // User/organization name
+  productId?: string; // Vendor product ID
+  channel?: string; // Retail, Volume, OEM, NFR
+};
+
 // Software
 export type Application = {
   id: string;
@@ -552,7 +565,9 @@ export type Application = {
   lastPatched?: string;
   appInstalledOn?: string;
   installSource?: string;
+  isSystemApp?: boolean;
   icon?: string;
+  license?: ApplicationLicense;
 };
 
 export type Service = {
@@ -601,6 +616,10 @@ export type Software = {
   os: {
     name: string;
     version?: string;
+    buildNumber?: string;
+    architecture?: string;
+    installDate?: string;
+    licenseStatus?: string;
   };
   licenseDetails?: {
     alias?: string;

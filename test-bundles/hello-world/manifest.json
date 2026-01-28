@@ -1,0 +1,23 @@
+{
+  "id": "hello-world-linux-v1.0.0",
+  "name": "hello-world",
+  "displayName": "Hello World Test Package",
+  "version": "1.0.0",
+  "vendor": "PatchIQ",
+  "category": "utility",
+  "platform": "linux",
+  "architecture": "x64",
+  "description": "A simple test package to verify the Hub-centric deployment pipeline",
+  "requiresRoot": false,
+  "requiresReboot": false,
+  "scripts": {
+    "install": "scripts/install.sh",
+    "update": "scripts/update.sh",
+    "rollback": "scripts/rollback.sh",
+    "uninstall": "scripts/uninstall.sh"
+  },
+  "environment": {
+    "HELLO_WORLD_VERSION": "1.0.0",
+    "INSTALL_DIR": "/tmp/hello-world"
+  }
+}

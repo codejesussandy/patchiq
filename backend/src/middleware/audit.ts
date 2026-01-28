@@ -129,3 +129,84 @@ export const AuditResource = {
   DISCOVERY: 'discovery',
   TAG: 'tag',
 } as const;
+
+// ============================================
+// Audit Helper Utilities
+// ============================================
+
+export interface FieldChange {
+  field: string;
+  from: unknown;
+  to: unknown;
+}
+
+/**
+ * Compare two objects and return a list of changed fields
+ * Useful for tracking what changed during an update operation
+ */
+export function diffObjects(
+  before: Record<string, unknown> | null,
+  after: Record<string, unknown> | null,
+  fieldsToTrack?: string[]
+): FieldChange[] {
+  if (!before || !after) return [];
+
+  const changes: FieldChange[] = [];
+  const keysToCompare = fieldsToTrack || Object.keys(after);
+
+  for (const key of keysToCompare) {
+    const beforeVal = before[key];
+    const afterVal = after[key];
+
+    // Skip if both are undefined/null
+    if (beforeVal == null && afterVal == null) continue;
+
+    // Skip internal fields
+    if (key.startsWith('_') || key === 'updatedAt' || key === 'createdAt') continue;
+
+    // Compare values (handle objects by JSON stringify)
+    const beforeStr = typeof beforeVal === 'object' ? JSON.stringify(beforeVal) : beforeVal;
+    const afterStr = typeof afterVal === 'object' ? JSON.stringify(afterVal) : afterVal;
+
+    if (beforeStr !== afterStr) {
+      changes.push({
+        field: key,
+        from: beforeVal,
+        to: afterVal,
+      });
+    }
+  }
+
+  return changes;
+}
+
+/**
+ * Format field changes into a human-readable summary
+ */
+export function formatChangeSummary(changes: FieldChange[]): string {
+  if (changes.length === 0) return 'No changes';
+
+  return changes
+    .map((c) => {
+      const fromStr = c.from === null || c.from === undefined ? '(empty)' : String(c.from);
+      const toStr = c.to === null || c.to === undefined ? '(empty)' : String(c.to);
+      return `${c.field}: "${fromStr}" → "${toStr}"`;
+    })
+    .join('; ');
+}
+
+/**
+ * Pick specific fields from an object for audit logging
+ */
+export function pickFields<T extends Record<string, unknown>>(
+  obj: T,
+  fields: (keyof T)[]
+): Partial<T> {
+  const result: Partial<T> = {};
+  for (const field of fields) {
+    if (obj[field] !== undefined) {
+      result[field] = obj[field];
+    }
+  }
+  return result;
+}
