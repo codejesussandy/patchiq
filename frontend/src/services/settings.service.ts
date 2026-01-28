@@ -138,48 +138,47 @@ export const settingsService = {
     await api.delete(`/settings/roles/${id}`);
   },
 
-  // Policy Management APIs
+  // Alert Configuration APIs
   async getPolicies(): Promise<Policy[]> {
-    const response = await api.get(`/settings/policies`);
-    // Backend returns paginated response { data, total, page, limit, totalPages }
+    const response = await api.get(`/settings/alerts`);
     return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
   async getPolicy(id: string): Promise<Policy> {
-    const response = await api.get(`/settings/policies/${id}`);
+    const response = await api.get(`/settings/alerts/${id}`);
     return response.data;
   },
 
   async createPolicy(data: PolicyFormData): Promise<Policy> {
-    const response = await api.post(`/settings/policies`, data);
+    const response = await api.post(`/settings/alerts`, data);
     return response.data;
   },
 
   async updatePolicy(id: string, data: Partial<PolicyFormData>): Promise<Policy> {
-    const response = await api.put(`/settings/policies/${id}`, data);
+    const response = await api.put(`/settings/alerts/${id}`, data);
     return response.data;
   },
 
   async deletePolicy(id: string): Promise<void> {
-    await api.delete(`/settings/policies/${id}`);
+    await api.delete(`/settings/alerts/${id}`);
   },
 
   async clonePolicy(id: string): Promise<Policy> {
-    const response = await api.post(`/settings/policies/${id}/clone`);
+    const response = await api.post(`/settings/alerts/${id}/clone`);
     return response.data;
   },
 
   async disablePolicy(id: string): Promise<void> {
-    await api.post(`/settings/policies/${id}/disable`);
+    await api.post(`/settings/alerts/${id}/disable`);
   },
 
   async getAffectedUsers(id: string): Promise<User[]> {
-    const response = await api.get(`/settings/policies/${id}/affected-users`);
+    const response = await api.get(`/settings/alerts/${id}/affected-users`);
     return response.data;
   },
 
   async getPolicyAudit(id: string): Promise<any[]> {
-    const response = await api.get(`/settings/policies/${id}/audit`);
+    const response = await api.get(`/settings/alerts/${id}/audit`);
     return response.data;
   },
 

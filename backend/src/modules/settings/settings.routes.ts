@@ -16,6 +16,7 @@ import {
   inviteUserSchema,
   createRoleSchema,
   updateRoleSchema,
+  createAlertConfigSchema,
   updateAlertConfigSchema,
   createLdapConfigSchema,
   updateLdapConfigSchema,
@@ -98,8 +99,10 @@ router.delete('/roles/:id', validateParams(idParamSchema), settingsController.de
 // Alert Configurations
 // ============================================
 router.get('/alerts', settingsController.listAlertConfigs.bind(settingsController));
-router.get('/alerts/:type', settingsController.getAlertConfig.bind(settingsController));
-router.put('/alerts/:type', validateBody(updateAlertConfigSchema), settingsController.updateAlertConfig.bind(settingsController));
+router.post('/alerts', validateBody(createAlertConfigSchema), settingsController.createAlertConfig.bind(settingsController));
+router.get('/alerts/:id', validateParams(idParamSchema), settingsController.getAlertConfig.bind(settingsController));
+router.put('/alerts/:id', validateParams(idParamSchema), validateBody(updateAlertConfigSchema), settingsController.updateAlertConfig.bind(settingsController));
+router.delete('/alerts/:id', validateParams(idParamSchema), settingsController.deleteAlertConfig.bind(settingsController));
 
 // ============================================
 // LDAP Configurations

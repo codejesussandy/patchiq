@@ -16,6 +16,7 @@ import type {
   InviteUserInput,
   CreateRoleInput,
   UpdateRoleInput,
+  CreateAlertConfigInput,
   UpdateAlertConfigInput,
   CreateLdapConfigInput,
   UpdateLdapConfigInput,
@@ -432,8 +433,18 @@ export class SettingsController {
 
   async getAlertConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const result = await settingsService.getAlertConfig(req.params.type);
+      const result = await settingsService.getAlertConfigById(req.params.id);
       res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createAlertConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const input = req.body as CreateAlertConfigInput;
+      const result = await settingsService.createAlertConfig(input);
+      res.status(201).json(result);
     } catch (error) {
       next(error);
     }
@@ -442,8 +453,17 @@ export class SettingsController {
   async updateAlertConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const input = req.body as UpdateAlertConfigInput;
-      const result = await settingsService.updateAlertConfig(req.params.type, input);
+      const result = await settingsService.updateAlertConfigById(req.params.id, input);
       res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteAlertConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await settingsService.deleteAlertConfig(req.params.id);
+      res.json({ message: 'Alert configuration deleted successfully' });
     } catch (error) {
       next(error);
     }

@@ -205,11 +205,25 @@ export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 // Alert Config Validators
 // ============================================
 
-export const updateAlertConfigSchema = z.object({
+export const createAlertConfigSchema = z.object({
+  name: z.string().min(1).max(200),
+  type: z.string().min(1).max(100),
+  channel: z.string().max(100).optional(),
+  recipients: z.string().max(500).optional(),
   enabled: z.boolean().optional(),
-  config: z.record(z.unknown()).optional(),
+  description: z.string().max(1000).optional(),
+  module: z.string().max(100).optional(),
+  severity: z.string().max(50).optional(),
+  scope: z.string().max(200).optional(),
+  endpoints: z.string().max(500).optional(),
+  conditions: z.array(z.record(z.unknown())).optional(),
+  actions: z.array(z.record(z.unknown())).optional(),
+  remediations: z.array(z.record(z.unknown())).optional(),
 });
 
+export const updateAlertConfigSchema = createAlertConfigSchema.partial();
+
+export type CreateAlertConfigInput = z.infer<typeof createAlertConfigSchema>;
 export type UpdateAlertConfigInput = z.infer<typeof updateAlertConfigSchema>;
 
 // ============================================

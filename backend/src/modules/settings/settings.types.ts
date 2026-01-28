@@ -135,9 +135,19 @@ export interface RoleResponse {
 
 export interface AlertConfigResponse {
   id: string;
+  name: string;
   type: string;
+  channel: string;
+  recipients: string;
   enabled: boolean;
-  config: Record<string, unknown>;
+  description: string;
+  module: string;
+  severity: string;
+  scope: string;
+  endpoints: string;
+  conditions: Record<string, unknown>[];
+  actions: Record<string, unknown>[];
+  remediations: Record<string, unknown>[];
   createdAt: string;
   updatedAt: string;
 }

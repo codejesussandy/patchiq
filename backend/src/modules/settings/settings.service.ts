@@ -13,6 +13,7 @@ import type {
   AgentApprovalResponse,
 } from './settings.types';
 import type {
+  CreateAlertConfigInput,
   UpdateAlertConfigInput,
   CreateLdapConfigInput,
   UpdateLdapConfigInput,
@@ -26,47 +27,90 @@ export class SettingsService {
 
   async listAlertConfigs(): Promise<AlertConfigResponse[]> {
     const configs = await prisma.alertConfig.findMany({
-      orderBy: { type: 'asc' },
+      orderBy: { createdAt: 'desc' },
     });
 
     return configs.map((c) => this.transformAlertConfig(c));
   }
 
-  async getAlertConfig(type: string): Promise<AlertConfigResponse> {
+  async getAlertConfigById(id: string): Promise<AlertConfigResponse> {
     const config = await prisma.alertConfig.findUnique({
-      where: { type },
+      where: { id },
     });
 
     if (!config) {
-      // Return default config
-      return {
-        id: '',
-        type,
-        enabled: false,
-        config: {},
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      throw new NotFoundError('Alert configuration not found');
     }
 
     return this.transformAlertConfig(config);
   }
 
-  async updateAlertConfig(type: string, input: UpdateAlertConfigInput): Promise<AlertConfigResponse> {
-    const config = await prisma.alertConfig.upsert({
-      where: { type },
-      update: {
-        enabled: input.enabled,
-        config: input.config ? JSON.parse(JSON.stringify(input.config)) : undefined,
-      },
-      create: {
-        type,
-        enabled: input.enabled ?? false,
-        config: input.config ? JSON.parse(JSON.stringify(input.config)) : {},
+  async createAlertConfig(input: CreateAlertConfigInput): Promise<AlertConfigResponse> {
+    const { name, type, enabled, channel, recipients, description, module, severity, scope, endpoints, conditions, actions, remediations } = input;
+
+    const config = await prisma.alertConfig.create({
+      data: {
+        type: type,
+        enabled: enabled ?? true,
+        config: JSON.parse(JSON.stringify({
+          name,
+          channel: channel || '',
+          recipients: recipients || '',
+          description: description || '',
+          module: module || '',
+          severity: severity || '',
+          scope: scope || '',
+          endpoints: endpoints || '',
+          conditions: conditions || [],
+          actions: actions || [],
+          remediations: remediations || [],
+        })),
       },
     });
 
     return this.transformAlertConfig(config);
+  }
+
+  async updateAlertConfigById(id: string, input: UpdateAlertConfigInput): Promise<AlertConfigResponse> {
+    const existing = await prisma.alertConfig.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundError('Alert configuration not found');
+    }
+
+    const existingConfig = (existing.config || {}) as Record<string, unknown>;
+
+    const updatedConfig: Record<string, unknown> = { ...existingConfig };
+    if (input.name !== undefined) updatedConfig.name = input.name;
+    if (input.channel !== undefined) updatedConfig.channel = input.channel;
+    if (input.recipients !== undefined) updatedConfig.recipients = input.recipients;
+    if (input.description !== undefined) updatedConfig.description = input.description;
+    if (input.module !== undefined) updatedConfig.module = input.module;
+    if (input.severity !== undefined) updatedConfig.severity = input.severity;
+    if (input.scope !== undefined) updatedConfig.scope = input.scope;
+    if (input.endpoints !== undefined) updatedConfig.endpoints = input.endpoints;
+    if (input.conditions !== undefined) updatedConfig.conditions = input.conditions;
+    if (input.actions !== undefined) updatedConfig.actions = input.actions;
+    if (input.remediations !== undefined) updatedConfig.remediations = input.remediations;
+
+    const config = await prisma.alertConfig.update({
+      where: { id },
+      data: {
+        type: input.type ?? existing.type,
+        enabled: input.enabled ?? existing.enabled,
+        config: JSON.parse(JSON.stringify(updatedConfig)),
+      },
+    });
+
+    return this.transformAlertConfig(config);
+  }
+
+  async deleteAlertConfig(id: string): Promise<void> {
+    const existing = await prisma.alertConfig.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundError('Alert configuration not found');
+    }
+
+    await prisma.alertConfig.delete({ where: { id } });
   }
 
   private transformAlertConfig(config: {
@@ -77,11 +121,22 @@ export class SettingsService {
     createdAt: Date;
     updatedAt: Date;
   }): AlertConfigResponse {
+    const cfg = (config.config || {}) as Record<string, unknown>;
     return {
       id: config.id,
+      name: (cfg.name as string) || '',
       type: config.type,
+      channel: (cfg.channel as string) || '',
+      recipients: (cfg.recipients as string) || '',
       enabled: config.enabled,
-      config: config.config as Record<string, unknown>,
+      description: (cfg.description as string) || '',
+      module: (cfg.module as string) || '',
+      severity: (cfg.severity as string) || '',
+      scope: (cfg.scope as string) || '',
+      endpoints: (cfg.endpoints as string) || '',
+      conditions: (cfg.conditions as Record<string, unknown>[]) || [],
+      actions: (cfg.actions as Record<string, unknown>[]) || [],
+      remediations: (cfg.remediations as Record<string, unknown>[]) || [],
       createdAt: config.createdAt.toISOString(),
       updatedAt: config.updatedAt.toISOString(),
     };

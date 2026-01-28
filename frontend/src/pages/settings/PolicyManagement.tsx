@@ -94,9 +94,17 @@ export const PolicyManagement = () => {
             name: alert.name || '',
             type: alert.type || 'Email',
             channel: alert.channel || 'SMTP',
-            recipients: alert.recipients || '',
+            recipients: Array.isArray(alert.recipients) ? alert.recipients.join(', ') : (alert.recipients || ''),
             enabled: alert.enabled !== false,
             createdAt: alert.createdAt || new Date().toISOString(),
+            description: alert.description || '',
+            module: alert.module || '',
+            severity: Array.isArray(alert.severity) ? alert.severity.join(', ') : (alert.severity || ''),
+            scope: alert.scope || '',
+            endpoints: alert.endpoints || '',
+            conditions: alert.conditions || [],
+            actions: alert.actions || [],
+            remediations: alert.remediations || [],
           }))
         : [];
       setAlerts(formattedData);

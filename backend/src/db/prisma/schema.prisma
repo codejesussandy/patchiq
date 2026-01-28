@@ -1137,7 +1137,7 @@ model Setting {
 
 model AlertConfig {
   id        String   @id @default(uuid())
-  type      String   @unique
+  type      String
   enabled   Boolean  @default(false)
   config    Json
   createdAt DateTime @default(now()) @map("created_at")
