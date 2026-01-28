@@ -74,4 +74,10 @@ router.delete('/:id', validateParams(reportParamsSchema), controller.deleteRepor
 // GET /v1/reports/:id/download - Download report file
 router.get('/:id/download', validateParams(reportParamsSchema), controller.downloadReport);
 
+// POST /v1/reports/:id/regenerate - Regenerate report
+router.post('/:id/regenerate', validateParams(reportParamsSchema), controller.regenerateReport);
+
+// POST /v1/reports/:id/send - Send report via email
+router.post('/:id/send', validateParams(reportParamsSchema), controller.sendReport);
+
 export default router;

@@ -4,6 +4,8 @@ import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import type { Prisma } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import ExcelJS from 'exceljs';
+import PDFDocument from 'pdfkit';
 import type {
   Report,
   ReportTemplate,
@@ -351,6 +353,54 @@ export class ReportsService {
       filename: `${report.name.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`,
       contentType: CONTENT_TYPES[format] || 'application/octet-stream',
     };
+  }
+
+  /**
+   * Regenerate a report
+   */
+  async regenerateReport(id: string): Promise<Report> {
+    const report = await prisma.report.findUnique({
+      where: { id },
+    });
+
+    if (!report) {
+      throw new NotFoundError('Report not found');
+    }
+
+    if (report.status === 'generating') {
+      throw new BadRequestError('Report is already generating');
+    }
+
+    // Delete old file if exists
+    if (report.filePath) {
+      const fullPath = path.join(REPORTS_DIR, report.filePath);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+    }
+
+    // Update status to generating
+    await prisma.report.update({
+      where: { id },
+      data: {
+        status: 'generating',
+        filePath: null,
+        fileSize: null,
+        generatedAt: null,
+      },
+    });
+
+    // Trigger async generation
+    this.generateReport(id).catch((error) => {
+      console.error('Report regeneration failed:', error);
+    });
+
+    // Return updated report
+    const updatedReport = await prisma.report.findUnique({
+      where: { id },
+    });
+
+    return this.transformReport(updatedReport!);
   }
 
   /**
@@ -721,36 +771,177 @@ export class ReportsService {
   }
 
   /**
-   * Generate Excel report (placeholder - uses CSV for now)
+   * Generate Excel report using ExcelJS
    */
   private async generateExcelReport(
     report: { id: string; name: string },
     data: unknown[],
     columns: string[]
   ): Promise<string> {
-    // TODO: Implement Excel generation using xlsx library
-    // For now, generate CSV as fallback
-    return this.generateCsvReport(report, data, columns);
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'PatchIQ';
+    workbook.created = new Date();
+
+    const worksheet = workbook.addWorksheet(report.name.substring(0, 31)); // Sheet name max 31 chars
+
+    // Set up columns with headers
+    worksheet.columns = columns.map((col) => ({
+      header: col.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase()),
+      key: col,
+      width: 15,
+    }));
+
+    // Style header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' },
+    };
+
+    // Add data rows
+    data.forEach((record: any) => {
+      const row: Record<string, unknown> = {};
+      columns.forEach((col) => {
+        row[col] = record[col] ?? '';
+      });
+      worksheet.addRow(row);
+    });
+
+    // Auto-filter on header row
+    worksheet.autoFilter = {
+      from: { row: 1, column: 1 },
+      to: { row: 1, column: columns.length },
+    };
+
+    const filename = `${report.id}.xlsx`;
+    const filePath = path.join(REPORTS_DIR, filename);
+
+    await workbook.xlsx.writeFile(filePath);
+
+    return filename;
   }
 
   /**
-   * Generate PDF report (placeholder)
+   * Generate PDF report using pdfkit
    */
   private async generatePdfReport(
     report: { id: string; name: string },
     data: unknown[],
     columns: string[]
   ): Promise<string> {
-    // TODO: Implement PDF generation using pdfkit or puppeteer
-    // For now, generate CSV as fallback
-    const csvFilename = await this.generateCsvReport(report, data, columns);
-    // Rename to .pdf (placeholder)
-    const pdfFilename = csvFilename.replace('.csv', '.pdf');
-    fs.renameSync(
-      path.join(REPORTS_DIR, csvFilename),
-      path.join(REPORTS_DIR, pdfFilename)
-    );
-    return pdfFilename;
+    return new Promise((resolve, reject) => {
+      const filename = `${report.id}.pdf`;
+      const filePath = path.join(REPORTS_DIR, filename);
+      const writeStream = fs.createWriteStream(filePath);
+
+      const doc = new PDFDocument({
+        size: 'A4',
+        layout: 'landscape',
+        margin: 50,
+      });
+
+      doc.pipe(writeStream);
+
+      // Title
+      doc.fontSize(20).font('Helvetica-Bold').text(report.name, { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(10).font('Helvetica').text(`Generated: ${new Date().toISOString()}`, { align: 'center' });
+      doc.moveDown(2);
+
+      // Table configuration
+      const pageWidth = doc.page.width - 100; // Account for margins
+      const columnWidth = Math.min(120, pageWidth / columns.length);
+      const rowHeight = 20;
+      const headerHeight = 25;
+      let yPosition = doc.y;
+      const startX = 50;
+
+      // Format column headers
+      const headers = columns.map((col) =>
+        col.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())
+      );
+
+      // Draw header row
+      doc.font('Helvetica-Bold').fontSize(9);
+      doc.fillColor('#333333');
+
+      // Header background
+      doc.rect(startX, yPosition, columnWidth * columns.length, headerHeight)
+        .fill('#E0E0E0');
+
+      doc.fillColor('#000000');
+      headers.forEach((header, i) => {
+        doc.text(
+          header.substring(0, 15), // Truncate long headers
+          startX + i * columnWidth + 5,
+          yPosition + 7,
+          { width: columnWidth - 10, lineBreak: false }
+        );
+      });
+
+      yPosition += headerHeight;
+
+      // Draw data rows
+      doc.font('Helvetica').fontSize(8);
+      let rowCount = 0;
+      const maxRowsPerPage = Math.floor((doc.page.height - yPosition - 50) / rowHeight);
+
+      data.forEach((record: any, index) => {
+        // Check if we need a new page
+        if (rowCount >= maxRowsPerPage) {
+          doc.addPage();
+          yPosition = 50;
+          rowCount = 0;
+
+          // Redraw headers on new page
+          doc.font('Helvetica-Bold').fontSize(9);
+          doc.rect(startX, yPosition, columnWidth * columns.length, headerHeight)
+            .fill('#E0E0E0');
+          doc.fillColor('#000000');
+          headers.forEach((header, i) => {
+            doc.text(
+              header.substring(0, 15),
+              startX + i * columnWidth + 5,
+              yPosition + 7,
+              { width: columnWidth - 10, lineBreak: false }
+            );
+          });
+          yPosition += headerHeight;
+          doc.font('Helvetica').fontSize(8);
+        }
+
+        // Alternate row background
+        if (index % 2 === 1) {
+          doc.rect(startX, yPosition, columnWidth * columns.length, rowHeight)
+            .fill('#F8F8F8');
+          doc.fillColor('#000000');
+        }
+
+        // Draw row data
+        columns.forEach((col, i) => {
+          const value = String(record[col] ?? '').substring(0, 20); // Truncate long values
+          doc.text(
+            value,
+            startX + i * columnWidth + 5,
+            yPosition + 5,
+            { width: columnWidth - 10, lineBreak: false }
+          );
+        });
+
+        yPosition += rowHeight;
+        rowCount++;
+      });
+
+      // Footer with row count
+      doc.moveDown(2);
+      doc.fontSize(10).text(`Total Records: ${data.length}`, { align: 'right' });
+
+      doc.end();
+
+      writeStream.on('finish', () => resolve(filename));
+      writeStream.on('error', reject);
+    });
   }
 
   /**

@@ -124,6 +124,52 @@ export const downloadReport: RequestHandler = async (req, res, next) => {
 };
 
 /**
+ * Regenerate report
+ * POST /v1/reports/:id/regenerate
+ */
+export const regenerateReport: RequestHandler = async (req, res, next) => {
+  try {
+    const result = await reportsService.regenerateReport(req.params.id);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Send report via email
+ * POST /v1/reports/:id/send
+ */
+export const sendReport: RequestHandler = async (req, res, next) => {
+  try {
+    const { recipients, subject, message, format } = req.body;
+
+    // Validate recipients
+    if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+      return res.status(400).json({ error: 'At least one recipient is required' });
+    }
+
+    // Get report to verify it exists and is completed
+    const report = await reportsService.getReportById(req.params.id);
+
+    if (report.status !== 'completed') {
+      return res.status(400).json({ error: 'Report must be completed before sending' });
+    }
+
+    // TODO: Implement actual email sending with nodemailer
+    // For now, return a mock success response
+    console.log(`[MOCK] Sending report ${report.name} to ${recipients.join(', ')}`);
+
+    res.json({
+      success: true,
+      message: `Report will be sent to ${recipients.length} recipient(s). (Email service not configured)`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get report templates
  * GET /v1/reports/templates
  */
