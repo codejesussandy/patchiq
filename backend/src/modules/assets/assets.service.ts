@@ -1716,6 +1716,77 @@ export async function getAssetAuditLog(id: string): Promise<AssetAuditLog[]> {
 }
 
 // ============================================
+// Asset Vulnerabilities Service
+// ============================================
+
+export async function getAssetVulnerabilities(id: string) {
+  const asset = await prisma.asset.findUnique({
+    where: { id },
+  });
+
+  if (!asset) {
+    throw new NotFoundError('Asset not found');
+  }
+
+  // Get vulnerabilities linked to this asset through the AssetVulnerability relation
+  const assetVulnerabilities = await prisma.assetVulnerability.findMany({
+    where: { assetId: id },
+    include: {
+      vulnerability: {
+        include: {
+          affectedSoftware: { select: { id: true } },
+        },
+      },
+    },
+    orderBy: { detectedAt: 'desc' },
+  });
+
+  // Calculate summary stats
+  const summary = {
+    total: assetVulnerabilities.length,
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    open: 0,
+    resolved: 0,
+  };
+
+  const data = assetVulnerabilities.map((av) => {
+    const vuln = av.vulnerability;
+
+    // Update summary counts
+    const severity = vuln.severity.toLowerCase();
+    if (severity === 'critical') summary.critical++;
+    else if (severity === 'high') summary.high++;
+    else if (severity === 'medium') summary.medium++;
+    else if (severity === 'low') summary.low++;
+
+    if (av.status === 'Open') summary.open++;
+    else if (av.status === 'Resolved') summary.resolved++;
+
+    return {
+      id: av.id,
+      cveId: vuln.cveId,
+      title: vuln.title || vuln.cveId,
+      description: vuln.description || '',
+      severity: vuln.severity,
+      cvssScore: vuln.cvss3BaseScore ?? vuln.cvss2BaseScore ?? 0,
+      epss: vuln.epss ?? 0,
+      exploitable: vuln.exploitable,
+      riskScore: vuln.riskScore ?? 0,
+      status: av.status,
+      detectedAt: av.detectedAt.toISOString(),
+      resolvedAt: av.resolvedAt?.toISOString() || null,
+      publishedDate: vuln.publishedDate?.toISOString() || null,
+      affectedSoftwareCount: vuln.affectedSoftware?.length ?? 0,
+    };
+  });
+
+  return { data, summary };
+}
+
+// ============================================
 // Software Inventory Service
 // ============================================
 

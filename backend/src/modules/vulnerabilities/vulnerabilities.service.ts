@@ -68,6 +68,11 @@ export class VulnerabilitiesService {
       if (params.publishedTo) where.publishedDate.lte = new Date(params.publishedTo);
     }
 
+    // Affects assets filter - only show CVEs that affect your assets
+    if (params.affectsAssets === true) {
+      where.affectedAssets = { some: {} };
+    }
+
     const paginationParams = { page: params.page, limit: params.limit };
     const orderBy: Prisma.VulnerabilityOrderByWithRelationInput = {};
     if (params.sort) {
@@ -262,9 +267,14 @@ export class VulnerabilitiesService {
   /**
    * Get vulnerability statistics (excludes zero-day for consistency with list)
    */
-  async getStats() {
+  async getStats(affectsAssets?: boolean) {
     // Filter for non-zero-day vulnerabilities (consistent with listVulnerabilities)
-    const baseWhere = { isZeroDay: false };
+    const baseWhere: Prisma.VulnerabilityWhereInput = { isZeroDay: false };
+
+    // Only count CVEs that affect your assets when filter is enabled
+    if (affectsAssets === true) {
+      baseWhere.affectedAssets = { some: {} };
+    }
 
     const [total, bySeverity, zeroDay, exceptions] = await Promise.all([
       prisma.vulnerability.count({ where: baseWhere }),
@@ -299,6 +309,11 @@ export class VulnerabilitiesService {
         const where: Prisma.VulnerabilityWhereInput = {
           isZeroDay: false, // Exclude zero-day for consistency
         };
+
+        // Apply affectsAssets filter to published stats too
+        if (affectsAssets === true) {
+          where.affectedAssets = { some: {} };
+        }
 
         if (range.min !== null && range.max !== null) {
           where.publishedDate = {

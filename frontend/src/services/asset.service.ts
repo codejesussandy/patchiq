@@ -104,6 +104,37 @@ export const assetService = {
     return response.data;
   },
 
+  async getAssetVulnerabilities(id: string): Promise<{
+    data: Array<{
+      id: string;
+      cveId: string;
+      title: string;
+      description: string;
+      severity: string;
+      cvssScore: number;
+      epss: number;
+      exploitable: boolean;
+      riskScore: number;
+      status: string;
+      detectedAt: string;
+      resolvedAt: string | null;
+      publishedDate: string | null;
+      affectedSoftwareCount: number;
+    }>;
+    summary: {
+      total: number;
+      critical: number;
+      high: number;
+      medium: number;
+      low: number;
+      open: number;
+      resolved: number;
+    };
+  }> {
+    const response = await api.get(`/assets/${id}/vulnerabilities`);
+    return response.data;
+  },
+
   async getAssetWithPatchDetails(id: string): Promise<Asset> {
     const response = await api.get(`/assets/${id}/full`);
     return response.data;

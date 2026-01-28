@@ -93,6 +93,7 @@ router.get('/assets/:id/telemetry/history', validateParams(assetIdParamSchema), 
 router.get('/assets/:id/errors', validateParams(assetIdParamSchema), controller.getAssetErrors);
 router.get('/assets/:id/audit-log', validateParams(assetIdParamSchema), controller.getAssetAuditLog);
 router.get('/assets/:id/patches', validateParams(assetIdParamSchema), controller.getAssetPatches);
+router.get('/assets/:id/vulnerabilities', validateParams(assetIdParamSchema), controller.getAssetVulnerabilities);
 router.get('/assets/:id/deployments', validateParams(assetIdParamSchema), controller.getAssetDeployments);
 router.post('/assets/:id/attachments', validateParams(assetIdParamSchema), controller.uploadAssetAttachment);
 

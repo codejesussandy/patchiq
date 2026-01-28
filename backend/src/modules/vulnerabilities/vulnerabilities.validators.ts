@@ -7,6 +7,7 @@ export const listVulnerabilitiesQuerySchema = z.object({
   search: z.string().optional(),
   severity: z.string().optional(), // Can be comma-separated: "CRITICAL,HIGH"
   exploitable: z.coerce.boolean().optional(),
+  affectsAssets: z.coerce.boolean().optional(), // Only show CVEs affecting your assets
   epssMin: z.coerce.number().min(0).max(100).optional(),
   epssMax: z.coerce.number().min(0).max(100).optional(),
   riskScoreMin: z.coerce.number().min(0).max(100).optional(),

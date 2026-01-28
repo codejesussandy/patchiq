@@ -37,6 +37,19 @@ router.get('/endpoints', controller.getEndpointVulnerabilities);
 router.get('/network', controller.getNetworkVulnerabilities);
 
 // ============================================
+// CPE Correlation & Unmatched Software
+// ============================================
+
+// GET /v1/vulnerabilities/cpe-stats - Get CPE mapping statistics
+router.get('/cpe-stats', controller.getCpeStats);
+
+// GET /v1/vulnerabilities/unmatched-software - List software that couldn't be mapped to CPE
+router.get('/unmatched-software', controller.listUnmatchedSoftware);
+
+// PUT /v1/vulnerabilities/unmatched-software/:id/resolve - Mark as resolved
+router.put('/unmatched-software/:id/resolve', controller.resolveUnmatchedSoftware);
+
+// ============================================
 // Zero-day Vulnerabilities
 // ============================================
 

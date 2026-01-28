@@ -3,25 +3,71 @@
 This document tracks the fixes and enhancements needed for the Software tab in the Asset Details page.
 
 **Created:** 2026-01-27
-**Status:** Planning
+**Last Updated:** 2026-01-27
+**Status:** In Progress (3 of 5 fixes completed)
+
 **Related Files:**
-- Frontend: `frontend/src/pages/assets/components/AssetDetails.tsx` (lines 1012-1265)
-- Frontend Types: `frontend/src/types/asset.types.ts` (lines 546-618)
-- Backend Service: `backend/src/modules/assets/assets.service.ts` (lines 1337-1378)
-- Backend Types: `backend/src/modules/assets/assets.types.ts` (lines 313-339)
+- Frontend: `frontend/src/pages/assets/components/AssetDetails.tsx`
+- Frontend Types: `frontend/src/types/asset.types.ts`
+- Backend Service: `backend/src/modules/assets/assets.service.ts`
+- Backend Types: `backend/src/modules/assets/assets.types.ts`
+
+**Commits:**
+- `607a78d` - feat(assets): add filter and CSV export to Software tab
+- `61b12c7` - feat(assets): implement 3-tab data segregation for Software tab
 
 ---
 
 ## Overview
 
-The Software tab is partially implemented with working backend/frontend integration. Several features are incomplete or non-functional.
+The Software tab displays software inventory data collected by the agent, organized into three tabs:
+
+| Tab | Content | Data Source |
+|-----|---------|-------------|
+| **Applications** | User-installed software | `rawPayload.applications` |
+| **Services** | System services (Running/Stopped) | `rawPayload.services` |
+| **System Environment** | Startup/login programs | `rawPayload.startupPrograms` |
 
 ### Current State
 - API endpoint `/assets/:id/software` - Working
-- Three subtabs (Applications, System Environment, Services) - Renders
-- Data fetching & loading states - Working
+- Three subtabs properly segregated - Working
+- Data fetching from `rawPayload` - Working
+- Column filters (Applications tab) - Working
+- CSV export (all tabs) - Working
 - Tables with pagination - Working
-- OS info panel - Displays
+- OS info panel - Working
+
+---
+
+## Test Results (2026-01-27)
+
+### API Response Verified
+
+```json
+{
+  "os": { "name": "Ubuntu 24.04.3 LTS", "version": "24.04" },
+  "applications": [...],      // 1488 items
+  "services": [...],          // 182 items
+  "startupPrograms": [...]    // 0 items (agent dependent)
+}
+```
+
+### Data Structure Verified
+
+| Field | Structure | Status |
+|-------|-----------|--------|
+| `os` | `{ name, version }` | ✅ Working |
+| `applications` | `[{ id, name, version, vendor?, installSource? }]` | ✅ Working |
+| `services` | `[{ id, name, displayName, state, startupType, status }]` | ✅ Working |
+| `startupPrograms` | `[{ id, name, command, location, enabled, vendor }]` | ✅ Working (empty if not collected) |
+
+### Services State Verified
+
+```
+accounts-daemon  → Running ✅
+alsa-restore     → Stopped ✅
+alsa-state       → Stopped ✅
+```
 
 ---
 
@@ -37,18 +83,13 @@ The Software tab is partially implemented with working backend/frontend integrat
 The System Information collapse panel shows only placeholder text: "Detailed system information from agent inventory"
 
 **Location:**
-`frontend/src/pages/assets/components/AssetDetails.tsx` lines 1255-1259
+`frontend/src/pages/assets/components/AssetDetails.tsx` (System Information panel)
 
 **Solution:**
-Display actual hardware/system data already available on the asset object. The asset already has fields like:
-- `manufacturer`
-- `model`
-- `serialNumber`
-- `cpuInfo`
-- `memoryTotal`
-- `diskTotal`
-- `biosVersion`
-- `lastSeen`
+Display actual hardware/system data already available on the asset object:
+- `manufacturer`, `model`, `serialNumber`
+- `cpuInfo`, `memoryTotal`, `diskTotal`
+- `biosVersion`, `lastSeen`
 
 **Implementation:**
 1. Create a grid layout similar to the OS panel
@@ -64,28 +105,21 @@ Display actual hardware/system data already available on the asset object. The a
 **Status:** [x] Completed (2026-01-27)
 
 **Problem:**
-Download buttons in each subtab (Applications, System Environment, Services) render but have no functionality.
-
-**Location:**
-`frontend/src/pages/assets/components/AssetDetails.tsx` lines 1135-1215
+Download buttons in each subtab rendered but had no functionality.
 
 **Solution:**
 Implemented CSV export for each table's data with proper escaping and user feedback.
 
 **Implementation:**
-1. Created `exportToCSV()` utility function with:
-   - Proper CSV escaping (quotes, commas, newlines)
-   - Empty data handling with warning message
-   - Success message showing row count
-2. Created export handlers for each tab: `exportApplications()`, `exportServices()`, `exportEnvironment()`
-3. Added onClick handlers to download buttons
-4. Added Tooltip showing "Export to CSV" on hover
-5. Filename format: `{hostname}-{type}.csv` (e.g., `server01-applications.csv`)
+1. Created `exportToCSV()` utility function with proper CSV escaping
+2. Created export handlers: `exportApplications()`, `exportServices()`, `exportStartupPrograms()`
+3. Added Tooltip showing "Export to CSV" on hover
+4. Filename format: `{hostname}-{type}.csv`
 
 **Exported Columns:**
 - Applications: Name, Vendor, Version, Patch Status, Last Patched, Installed On
-- Services: Service Name, State, Type, Status
-- Environment: Key, Value
+- Services: Service Name, Display Name, State, Startup Type
+- Startup Programs: Name, Command, Location, Enabled, Vendor
 
 ---
 
@@ -96,30 +130,17 @@ Implemented CSV export for each table's data with proper escaping and user feedb
 **Status:** [x] Completed (2026-01-27)
 
 **Problem:**
-Filter buttons render but have no onClick handler or filter state.
-
-**Location:**
-`frontend/src/pages/assets/components/AssetDetails.tsx` lines 1056-1084, 1118-1133
+Filter buttons rendered but had no onClick handler or filter state.
 
 **Solution:**
-Implemented column-based filtering using Ant Design's built-in table filter functionality for the Applications tab. Removed filter buttons from Services and System Environment tabs (per user request).
+Implemented column-based filtering using Ant Design's built-in table filter functionality for the Applications tab. Removed filter buttons from Services and System Environment tabs.
 
 **Implementation:**
-1. Added state variables for filter values: `appVendorFilters`, `appPatchStatusFilters`
-2. Added `filters`, `filteredValue`, and `onFilter` props to Vendor and Patch Status columns
-3. Vendor filter dynamically populated from unique vendors in the data
-4. Patch Status filter has static options: "Available" / "Not Available"
-5. Added `onChange` handler to Table to sync filter state
-6. Added "Clear Filters" button that appears when filters are active
-7. Removed standalone filter buttons from Services and System Environment tabs
-
-**Changes Made:**
-- Added filter state at line ~103
-- Added `uniqueVendors` extraction at line 1022
-- Updated `applicationColumns` with filter config (lines 1056-1084)
-- Added `handleAppTableChange` and `clearAppFilters` functions (lines 1118-1131)
-- Updated Applications tab with `onChange` handler and conditional Clear Filters button
-- Removed Filter buttons from Services and System Environment tabs
+1. Added state variables: `appVendorFilters`, `appPatchStatusFilters`
+2. Added `filters`, `filteredValue`, and `onFilter` props to columns
+3. Vendor filter dynamically populated from unique vendors
+4. Patch Status filter: "Available" / "Not Available"
+5. Added "Clear Filters" button when filters are active
 
 ---
 
@@ -130,18 +151,13 @@ Implemented column-based filtering using Ant Design's built-in table filter func
 **Status:** [ ] Not Started
 
 **Problem:**
-Application icons show a generic "A" placeholder instead of meaningful icons.
+Application icons show a generic red "A" placeholder instead of meaningful icons.
 
 **Location:**
-`frontend/src/pages/assets/components/AssetDetails.tsx` lines 1025-1038
+`frontend/src/pages/assets/components/AssetDetails.tsx` (applicationColumns render)
 
 **Solution:**
-Use colored circle with first letter of application name (quick fix), with optional vendor mapping for common vendors.
-
-**Implementation:**
-1. Generate consistent color based on app name hash
-2. Display first letter of application name
-3. (Optional) Map known vendors to icons: Microsoft, Adobe, Google, etc.
+Use colored circle with first letter of application name, with optional vendor mapping.
 
 ```typescript
 const getAppColor = (name: string) => {
@@ -153,35 +169,29 @@ const getAppColor = (name: string) => {
 
 ---
 
-### FIX-5: System Environment Tab (Three-Tab Segregation)
+### FIX-5: Three-Tab Data Segregation
 
 **Priority:** Medium
 **Effort:** Medium
 **Status:** [x] Completed (2026-01-27)
 
 **Problem:**
-Data not properly segregated into Applications, Services, and System Environment tabs.
+Data was not properly segregated into Applications, Services, and System Environment tabs. Backend was reading from wrong data source.
 
 **Solution:**
-Implemented proper data segregation using agent's `rawPayload`:
-
-| Tab | Data Source | Content |
-|-----|-------------|---------|
-| Applications | `rawPayload.applications` | User-installed software |
-| Services | `rawPayload.services` | System services with state |
-| System Environment | `rawPayload.startupPrograms` | Startup/login programs |
+Updated backend to read from `AssetSoftwareInventory.rawPayload` which contains the full agent inventory.
 
 **Changes Made:**
 
 **Backend (`assets.service.ts`):**
-- Updated `getAssetSoftware()` to read from `AssetSoftwareInventory.rawPayload`
+- Updated `getAssetSoftware()` to read from `rawPayload`
 - Returns `applications`, `services`, and `startupPrograms` arrays
 - Properly maps agent data to typed interfaces
 
 **Backend Types (`assets.types.ts`):**
 - Added `StartupProgramInfo` interface
-- Updated `AssetSoftware` to include `startupPrograms`
 - Updated `ServiceInfo` with `displayName` and `startupType`
+- Updated `AssetSoftware` to include `startupPrograms`
 
 **Frontend Types (`asset.types.ts`):**
 - Added `StartupProgram` type
@@ -190,7 +200,7 @@ Implemented proper data segregation using agent's `rawPayload`:
 
 **Frontend UI (`AssetDetails.tsx`):**
 - Updated Services columns: Name, Display Name, State, Startup Type
-- Replaced System Environment key-value display with Startup Programs table
+- System Environment tab now shows Startup Programs table
 - Updated export functions for new data structures
 
 ---
@@ -199,47 +209,27 @@ Implemented proper data segregation using agent's `rawPayload`:
 
 **Priority:** Low
 **Effort:** Medium
-**Status:** [ ] Not Started (Deferred)
+**Status:** [ ] Deferred
 
 **Problem:**
-`licenseDetails` type exists in frontend but backend doesn't return it and UI doesn't render it.
-
-**Location:**
-- Frontend Types: `frontend/src/types/asset.types.ts` lines 595-617
-- Backend Types: `backend/src/modules/assets/assets.types.ts` line 316
+`licenseDetails` type exists but backend doesn't return it and UI doesn't render it.
 
 **Solution:**
-Defer unless license compliance is a feature requirement. If needed:
-1. Add license collection to agent
-2. Store in database (new table or JSON field)
-3. Return from API
-4. Display in OS panel or dedicated section
-
-**Note:** This is Windows-specific license info (product key, license status, etc.). Skip unless explicitly required.
+Deferred unless license compliance is a feature requirement. This is Windows-specific license info.
 
 ---
 
 ### FIX-7: Patch Status Accuracy
 
-**Priority:** Low (Deferred)
+**Priority:** Low
 **Effort:** High
-**Status:** [ ] Not Started (Deferred)
+**Status:** [ ] Deferred
 
 **Problem:**
-Patch status shows "Available" / "Not Available" but data may not be accurate or connected to actual patch data.
-
-**Location:**
-`frontend/src/pages/assets/components/AssetDetails.tsx` lines 1025-1038
+Patch status shows "Available" / "Not Available" but data may not be accurate.
 
 **Solution:**
-Requires integration with patches/vulnerabilities modules. The patch status should come from matching installed software versions against known patches in the Hub.
-
-**Dependencies:**
-- Jobs/Deployments integration (see `JOBS_IMPLEMENTATION.md`)
-- Hub software package matching
-- Version comparison logic
-
-**Defer until:** Jobs integration is complete per CLAUDE.md roadmap.
+Requires integration with patches/vulnerabilities modules. Defer until Jobs integration is complete.
 
 ---
 
@@ -247,11 +237,11 @@ Requires integration with patches/vulnerabilities modules. The patch status shou
 
 | Order | Fix | Effort | Impact | Status |
 |-------|-----|--------|--------|--------|
-| 1 | FIX-1: System Information Panel | Low | High | [ ] |
+| 1 | FIX-1: System Information Panel | Low | High | [ ] Not Started |
 | 2 | FIX-2: Download/Export | Low | Medium | [x] Completed |
 | 3 | FIX-3: Filter Buttons | Low-Medium | Medium | [x] Completed |
-| 4 | FIX-4: Application Icons | Low | Low | [ ] |
-| 5 | FIX-5: System Environment | Medium | Medium | [x] Completed |
+| 4 | FIX-4: Application Icons | Low | Low | [ ] Not Started |
+| 5 | FIX-5: Three-Tab Segregation | Medium | High | [x] Completed |
 | 6 | FIX-6: License Details | Medium | Low | [ ] Deferred |
 | 7 | FIX-7: Patch Status | High | High | [ ] Deferred |
 
@@ -259,24 +249,27 @@ Requires integration with patches/vulnerabilities modules. The patch status shou
 
 ## Testing Checklist
 
-After implementing fixes, verify:
-
-- [ ] System Information panel displays hardware data correctly
-- [x] Download buttons export valid CSV files (Applications, Services, Environment)
-- [x] Filter dropdowns appear and filter data correctly (Applications tab - Vendor & Patch Status)
-- [x] Clear Filters button appears when filters are active
-- [x] Filter buttons removed from Services and System Environment tabs
-- [ ] Application icons render with consistent colors
-- [x] System Environment tab shows startup programs (3-tab segregation implemented)
-- [ ] No console errors in browser
-- [ ] Loading states work correctly
-- [ ] Empty states handled gracefully (no data scenarios)
+| Test | Status | Notes |
+|------|--------|-------|
+| API returns correct structure | ✅ Pass | `os`, `applications`, `services`, `startupPrograms` |
+| Applications data populated | ✅ Pass | 1488 apps returned |
+| Services data populated | ✅ Pass | 182 services with Running/Stopped state |
+| Startup Programs structure | ✅ Pass | Returns empty array if not collected |
+| Download buttons export CSV | ✅ Pass | All three tabs |
+| Filter dropdowns work | ✅ Pass | Vendor & Patch Status filters |
+| Clear Filters button | ✅ Pass | Appears when filters active |
+| TypeScript compiles | ✅ Pass | Frontend & Backend |
+| System Information panel | ⬚ Not tested | Placeholder still shown |
+| Application icons | ⬚ Not tested | Generic "A" placeholder |
+| Empty states | ⬚ Not tested | Need asset with no software |
 
 ---
 
 ## Notes
 
-- All fixes should maintain existing functionality
+- **Startup Programs:** Will show empty if agent doesn't collect `startupPrograms` data
+- **Services State:** Now correctly shows Running/Stopped from agent data
+- **Data Source:** Backend reads from `AssetSoftwareInventory.rawPayload` (full agent inventory)
+- All fixes maintain existing functionality
 - Use Ant Design components consistently
-- Follow existing code patterns in AssetDetails.tsx
 - Test with assets that have varying amounts of software data

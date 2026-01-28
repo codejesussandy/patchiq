@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { WHITELIST_SOURCES } from '../../modules/patch-repository/whitelist-sources.seed';
+import { seedCpeMappings } from './seeds/cpe-mappings.seed';
 
 const prisma = new PrismaClient();
 
@@ -355,6 +356,14 @@ async function main() {
     }
   }
   console.log('Created/Updated', patchSourcesCreated, 'patch repository sources');
+
+  // ============================================
+  // CPE Mappings (Vulnerability Correlation)
+  // ============================================
+
+  console.log('\nSeeding CPE mappings for vulnerability correlation...');
+  const cpeMappingsCreated = await seedCpeMappings(prisma);
+  console.log('Created/Updated', cpeMappingsCreated, 'CPE mappings');
 
   console.log('\nDatabase seed completed successfully!');
   console.log('\n=== Login Credentials ===');

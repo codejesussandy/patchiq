@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { vulnerabilitiesService } from './vulnerabilities.service';
+import { prisma } from '@/db/client';
 import type {
   ListVulnerabilitiesQuery,
   ListZeroDayQuery,
@@ -82,9 +83,11 @@ export const getAffectedSoftware: RequestHandler = async (req, res, next) => {
  * Get vulnerability statistics
  * GET /v1/vulnerabilities/stats
  */
-export const getStats: RequestHandler = async (_req, res, next) => {
+export const getStats: RequestHandler = async (req, res, next) => {
   try {
-    const result = await vulnerabilitiesService.getStats();
+    // Support affectsAssets filter to only count CVEs affecting your assets
+    const affectsAssets = req.query.affectsAssets === 'true';
+    const result = await vulnerabilitiesService.getStats(affectsAssets);
     res.json({ data: result });
   } catch (error) {
     next(error);
@@ -197,6 +200,99 @@ export const triggerScan: RequestHandler = async (req, res, next) => {
     const body = req.body as ScanVulnerabilitiesBody;
     const result = await vulnerabilitiesService.triggerScan(body, userId);
     res.status(202).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================
+// Unmatched Software (CPE Correlation)
+// ============================================
+
+/**
+ * List unmatched software (software that couldn't be mapped to CPE)
+ * GET /v1/vulnerabilities/unmatched-software
+ */
+export const listUnmatchedSoftware: RequestHandler = async (req, res, next) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
+    const offset = parseInt(req.query.offset as string) || 0;
+    const resolved = req.query.resolved === 'true';
+
+    const [data, total] = await Promise.all([
+      prisma.unmatchedSoftware.findMany({
+        where: { resolved },
+        orderBy: { occurrences: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.unmatchedSoftware.count({ where: { resolved } }),
+    ]);
+
+    res.json({ data, total, limit, offset });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Mark unmatched software as resolved (after creating a CPE mapping)
+ * PUT /v1/vulnerabilities/unmatched-software/:id/resolve
+ */
+export const resolveUnmatchedSoftware: RequestHandler = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const updated = await prisma.unmatchedSoftware.update({
+      where: { id },
+      data: {
+        resolved: true,
+        resolvedAt: new Date(),
+        notes: req.body.notes,
+      },
+    });
+
+    res.json({ data: updated });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get CPE mapping statistics
+ * GET /v1/vulnerabilities/cpe-stats
+ */
+export const getCpeStats: RequestHandler = async (_req, res, next) => {
+  try {
+    const [
+      totalMappings,
+      totalUnmatched,
+      unresolvedUnmatched,
+      softwareWithCpe,
+      softwareWithoutCpe,
+    ] = await Promise.all([
+      prisma.cpeMapping.count({ where: { isActive: true } }),
+      prisma.unmatchedSoftware.count(),
+      prisma.unmatchedSoftware.count({ where: { resolved: false } }),
+      prisma.assetSoftware.count({ where: { cpeVendor: { not: null } } }),
+      prisma.assetSoftware.count({ where: { cpeVendor: null } }),
+    ]);
+
+    const totalSoftware = softwareWithCpe + softwareWithoutCpe;
+    const matchRate = totalSoftware > 0
+      ? Math.round((softwareWithCpe / totalSoftware) * 100)
+      : 0;
+
+    res.json({
+      data: {
+        totalMappings,
+        totalUnmatched,
+        unresolvedUnmatched,
+        softwareWithCpe,
+        softwareWithoutCpe,
+        matchRate,
+      },
+    });
   } catch (error) {
     next(error);
   }

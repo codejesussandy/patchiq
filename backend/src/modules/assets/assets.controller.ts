@@ -417,6 +417,15 @@ export async function getAssetPatches(req: Request, res: Response, next: NextFun
   }
 }
 
+export async function getAssetVulnerabilities(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const vulnerabilities = await assetsService.getAssetVulnerabilities(req.params.id);
+    res.json(vulnerabilities);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getAssetDeployments(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     // This would be implemented with Patches module integration

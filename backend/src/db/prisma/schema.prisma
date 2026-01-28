@@ -407,9 +407,17 @@ model AssetSoftware {
   installDate  DateTime? @map("install_date")
   installPath  String?   @map("install_path")
   isSystem     Boolean   @default(false) @map("is_system")
-  category     String?                           // NEW: Application category
+  category     String?                           // Application category
+
+  // CPE correlation fields (Phase 1 - Vulnerability Correlation Improvement)
+  normalizedVersion String? @map("normalized_version")  // Cleaned version: "3.0.13" from "3.0.13-1ubuntu3.1"
+  cpeVendor         String? @map("cpe_vendor")          // Resolved CPE vendor (e.g., "google", "openssl")
+  cpeProduct        String? @map("cpe_product")         // Resolved CPE product (e.g., "chrome", "openssl")
+  cpeMappingId      String? @map("cpe_mapping_id")      // Reference to CpeMapping used for resolution
+  matchConfidence   Float?  @map("match_confidence")    // Confidence score of CPE match (0.0-1.0)
 
   @@index([assetId])
+  @@index([cpeVendor, cpeProduct])
   @@map("asset_software")
 }
 
@@ -562,6 +570,16 @@ model VulnerabilitySoftware {
   fixedVersion    String?       @map("fixed_version")
   vendor          String?
 
+  // CPE fields for accurate matching (Phase 1 - Vulnerability Correlation Improvement)
+  cpeUri            String?  @map("cpe_uri")             // Full CPE 2.3 URI (e.g., "cpe:2.3:a:google:chrome:120.0.6099.129:*:*:*:*:*:*:*")
+  cpeVendor         String?  @map("cpe_vendor")          // Extracted vendor (e.g., "google")
+  cpeProduct        String?  @map("cpe_product")         // Extracted product (e.g., "chrome")
+  versionStart      String?  @map("version_start")       // Vulnerable range start version
+  versionEnd        String?  @map("version_end")         // Vulnerable range end version
+  versionStartType  String?  @map("version_start_type")  // "including" or "excluding"
+  versionEndType    String?  @map("version_end_type")    // "including" or "excluding"
+
+  @@index([cpeVendor, cpeProduct])
   @@map("vulnerability_software")
 }
 
@@ -608,6 +626,56 @@ model ExceptionEndpoint {
 
   @@unique([exceptionId, endpointId])
   @@map("exception_endpoints")
+}
+
+// ============================================
+// CPE Mapping Models (Vulnerability Correlation Improvement)
+// ============================================
+
+// Maps agent-reported software names to CPE vendor/product identifiers
+model CpeMapping {
+  id              String   @id @default(uuid())
+
+  // Agent-side identifiers (what we receive from agents)
+  agentName       String   @map("agent_name")        // e.g., "Google Chrome", "libssl3"
+  agentVendor     String?  @map("agent_vendor")      // e.g., "Google LLC", null
+  platform        String?                             // "windows", "linux", "darwin", "all"
+  packageManager  String?  @map("package_manager")   // "dpkg", "rpm", "brew", "msi", null
+
+  // CPE-side identifiers (what NVD uses)
+  cpeVendor       String   @map("cpe_vendor")        // e.g., "google", "openssl"
+  cpeProduct      String   @map("cpe_product")       // e.g., "chrome", "openssl"
+
+  // Metadata
+  confidence      Float    @default(1.0)             // Match confidence (0.0-1.0)
+  source          String   @default("manual")        // "manual", "nvd", "auto"
+  notes           String?                             // Optional notes about mapping
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([agentName, agentVendor, platform, packageManager])
+  @@index([agentName])
+  @@index([cpeVendor, cpeProduct])
+  @@map("cpe_mappings")
+}
+
+// Tracks software that couldn't be mapped to CPE for continuous improvement
+model UnmatchedSoftware {
+  id          String   @id @default(uuid())
+  name        String                              // Software name from agent
+  vendor      String   @default("")               // Vendor from agent (empty if not provided)
+  platform    String?                              // Platform where seen
+  occurrences Int      @default(1)                // How many times we've seen this
+  lastSeen    DateTime @default(now()) @map("last_seen")
+  resolved    Boolean  @default(false)            // True if mapping was created
+  resolvedAt  DateTime? @map("resolved_at")
+  notes       String?                              // Admin notes
+
+  @@unique([name, vendor])
+  @@index([occurrences(sort: Desc)])
+  @@index([resolved])
+  @@map("unmatched_software")
 }
 
 // ============================================

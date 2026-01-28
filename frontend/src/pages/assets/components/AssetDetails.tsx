@@ -206,10 +206,8 @@ export const AssetDetails = () => {
     if (!asset) return;
     setLoadingVulnerabilities(true);
     try {
-      // TODO: Implement asset vulnerabilities API endpoint
-      // For now, show empty state - vulnerabilities will be populated when
-      // the backend /assets/:id/vulnerabilities endpoint is implemented
-      setVulnerabilities([]);
+      const result = await assetService.getAssetVulnerabilities(asset.id);
+      setVulnerabilities(result.data || []);
     } catch (error) {
       console.error('Failed to fetch vulnerabilities data:', error);
       setVulnerabilities([]);
@@ -1105,20 +1103,17 @@ export const AssetDetails = () => {
       },
     ];
 
-    const startupProgramColumns = [
-      { title: 'Name', dataIndex: 'name', key: 'name' },
-      { title: 'Command', dataIndex: 'command', key: 'command', ellipsis: true },
-      { title: 'Location', dataIndex: 'location', key: 'location', ellipsis: true },
-      {
-        title: 'Status',
-        dataIndex: 'enabled',
-        key: 'enabled',
-        render: (enabled: boolean) => (
-          <Tag color={enabled ? 'green' : 'default'}>{enabled ? 'Enabled' : 'Disabled'}</Tag>
-        ),
-      },
-      { title: 'Vendor', dataIndex: 'vendor', key: 'vendor' },
-    ];
+    // Convert startup programs to service-like format and merge with services
+    const startupProgramsAsServices = (software.startupPrograms || []).map((prog: any) => ({
+      id: `startup-${prog.id}`,
+      name: prog.name,
+      displayName: prog.command || prog.name,
+      state: prog.enabled ? 'Enabled' : 'Disabled',
+      startupType: 'Startup Program',
+      isStartupProgram: true,
+    }));
+
+    const allServices = [...software.services, ...startupProgramsAsServices];
 
     // Handle table filter changes for applications
     const handleAppTableChange = (
@@ -1203,19 +1198,7 @@ export const AssetDetails = () => {
         { key: 'startupType', title: 'Startup Type' },
       ];
       const hostname = asset?.name || 'asset';
-      exportToCSV(software.services, columns, `${hostname}-services.csv`);
-    };
-
-    const exportStartupPrograms = () => {
-      const columns = [
-        { key: 'name', title: 'Name' },
-        { key: 'command', title: 'Command' },
-        { key: 'location', title: 'Location' },
-        { key: 'enabled', title: 'Enabled' },
-        { key: 'vendor', title: 'Vendor' },
-      ];
-      const hostname = asset?.name || 'asset';
-      exportToCSV(software.startupPrograms || [], columns, `${hostname}-startup-programs.csv`);
+      exportToCSV(allServices, columns, `${hostname}-services.csv`);
     };
 
     const softwareSubTabs = [
@@ -1253,33 +1236,8 @@ export const AssetDetails = () => {
         ),
       },
       {
-        key: 'startup',
-        label: `System Environment (${software.startupPrograms?.length || 0})`,
-        children: (
-          <div>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-              <Input.Search placeholder="Search" style={{ width: 300 }} />
-              <Tooltip title="Export to CSV">
-                <Button icon={<DownloadOutlined />} onClick={exportStartupPrograms} />
-              </Tooltip>
-            </div>
-            <Table
-              columns={startupProgramColumns}
-              dataSource={software.startupPrograms || []}
-              rowKey="id"
-              pagination={{
-                pageSize: 25,
-                showSizeChanger: true,
-                showTotal: (total) => `Total ${total} Startup Programs found`,
-              }}
-              size="small"
-            />
-          </div>
-        ),
-      },
-      {
         key: 'services',
-        label: `Services (${software.services.length})`,
+        label: `Services (${allServices.length})`,
         children: (
           <div>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
@@ -1290,9 +1248,9 @@ export const AssetDetails = () => {
             </div>
             <Table
               columns={serviceColumns}
-              dataSource={software.services}
+              dataSource={allServices}
               rowKey="id"
-              pagination={{ pageSize: 25, showTotal: (total) => `Total ${total} service found` }}
+              pagination={{ pageSize: 25, showTotal: (total) => `Total ${total} services found` }}
               size="small"
             />
           </div>
@@ -1392,12 +1350,12 @@ export const AssetDetails = () => {
 
   const getSeverityColor = (severity: string) => {
     const colors: Record<string, string> = {
-      Critical: '#ff4d4f',
-      High: '#fa8c16',
-      Medium: '#faad14',
-      Low: '#52c41a',
+      CRITICAL: '#ff4d4f',
+      HIGH: '#fa8c16',
+      MEDIUM: '#faad14',
+      LOW: '#52c41a',
     };
-    return colors[severity] || '#d9d9d9';
+    return colors[severity?.toUpperCase()] || '#d9d9d9';
   };
 
 
@@ -1775,18 +1733,22 @@ export const AssetDetails = () => {
   const renderVulnerabilitiesTab = () => {
     if (loadingVulnerabilities) return <Spin />;
 
+    const severityOrder: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+
     const columns = [
       {
         title: 'CVE ID',
         dataIndex: 'cveId',
         key: 'cveId',
         width: 120,
+        sorter: (a: any, b: any) => (a.cveId || '').localeCompare(b.cveId || ''),
         render: (text: string) => <Text strong>{text}</Text>,
       },
       {
         title: 'Title',
         dataIndex: 'title',
         key: 'title',
+        sorter: (a: any, b: any) => (a.title || '').localeCompare(b.title || ''),
         render: (text: string) => <div style={{ fontSize: '14px' }}>{text}</div>,
       },
       {
@@ -1794,6 +1756,11 @@ export const AssetDetails = () => {
         dataIndex: 'severity',
         key: 'severity',
         width: 110,
+        sorter: (a: any, b: any) => {
+          const aOrder = severityOrder[a.severity?.toUpperCase()] ?? 4;
+          const bOrder = severityOrder[b.severity?.toUpperCase()] ?? 4;
+          return aOrder - bOrder;
+        },
         render: (severity: string) => (
           <Tag
             color={getSeverityColor(severity)}
@@ -1808,9 +1775,10 @@ export const AssetDetails = () => {
         dataIndex: 'cvssScore',
         key: 'cvssScore',
         width: 100,
+        sorter: (a: any, b: any) => (a.cvssScore || 0) - (b.cvssScore || 0),
         render: (score: number) => (
-          <div style={{ fontWeight: 600, color: getSeverityColor(score > 8 ? 'Critical' : score > 5 ? 'High' : 'Low') }}>
-            {score.toFixed(1)}
+          <div style={{ fontWeight: 600, color: getSeverityColor(score > 8 ? 'CRITICAL' : score > 5 ? 'HIGH' : 'LOW') }}>
+            {score?.toFixed(1) || '0.0'}
           </div>
         ),
       },
@@ -1819,6 +1787,7 @@ export const AssetDetails = () => {
         dataIndex: 'status',
         key: 'status',
         width: 130,
+        sorter: (a: any, b: any) => (a.status || '').localeCompare(b.status || ''),
         render: (status: string) => {
           let color = 'default';
           if (status === 'Patched') color = 'green';
@@ -1829,12 +1798,13 @@ export const AssetDetails = () => {
       },
       {
         title: 'Exploit',
-        dataIndex: 'exploitAvailable',
-        key: 'exploitAvailable',
+        dataIndex: 'exploitable',
+        key: 'exploitable',
         width: 80,
-        render: (available: boolean) => (
-          <span style={{ color: available ? '#ff4d4f' : '#52c41a' }}>
-            {available ? '● In Wild' : '● Safe'}
+        sorter: (a: any, b: any) => (a.exploitable === b.exploitable ? 0 : a.exploitable ? -1 : 1),
+        render: (exploitable: boolean) => (
+          <span style={{ color: exploitable ? '#ff4d4f' : '#52c41a' }}>
+            {exploitable ? '● In Wild' : '● Safe'}
           </span>
         ),
       },
@@ -1848,7 +1818,7 @@ export const AssetDetails = () => {
             <Card size="small">
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff4d4f' }}>
-                  {vulnerabilities.filter((v) => v.severity === 'Critical').length}
+                  {vulnerabilities.filter((v) => v.severity?.toUpperCase() === 'CRITICAL').length}
                 </div>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
                   Critical
@@ -1860,7 +1830,7 @@ export const AssetDetails = () => {
             <Card size="small">
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fa8c16' }}>
-                  {vulnerabilities.filter((v) => v.severity === 'High').length}
+                  {vulnerabilities.filter((v) => v.severity?.toUpperCase() === 'HIGH').length}
                 </div>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
                   High
@@ -1872,7 +1842,7 @@ export const AssetDetails = () => {
             <Card size="small">
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#faad14' }}>
-                  {vulnerabilities.filter((v) => v.severity === 'Medium').length}
+                  {vulnerabilities.filter((v) => v.severity?.toUpperCase() === 'MEDIUM').length}
                 </div>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
                   Medium
@@ -1907,7 +1877,7 @@ export const AssetDetails = () => {
             }}
             size="small"
             rowClassName={(record) => {
-              if (record.severity === 'Critical') return 'vuln-critical-row';
+              if (record.severity?.toUpperCase() === 'CRITICAL') return 'vuln-critical-row';
               return '';
             }}
             onRow={(record) => ({
