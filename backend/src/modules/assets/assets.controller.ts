@@ -418,6 +418,15 @@ export async function getAssetPatches(req: Request, res: Response, next: NextFun
   }
 }
 
+export async function getAssetAlerts(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const alerts = await assetsService.getAssetAlerts(req.params.id);
+    res.json(alerts);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getAssetVulnerabilities(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const vulnerabilities = await assetsService.getAssetVulnerabilities(req.params.id);

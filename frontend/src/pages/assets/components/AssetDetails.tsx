@@ -70,7 +70,7 @@ export const AssetDetails = () => {
   const [software, setSoftware] = useState<Software | null>(null);
   const [vulnerabilities, setVulnerabilities] = useState<any[]>([]);
   const [loadingLifecycle, setLoadingLifecycle] = useState(false);
-  const [selectedDepreciationMethod, setSelectedDepreciationMethod] = useState<string | undefined>(undefined);
+  const [selectedDepreciationMethod, setSelectedDepreciationMethod] = useState<string>('straight-line');
   const [loadingHardware, setLoadingHardware] = useState(false);
   const [loadingSoftware, setLoadingSoftware] = useState(false);
   const [loadingVulnerabilities, setLoadingVulnerabilities] = useState(false);
@@ -95,8 +95,19 @@ export const AssetDetails = () => {
 
   // Alerts tab state
   const [alertsSearchText, setAlertsSearchText] = useState('');
-  const [alertsLoading] = useState(false);
+  const [alertsLoading, setAlertsLoading] = useState(false);
   const [alertsViewMode, setAlertsViewMode] = useState<'list' | 'grid'>('list');
+  const [alertsData, setAlertsData] = useState<Array<{
+    id: string;
+    alert: string;
+    severity: 'CRITICAL' | 'CLEAR' | 'WARNING' | 'INFO';
+    module: string;
+    attribute: string;
+    value: string;
+    message: string;
+    status: string;
+    createdOn: string;
+  }>>([]);
 
   // Audit log state
   const [auditLog, setAuditLog] = useState<Array<{ key: string; date: string; user: string; action: string; changes: string }>>([]);
@@ -119,6 +130,7 @@ export const AssetDetails = () => {
       fetchHardwareData();
       fetchSoftwareData();
       fetchVulnerabilitiesData();
+      fetchAlertsData();
       fetchTelemetryData();
       fetchAuditLogData();
       setSelectedTags(asset.tagIds || []);
@@ -216,6 +228,20 @@ export const AssetDetails = () => {
       setVulnerabilities([]);
     } finally {
       setLoadingVulnerabilities(false);
+    }
+  };
+
+  const fetchAlertsData = async () => {
+    if (!asset) return;
+    setAlertsLoading(true);
+    try {
+      const result = await assetService.getAssetAlerts(asset.id);
+      setAlertsData(result.data || []);
+    } catch (error) {
+      console.error('Failed to fetch alerts data:', error);
+      setAlertsData([]);
+    } finally {
+      setAlertsLoading(false);
     }
   };
 
@@ -594,11 +620,10 @@ export const AssetDetails = () => {
 
     const depreciationMethodSelector = (
       <Select
-        value={selectedDepreciationMethod || 'default'}
-        onChange={(value) => handleDepreciationMethodChange(value === 'default' ? '' : value)}
+        value={selectedDepreciationMethod}
+        onChange={handleDepreciationMethodChange}
         style={{ width: 220 }}
         options={[
-          { value: 'default', label: 'Asset Default Method' },
           { value: 'straight-line', label: 'Straight Line (SLM)' },
           { value: 'double-declining', label: 'Double Declining Balance (DDB)' },
           { value: 'sum-of-years', label: 'Sum of Years Digits (SYD)' },
@@ -2052,11 +2077,6 @@ export const AssetDetails = () => {
       createdOn: string;
     };
 
-    // TODO: Implement asset alerts API endpoint
-    // For now, show empty state - alerts will be populated when
-    // the backend /assets/:id/alerts endpoint is implemented
-    const mockAlerts: AlertItem[] = [];
-
     const getAlertSeverityColor = (severity: string) => {
       switch (severity) {
         case 'CRITICAL':
@@ -2072,7 +2092,7 @@ export const AssetDetails = () => {
       }
     };
 
-    const filteredAlerts = mockAlerts.filter(alert =>
+    const filteredAlerts = (alertsData as AlertItem[]).filter(alert =>
       alert.alert.toLowerCase().includes(alertsSearchText.toLowerCase()) ||
       alert.module.toLowerCase().includes(alertsSearchText.toLowerCase()) ||
       alert.attribute.toLowerCase().includes(alertsSearchText.toLowerCase()) ||
@@ -2145,10 +2165,23 @@ export const AssetDetails = () => {
           />
           <Space>
             <Button icon={<CalendarOutlined />}>Timeline</Button>
-            <Button icon={<ReloadOutlined />} onClick={() => message.info('Refreshing...')}>
+            <Button icon={<ReloadOutlined />} onClick={() => fetchAlertsData()} loading={alertsLoading}>
               Refresh
             </Button>
-            <Button icon={<ExportOutlined />} onClick={() => message.info('Exporting...')}>
+            <Button icon={<ExportOutlined />} onClick={() => {
+              const csvContent = [
+                ['Alert', 'Severity', 'Module', 'Attribute', 'Value', 'Message', 'Created On'].join(','),
+                ...filteredAlerts.map(a => [a.alert, a.severity, a.module, a.attribute, a.value, `"${a.message}"`, a.createdOn].join(','))
+              ].join('\n');
+              const blob = new Blob([csvContent], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `asset-alerts-${id}.csv`;
+              link.click();
+              URL.revokeObjectURL(url);
+              message.success('Alerts exported');
+            }}>
               Export
             </Button>
             <Button>Configure Alert</Button>

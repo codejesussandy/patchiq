@@ -297,11 +297,10 @@ async function main() {
   ];
 
   for (const alert of alertConfigs) {
-    await prisma.alertConfig.upsert({
-      where: { type: alert.type },
-      update: {},
-      create: alert,
-    });
+    const existing = await prisma.alertConfig.findFirst({ where: { type: alert.type } });
+    if (!existing) {
+      await prisma.alertConfig.create({ data: alert });
+    }
   }
   console.log('Created', alertConfigs.length, 'alert configurations');
 
@@ -364,6 +363,9 @@ async function main() {
   console.log('\nSeeding CPE mappings for vulnerability correlation...');
   const cpeMappingsCreated = await seedCpeMappings(prisma);
   console.log('Created/Updated', cpeMappingsCreated, 'CPE mappings');
+
+  // Asset alerts are now created by the real-time alert evaluation engine
+  // (see backend/src/modules/alerts/alert-evaluation.service.ts)
 
   console.log('\nDatabase seed completed successfully!');
   console.log('\n=== Login Credentials ===');

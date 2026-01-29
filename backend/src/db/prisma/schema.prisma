@@ -357,6 +357,7 @@ model Asset {
   tags              AssetTag[]
   vulnerabilities   AssetVulnerability[]
   patchTasks        PatchDeploymentTask[]
+  alerts            AssetAlert[]
 
   @@index([status])
   @@index([type])
@@ -1649,4 +1650,29 @@ model DeploymentPolicy {
 
   @@index([type])
   @@map("deployment_policies")
+}
+
+// ============================================
+// Asset Alerts (triggered alert events per asset)
+// ============================================
+model AssetAlert {
+  id              String    @id @default(uuid())
+  assetId         String    @map("asset_id")
+  asset           Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  alertConfigId   String?   @map("alert_config_id")
+  alert           String                              // Alert name/title
+  severity        String    @default("INFO")          // CRITICAL | WARNING | INFO | CLEAR
+  module          String    @default("System")        // Security, Performance, Software, etc.
+  attribute       String    @default("")              // e.g. "CPU Usage", "Disk Space"
+  value           String    @default("")              // The value that triggered the alert
+  message         String    @default("")              // Human-readable description
+  status          String    @default("Open")          // Open | Acknowledged | Resolved
+  resolvedAt      DateTime? @map("resolved_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([assetId])
+  @@index([severity])
+  @@index([status])
+  @@map("asset_alerts")
 }

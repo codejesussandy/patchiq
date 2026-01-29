@@ -20,6 +20,7 @@ import type {
   TelemetryHistory,
   SystemErrors,
   AssetAuditLog,
+  AssetAlertResponse,
   CategoryResponse,
   SubCategoryResponse,
   TagResponse,
@@ -2115,6 +2116,61 @@ export async function getAssetAuditLog(id: string): Promise<AssetAuditLog[]> {
     user: log.user?.name || log.user?.email || 'System',
     details: typeof log.details === 'string' ? log.details : JSON.stringify(log.details),
   }));
+}
+
+// ============================================
+// Asset Alerts Service
+// ============================================
+
+export async function getAssetAlerts(id: string): Promise<{ data: AssetAlertResponse[]; summary: { total: number; critical: number; warning: number; info: number; clear: number; open: number; resolved: number } }> {
+  const asset = await prisma.asset.findUnique({
+    where: { id },
+  });
+
+  if (!asset) {
+    throw new NotFoundError('Asset not found');
+  }
+
+  const alerts = await prisma.assetAlert.findMany({
+    where: { assetId: id },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const summary = {
+    total: alerts.length,
+    critical: 0,
+    warning: 0,
+    info: 0,
+    clear: 0,
+    open: 0,
+    resolved: 0,
+  };
+
+  const data: AssetAlertResponse[] = alerts.map((a) => {
+    const sev = a.severity.toUpperCase();
+    if (sev === 'CRITICAL') summary.critical++;
+    else if (sev === 'WARNING') summary.warning++;
+    else if (sev === 'INFO') summary.info++;
+    else if (sev === 'CLEAR') summary.clear++;
+
+    if (a.status === 'Open') summary.open++;
+    else if (a.status === 'Resolved') summary.resolved++;
+
+    return {
+      id: a.id,
+      alert: a.alert,
+      severity: a.severity,
+      module: a.module,
+      attribute: a.attribute,
+      value: a.value,
+      message: a.message,
+      status: a.status,
+      createdOn: a.createdAt.toISOString(),
+      resolvedAt: a.resolvedAt?.toISOString() || null,
+    };
+  });
+
+  return { data, summary };
 }
 
 // ============================================

@@ -136,6 +136,33 @@ export const assetService = {
     return response.data;
   },
 
+  async getAssetAlerts(id: string): Promise<{
+    data: Array<{
+      id: string;
+      alert: string;
+      severity: string;
+      module: string;
+      attribute: string;
+      value: string;
+      message: string;
+      status: string;
+      createdOn: string;
+      resolvedAt: string | null;
+    }>;
+    summary: {
+      total: number;
+      critical: number;
+      warning: number;
+      info: number;
+      clear: number;
+      open: number;
+      resolved: number;
+    };
+  }> {
+    const response = await api.get(`/assets/${id}/alerts`);
+    return response.data;
+  },
+
   async getAssetWithPatchDetails(id: string): Promise<Asset> {
     const response = await api.get(`/assets/${id}/full`);
     return response.data;

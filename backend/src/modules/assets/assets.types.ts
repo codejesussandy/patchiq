@@ -639,6 +639,20 @@ export interface AssetAuditLog {
   details?: string;
 }
 
+// Asset Alert Types
+export interface AssetAlertResponse {
+  id: string;
+  alert: string;
+  severity: string;
+  module: string;
+  attribute: string;
+  value: string;
+  message: string;
+  status: string;
+  createdOn: string;
+  resolvedAt?: string | null;
+}
+
 // Software Inventory Types
 export interface SoftwareInventoryResponse {
   id: string;

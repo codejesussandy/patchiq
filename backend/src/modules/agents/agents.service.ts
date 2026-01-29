@@ -5,6 +5,7 @@ import { generateTokenPair } from '@shared/utils/jwt';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import { getRelativeTime } from '@shared/utils/date';
 import { cveDatabase } from '@shared/services/cve-database.service';
+import { evaluateAlertsForAsset, evaluateSecurityAlertsForAsset } from '@/modules/alerts/alert-evaluation.service';
 import type {
   RegisterAgentInput,
   HeartbeatInput,
@@ -165,6 +166,13 @@ export class AgentsService {
           uptime: input.uptime,
         },
       });
+
+      // Fire-and-forget alert evaluation
+      evaluateAlertsForAsset(agent.assetId, {
+        cpuUsage: input.cpuUsage,
+        memoryUsage: input.memoryUsage,
+        diskUsage: input.diskUsage,
+      }).catch(() => {});
     }
 
     // Check for pending actions
@@ -896,6 +904,12 @@ export class AgentsService {
           encryptionEnabled: sec.encryptionEnabled as boolean | undefined,
         },
       });
+
+      // Fire-and-forget security alert evaluation
+      evaluateSecurityAlertsForAsset(agent.assetId, {
+        firewallEnabled: sec.firewallEnabled as boolean | undefined,
+        antivirusInstalled: sec.antivirusInstalled as boolean | undefined,
+      }).catch(() => {});
     }
 
     // Store software data if provided
@@ -1004,6 +1018,16 @@ export class AgentsService {
         timestamp: new Date(telemetry.collectedAt),
       },
     });
+
+    // Fire-and-forget alert evaluation
+    if (agent.assetId) {
+      evaluateAlertsForAsset(agent.assetId, {
+        cpuUsage: (cpu?.usagePercent ?? cpu?.usage) as number | undefined,
+        memoryUsage: (memory?.usagePercent ?? memory?.usage) as number | undefined,
+        diskUsage: (disk?.usagePercent ?? disk?.usage) as number | undefined,
+        pendingReboot,
+      }).catch(() => {});
+    }
   }
 
   /**
