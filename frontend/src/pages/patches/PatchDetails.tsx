@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
+  App,
   Typography,
   Button,
   Tabs,
@@ -12,7 +13,6 @@ import {
   Divider,
   Space,
   Breadcrumb,
-  message,
   Spin,
   Modal,
   Form,
@@ -38,6 +38,9 @@ import {
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { patchService, type Patch, type AffectedSoftware, type FileDetail, type Vulnerability, type Endpoint } from '../../services/patch.service';
+import { settingsService } from '../../services/settings.service';
+import { assetService } from '../../services/asset.service';
+import { tagService } from '../../services/tag.service';
 import { SeverityBadge, EndpointDetailsDrawer, OSIcon } from '../../components/patches';
 import dayjs from 'dayjs';
 
@@ -46,6 +49,7 @@ const { Option } = Select;
 const { TextArea } = Input;
 
 export const PatchDetails = () => {
+  const { message } = App.useApp();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
@@ -63,6 +67,12 @@ export const PatchDetails = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [form] = Form.useForm();
 
+  // Affected Products in edit step 2
+  const [editAffectedProducts, setEditAffectedProducts] = useState<AffectedSoftware[]>([]);
+  const [addProductModalVisible, setAddProductModalVisible] = useState(false);
+  const [addProductForm] = Form.useForm();
+  const [addProductLoading, setAddProductLoading] = useState(false);
+
   // Install/Deployment Modal
   const [installModalVisible, setInstallModalVisible] = useState(false);
   const [installForm] = Form.useForm();
@@ -75,6 +85,32 @@ export const PatchDetails = () => {
   const [patchesSearchText, setPatchesSearchText] = useState('');
   const [selectedPatchIds, setSelectedPatchIds] = useState<React.Key[]>([]);
   const [patchesLoading, setPatchesLoading] = useState(false);
+
+  // Dynamic option lists
+  const [endpointOptions, setEndpointOptions] = useState<any[]>([]);
+  const [deploymentPolicies, setDeploymentPolicies] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [tagOptions, setTagOptions] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const [endpointsData, policiesData, usersData, tagsData] = await Promise.all([
+          assetService.getAssets(),
+          settingsService.getDeploymentPolicies(),
+          settingsService.getUsers(),
+          tagService.getTags(),
+        ]);
+        setEndpointOptions(endpointsData);
+        setDeploymentPolicies(policiesData);
+        setUsers(usersData);
+        setTagOptions(tagsData);
+      } catch {
+        // Silently fail
+      }
+    };
+    fetchOptions();
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -138,29 +174,31 @@ export const PatchDetails = () => {
     if (currentStep === 0) {
       try {
         await form.validateFields();
-        setCurrentStep(1);
-      } catch (error) {
-        // Validation failed
-      }
-    } else {
-      try {
-        const values = form.getFieldsValue();
+        // Save step 1 changes
         if (patch) {
+          const values = form.getFieldsValue();
           await patchService.updatePatch(patch.id, {
             ...patch,
             ...values,
             releaseDate: values.releaseDate?.format('YYYY-MM-DD') || patch.releaseDate,
           });
-          message.success('Patch updated successfully');
-          setEditModalVisible(false);
-          setCurrentStep(0);
-          form.resetFields();
-          // Refresh patch details
-          fetchPatchDetails(patch.id);
+          // Load existing affected products for step 2
+          const products = await patchService.getAffectedSoftwares(patch.id);
+          setEditAffectedProducts(products);
         }
+        setCurrentStep(1);
       } catch (error) {
-        message.error('Failed to update patch');
+        if ((error as { errorFields?: unknown }).errorFields) return;
+        message.error('Failed to save patch');
       }
+    } else {
+      // Step 2 done — close modal
+      message.success('Patch updated successfully');
+      setEditModalVisible(false);
+      setCurrentStep(0);
+      form.resetFields();
+      setEditAffectedProducts([]);
+      if (patch) fetchPatchDetails(patch.id);
     }
   };
 
@@ -330,9 +368,9 @@ export const PatchDetails = () => {
             rules={[{ required: true, message: 'Please select tags' }]}
           >
             <Select mode="tags" placeholder="Select">
-              <Option value="Third Party">Third Party</Option>
-              <Option value="Critical">Critical</Option>
-              <Option value="Security">Security</Option>
+              {tagOptions.map((t) => (
+                <Option key={t.id} value={t.name}>{t.name}</Option>
+              ))}
             </Select>
           </Form.Item>
         </Col>
@@ -340,13 +378,108 @@ export const PatchDetails = () => {
     </Form>
   );
 
+  const handleAddAffectedProduct = async () => {
+    try {
+      const values = await addProductForm.validateFields();
+      if (!patch) return;
+
+      setAddProductLoading(true);
+      const product = await patchService.addAffectedProduct(patch.id, {
+        softwareName: values.softwareName,
+        version: values.version,
+        vendor: values.vendor,
+        platform: values.platform,
+      });
+      setEditAffectedProducts((prev) => [...prev, product]);
+      setAddProductModalVisible(false);
+      addProductForm.resetFields();
+      message.success('Affected product added');
+    } catch (error) {
+      if (!(error as { errorFields?: unknown }).errorFields) {
+        message.error('Failed to add affected product');
+      }
+    } finally {
+      setAddProductLoading(false);
+    }
+  };
+
+  const handleRemoveAffectedProduct = async (productId: string) => {
+    if (!patch) return;
+    try {
+      await patchService.removeAffectedProduct(patch.id, productId);
+      setEditAffectedProducts((prev) => prev.filter((p) => p.id !== productId));
+      message.success('Affected product removed');
+    } catch {
+      message.error('Failed to remove affected product');
+    }
+  };
+
   const renderEditFormStep2 = () => (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={5} style={{ margin: 0 }}>Affected Products</Title>
-        <Button type="link">Add Affected Products</Button>
+        <Button type="link" onClick={() => { addProductForm.resetFields(); setAddProductModalVisible(true); }}>
+          + Add Affected Product
+        </Button>
       </div>
-      <Text type="secondary">No affected products added yet.</Text>
+
+      <Table
+        dataSource={editAffectedProducts}
+        rowKey="id"
+        pagination={false}
+        size="small"
+        locale={{ emptyText: 'No affected products added yet. Click "Add Affected Product" above.' }}
+        columns={[
+          { title: 'Software Name', dataIndex: 'softwareName', key: 'softwareName' },
+          { title: 'Version', dataIndex: 'version', key: 'version', render: (v: string) => v || '-' },
+          { title: 'Vendor', dataIndex: 'vendor', key: 'vendor', render: (v: string) => v || '-' },
+          { title: 'Platform', dataIndex: 'platform', key: 'platform', render: (v: string) => v || '-' },
+          { title: 'Installed On', dataIndex: 'installedOn', key: 'installedOn', render: (v: number) => `${v} endpoint${v !== 1 ? 's' : ''}` },
+          {
+            title: '',
+            key: 'action',
+            width: 50,
+            render: (_: unknown, record: AffectedSoftware) => (
+              <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveAffectedProduct(record.id)} />
+            ),
+          },
+        ]}
+      />
+
+      <Modal
+        title="Add Affected Product"
+        open={addProductModalVisible}
+        onCancel={() => setAddProductModalVisible(false)}
+        onOk={handleAddAffectedProduct}
+        confirmLoading={addProductLoading}
+        okText="Add"
+      >
+        <Form form={addProductForm} layout="vertical">
+          <Form.Item name="softwareName" label="Software Name" rules={[{ required: true, message: 'Please enter software name' }]}>
+            <Input placeholder="e.g., Microsoft Office" />
+          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="version" label="Version">
+                <Input placeholder="e.g., 2021" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="vendor" label="Vendor">
+                <Input placeholder="e.g., Microsoft" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="platform" label="Platform">
+            <Select placeholder="Select platform" allowClear>
+              <Option value="Windows">Windows</Option>
+              <Option value="MacOS">MacOS</Option>
+              <Option value="Linux">Linux</Option>
+              <Option value="Cross-platform">Cross-platform</Option>
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 
@@ -1028,9 +1161,9 @@ export const PatchDetails = () => {
                 label="Endpoints"
               >
                 <Select placeholder="Please Select" style={{ width: '100%' }} mode="multiple">
-                  <Option value="endpoint1">Endpoint 1</Option>
-                  <Option value="endpoint2">Endpoint 2</Option>
-                  <Option value="endpoint3">Endpoint 3</Option>
+                  {endpointOptions.map((e) => (
+                    <Option key={e.id} value={e.id}>{e.hostname || e.name || e.id}</Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>
@@ -1144,9 +1277,9 @@ export const PatchDetails = () => {
                 rules={[{ required: true, message: 'Please select deployment policy' }]}
               >
                 <Select placeholder="Please Select" style={{ width: '100%' }}>
-                  <Option value="policy1">Policy 1</Option>
-                  <Option value="policy2">Policy 2</Option>
-                  <Option value="policy3">Policy 3</Option>
+                  {deploymentPolicies.map((p) => (
+                    <Option key={p.id} value={p.id}>{p.name}</Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>
@@ -1156,9 +1289,9 @@ export const PatchDetails = () => {
                 label="Notify to"
               >
                 <Select placeholder="Please Select" style={{ width: '100%' }} mode="multiple">
-                  <Option value="user1">User 1</Option>
-                  <Option value="user2">User 2</Option>
-                  <Option value="user3">User 3</Option>
+                  {users.map((u) => (
+                    <Option key={u.id} value={u.id}>{u.name || u.email}</Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>

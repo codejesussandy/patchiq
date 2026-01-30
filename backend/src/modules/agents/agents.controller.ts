@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import archiver from 'archiver';
+import crypto from 'crypto';
 import { AgentsService } from './agents.service';
 import { minioStorage } from '@shared/services/minio.service';
 import { env } from '@config/env';
@@ -222,14 +223,15 @@ export class AgentsController {
 
       // Determine server URL - prefer configured public URL, fall back to request headers
       let serverUrl: string;
-      if (env.BACKEND_PUBLIC_URL && env.BACKEND_PUBLIC_URL !== 'http://localhost:3000') {
+      const defaultBackendUrl = `http://localhost:${env.PORT}`;
+      if (env.BACKEND_PUBLIC_URL && env.BACKEND_PUBLIC_URL !== defaultBackendUrl) {
         // Use configured public URL (remove trailing slash if present, add /api)
         const baseUrl = env.BACKEND_PUBLIC_URL.replace(/\/+$/, '');
         serverUrl = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
       } else {
         // Fall back to request headers for local development
         const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-        const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
+        const host = req.headers['x-forwarded-host'] || req.headers.host || `localhost:${env.PORT}`;
         serverUrl = `${protocol}://${host}/api`;
       }
 
@@ -348,6 +350,74 @@ echo "Starting PatchIQ Agent..."
 
       // Finalize the archive
       await archive.finalize();
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /v1/agent-versions/:id/upload
+   * Upload agent binary for a specific version
+   * Expects multipart/form-data with a 'file' field
+   */
+  uploadAgentBinary = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const version = await this.agentsService.getAgentVersionById(id);
+
+      // Read the raw body as buffer
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+      }
+      const buffer = Buffer.concat(chunks);
+
+      if (buffer.length === 0) {
+        res.status(400).json({ error: 'No file data received' });
+        return;
+      }
+
+      // Generate object key path
+      const isWindows = version.platform === 'Windows';
+      const ext = isWindows ? '.exe' : '';
+      const platformDir = version.platform.toLowerCase();
+      const objectKey = `${platformDir}/${version.architecture}/${version.version}/patchiq-agent${ext}`;
+
+      // Calculate checksum
+      const checksum = crypto.createHash('sha256').update(buffer).digest('hex');
+
+      // Initialize and upload to MinIO
+      await minioStorage.initialize();
+
+      // Ensure agents bucket exists
+      const minioClient = (minioStorage as any).client;
+      if (minioClient) {
+        const exists = await minioClient.bucketExists(AGENTS_BUCKET);
+        if (!exists) {
+          await minioClient.makeBucket(AGENTS_BUCKET, 'us-east-1');
+        }
+      }
+
+      await minioStorage.uploadBuffer(objectKey, buffer, {
+        bucket: AGENTS_BUCKET,
+        contentType: 'application/octet-stream',
+        metadata: {
+          'x-platform': version.platform,
+          'x-architecture': version.architecture,
+          'x-version': version.version,
+          'x-checksum-sha256': checksum,
+        },
+      });
+
+      // Update database record
+      await this.agentsService.updateAgentVersionFile(id, objectKey, buffer.length, checksum);
+
+      res.json({
+        message: `Agent binary uploaded for ${version.platform}/${version.architecture} v${version.version}`,
+        objectKey,
+        size: buffer.length,
+        checksum,
+      });
     } catch (error) {
       next(error);
     }

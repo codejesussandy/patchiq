@@ -166,4 +166,23 @@ router.post('/vulnerability-preference/sync', settingsController.syncVulnerabili
 router.get('/platform-license', settingsController.getPlatformLicense.bind(settingsController));
 router.put('/platform-license', validateBody(updateLicenseSchema), settingsController.updatePlatformLicense.bind(settingsController));
 
+// ============================================
+// Computer Groups
+// ============================================
+router.get('/computer-groups', settingsController.listComputerGroups.bind(settingsController));
+router.get('/computer-groups/available-endpoints', settingsController.getAvailableEndpoints.bind(settingsController));
+router.get('/computer-groups/:id', validateParams(idParamSchema), settingsController.getComputerGroup.bind(settingsController));
+router.post('/computer-groups', settingsController.createComputerGroup.bind(settingsController));
+router.put('/computer-groups/:id', validateParams(idParamSchema), settingsController.updateComputerGroup.bind(settingsController));
+router.delete('/computer-groups/:id', validateParams(idParamSchema), settingsController.deleteComputerGroup.bind(settingsController));
+
+// ============================================
+// Deployment Policies
+// ============================================
+router.get('/deployment-policies', settingsController.listDeploymentPolicies.bind(settingsController));
+router.get('/deployment-policies/:id', validateParams(idParamSchema), settingsController.getDeploymentPolicy.bind(settingsController));
+router.post('/deployment-policies', settingsController.createDeploymentPolicy.bind(settingsController));
+router.put('/deployment-policies/:id', validateParams(idParamSchema), settingsController.updateDeploymentPolicy.bind(settingsController));
+router.delete('/deployment-policies/:id', validateParams(idParamSchema), settingsController.deleteDeploymentPolicy.bind(settingsController));
+
 export { router as settingsRoutes };

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
+  App,
   Tabs,
   Tag,
   Button,
@@ -15,7 +16,6 @@ import {
   Input,
   Dropdown,
   Upload,
-  message,
   Modal,
   Spin,
   Divider,
@@ -60,6 +60,7 @@ const { Title, Text } = Typography;
 const TELEMETRY_POLL_INTERVAL = 30000;
 
 export const AssetDetails = () => {
+  const { message } = App.useApp();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 

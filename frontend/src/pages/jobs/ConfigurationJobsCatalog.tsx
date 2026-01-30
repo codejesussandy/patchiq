@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Input,
   Button,
   Card,
@@ -7,7 +8,6 @@ import {
   Tag,
   Typography,
   Popconfirm,
-  message,
   Modal,
   Form,
   Select,
@@ -67,6 +67,7 @@ const mapApiToLocal = (item: ConfigCatalogItem): ConfigurationItem => ({
 });
 
 export const ConfigurationJobsCatalog = () => {
+  const { message } = App.useApp();
   const [searchText, setSearchText] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [configurationItems, setConfigurationItems] = useState<ConfigurationItem[]>([]);

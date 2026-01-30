@@ -1,6 +1,9 @@
 # PatchIQ Development Makefile
 # ============================
 # Run `make help` to see all available commands
+#
+# Configuration: Set PUBLIC_HOST, PUBLIC_PORT, PUBLIC_SCHEME in .env
+# See .env.example for details.
 
 .PHONY: help dev dev-fresh dev-services dev-backend dev-frontend dev-agent stop clean logs logs-backend logs-frontend db-migrate db-seed db-studio db-reset agent-build agent-run agent-install-air test test-backend test-frontend check check-types check-lint check-build check-health check-all install status minio-console api-docs api-endpoints dev-all clean-all preflight
 
@@ -11,6 +14,16 @@ CYAN := \033[0;36m
 RED := \033[0;31m
 NC := \033[0m # No Color
 
+# Load .env if it exists (for PUBLIC_HOST, PUBLIC_PORT, PUBLIC_SCHEME)
+-include .env
+export
+
+# Derived public URL
+PUBLIC_SCHEME ?= http
+PUBLIC_HOST ?= localhost
+PUBLIC_PORT ?= 5173
+PUBLIC_URL := $(PUBLIC_SCHEME)://$(PUBLIC_HOST):$(PUBLIC_PORT)
+
 # Use docker compose v2 (with space) - check if it works, else fall back to docker-compose
 DOCKER_COMPOSE := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
 
@@ -19,6 +32,7 @@ help:
 	@echo ""
 	@echo "$(CYAN)PatchIQ Development Commands$(NC)"
 	@echo "=============================="
+	@echo "  Public URL: $(GREEN)$(PUBLIC_URL)$(NC)"
 	@echo ""
 	@echo "$(GREEN)Quick Start:$(NC)"
 	@echo "  make dev              - Start full stack (clean ports, rebuild if needed)"
@@ -32,7 +46,7 @@ help:
 	@echo "  make dev-frontend     - Start frontend locally (with HMR)"
 	@echo "  make dev-agent        - Start agent with hot reload (requires Air)"
 	@echo ""
-	@echo "$(GREEN)Note:$(NC) 'make dev' uses nginx reverse proxy - all services on port 5173"
+	@echo "$(GREEN)Note:$(NC) 'make dev' uses nginx reverse proxy on port $(PUBLIC_PORT)"
 	@echo "      'make dev-services' is for running backend/frontend outside Docker"
 	@echo ""
 	@echo "$(GREEN)Database:$(NC)"
@@ -57,7 +71,7 @@ help:
 	@echo "  make logs-frontend    - Tail frontend logs"
 	@echo ""
 	@echo "$(GREEN)API & Debug Tools:$(NC)"
-	@echo "  make db-studio        - Open Prisma Studio (DB GUI) on :5555"
+	@echo "  make db-studio        - Open Prisma Studio (DB GUI)"
 	@echo "  make minio-console    - Open MinIO Console info"
 	@echo "  make api-docs         - Open Scalar API docs (interactive)"
 	@echo "  make api-endpoints    - Show all API endpoints (text)"
@@ -83,7 +97,7 @@ preflight:
 	@echo "$(CYAN)Running pre-flight checks...$(NC)"
 	@# Kill processes on ports that Docker needs
 	@lsof -ti :3000 2>/dev/null | xargs kill -9 2>/dev/null || true
-	@lsof -ti :5173 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@lsof -ti :$(PUBLIC_PORT) 2>/dev/null | xargs kill -9 2>/dev/null || true
 	@# Remove orphan patchiq containers
 	@docker ps -aq --filter "name=patchiq" 2>/dev/null | xargs -r docker rm -f 2>/dev/null || true
 	@echo "$(GREEN)Pre-flight checks complete$(NC)"
@@ -102,13 +116,16 @@ dev: preflight
 	@sleep 5
 	@echo ""
 	@echo "$(GREEN)Services started!$(NC)"
-	@echo "  Frontend: http://localhost:5173"
-	@echo "  Backend:  http://localhost:3000"
-	@echo "  MinIO:    http://localhost:5002 (patchiq_admin / patchiq_secret_key)"
-	@echo "  Prisma:   http://localhost:5000"
-	@echo "  pgAdmin:  http://localhost:5050"
+	@echo "  Frontend:     $(PUBLIC_URL)"
+	@echo "  API:          $(PUBLIC_URL)/v1"
+	@echo "  API Docs:     $(PUBLIC_URL)/api-docs"
+	@echo "  MinIO:        $(PUBLIC_URL)/minio/"
+	@echo "  Prisma:       http://localhost:5000"
+	@echo "  pgAdmin:      http://localhost:5050"
 	@echo ""
 	@echo "  Login: admin@patchiq.io / admin123"
+	@echo ""
+	@echo "  Agent: make agent-run  (connects to $(PUBLIC_URL)/api)"
 	@echo ""
 	@echo "Use 'make logs' to watch logs, 'make stop' to stop services"
 
@@ -118,8 +135,7 @@ dev-fresh:
 	@$(DOCKER_COMPOSE) down --remove-orphans 2>/dev/null || true
 	@docker ps -aq --filter "name=patchiq" 2>/dev/null | xargs -r docker rm -f 2>/dev/null || true
 	@lsof -ti :3000 2>/dev/null | xargs kill -9 2>/dev/null || true
-	@lsof -ti :5173 2>/dev/null | xargs kill -9 2>/dev/null || true
-	@lsof -ti :8083 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@lsof -ti :$(PUBLIC_PORT) 2>/dev/null | xargs kill -9 2>/dev/null || true
 	@echo "$(CYAN)Starting fresh...$(NC)"
 	@$(DOCKER_COMPOSE) up -d --build --remove-orphans
 	@echo ""
@@ -131,8 +147,8 @@ dev-fresh:
 	@sleep 5
 	@echo ""
 	@echo "$(GREEN)Fresh start complete!$(NC)"
-	@echo "  Frontend: http://localhost:5173"
-	@echo "  Backend:  http://localhost:3000"
+	@echo "  Frontend: $(PUBLIC_URL)"
+	@echo "  API:      $(PUBLIC_URL)/v1"
 	@echo ""
 	@echo "  Login: admin@patchiq.io / admin123"
 
@@ -222,8 +238,57 @@ agent-build:
 	@echo "$(GREEN)Agent built: agent/patchify-agent$(NC)"
 
 agent-run:
-	@echo "$(CYAN)Running agent...$(NC)"
-	cd agent && go run ./cmd/agent --server http://localhost:3000/api
+	@echo "$(CYAN)Running agent (connecting to $(PUBLIC_URL)/api)...$(NC)"
+	cd agent && go run ./cmd/agent --server $(PUBLIC_URL)/api
+
+agent-release:
+	@echo "$(CYAN)Building agent binaries for all platforms...$(NC)"
+	@mkdir -p agent/dist
+	@cd agent && GOOS=linux GOARCH=amd64 go build -o dist/patchiq-agent-linux-amd64 ./cmd/agent
+	@cd agent && GOOS=linux GOARCH=arm64 go build -o dist/patchiq-agent-linux-arm64 ./cmd/agent
+	@cd agent && GOOS=darwin GOARCH=amd64 go build -o dist/patchiq-agent-darwin-amd64 ./cmd/agent
+	@cd agent && GOOS=darwin GOARCH=arm64 go build -o dist/patchiq-agent-darwin-arm64 ./cmd/agent
+	@cd agent && GOOS=windows GOARCH=amd64 go build -o dist/patchiq-agent-windows-amd64.exe ./cmd/agent
+	@echo "$(GREEN)Binaries built:$(NC)"
+	@ls -lh agent/dist/
+	@echo ""
+	@echo "$(CYAN)Uploading to MinIO...$(NC)"
+	@MC=$$(command -v mc 2>/dev/null || echo "/tmp/mc"); \
+	if [ ! -x "$$MC" ]; then \
+		echo "$(YELLOW)Downloading MinIO client...$(NC)"; \
+		curl -sL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc && chmod +x /tmp/mc; \
+		MC=/tmp/mc; \
+	fi; \
+	$$MC alias set patchiq http://localhost:5001 patchiq_admin patchiq_secret_key 2>/dev/null; \
+	$$MC mb --ignore-existing patchiq/agents 2>/dev/null; \
+	$$MC cp agent/dist/patchiq-agent-linux-amd64 patchiq/agents/linux/amd64/1.0.0/patchiq-agent; \
+	$$MC cp agent/dist/patchiq-agent-linux-arm64 patchiq/agents/linux/arm64/1.0.0/patchiq-agent; \
+	$$MC cp agent/dist/patchiq-agent-darwin-amd64 patchiq/agents/mac/amd64/1.0.0/patchiq-agent; \
+	$$MC cp agent/dist/patchiq-agent-darwin-arm64 patchiq/agents/mac/arm64/1.0.0/patchiq-agent; \
+	$$MC cp agent/dist/patchiq-agent-windows-amd64.exe patchiq/agents/windows/amd64/1.0.0/patchiq-agent.exe
+	@echo ""
+	@echo "$(CYAN)Updating database records...$(NC)"
+	@cd backend && npx ts-node -r tsconfig-paths/register -e " \
+	const { PrismaClient } = require('@prisma/client'); \
+	const prisma = new PrismaClient(); \
+	const fs = require('fs'); \
+	async function main() { \
+	  const entries = [ \
+	    { platform: 'Windows', architecture: 'amd64', filePath: 'windows/amd64/1.0.0/patchiq-agent.exe', bin: '../agent/dist/patchiq-agent-windows-amd64.exe' }, \
+	    { platform: 'Linux', architecture: 'amd64', filePath: 'linux/amd64/1.0.0/patchiq-agent', bin: '../agent/dist/patchiq-agent-linux-amd64' }, \
+	    { platform: 'Linux', architecture: 'arm64', filePath: 'linux/arm64/1.0.0/patchiq-agent', bin: '../agent/dist/patchiq-agent-linux-arm64' }, \
+	    { platform: 'Mac', architecture: 'amd64', filePath: 'mac/amd64/1.0.0/patchiq-agent', bin: '../agent/dist/patchiq-agent-darwin-amd64' }, \
+	    { platform: 'Mac', architecture: 'arm64', filePath: 'mac/arm64/1.0.0/patchiq-agent', bin: '../agent/dist/patchiq-agent-darwin-arm64' }, \
+	  ]; \
+	  for (const e of entries) { \
+	    const stat = fs.statSync(e.bin); \
+	    await prisma.agentVersion.updateMany({ where: { platform: e.platform, architecture: e.architecture, version: '1.0.0' }, data: { filePath: e.filePath, fileSize: BigInt(stat.size), lastUpdatedAt: new Date() } }); \
+	    console.log('  Updated ' + e.platform + '/' + e.architecture); \
+	  } \
+	} \
+	main().catch(console.error).finally(() => process.exit());"
+	@echo ""
+	@echo "$(GREEN)Agent release complete! All binaries uploaded and DB updated.$(NC)"
 
 agent-install-air:
 	@echo "$(CYAN)Installing Air for Go hot reload...$(NC)"
@@ -315,12 +380,13 @@ check-build:
 # Health check - verify running services respond
 check-health:
 	@echo "$(CYAN)Checking service health...$(NC)"
-	@curl -sf http://localhost:5173/health > /dev/null 2>&1 && echo "  Nginx+Backend: $(GREEN)OK$(NC) (via nginx proxy)" || echo "  Nginx+Backend: $(YELLOW)Not running$(NC)"
-	@curl -sf http://localhost:3000/health > /dev/null 2>&1 && echo "  Backend:       $(GREEN)OK$(NC) (direct)" || echo "  Backend:       $(YELLOW)Not running$(NC)"
-	@curl -sf http://localhost:5173 > /dev/null 2>&1 && echo "  Frontend:      $(GREEN)OK$(NC)" || echo "  Frontend:      $(YELLOW)Not running$(NC)"
-	@curl -sf http://localhost:8083/api/agent > /dev/null 2>&1 && echo "  Agent:         $(GREEN)OK$(NC)" || echo "  Agent:         $(YELLOW)Not running$(NC)"
-	@curl -sf http://localhost:5000 > /dev/null 2>&1 && echo "  Prisma Studio: $(GREEN)OK$(NC)" || echo "  Prisma Studio: $(YELLOW)Not running$(NC)"
-	@curl -sf http://localhost:5050 > /dev/null 2>&1 && echo "  pgAdmin:       $(GREEN)OK$(NC)" || echo "  pgAdmin:       $(YELLOW)Not running$(NC)"
+	@echo "  Public URL: $(PUBLIC_URL)"
+	@curl -sf $(PUBLIC_URL)/health > /dev/null 2>&1 && echo "  Nginx+Backend: $(GREEN)OK$(NC) ($(PUBLIC_URL)/health)" || echo "  Nginx+Backend: $(YELLOW)Not running$(NC)"
+	@curl -sf http://localhost:3000/health > /dev/null 2>&1 && echo "  Backend:       $(GREEN)OK$(NC) (direct :3000)" || echo "  Backend:       $(YELLOW)Not running$(NC)"
+	@curl -sf $(PUBLIC_URL) > /dev/null 2>&1 && echo "  Frontend:      $(GREEN)OK$(NC)" || echo "  Frontend:      $(YELLOW)Not running$(NC)"
+	@curl -sf http://localhost:8080/api/agent > /dev/null 2>&1 && echo "  Agent:         $(GREEN)OK$(NC) (:8080)" || echo "  Agent:         $(YELLOW)Not running$(NC)"
+	@curl -sf http://localhost:5000 > /dev/null 2>&1 && echo "  Prisma Studio: $(GREEN)OK$(NC) (:5000)" || echo "  Prisma Studio: $(YELLOW)Not running$(NC)"
+	@curl -sf http://localhost:5050 > /dev/null 2>&1 && echo "  pgAdmin:       $(GREEN)OK$(NC) (:5050)" || echo "  pgAdmin:       $(YELLOW)Not running$(NC)"
 	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_nginx" && echo "  Nginx:         $(GREEN)OK$(NC)" || echo "  Nginx:         $(YELLOW)Not running$(NC)"
 	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_db.*healthy" && echo "  Postgres:      $(GREEN)OK$(NC)" || echo "  Postgres:      $(YELLOW)Not running$(NC)"
 	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_redis.*healthy" && echo "  Redis:         $(GREEN)OK$(NC)" || echo "  Redis:         $(YELLOW)Not running$(NC)"
@@ -355,17 +421,18 @@ status: check-health
 # Open MinIO console info
 minio-console:
 	@echo "$(CYAN)MinIO Console:$(NC)"
-	@echo "  URL:      http://localhost:9001"
+	@echo "  URL:      $(PUBLIC_URL)/minio/"
+	@echo "  Direct:   http://localhost:5002"
 	@echo "  Username: patchiq_admin"
 	@echo "  Password: patchiq_secret_key"
 	@echo ""
 	@echo "Opening in browser..."
-	@open http://localhost:9001 2>/dev/null || xdg-open http://localhost:9001 2>/dev/null || echo "Open http://localhost:9001 in your browser"
+	@open $(PUBLIC_URL)/minio/ 2>/dev/null || xdg-open $(PUBLIC_URL)/minio/ 2>/dev/null || echo "Open $(PUBLIC_URL)/minio/ in your browser"
 
 # Open Scalar API docs in browser
 api-docs:
-	@echo "$(CYAN)Opening Scalar API docs at http://localhost:3000/api-docs ...$(NC)"
-	@open http://localhost:3000/api-docs 2>/dev/null || xdg-open http://localhost:3000/api-docs 2>/dev/null || echo "Open http://localhost:3000/api-docs in your browser"
+	@echo "$(CYAN)Opening Scalar API docs at $(PUBLIC_URL)/api-docs ...$(NC)"
+	@open $(PUBLIC_URL)/api-docs 2>/dev/null || xdg-open $(PUBLIC_URL)/api-docs 2>/dev/null || echo "Open $(PUBLIC_URL)/api-docs in your browser"
 
 # Show all API endpoints (text reference)
 api-endpoints:
@@ -374,9 +441,11 @@ api-endpoints:
 	@echo "$(CYAN)║              PatchIQ API Endpoints                        ║$(NC)"
 	@echo "$(CYAN)╚═══════════════════════════════════════════════════════════╝$(NC)"
 	@echo ""
-	@echo "$(GREEN)Backend API$(NC) - http://localhost:3000"
-	@echo "  Health:        GET  /health"
-	@echo "  API Base:      /v1"
+	@echo "$(GREEN)Public URL:$(NC) $(PUBLIC_URL)"
+	@echo ""
+	@echo "$(GREEN)Backend API$(NC) (via nginx)"
+	@echo "  Health:        GET  $(PUBLIC_URL)/health"
+	@echo "  API Base:      $(PUBLIC_URL)/v1"
 	@echo ""
 	@echo "  $(YELLOW)Auth:$(NC)"
 	@echo "    POST /v1/auth/login          - Login"
@@ -401,19 +470,21 @@ api-endpoints:
 	@echo "    GET  /v1/patches             - List patches"
 	@echo "    GET  /v1/patches/:id         - Get patch"
 	@echo ""
-	@echo "$(GREEN)Agent API$(NC) - http://localhost:8080"
+	@echo "$(GREEN)Agent Local API$(NC) - http://localhost:8080"
 	@echo "    GET  /api/agent              - Agent info"
 	@echo "    GET  /api/inventory          - Full inventory"
 	@echo "    GET  /api/telemetry          - Current telemetry"
 	@echo "    POST /api/collect            - Trigger collection"
 	@echo ""
-	@echo "$(GREEN)Agent Registration API$(NC) - http://localhost:3000/api/agent"
+	@echo "$(GREEN)Agent Registration API$(NC) - $(PUBLIC_URL)/api/agent"
 	@echo "    POST /api/agent/register     - Register agent"
 	@echo "    POST /api/agent/heartbeat    - Send heartbeat"
 	@echo "    POST /api/agent/inventory    - Submit inventory"
 	@echo "    POST /api/agent/telemetry    - Submit telemetry"
 	@echo ""
-	@echo "$(GREEN)Other Services:$(NC)"
-	@echo "  Prisma Studio: make db-studio  → http://localhost:5555"
-	@echo "  MinIO Console: make minio-console → http://localhost:9001"
+	@echo "$(GREEN)Dev Tools:$(NC)"
+	@echo "  API Docs:      $(PUBLIC_URL)/api-docs"
+	@echo "  Prisma Studio: http://localhost:5000"
+	@echo "  pgAdmin:       http://localhost:5050"
+	@echo "  MinIO Console: $(PUBLIC_URL)/minio/"
 	@echo ""

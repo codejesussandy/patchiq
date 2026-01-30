@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Form, Button, Typography, message, Radio, Space } from 'antd';
+import { App,
+  Form, Button, Typography, Radio, Space } from 'antd';
 import { settingsService } from '../../services/settings.service';
 
 const { Title } = Typography;
@@ -10,6 +11,7 @@ interface AgentApprovalSettingsData {
 }
 
 export const AgentApprovalSettings = () => {
+  const { message } = App.useApp();
   const [form] = Form.useForm<AgentApprovalSettingsData>();
   const [loading, setLoading] = useState(false);
   const [initialValues, setInitialValues] = useState<AgentApprovalSettingsData>({

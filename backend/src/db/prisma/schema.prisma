@@ -1636,6 +1636,19 @@ model ConfigDeploymentTask {
   @@map("config_deployment_tasks")
 }
 
+model ComputerGroup {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  endpoints     String[] @default([])
+  endpointCount Int      @default(0) @map("endpoint_count")
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("computer_groups")
+}
+
 model DeploymentPolicy {
   id              String   @id @default(uuid())
   policyId        String   @unique @map("policy_id")

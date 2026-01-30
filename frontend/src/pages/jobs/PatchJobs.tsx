@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Input,
   Button,
   Table,
@@ -8,7 +9,6 @@ import {
   Typography,
   Dropdown,
   Popconfirm,
-  message,
   Modal,
   Form,
   Select,
@@ -53,6 +53,7 @@ type PolicyItem = {
 };
 
 export const PatchJobs = () => {
+  const { message } = App.useApp();
   const [searchText, setSearchText] = useState('');
   const [policies, setPolicies] = useState<PolicyItem[]>([]);
   const [loading, setLoading] = useState(false);

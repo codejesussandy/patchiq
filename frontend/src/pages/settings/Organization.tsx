@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
   Typography,
   Modal,
   Form,
-  message,
   Space,
   Tooltip,
   Checkbox,
+  Switch,
 } from 'antd';
 import {
   SearchOutlined,
@@ -41,6 +42,7 @@ interface FilterState {
 }
 
 export const Organization = () => {
+  const { message } = App.useApp();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -75,9 +77,15 @@ export const Organization = () => {
         ? data.map((org: any, index: number) => ({
             ...org,
             id: org.id || String(index),
-            isDefault: org.name === 'Global Organization',
+            isDefault: org.isDefault ?? false,
           }))
         : [];
+      // Sort default orgs first, then alphabetically by name
+      formattedData.sort((a: Organization, b: Organization) => {
+        if (a.isDefault && !b.isDefault) return -1;
+        if (!a.isDefault && b.isDefault) return 1;
+        return a.name.localeCompare(b.name);
+      });
       setOrganizations(formattedData);
     } catch (error) {
       console.error('Error fetching organizations:', error);
@@ -99,6 +107,7 @@ export const Organization = () => {
     form.setFieldsValue({
       name: org.name,
       description: org.description,
+      isDefault: org.isDefault ?? false,
     });
     setModalVisible(true);
   };
@@ -109,6 +118,7 @@ export const Organization = () => {
     viewForm.setFieldsValue({
       name: org.name,
       description: org.description,
+      isDefault: org.isDefault ?? false,
     });
     setViewModalVisible(true);
   };
@@ -139,6 +149,7 @@ export const Organization = () => {
     viewForm.setFieldsValue({
       name: viewingOrg?.name,
       description: viewingOrg?.description,
+      isDefault: viewingOrg?.isDefault ?? false,
     });
   };
 
@@ -472,9 +483,17 @@ export const Organization = () => {
             />
           </Form.Item>
 
+          <Form.Item
+            label="Set as Default"
+            name="isDefault"
+            valuePropName="checked"
+          >
+            <Switch disabled={editingOrg?.isDefault} />
+          </Form.Item>
+
           {editingOrg?.isDefault && (
             <Text type="warning">
-              Note: The Global Organization is a system default and cannot be modified.
+              Note: The default organization cannot be modified.
             </Text>
           )}
         </Form>
@@ -554,9 +573,17 @@ export const Organization = () => {
               />
             </Form.Item>
 
+            <Form.Item
+              label="Set as Default"
+              name="isDefault"
+              valuePropName="checked"
+            >
+              <Switch disabled={!isViewModalEditing || viewingOrg.isDefault} />
+            </Form.Item>
+
             {viewingOrg.isDefault && (
               <Text type="warning">
-                Note: The Global Organization is a system default and cannot be modified.
+                Note: The default organization cannot be modified.
               </Text>
             )}
           </Form>

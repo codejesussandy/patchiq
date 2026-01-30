@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Button, message, Typography, Space, Card, Spin } from 'antd';
+import { App,
+  Button, Typography, Space, Card, Spin } from 'antd';
 import { CloudUploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/es/upload';
 import { settingsService } from '../../services/settings.service';
@@ -12,6 +13,7 @@ interface BrandingData {
 }
 
 export const Branding = () => {
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [logoFile, setLogoFile] = useState<RcFile | null>(null);

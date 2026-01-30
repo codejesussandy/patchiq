@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
   Typography,
-  message,
   Space,
   Tooltip,
 } from 'antd';
@@ -42,6 +42,7 @@ const PlatformIcon = ({ platform }: PlatformIconProps) => {
 };
 
 export const AgentVersions = () => {
+  const { message } = App.useApp();
   const [versions, setVersions] = useState<AgentVersion[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');

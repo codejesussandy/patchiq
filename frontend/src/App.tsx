@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntApp } from 'antd';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Login } from './pages/Login';
 import { ForgotPassword } from './pages/ForgotPassword';
@@ -44,7 +44,6 @@ import { Hub } from './pages/hub/Hub';
 
 // Settings
 import { Organization } from './pages/settings/Organization';
-import { Department } from './pages/settings/Department';
 import { UserLocation } from './pages/settings/UserLocation';
 import { UserRoles } from './pages/settings/UserRoles';
 import { RolesAndPrivileges } from './pages/settings/RolesAndPrivileges';
@@ -404,16 +403,6 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/settings/user-management/department"
-        element={
-          <ProtectedRoute>
-            <MainLayout>
-              <Department />
-            </MainLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/settings/user-management/location"
         element={
           <ProtectedRoute>
@@ -736,11 +725,13 @@ function App() {
         },
       }}
     >
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
+      <AntApp>
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </AntApp>
     </ConfigProvider>
   );
 }

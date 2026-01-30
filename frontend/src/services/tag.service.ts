@@ -5,7 +5,7 @@ export const tagService = {
   // Tag CRUD
   async getTags(): Promise<Tag[]> {
     const response = await api.get('/tags');
-    return response.data;
+    return response.data?.data ?? response.data;
   },
 
   async getTag(tagId: string): Promise<Tag> {

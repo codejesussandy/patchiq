@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, Form, Input, Select, Checkbox, Button, Space, message, Divider } from 'antd';
+import { App,
+  Modal, Form, Input, Select, Checkbox, Button, Space, Divider } from 'antd';
 import type { Tag as TagType } from '../../../types/asset.types';
 import { tagService } from '../../../services/tag.service';
 
@@ -51,6 +52,7 @@ const CreateTagModal: React.FC<CreateTagModalProps> = ({
   onSuccess,
   tag,
 }) => {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
   const [mode, setMode] = React.useState<'quick' | 'full'>('quick');

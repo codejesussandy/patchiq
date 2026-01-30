@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  App,
   Input,
   Button,
   Table,
@@ -9,7 +10,6 @@ import {
   Form,
   Select,
   Popconfirm,
-  message,
   Badge,
   Row,
   Col,
@@ -115,6 +115,7 @@ const mockConfigurations: ConfigurationItem[] = [
 ];
 
 export const ConfigurationJobsBundle = () => {
+  const { message } = App.useApp();
   const [searchText, setSearchText] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [bundleItems, setBundleItems] = useState<ConfigurationBundleItem[]>(mockBundleItems);

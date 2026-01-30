@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Layout,
   Button,
   Menu,
@@ -9,7 +10,6 @@ import {
   Select,
   Tooltip,
   Dropdown,
-  message,
 } from 'antd';
 import {
   PlusOutlined,
@@ -36,6 +36,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   collapsed = false,
   onCollapse,
 }) => {
+  const { message } = App.useApp();
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [createCategoryModalVisible, setCreateCategoryModalVisible] = useState(false);

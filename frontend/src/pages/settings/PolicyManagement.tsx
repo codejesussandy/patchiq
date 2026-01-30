@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
   Typography,
   Modal,
   Form,
-  message,
   Tooltip,
   Select,
   Spin,
@@ -64,6 +64,7 @@ interface Remediation {
 }
 
 export const PolicyManagement = () => {
+  const { message } = App.useApp();
   const [alerts, setAlerts] = useState<AlertConfiguration[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');

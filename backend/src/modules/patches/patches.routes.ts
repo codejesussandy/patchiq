@@ -91,6 +91,22 @@ router.get(
   controller.getAffectedProducts
 );
 
+// POST /v1/patches/:id/affected-softwares - Add affected product
+router.post(
+  '/:id/affected-softwares',
+  authenticate,
+  validateParams(patchIdParamSchema),
+  controller.addAffectedProduct
+);
+
+// DELETE /v1/patches/:id/affected-softwares/:productId - Remove affected product
+router.delete(
+  '/:id/affected-softwares/:productId',
+  authenticate,
+  validateParams(patchIdParamSchema),
+  controller.removeAffectedProduct
+);
+
 // GET /v1/patches/:id/file-details - Get file details
 router.get(
   '/:id/file-details',

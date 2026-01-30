@@ -73,6 +73,15 @@ export const patchService = {
     return response.data;
   },
 
+  async addAffectedProduct(patchId: string, data: { softwareName: string; version?: string; vendor?: string; platform?: string }): Promise<AffectedSoftware> {
+    const response = await api.post(`/patches/${patchId}/affected-softwares`, data);
+    return response.data;
+  },
+
+  async removeAffectedProduct(patchId: string, productId: string): Promise<void> {
+    await api.delete(`/patches/${patchId}/affected-softwares/${productId}`);
+  },
+
   async scanEndpoints(patchId: string, data: { scope: string; endpointIds: string[] }): Promise<void> {
     await api.post(`/patches/${patchId}/scan-endpoints`, data);
   },

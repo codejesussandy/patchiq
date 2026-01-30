@@ -12,6 +12,7 @@ tmp_dir = "tmp"
   # Binary entrypoint (replaces deprecated 'bin')
   entrypoint = "./tmp/patchify-agent"
   # Arguments passed to the binary
+  # Default dev server URL. Override via PATCHIQ_SERVER_URL env var or --server flag
   args_bin = ["--server", "http://localhost:3000/api", "--port", "8080"]
   # Directories to watch
   include_dir = ["cmd", "internal"]

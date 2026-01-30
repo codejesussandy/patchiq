@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
   Typography,
   Modal,
   Form,
-  message,
   Space,
   Tooltip,
   Checkbox,
   Drawer,
+  Select,
+  Tag,
 } from 'antd';
 import {
   SearchOutlined,
@@ -35,17 +37,22 @@ interface UserRole {
   capabilities?: string[];
   createdAt?: string;
   isSystem?: boolean;
+  organizationId?: string;
+  organizationName?: string;
+  usersCount?: number;
 }
 
 interface FilterState {
   showId: boolean;
   showName: boolean;
   showDescription: boolean;
+  showOrganization: boolean;
+  showUsersCount: boolean;
 }
 
 type DrawerMode = 'create' | 'edit' | 'view' | null;
 
-// Capabilities structure with categories
+// Capabilities structure matching user story modules with View, Add, Edit, Delete actions
 interface CapabilityCategory {
   name: string;
   capabilities: { label: string; key: string }[];
@@ -53,139 +60,90 @@ interface CapabilityCategory {
 
 const CAPABILITIES_CATEGORIES: CapabilityCategory[] = [
   {
-    name: 'Inventory',
+    name: 'Agents',
     capabilities: [
-      { label: 'View Inventory', key: 'view_inventory' },
-      { label: 'Create Inventory', key: 'create_inventory' },
-      { label: 'Delete Inventory', key: 'delete_inventory' },
-      { label: 'Manage Inventory', key: 'manage_inventory' },
-      { label: 'Update Inventory', key: 'update_inventory' },
+      { label: 'View Agents', key: 'view_agents' },
+      { label: 'Add Agent', key: 'add_agents' },
+      { label: 'Edit Agent', key: 'edit_agents' },
+      { label: 'Delete Agent', key: 'delete_agents' },
     ],
   },
   {
-    name: 'Remote Desktop',
-    capabilities: [{ label: 'Remote Desktop', key: 'remote_desktop' }],
+    name: 'Assets',
+    capabilities: [
+      { label: 'View Assets', key: 'view_assets' },
+      { label: 'Add Asset', key: 'add_assets' },
+      { label: 'Edit Asset', key: 'edit_assets' },
+      { label: 'Delete Asset', key: 'delete_assets' },
+    ],
   },
   {
-    name: 'File Explorer',
-    capabilities: [{ label: 'File Explorer', key: 'file_explorer' }],
+    name: 'Patches',
+    capabilities: [
+      { label: 'View Patches', key: 'view_patches' },
+      { label: 'Add Patch', key: 'add_patches' },
+      { label: 'Edit Patch', key: 'edit_patches' },
+      { label: 'Delete Patch', key: 'delete_patches' },
+    ],
   },
   {
-    name: 'Terminal',
-    capabilities: [{ label: 'Terminal', key: 'terminal' }],
+    name: 'Vulnerabilities',
+    capabilities: [
+      { label: 'View Vulnerabilities', key: 'view_vulnerabilities' },
+      { label: 'Add Vulnerability', key: 'add_vulnerabilities' },
+      { label: 'Edit Vulnerability', key: 'edit_vulnerabilities' },
+      { label: 'Delete Vulnerability', key: 'delete_vulnerabilities' },
+    ],
   },
   {
-    name: 'Wake On LAN',
-    capabilities: [{ label: 'Wake On LAN', key: 'wake_on_lan' }],
+    name: 'Jobs',
+    capabilities: [
+      { label: 'View Jobs', key: 'view_jobs' },
+      { label: 'Add Job', key: 'add_jobs' },
+      { label: 'Edit Job', key: 'edit_jobs' },
+      { label: 'Delete Job', key: 'delete_jobs' },
+    ],
   },
   {
-    name: 'Add User',
-    capabilities: [{ label: 'Add User', key: 'add_user' }],
+    name: 'Discovery',
+    capabilities: [
+      { label: 'View Discovery', key: 'view_discovery' },
+      { label: 'Add Discovery', key: 'add_discovery' },
+      { label: 'Edit Discovery', key: 'edit_discovery' },
+      { label: 'Delete Discovery', key: 'delete_discovery' },
+    ],
   },
   {
-    name: 'Change Password',
-    capabilities: [{ label: 'Change Password', key: 'change_password' }],
+    name: 'Reports',
+    capabilities: [
+      { label: 'View Reports', key: 'view_reports' },
+      { label: 'Add Report', key: 'add_reports' },
+      { label: 'Edit Report', key: 'edit_reports' },
+      { label: 'Delete Report', key: 'delete_reports' },
+    ],
   },
   {
     name: 'Dashboard',
     capabilities: [
       { label: 'View Dashboard', key: 'view_dashboard' },
-      { label: 'Create Dashboard', key: 'create_dashboard' },
+      { label: 'Add Dashboard', key: 'add_dashboard' },
+      { label: 'Edit Dashboard', key: 'edit_dashboard' },
       { label: 'Delete Dashboard', key: 'delete_dashboard' },
-      { label: 'Manage Dashboard', key: 'manage_dashboard' },
-      { label: 'Update Dashboard', key: 'update_dashboard' },
-    ],
-  },
-  {
-    name: 'Vulnerability',
-    capabilities: [
-      { label: 'View Vulnerability', key: 'view_vulnerability' },
-      { label: 'View Manage Exceptions', key: 'view_manage_exceptions' },
-    ],
-  },
-  {
-    name: 'Report',
-    capabilities: [
-      { label: 'View Report', key: 'view_report' },
-      { label: 'Create Report', key: 'create_report' },
-      { label: 'Delete Report', key: 'delete_report' },
-      { label: 'Manage Report', key: 'manage_report' },
-      { label: 'Update Report', key: 'update_report' },
-    ],
-  },
-  {
-    name: 'Endpoint Vitals',
-    capabilities: [
-      { label: 'View Endpoint Vitals', key: 'view_endpoint_vitals' },
-      { label: 'Create Endpoint Vitals', key: 'create_endpoint_vitals' },
-      { label: 'Delete Endpoint Vitals', key: 'delete_endpoint_vitals' },
-      { label: 'Manage Endpoint Vitals', key: 'manage_endpoint_vitals' },
-      { label: 'Update Endpoint Vitals', key: 'update_endpoint_vitals' },
     ],
   },
   {
     name: 'Settings',
     capabilities: [
       { label: 'View Settings', key: 'view_settings' },
-      { label: 'Create Settings', key: 'create_settings' },
+      { label: 'Add Settings', key: 'add_settings' },
+      { label: 'Edit Settings', key: 'edit_settings' },
       { label: 'Delete Settings', key: 'delete_settings' },
-      { label: 'Manage Settings', key: 'manage_settings' },
-      { label: 'Update Settings', key: 'update_settings' },
-    ],
-  },
-  {
-    name: 'Widget',
-    capabilities: [
-      { label: 'View Widget', key: 'view_widget' },
-      { label: 'Create Widget', key: 'create_widget' },
-      { label: 'Delete Widget', key: 'delete_widget' },
-      { label: 'Manage Widget', key: 'manage_widget' },
-      { label: 'Update Widget', key: 'update_widget' },
-    ],
-  },
-  {
-    name: 'Alert',
-    capabilities: [
-      { label: 'View Alert', key: 'view_alert' },
-      { label: 'Create Alert', key: 'create_alert' },
-      { label: 'Delete Alert', key: 'delete_alert' },
-      { label: 'Manage Alert', key: 'manage_alert' },
-      { label: 'Update Alert', key: 'update_alert' },
-    ],
-  },
-  {
-    name: 'Audit',
-    capabilities: [{ label: 'View Audit', key: 'view_audit' }],
-  },
-  {
-    name: 'Patch',
-    capabilities: [
-      { label: 'View Patch', key: 'view_patch' },
-      { label: 'Create Patch', key: 'create_patch' },
-      { label: 'Delete Patch', key: 'delete_patch' },
-      { label: 'Manage Patch', key: 'manage_patch' },
-      { label: 'Update Patch', key: 'update_patch' },
-    ],
-  },
-  {
-    name: 'System Action',
-    capabilities: [
-      { label: 'Kill Process', key: 'kill_process' },
-      { label: 'Delete Files', key: 'delete_files' },
-      { label: 'Reboot', key: 'reboot' },
-      { label: 'Shutdown', key: 'shutdown' },
-      { label: 'Block IP Address', key: 'block_ip_address' },
-      { label: 'Block Port', key: 'block_port' },
-      { label: 'Delete User', key: 'delete_user' },
-      { label: 'Format Drive', key: 'format_drive' },
-      { label: 'Remote Wipe Out', key: 'remote_wipe_out' },
-      { label: 'Enable Service', key: 'enable_service' },
-      { label: 'Disable Service', key: 'disable_service' },
     ],
   },
 ];
 
 export const UserRoles = () => {
+  const { message } = App.useApp();
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -194,10 +152,13 @@ export const UserRoles = () => {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [editingRole, setEditingRole] = useState<UserRole | null>(null);
   const [viewingRole, setViewingRole] = useState<UserRole | null>(null);
+  const [organizations, setOrganizations] = useState<any[]>([]);
   const [filters, setFilters] = useState<FilterState>({
     showId: true,
     showName: true,
     showDescription: true,
+    showOrganization: true,
+    showUsersCount: true,
   });
   const [form] = Form.useForm();
   const [filterForm] = Form.useForm();
@@ -209,6 +170,7 @@ export const UserRoles = () => {
 
   useEffect(() => {
     fetchRoles();
+    fetchOrganizations();
   }, []);
 
   const fetchRoles = async () => {
@@ -231,6 +193,15 @@ export const UserRoles = () => {
     }
   };
 
+  const fetchOrganizations = async () => {
+    try {
+      const data = await settingsService.getOrganizations();
+      setOrganizations(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch organizations:', error);
+    }
+  };
+
   const handleCreate = () => {
     setEditingRole(null);
     setViewingRole(null);
@@ -248,6 +219,7 @@ export const UserRoles = () => {
     form.setFieldsValue({
       name: role.name,
       description: role.description,
+      organizationId: role.organizationId || undefined,
     });
     setDrawerVisible(true);
   };
@@ -260,6 +232,7 @@ export const UserRoles = () => {
     form.setFieldsValue({
       name: role.name,
       description: role.description,
+      organizationId: role.organizationId || undefined,
     });
     setDrawerVisible(true);
   };
@@ -328,6 +301,7 @@ export const UserRoles = () => {
       form.setFieldsValue({
         name: editingRole.name,
         description: editingRole.description,
+        organizationId: editingRole.organizationId || undefined,
       });
     } else {
       form.resetFields();
@@ -339,6 +313,8 @@ export const UserRoles = () => {
       showId: filters.showId,
       showName: filters.showName,
       showDescription: filters.showDescription,
+      showOrganization: filters.showOrganization,
+      showUsersCount: filters.showUsersCount,
     });
     setFilterModalVisible(true);
   };
@@ -349,6 +325,8 @@ export const UserRoles = () => {
       showId: values.showId !== undefined ? values.showId : true,
       showName: values.showName !== undefined ? values.showName : true,
       showDescription: values.showDescription !== undefined ? values.showDescription : true,
+      showOrganization: values.showOrganization !== undefined ? values.showOrganization : true,
+      showUsersCount: values.showUsersCount !== undefined ? values.showUsersCount : true,
     });
     setPagination({ ...pagination, current: 1 });
     setFilterModalVisible(false);
@@ -361,20 +339,24 @@ export const UserRoles = () => {
       showId: true,
       showName: true,
       showDescription: true,
+      showOrganization: true,
+      showUsersCount: true,
     });
     setPagination({ ...pagination, current: 1 });
     message.success('All columns shown');
   };
 
-  const hasHiddenColumns = !filters.showId || !filters.showName || !filters.showDescription;
+  const hasHiddenColumns = Object.values(filters).some(v => !v);
 
   const handleExport = () => {
     const csvContent = [
-      ['ID', 'Name', 'Description', 'Created On'],
+      ['ID', 'Name', 'Description', 'Organization', 'Users', 'Created On'],
       ...filteredRoles.map((role) => [
         role.id,
         role.name,
         role.description || '',
+        role.organizationName || '',
+        String(role.usersCount || 0),
         role.createdAt || '',
       ]),
     ]
@@ -404,7 +386,7 @@ export const UserRoles = () => {
       },
     },
     {
-      title: 'Name',
+      title: 'Role',
       dataIndex: 'name',
       key: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
@@ -416,6 +398,21 @@ export const UserRoles = () => {
           {text}
         </a>
       ),
+    },
+    {
+      title: 'Users',
+      dataIndex: 'usersCount',
+      key: 'usersCount',
+      width: 100,
+      render: (count: number) => (
+        <Tag color="blue">{count || 0}</Tag>
+      ),
+    },
+    {
+      title: 'Organization',
+      dataIndex: 'organizationName',
+      key: 'organization',
+      render: (text: string) => text || '—',
     },
     {
       title: 'Description',
@@ -477,6 +474,8 @@ export const UserRoles = () => {
     if (col.key === 'id') return filters.showId;
     if (col.key === 'name') return filters.showName;
     if (col.key === 'description') return filters.showDescription;
+    if (col.key === 'organization') return filters.showOrganization;
+    if (col.key === 'usersCount') return filters.showUsersCount;
     return true; // Always show actions column
   });
 
@@ -487,7 +486,8 @@ export const UserRoles = () => {
     return (
       role.id.toLowerCase().includes(searchLower) ||
       role.name.toLowerCase().includes(searchLower) ||
-      (role.description && role.description.toLowerCase().includes(searchLower))
+      (role.description && role.description.toLowerCase().includes(searchLower)) ||
+      (role.organizationName && role.organizationName.toLowerCase().includes(searchLower))
     );
   });
 
@@ -593,7 +593,7 @@ export const UserRoles = () => {
         open={drawerVisible}
         closable={true}
         closeIcon={<CloseOutlined />}
-        width={800}
+        styles={{ wrapper: { width: 800 } }}
         footer={
           drawerMode === 'view'
             ? null
@@ -659,6 +659,29 @@ export const UserRoles = () => {
           <Form.Item
             label={
               <span>
+                Organization {drawerMode !== 'view' && <span style={{ color: 'red' }}>*</span>}
+              </span>
+            }
+            name="organizationId"
+            rules={
+              drawerMode === 'view'
+                ? []
+                : [{ required: true, message: 'Please select an organization' }]
+            }
+          >
+            <Select
+              placeholder="Select Organization"
+              disabled={drawerMode === 'view'}
+              options={organizations.map((org) => ({
+                label: org.name,
+                value: org.id,
+              }))}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label={
+              <span>
                 Description {drawerMode !== 'view' && <span style={{ color: 'red' }}>*</span>}
               </span>
             }
@@ -681,7 +704,7 @@ export const UserRoles = () => {
           <Form.Item
             label={
               <span>
-                Capabilities
+                Permissions
               </span>
             }
           >
@@ -868,7 +891,15 @@ export const UserRoles = () => {
           </Form.Item>
 
           <Form.Item name="showName" valuePropName="checked" style={{ marginBottom: '16px' }}>
-            <Checkbox>Show Name</Checkbox>
+            <Checkbox>Show Role</Checkbox>
+          </Form.Item>
+
+          <Form.Item name="showUsersCount" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Users</Checkbox>
+          </Form.Item>
+
+          <Form.Item name="showOrganization" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Organization</Checkbox>
           </Form.Item>
 
           <Form.Item name="showDescription" valuePropName="checked" style={{ marginBottom: '16px' }}>

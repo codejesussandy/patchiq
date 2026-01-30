@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Form, Input, Button, Space, message, Typography, Divider, Card, Row, Col } from 'antd';
+import { App,
+  Form, Input, Button, Space, Typography, Divider, Card, Row, Col } from 'antd';
 import { settingsService } from '../../services/settings.service';
 import type { AgentConfiguration as AgentConfigurationType, AgentConfigurationFormData } from '../../types/settings.types';
 
 const { Title } = Typography;
 
 export const AgentConfiguration = () => {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [configuration, setConfiguration] = useState<AgentConfigurationType | null>(null);

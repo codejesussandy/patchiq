@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
   Typography,
   Modal,
   Form,
-  message,
   Space,
   Popconfirm,
   Checkbox,
+  Select,
+  Tag,
 } from 'antd';
 import {
   SearchOutlined,
@@ -32,6 +34,16 @@ interface Location {
   name: string;
   description?: string;
   createdAt?: string;
+  organizationId?: string;
+  organizationName?: string;
+  isDefault?: boolean;
+  usersCount?: number;
+  departmentsCount?: number;
+}
+
+interface Organization {
+  id: string;
+  name: string;
 }
 
 interface TableParams {
@@ -43,12 +55,18 @@ interface TableParams {
 interface FilterState {
   showId: boolean;
   showName: boolean;
+  showOrganization: boolean;
   showDescription: boolean;
+  showDefault: boolean;
+  showUsersCount: boolean;
+  showDepartmentsCount: boolean;
   showCreatedOn: boolean;
 }
 
 export const UserLocation = () => {
+  const { message } = App.useApp();
   const [locations, setLocations] = useState<Location[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -60,7 +78,11 @@ export const UserLocation = () => {
   const [filters, setFilters] = useState<FilterState>({
     showId: true,
     showName: true,
+    showOrganization: true,
     showDescription: true,
+    showDefault: true,
+    showUsersCount: true,
+    showDepartmentsCount: true,
     showCreatedOn: true,
   });
   const [form] = Form.useForm();
@@ -75,7 +97,17 @@ export const UserLocation = () => {
 
   useEffect(() => {
     fetchLocations();
+    fetchOrganizations();
   }, []);
+
+  const fetchOrganizations = async () => {
+    try {
+      const data = await settingsService.getOrganizations();
+      setOrganizations(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch organizations:', error);
+    }
+  };
 
   const fetchLocations = async () => {
     setLoading(true);
@@ -137,6 +169,7 @@ export const UserLocation = () => {
     form.setFieldsValue({
       name: location.name,
       description: location.description || '',
+      organizationId: location.organizationId || undefined,
     });
     setModalVisible(true);
   };
@@ -147,6 +180,7 @@ export const UserLocation = () => {
     viewForm.setFieldsValue({
       name: location.name,
       description: location.description || '',
+      organizationId: location.organizationId || undefined,
     });
     setViewModalVisible(true);
   };
@@ -177,6 +211,7 @@ export const UserLocation = () => {
     viewForm.setFieldsValue({
       name: viewingLocation?.name,
       description: viewingLocation?.description,
+      organizationId: viewingLocation?.organizationId || undefined,
     });
   };
 
@@ -214,7 +249,11 @@ export const UserLocation = () => {
     filterForm.setFieldsValue({
       showId: filters.showId,
       showName: filters.showName,
+      showOrganization: filters.showOrganization,
       showDescription: filters.showDescription,
+      showDefault: filters.showDefault,
+      showUsersCount: filters.showUsersCount,
+      showDepartmentsCount: filters.showDepartmentsCount,
       showCreatedOn: filters.showCreatedOn,
     });
     setFilterModalVisible(true);
@@ -225,7 +264,11 @@ export const UserLocation = () => {
     setFilters({
       showId: values.showId !== undefined ? values.showId : true,
       showName: values.showName !== undefined ? values.showName : true,
+      showOrganization: values.showOrganization !== undefined ? values.showOrganization : true,
       showDescription: values.showDescription !== undefined ? values.showDescription : true,
+      showDefault: values.showDefault !== undefined ? values.showDefault : true,
+      showUsersCount: values.showUsersCount !== undefined ? values.showUsersCount : true,
+      showDepartmentsCount: values.showDepartmentsCount !== undefined ? values.showDepartmentsCount : true,
       showCreatedOn: values.showCreatedOn !== undefined ? values.showCreatedOn : true,
     });
     setTableParams({ ...tableParams, pagination: { ...tableParams.pagination, current: 1 } });
@@ -238,14 +281,18 @@ export const UserLocation = () => {
     setFilters({
       showId: true,
       showName: true,
+      showOrganization: true,
       showDescription: true,
+      showDefault: true,
+      showUsersCount: true,
+      showDepartmentsCount: true,
       showCreatedOn: true,
     });
     setTableParams({ ...tableParams, pagination: { ...tableParams.pagination, current: 1 } });
     message.success('All columns shown');
   };
 
-  const hasHiddenColumns = !filters.showId || !filters.showName || !filters.showDescription || !filters.showCreatedOn;
+  const hasHiddenColumns = Object.values(filters).some(v => !v);
 
   const formatDateTime = (dateString?: string): string => {
     if (!dateString) return '';
@@ -296,10 +343,37 @@ export const UserLocation = () => {
       ),
     },
     {
+      title: 'Organization',
+      dataIndex: 'organizationName',
+      key: 'organization',
+      render: (text: string) => text || '—',
+    },
+    {
       title: 'Description',
       dataIndex: 'description',
       key: 'description',
       render: (text: string) => text || '',
+    },
+    {
+      title: 'Default',
+      dataIndex: 'isDefault',
+      key: 'default',
+      width: 80,
+      render: (val: boolean) => val ? <Tag color="green">Yes</Tag> : <Tag>No</Tag>,
+    },
+    {
+      title: 'Users',
+      dataIndex: 'usersCount',
+      key: 'usersCount',
+      width: 80,
+      render: (count: number) => <Tag color="blue">{count || 0}</Tag>,
+    },
+    {
+      title: 'Departments',
+      dataIndex: 'departmentsCount',
+      key: 'departmentsCount',
+      width: 110,
+      render: (count: number) => <Tag color="blue">{count || 0}</Tag>,
     },
     {
       title: 'Created On',
@@ -338,7 +412,11 @@ export const UserLocation = () => {
   const columns = allColumns.filter((col) => {
     if (col.key === 'id') return filters.showId;
     if (col.key === 'name') return filters.showName;
+    if (col.key === 'organization') return filters.showOrganization;
     if (col.key === 'description') return filters.showDescription;
+    if (col.key === 'default') return filters.showDefault;
+    if (col.key === 'usersCount') return filters.showUsersCount;
+    if (col.key === 'departmentsCount') return filters.showDepartmentsCount;
     if (col.key === 'createdAt') return filters.showCreatedOn;
     return true; // Always show actions column
   });
@@ -462,6 +540,20 @@ export const UserLocation = () => {
       >
         <Form form={form} layout="vertical" style={{ marginTop: '24px' }}>
           <Form.Item
+            label="Organization"
+            name="organizationId"
+            rules={[{ required: true, message: 'Please select an organization' }]}
+          >
+            <Select
+              placeholder="Select Organization"
+              options={organizations.map((org) => ({
+                value: org.id,
+                label: org.name,
+              }))}
+            />
+          </Form.Item>
+
+          <Form.Item
             label="Name"
             name="name"
             rules={[{ required: true, message: 'Please enter location name' }]}
@@ -515,6 +607,21 @@ export const UserLocation = () => {
       >
         {viewingLocation && (
           <Form form={viewForm} layout="vertical" style={{ marginTop: '24px' }}>
+            <Form.Item
+              label="Organization"
+              name="organizationId"
+              rules={[{ required: true, message: 'Please select an organization' }]}
+            >
+              <Select
+                placeholder="Select Organization"
+                disabled={!isViewModalEditing}
+                options={organizations.map((org) => ({
+                  value: org.id,
+                  label: org.name,
+                }))}
+              />
+            </Form.Item>
+
             <Form.Item
               label="Name"
               name="name"
@@ -578,8 +685,24 @@ export const UserLocation = () => {
             <Checkbox>Show Name</Checkbox>
           </Form.Item>
 
+          <Form.Item name="showOrganization" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Organization</Checkbox>
+          </Form.Item>
+
           <Form.Item name="showDescription" valuePropName="checked" style={{ marginBottom: '16px' }}>
             <Checkbox>Show Description</Checkbox>
+          </Form.Item>
+
+          <Form.Item name="showDefault" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Default</Checkbox>
+          </Form.Item>
+
+          <Form.Item name="showUsersCount" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Users</Checkbox>
+          </Form.Item>
+
+          <Form.Item name="showDepartmentsCount" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Departments</Checkbox>
           </Form.Item>
 
           <Form.Item name="showCreatedOn" valuePropName="checked" style={{ marginBottom: '16px' }}>

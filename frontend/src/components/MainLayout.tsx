@@ -266,10 +266,6 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
           label: 'Organization',
         },
         {
-          key: 'user-management-department',
-          label: 'Department',
-        },
-        {
           key: 'user-management-location',
           label: 'Location',
         },
@@ -467,7 +463,6 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     else if (key === 'software-hub') navigate('/hub');
     // Settings - User Management sub-menus
     else if (key === 'user-management-organization') navigate('/settings/user-management/organization');
-    else if (key === 'user-management-department') navigate('/settings/user-management/department');
     else if (key === 'user-management-location') navigate('/settings/user-management/location');
     else if (key === 'user-management-roles') navigate('/settings/user-management/user-roles');
     else if (key === 'user-management-users') navigate('/settings/user-management/users');
@@ -610,7 +605,6 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     if (location.pathname === '/discovery/device-credentials') return ['discovery-device-credentials'];
     // Settings - User Management
     if (location.pathname === '/settings/user-management/organization') return ['user-management-organization'];
-    if (location.pathname === '/settings/user-management/department') return ['user-management-department'];
     if (location.pathname === '/settings/user-management/location') return ['user-management-location'];
     if (location.pathname === '/settings/user-management/roles') return ['user-management-roles'];
     if (location.pathname === '/settings/user-management/users') return ['user-management-users'];

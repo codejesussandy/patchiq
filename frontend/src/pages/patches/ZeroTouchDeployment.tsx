@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
@@ -7,7 +8,6 @@ import {
   Space,
   Typography,
   Modal,
-  message,
   Tag,
   Form,
   Select,
@@ -28,12 +28,15 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import { patchService, type ZeroTouchConfig } from '../../services/patch.service';
+import { settingsService } from '../../services/settings.service';
+import { assetService } from '../../services/asset.service';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
 export const ZeroTouchDeployment = () => {
+  const { message } = App.useApp();
   const [configs, setConfigs] = useState<ZeroTouchConfig[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -47,8 +50,28 @@ export const ZeroTouchDeployment = () => {
   const [editingConfig, setEditingConfig] = useState<ZeroTouchConfig | null>(null);
   const [editForm] = Form.useForm();
 
+  // Dynamic option lists
+  const [applications, setApplications] = useState<any[]>([]);
+  const [computers, setComputers] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+
   useEffect(() => {
     fetchConfigs();
+    const fetchOptions = async () => {
+      try {
+        const [appsData, assetsData, groupsData] = await Promise.all([
+          assetService.getSoftwareInventory(),
+          assetService.getAssets(),
+          settingsService.getComputerGroups(),
+        ]);
+        setApplications(appsData);
+        setComputers(assetsData);
+        setGroups(groupsData);
+      } catch {
+        // Silently fail
+      }
+    };
+    fetchOptions();
   }, []);
 
   const fetchConfigs = async () => {
@@ -293,11 +316,9 @@ export const ZeroTouchDeployment = () => {
               rules={[{ required: true, message: 'Please select applications' }]}
             >
               <Select mode="multiple" placeholder="Select applications">
-                <Option value="Chrome">Google Chrome</Option>
-                <Option value="Firefox">Mozilla Firefox</Option>
-                <Option value="Office">Microsoft Office</Option>
-                <Option value="Adobe">Adobe Reader</Option>
-                <Option value="Zoom">Zoom</Option>
+                {applications.map((app) => (
+                  <Option key={app.id} value={app.name || app.softwareName}>{app.name || app.softwareName}</Option>
+                ))}
               </Select>
             </Form.Item>
           )
@@ -340,10 +361,9 @@ export const ZeroTouchDeployment = () => {
                   String(option?.label ?? option?.value ?? '').toLowerCase().includes(input.toLowerCase())
                 }
               >
-                <Option value="DESKTOP-7CC6ETJ">DESKTOP-7CC6ETJ</Option>
-                <Option value="LAPTOP-9XK2PLM">LAPTOP-9XK2PLM</Option>
-                <Option value="WORKSTATION-5YT8QWE">WORKSTATION-5YT8QWE</Option>
-                <Option value="SERVER-2MN4PLK">SERVER-2MN4PLK</Option>
+                {computers.map((c) => (
+                  <Option key={c.id} value={c.id}>{c.hostname || c.name || c.id}</Option>
+                ))}
               </Select>
             </Form.Item>
           )
@@ -364,11 +384,9 @@ export const ZeroTouchDeployment = () => {
               rules={[{ required: true, message: 'Please select groups' }]}
             >
               <Select mode="multiple" placeholder="Select groups">
-                <Option value="Engineering">Engineering</Option>
-                <Option value="Marketing">Marketing</Option>
-                <Option value="Sales">Sales</Option>
-                <Option value="Finance">Finance</Option>
-                <Option value="HR">HR</Option>
+                {groups.map((g) => (
+                  <Option key={g.id} value={g.id}>{g.name}</Option>
+                ))}
               </Select>
             </Form.Item>
           )

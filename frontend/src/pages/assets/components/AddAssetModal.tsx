@@ -1,4 +1,5 @@
-import { Modal, Steps, Form, Input, Select, Button, Row, Col, DatePicker, Switch, message } from 'antd';
+import { App,
+  Modal, Steps, Form, Input, Select, Button, Row, Col, DatePicker, Switch } from 'antd';
 import { useState, useEffect } from 'react';
 import type { Asset } from '../../../types/asset.types';
 import { assetService } from '../../../services/asset.service';
@@ -16,6 +17,7 @@ interface AddAssetModalProps {
 }
 
 export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset }: AddAssetModalProps) => {
+  const { message } = App.useApp();
   const [currentStep, setCurrentStep] = useState(0);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);

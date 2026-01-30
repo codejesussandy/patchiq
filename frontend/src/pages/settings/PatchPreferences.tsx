@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Form, Button, Typography, message, Row, Col, TimePicker, Checkbox, Radio, Space, Select } from 'antd';
+import { App,
+  Form, Button, Typography, Row, Col, TimePicker, Checkbox, Radio, Space, Select } from 'antd';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { settingsService } from '../../services/settings.service';
@@ -18,6 +19,7 @@ type FormValues = Omit<PatchPreferenceFormData, 'patchApprovalScheduleTime' | 's
 };
 
 export const PatchPreferences = () => {
+  const { message } = App.useApp();
   const [form] = Form.useForm<FormValues>();
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);

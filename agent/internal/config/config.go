@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 // Config represents agent configuration
@@ -38,13 +39,13 @@ type Config struct {
 	DataDir string `json:"dataDir"`
 }
 
-// DefaultConfig returns the default configuration
+// DefaultConfig returns the default configuration, with environment variable overrides
 func DefaultConfig() *Config {
 	homeDir, _ := os.UserHomeDir()
 	dataDir := filepath.Join(homeDir, ".patchify-agent")
 
-	return &Config{
-		ServerURL:           "http://localhost:3000/api",
+	cfg := &Config{
+		ServerURL:           "http://dev.skenzeriq.com:5173/api",
 		WebUIPort:           8080,
 		EnableWebUI:         true,
 		HeartbeatInterval:   60,
@@ -59,6 +60,24 @@ func DefaultConfig() *Config {
 		LogLevel:            "info",
 		DataDir:             dataDir,
 	}
+
+	// Override defaults from environment variables
+	if v := os.Getenv("PATCHIQ_SERVER_URL"); v != "" {
+		cfg.ServerURL = v
+	}
+	if v := os.Getenv("PATCHIQ_WEBUI_PORT"); v != "" {
+		if port, err := strconv.Atoi(v); err == nil {
+			cfg.WebUIPort = port
+		}
+	}
+	if v := os.Getenv("PATCHIQ_LOG_LEVEL"); v != "" {
+		cfg.LogLevel = v
+	}
+	if v := os.Getenv("PATCHIQ_DATA_DIR"); v != "" {
+		cfg.DataDir = v
+	}
+
+	return cfg
 }
 
 // Load loads configuration from a file

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  App,
   Table,
   Input,
   Button,
@@ -8,7 +9,6 @@ import {
   Space,
   Typography,
   Dropdown,
-  message,
   Modal,
   Tooltip,
   Row,
@@ -57,6 +57,7 @@ const defaultColumnConfig: ColumnConfig[] = [
 const STORAGE_KEY = 'assets_column_config_v3';
 
 export function AllAssets() {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -261,7 +262,9 @@ export function AllAssets() {
       });
 
       if (!downloadResponse.ok) {
-        throw new Error(`Failed to download: ${downloadResponse.statusText}`);
+        const errorData = await downloadResponse.json().catch(() => null);
+        const errorMsg = errorData?.message || downloadResponse.statusText;
+        throw new Error(errorMsg);
       }
 
       const blob = await downloadResponse.blob();
@@ -277,7 +280,8 @@ export function AllAssets() {
       message.success({ content: `${platform} agent downloaded successfully!`, key: 'agent-download' });
     } catch (error) {
       console.error('Agent download error:', error);
-      message.error({ content: `Failed to download ${platform} agent`, key: 'agent-download' });
+      const errMsg = error instanceof Error ? error.message : `Failed to download ${platform} agent`;
+      message.error({ content: errMsg, key: 'agent-download' });
     }
   };
 

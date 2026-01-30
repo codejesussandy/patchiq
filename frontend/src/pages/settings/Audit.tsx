@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Button,
   Select,
@@ -7,7 +8,6 @@ import {
   Space,
   Tag,
   Spin,
-  message,
   Modal,
   DatePicker,
 } from 'antd';
@@ -34,6 +34,7 @@ interface AuditLog {
 type TimePeriod = 'all' | 'thisMinute' | 'thisHour' | 'thisDay' | 'thisWeek' | 'thisMonth' | 'thisQuarter' | 'thisYear' | 'previous15Hours' | 'previousWeek' | 'previousMonth' | 'previousQuarter' | 'previousYear' | 'custom';
 
 export const Audit = () => {
+  const { message } = App.useApp();
   const [searchText, setSearchText] = useState('');
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);

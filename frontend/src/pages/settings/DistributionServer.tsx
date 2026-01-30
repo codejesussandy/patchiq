@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Table, Input, Button, Typography, Space, message, Tooltip } from 'antd';
+import { App,
+  Table, Input, Button, Typography, Space, Tooltip } from 'antd';
 import { ReloadOutlined, DownloadOutlined, SettingOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { settingsService } from '../../services/settings.service';
@@ -8,6 +9,7 @@ import type { DistributionServer as DistributionServerType } from '../../types/s
 const { Title } = Typography;
 
 export const DistributionServer = () => {
+  const { message } = App.useApp();
   const [data, setData] = useState<DistributionServerType[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');

@@ -641,6 +641,26 @@ export class AgentsService {
   }
 
   /**
+   * Update agent version file path and size after binary upload
+   */
+  async updateAgentVersionFile(id: string, filePath: string, fileSize: number, checksum?: string) {
+    const version = await prisma.agentVersion.findUnique({ where: { id } });
+    if (!version) {
+      throw new NotFoundError('Agent version not found');
+    }
+
+    return prisma.agentVersion.update({
+      where: { id },
+      data: {
+        filePath,
+        fileSize: BigInt(fileSize),
+        checksum: checksum || null,
+        lastUpdatedAt: new Date(),
+      },
+    });
+  }
+
+  /**
    * Get default agent config
    */
   private async getDefaultConfig(): Promise<AgentConfig> {

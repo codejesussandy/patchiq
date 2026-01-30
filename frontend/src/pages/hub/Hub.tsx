@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
+  App,
   Card,
   Table,
   Button,
@@ -15,7 +16,6 @@ import {
   Form,
   Select,
   Upload,
-  message,
   Popconfirm,
   Row,
   Col,
@@ -75,6 +75,7 @@ const { Text, Title } = Typography;
 const { TextArea } = Input;
 
 export const Hub = () => {
+  const { message } = App.useApp();
   const [packages, setPackages] = useState<SoftwarePackage[]>([]);
   const [stats, setStats] = useState<HubStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -810,7 +811,7 @@ export const Hub = () => {
       <Drawer
         title="Package Details"
         placement="right"
-        width={500}
+        styles={{ wrapper: { width: 500 } }}
         open={detailsDrawerVisible}
         onClose={() => {
           setDetailsDrawerVisible(false);

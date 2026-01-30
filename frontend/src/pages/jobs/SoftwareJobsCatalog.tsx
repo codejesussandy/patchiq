@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Input,
   Button,
   Card,
@@ -11,7 +12,6 @@ import {
   Dropdown,
   Typography,
   Popconfirm,
-  message,
   Tooltip,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -56,6 +56,7 @@ type SoftwareItem = {
 };
 
 export const SoftwareJobsCatalog = () => {
+  const { message } = App.useApp();
   const [searchText, setSearchText] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [softwareItems, setSoftwareItems] = useState<SoftwareItem[]>([]);

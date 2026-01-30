@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
   Modal,
   Form,
-  message,
   Space,
   Typography,
   Tooltip,
@@ -30,6 +30,7 @@ import type { DeviceCredential, CredentialFilterState } from '../../types/discov
 const { Title, Text } = Typography;
 
 export const DeviceCredentials = () => {
+  const { message } = App.useApp();
   // Data
   const [credentials, setCredentials] = useState<DeviceCredential[]>([]);
   const [loading, setLoading] = useState(false);

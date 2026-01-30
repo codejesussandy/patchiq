@@ -24,15 +24,16 @@ function parseRedisUrl(url: string): ConnectionOptions {
   try {
     const parsed = new URL(url);
     return {
-      host: parsed.hostname || 'localhost',
-      port: parseInt(parsed.port, 10) || 6379,
+      host: parsed.hostname || process.env.REDIS_HOST || 'localhost',
+      port: parseInt(parsed.port, 10) || parseInt(process.env.REDIS_PORT || '6379', 10),
       password: parsed.password || undefined,
       maxRetriesPerRequest: null,
     };
   } catch {
+    // Fallback: use env vars or defaults
     return {
-      host: 'localhost',
-      port: 6379,
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
       maxRetriesPerRequest: null,
     };
   }

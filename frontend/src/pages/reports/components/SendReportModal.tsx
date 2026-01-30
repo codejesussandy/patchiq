@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Modal,
   Form,
   Input,
   Select,
   Typography,
   Tag,
-  message,
   Descriptions,
 } from 'antd';
 import { reportsService } from '../../../services/reports.service';
@@ -29,6 +29,7 @@ export const SendReportModal = ({
   onSuccess,
   report,
 }: SendReportModalProps) => {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 

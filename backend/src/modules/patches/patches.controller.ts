@@ -83,6 +83,26 @@ export async function getAffectedProducts(req: Request, res: Response, next: Nex
   }
 }
 
+export async function addAffectedProduct(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const result = await patchesService.addAffectedProduct(id, req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function removeAffectedProduct(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id, productId } = req.params;
+    const result = await patchesService.removeAffectedProduct(id, productId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getFileDetails(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;

@@ -142,9 +142,9 @@ export const Dashboard = () => {
   if (loading || !data) {
     if (loading) {
       return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-          <Spin size="large" tip="Loading dashboard..." />
-        </div>
+        <Spin size="large" tip="Loading dashboard...">
+          <div style={{ height: '400px' }} />
+        </Spin>
       );
     }
 

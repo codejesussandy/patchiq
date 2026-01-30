@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Button,
   Table,
   Space,
   Input,
   Modal,
   Form,
-  message,
   Tooltip,
   Typography,
   Upload,
@@ -28,6 +28,7 @@ import type { VendorLogo as VendorLogoType } from '../../types/settings.types';
 const { Title, Text } = Typography;
 
 export const VendorLogo = () => {
+  const { message } = App.useApp();
   const [logos, setLogos] = useState<VendorLogoType[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');

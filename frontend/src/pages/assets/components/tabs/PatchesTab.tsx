@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Card,
   Row,
   Col,
@@ -13,7 +14,6 @@ import {
   Timeline,
   Badge,
   Button,
-  message,
 } from 'antd';
 import {
   SafetyOutlined,
@@ -90,6 +90,7 @@ const CHART_COLORS = {
 };
 
 export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTabProps) => {
+  const { message } = App.useApp();
   const [patches, setPatches] = useState<AssetRelatedPatch[]>([]);
   const [deployments, setDeployments] = useState<AssetDeployment[]>([]);
   const [asset, setAsset] = useState<Asset | null>(null);

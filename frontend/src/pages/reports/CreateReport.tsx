@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  App,
   Form,
   Input,
   Button,
@@ -8,7 +9,6 @@ import {
   Switch,
   Dropdown,
   Space,
-  message,
   Typography,
 } from 'antd';
 import { ArrowLeftOutlined, PlusOutlined, DownOutlined } from '@ant-design/icons';
@@ -27,6 +27,7 @@ const widgetOptions: MenuProps['items'] = [
 ];
 
 export const CreateReport = () => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);

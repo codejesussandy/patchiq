@@ -217,7 +217,8 @@ class MinioStorageService {
 
   /**
    * Generate a presigned URL for download
-   * If MINIO_PUBLIC_ENDPOINT is set, replaces internal endpoint with public one
+   * Rewrites the internal MinIO endpoint to the public-facing endpoint
+   * so agents and external devices can access files through nginx
    */
   async getPresignedUrl(
     objectKey: string,
@@ -234,11 +235,13 @@ class MinioStorageService {
 
     let url = await client.presignedGetObject(bucket, objectKey, expiry, requestParams);
 
-    // Replace internal endpoint with public endpoint if different
+    // Replace internal MinIO endpoint with public endpoint (nginx reverse proxy)
+    // This allows agents outside the Docker network to download via the public URL
     if (publicEndpoint !== env.MINIO_ENDPOINT || publicPort !== env.MINIO_PORT) {
-      const internalUrl = `${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`;
-      const externalUrl = `${publicEndpoint}:${publicPort}`;
-      url = url.replace(internalUrl, externalUrl);
+      const useSSL = env.MINIO_USE_SSL;
+      const internalOrigin = `http${useSSL ? 's' : ''}://${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`;
+      const externalOrigin = `http${useSSL ? 's' : ''}://${publicEndpoint}:${publicPort}`;
+      url = url.replace(internalOrigin, externalOrigin);
     }
 
     return url;

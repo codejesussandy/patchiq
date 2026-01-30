@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Modal,
   Steps,
   Form,
@@ -13,7 +14,6 @@ import {
   TimePicker,
   Checkbox,
   Transfer,
-  message,
   Space,
   Typography,
   Divider,
@@ -61,6 +61,7 @@ export const CreateReportWizard = ({
   mode = 'create',
   report,
 }: CreateReportWizardProps) => {
+  const { message } = App.useApp();
   const [currentStep, setCurrentStep] = useState(0);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);

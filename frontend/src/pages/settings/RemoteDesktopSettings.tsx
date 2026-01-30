@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Button, message, Typography, Switch, Spin, Segmented } from 'antd';
+import { App,
+  Button, Typography, Switch, Spin, Segmented } from 'antd';
 import { settingsService } from '../../services/settings.service';
 import type { RemoteDesktopSettings as RemoteDesktopSettingsType } from '../../types/settings.types';
 
 const { Title, Text } = Typography;
 
 export const RemoteDesktopSettings = () => {
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [_settings, setSettings] = useState<RemoteDesktopSettingsType | null>(null);

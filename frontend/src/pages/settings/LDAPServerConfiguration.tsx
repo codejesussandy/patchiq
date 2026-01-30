@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
   Typography,
   Modal,
   Form,
-  message,
   Space,
   Tooltip,
   Checkbox,
@@ -41,6 +41,7 @@ interface FilterState {
 }
 
 export const LDAPServerConfiguration = () => {
+  const { message } = App.useApp();
   const [ldapConfigs, setLdapConfigs] = useState<LDAPServerConfig[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');

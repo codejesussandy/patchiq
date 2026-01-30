@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
@@ -7,7 +8,6 @@ import {
   Space,
   Typography,
   Modal,
-  message,
   Tag,
   Form,
   Select,
@@ -30,12 +30,14 @@ import { OSIcon } from '../../components/patches';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import { patchService, type Deployment, type Patch } from '../../services/patch.service';
+import { settingsService } from '../../services/settings.service';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
 export const PatchDeployed = () => {
+  const { message } = App.useApp();
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -61,9 +63,21 @@ export const PatchDeployed = () => {
   const [tasksSearchText, setTasksSearchText] = useState('');
   const [tasksFilter, setTasksFilter] = useState<string>('All');
 
+  // Dynamic option lists
+  const [groups, setGroups] = useState<any[]>([]);
+
   useEffect(() => {
     fetchDeployments();
     fetchPatches();
+    const fetchOptions = async () => {
+      try {
+        const groupsData = await settingsService.getComputerGroups();
+        setGroups(groupsData);
+      } catch {
+        // Silently fail
+      }
+    };
+    fetchOptions();
   }, []);
 
   const fetchDeployments = async () => {
@@ -411,10 +425,9 @@ export const PatchDeployed = () => {
         rules={[{ required: true, message: 'Please select target groups' }]}
       >
         <Select mode="multiple" placeholder="Select groups">
-          <Option value="all">All Endpoints</Option>
-          <Option value="windows">Windows Endpoints</Option>
-          <Option value="macos">MacOS Endpoints</Option>
-          <Option value="linux">Linux Endpoints</Option>
+          {groups.map((g) => (
+            <Option key={g.id} value={g.id}>{g.name}</Option>
+          ))}
         </Select>
       </Form.Item>
     </Form>

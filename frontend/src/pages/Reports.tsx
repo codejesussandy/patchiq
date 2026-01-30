@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
+  App,
   Input,
   Button,
   Table,
@@ -7,7 +8,6 @@ import {
   Typography,
   Tag,
   Popconfirm,
-  message,
   Select,
   DatePicker,
   Tooltip,
@@ -59,6 +59,7 @@ const SCHEDULE_LABELS: Record<string, string> = {
 };
 
 export const Reports = () => {
+  const { message } = App.useApp();
   // State
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(false);
@@ -547,7 +548,7 @@ export const Reports = () => {
       <Drawer
         title="Report Details"
         placement="right"
-        width={500}
+        styles={{ wrapper: { width: 500 } }}
         open={detailsDrawerOpen}
         onClose={() => {
           setDetailsDrawerOpen(false);

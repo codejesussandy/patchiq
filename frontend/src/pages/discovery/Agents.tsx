@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  App,
   Table,
   Input,
   Button,
@@ -10,7 +11,6 @@ import {
   Typography,
   Card,
   Modal,
-  message,
 } from 'antd';
 import {
   SearchOutlined,
@@ -36,6 +36,7 @@ type AgentDownload = {
 };
 
 export const Agents = () => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(false);

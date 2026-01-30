@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
+  App,
   Table,
   Input,
   Button,
@@ -8,7 +9,6 @@ import {
   Select,
   Tag,
   Dropdown,
-  message,
   Modal,
   Form,
   Row,
@@ -31,6 +31,7 @@ const { Title } = Typography;
 const { Option } = Select;
 
 export const OSLicenses = () => {
+  const { message } = App.useApp();
   const [searchParams] = useSearchParams();
   const [licenses, setLicenses] = useState<OSLicense[]>([]);
   const [loading, setLoading] = useState(false);

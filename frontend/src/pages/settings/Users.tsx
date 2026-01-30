@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
   Typography,
   Modal,
   Form,
-  message,
   Space,
   Tooltip,
   Checkbox,
@@ -16,6 +16,7 @@ import {
   Divider,
   Row,
   Col,
+  Alert,
 } from 'antd';
 import {
   SearchOutlined,
@@ -43,17 +44,22 @@ interface User {
   email: string;
   phone?: string;
   createdAt?: string;
-  username?: string;
   password?: string;
   timezone?: string;
-  organization?: string;
-  department?: string;
-  branch?: string;
-  role?: string;
+  organizationId?: string;
+  organizationName?: string;
+  departmentId?: string;
+  departmentName?: string;
+  branchId?: string;
+  branchName?: string;
+  roleId?: string;
+  roleName?: string;
   loginAllowed?: boolean;
   endpointAssignmentAllowed?: boolean;
   avatar?: string;
   status?: string;
+  isSuperAdmin?: boolean;
+  isSystem?: boolean;
 }
 
 interface FilterState {
@@ -61,9 +67,14 @@ interface FilterState {
   showName: boolean;
   showEmail: boolean;
   showPhone: boolean;
+  showOrganization: boolean;
+  showRole: boolean;
+  showBranch: boolean;
+  showDepartment: boolean;
 }
 
 export const Users = () => {
+  const { message } = App.useApp();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -78,6 +89,7 @@ export const Users = () => {
   // Dropdown data
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
 
   const [filters, setFilters] = useState<FilterState>({
@@ -85,6 +97,10 @@ export const Users = () => {
     showName: true,
     showEmail: true,
     showPhone: false,
+    showOrganization: true,
+    showRole: true,
+    showBranch: true,
+    showDepartment: true,
   });
   const [drawerForm] = Form.useForm();
   const [filterForm] = Form.useForm();
@@ -100,14 +116,16 @@ export const Users = () => {
 
   const fetchDropdownData = async () => {
     try {
-      const [orgs, depts, userRoles] = await Promise.all([
+      const [orgs, depts, userRoles, branchList] = await Promise.all([
         settingsService.getOrganizations(),
         settingsService.getDepartments(),
         settingsService.getRoles(),
+        settingsService.getBranches(),
       ]);
       setOrganizations(Array.isArray(orgs) ? orgs : []);
       setDepartments(Array.isArray(depts) ? depts : []);
       setRoles(Array.isArray(userRoles) ? userRoles : []);
+      setBranches(Array.isArray(branchList) ? branchList : []);
     } catch (error) {
       console.error('Error fetching dropdown data:', error);
     }
@@ -142,18 +160,22 @@ export const Users = () => {
   };
 
   const handleEditUser = (user: User) => {
+    if (user.isSuperAdmin || user.isSystem) {
+      message.warning('Super Admin user cannot be edited by non-super admin users');
+      return;
+    }
     setEditingUser(user);
     setDrawerMode('edit');
     drawerForm.setFieldsValue({
       firstName: user.firstName,
       lastName: user.lastName,
-      username: user.username || '',
       email: user.email,
       phone: user.phone || '',
       timezone: user.timezone || undefined,
-      organization: user.organization || undefined,
-      department: user.department || undefined,
-      role: user.role || undefined,
+      organizationId: user.organizationId || undefined,
+      departmentId: user.departmentId || undefined,
+      branchId: user.branchId || undefined,
+      roleId: user.roleId || undefined,
       loginAllowed: user.loginAllowed ?? true,
       endpointAssignmentAllowed: user.endpointAssignmentAllowed ?? true,
     });
@@ -167,13 +189,13 @@ export const Users = () => {
     drawerForm.setFieldsValue({
       firstName: user.firstName,
       lastName: user.lastName,
-      username: user.username || '',
       email: user.email,
       phone: user.phone || '',
       timezone: user.timezone || undefined,
-      organization: user.organization || undefined,
-      department: user.department || undefined,
-      role: user.role || undefined,
+      organizationId: user.organizationId || undefined,
+      departmentId: user.departmentId || undefined,
+      branchId: user.branchId || undefined,
+      roleId: user.roleId || undefined,
       loginAllowed: user.loginAllowed ?? true,
       endpointAssignmentAllowed: user.endpointAssignmentAllowed ?? true,
     });
@@ -189,6 +211,11 @@ export const Users = () => {
   };
 
   const handleDelete = (user: User) => {
+    if (user.isSuperAdmin || user.isSystem) {
+      message.error('Super Admin user cannot be deleted');
+      return;
+    }
+
     Modal.confirm({
       title: 'Delete User',
       content: `Are you sure you want to delete "${user.firstName} ${user.lastName}"?`,
@@ -236,6 +263,10 @@ export const Users = () => {
       showName: filters.showName,
       showEmail: filters.showEmail,
       showPhone: filters.showPhone,
+      showOrganization: filters.showOrganization,
+      showRole: filters.showRole,
+      showBranch: filters.showBranch,
+      showDepartment: filters.showDepartment,
     });
     setFilterModalVisible(true);
   };
@@ -247,6 +278,10 @@ export const Users = () => {
       showName: values.showName !== undefined ? values.showName : true,
       showEmail: values.showEmail !== undefined ? values.showEmail : true,
       showPhone: values.showPhone !== undefined ? values.showPhone : true,
+      showOrganization: values.showOrganization !== undefined ? values.showOrganization : true,
+      showRole: values.showRole !== undefined ? values.showRole : true,
+      showBranch: values.showBranch !== undefined ? values.showBranch : true,
+      showDepartment: values.showDepartment !== undefined ? values.showDepartment : true,
     });
     setPagination({ ...pagination, current: 1 });
     setFilterModalVisible(false);
@@ -260,21 +295,29 @@ export const Users = () => {
       showName: true,
       showEmail: true,
       showPhone: false,
+      showOrganization: true,
+      showRole: true,
+      showBranch: true,
+      showDepartment: true,
     });
     setPagination({ ...pagination, current: 1 });
     message.success('Columns reset to default');
   };
 
-  const hasHiddenColumns = !filters.showId || !filters.showName || !filters.showEmail || !filters.showPhone;
+  const hasHiddenColumns = Object.values(filters).some(v => !v);
 
   const handleExport = () => {
     const csvContent = [
-      ['ID', 'Name', 'Email', 'Phone', 'Created On'],
+      ['ID', 'Name', 'Email', 'Phone', 'Organization', 'Role', 'Branch/Location', 'Department', 'Created On'],
       ...filteredUsers.map((user) => [
         user.id,
         `${user.firstName} ${user.lastName}`,
         user.email,
         user.phone || '',
+        user.organizationName || '',
+        user.roleName || '',
+        user.branchName || '',
+        user.departmentName || '',
         user.createdAt || '',
       ]),
     ]
@@ -297,7 +340,7 @@ export const Users = () => {
   };
 
   const handleDownloadSampleCSV = () => {
-    const headers = ['firstName', 'lastName', 'email', 'phone', 'username', 'timezone', 'organization', 'department', 'role'];
+    const headers = ['firstName', 'lastName', 'email', 'phone', 'timezone', 'organization', 'department', 'role'];
     const sampleData = [headers.join(',')];
     const csvContent = sampleData.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -339,11 +382,10 @@ export const Users = () => {
             lastName: values[headers.indexOf('lastName')] || '',
             email: values[headers.indexOf('email')] || '',
             phone: values[headers.indexOf('phone')] || '',
-            username: values[headers.indexOf('username')] || '',
             timezone: values[headers.indexOf('timezone')] || 'IST',
-            organization: values[headers.indexOf('organization')] || '',
-            department: values[headers.indexOf('department')] || '',
-            role: values[headers.indexOf('role')] || '',
+            organizationName: values[headers.indexOf('organization')] || '',
+            departmentName: values[headers.indexOf('department')] || '',
+            roleName: values[headers.indexOf('role')] || '',
           };
           newUsers.push(user);
         }
@@ -439,6 +481,30 @@ export const Users = () => {
       render: (text: string) => text || '—',
     },
     {
+      title: 'Organization',
+      dataIndex: 'organizationName',
+      key: 'organization',
+      render: (text: string) => text || '—',
+    },
+    {
+      title: 'Role',
+      dataIndex: 'roleName',
+      key: 'role',
+      render: (text: string) => text || '—',
+    },
+    {
+      title: 'Branch/Location',
+      dataIndex: 'branchName',
+      key: 'branch',
+      render: (text: string) => text || '—',
+    },
+    {
+      title: 'Department',
+      dataIndex: 'departmentName',
+      key: 'department',
+      render: (text: string) => text || '—',
+    },
+    {
       title: 'Created On',
       dataIndex: 'createdAt',
       key: 'createdAt',
@@ -462,21 +528,23 @@ export const Users = () => {
       align: 'right',
       render: (_, record) => (
         <Space>
-          <Tooltip title="Edit">
+          <Tooltip title={record.isSuperAdmin || record.isSystem ? 'Cannot edit Super Admin user' : 'Edit'}>
             <Button
               type="text"
               size="small"
               icon={<EditOutlined />}
               onClick={() => handleEditUser(record)}
+              disabled={record.isSuperAdmin || record.isSystem}
             />
           </Tooltip>
-          <Tooltip title="Delete">
+          <Tooltip title={record.isSuperAdmin || record.isSystem ? 'Cannot delete Super Admin user' : 'Delete'}>
             <Button
               type="text"
               size="small"
               danger
               icon={<DeleteOutlined />}
               onClick={() => handleDelete(record)}
+              disabled={record.isSuperAdmin || record.isSystem}
             />
           </Tooltip>
         </Space>
@@ -489,6 +557,10 @@ export const Users = () => {
     if (col.key === 'name') return filters.showName;
     if (col.key === 'email') return filters.showEmail;
     if (col.key === 'phone') return filters.showPhone;
+    if (col.key === 'organization') return filters.showOrganization;
+    if (col.key === 'role') return filters.showRole;
+    if (col.key === 'branch') return filters.showBranch;
+    if (col.key === 'department') return filters.showDepartment;
     return true; // Always show actions column
   });
 
@@ -500,7 +572,11 @@ export const Users = () => {
       user.id.toLowerCase().includes(searchLower) ||
       `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchLower) ||
       user.email.toLowerCase().includes(searchLower) ||
-      (user.phone && user.phone.toLowerCase().includes(searchLower))
+      (user.phone && user.phone.toLowerCase().includes(searchLower)) ||
+      (user.organizationName && user.organizationName.toLowerCase().includes(searchLower)) ||
+      (user.roleName && user.roleName.toLowerCase().includes(searchLower)) ||
+      (user.branchName && user.branchName.toLowerCase().includes(searchLower)) ||
+      (user.departmentName && user.departmentName.toLowerCase().includes(searchLower))
     );
   });
 
@@ -508,6 +584,8 @@ export const Users = () => {
     (pagination.current! - 1) * pagination.pageSize!,
     pagination.current! * pagination.pageSize!
   );
+
+  const isSuperAdminUser = editingUser?.isSuperAdmin || editingUser?.isSystem;
 
   return (
     <div style={{ padding: '24px' }}>
@@ -519,7 +597,7 @@ export const Users = () => {
       {/* Search and Action Controls */}
       <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <Input
-          placeholder="Search..."
+          placeholder="Search by name, email, phone, organization, role, branch, or department"
           prefix={<SearchOutlined />}
           style={{ flex: 1, maxWidth: '400px' }}
           value={searchText}
@@ -614,15 +692,17 @@ export const Users = () => {
             <Button key="close" onClick={handleDrawerClose}>
               Close
             </Button>,
-            <Button
-              key="edit"
-              type="primary"
-              onClick={() => {
-                setDrawerMode('edit');
-              }}
-            >
-              Edit
-            </Button>,
+            !isSuperAdminUser && (
+              <Button
+                key="edit"
+                type="primary"
+                onClick={() => {
+                  setDrawerMode('edit');
+                }}
+              >
+                Edit
+              </Button>
+            ),
           ]
         }
       >
@@ -631,44 +711,28 @@ export const Users = () => {
           layout="vertical"
           autoComplete="off"
         >
-          {/* Name and Username Row */}
+          {/* Name Row */}
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
-                label="Name"
-                required
+                label="First Name"
+                name="firstName"
+                rules={[{ required: true, message: 'Please enter first name' }]}
               >
-                <Space direction="vertical" style={{ width: '100%' }} size="small">
-                  <Form.Item
-                    name="firstName"
-                    rules={[{ required: true, message: 'Please enter first name' }]}
-                    style={{ marginBottom: 0 }}
-                  >
-                    <Input
-                      placeholder="First Name"
-                      disabled={drawerMode === 'view'}
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    name="lastName"
-                    rules={[{ required: true, message: 'Please enter last name' }]}
-                    style={{ marginBottom: 0 }}
-                  >
-                    <Input
-                      placeholder="Last Name"
-                      disabled={drawerMode === 'view'}
-                    />
-                  </Form.Item>
-                </Space>
+                <Input
+                  placeholder="First Name"
+                  disabled={drawerMode === 'view'}
+                />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
-                label="Username"
-                name="username"
+                label="Last Name"
+                name="lastName"
+                rules={[{ required: true, message: 'Please enter last name' }]}
               >
                 <Input
-                  placeholder="username"
+                  placeholder="Last Name"
                   disabled={drawerMode === 'view'}
                 />
               </Form.Item>
@@ -679,14 +743,14 @@ export const Users = () => {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
-                label="Email"
+                label="Email (used as username)"
                 name="email"
                 rules={[
                   { required: true, message: 'Please enter email' },
                   { type: 'email', message: 'Please enter valid email' },
                 ]}
               >
-                <Input disabled={drawerMode === 'view'} placeholder="admin@infraon.com" />
+                <Input disabled={drawerMode === 'view'} placeholder="user@example.com" />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -703,11 +767,32 @@ export const Users = () => {
           {drawerMode !== 'view' && (
             <>
               <Divider>Password</Divider>
+              <Alert
+                message="Password Requirements"
+                description="Minimum 8 characters, at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character."
+                type="info"
+                showIcon
+                style={{ marginBottom: '16px' }}
+              />
               <Row gutter={16}>
                 <Col span={12}>
                   <Form.Item
                     label="Password"
                     name="password"
+                    rules={drawerMode === 'create' ? [
+                      { required: true, message: 'Please enter password' },
+                      { min: 8, message: 'Password must be at least 8 characters' },
+                      {
+                        pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])/,
+                        message: 'Must include uppercase, lowercase, number, and special character',
+                      },
+                    ] : [
+                      { min: 8, message: 'Password must be at least 8 characters' },
+                      {
+                        pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])/,
+                        message: 'Must include uppercase, lowercase, number, and special character',
+                      },
+                    ]}
                   >
                     <Input.Password
                       placeholder="Enter password"
@@ -719,6 +804,27 @@ export const Users = () => {
                   <Form.Item
                     label="Confirm Password"
                     name="confirmPassword"
+                    dependencies={['password']}
+                    rules={drawerMode === 'create' ? [
+                      { required: true, message: 'Please confirm password' },
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          if (!value || getFieldValue('password') === value) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(new Error('Passwords do not match'));
+                        },
+                      }),
+                    ] : [
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          if (!value || getFieldValue('password') === value) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(new Error('Passwords do not match'));
+                        },
+                      }),
+                    ]}
                   >
                     <Input.Password
                       placeholder="Confirm password"
@@ -811,49 +917,77 @@ export const Users = () => {
             </>
           )}
 
-          {/* Organization, Department, Role Section */}
-          <Divider>Organization</Divider>
-          <Form.Item
-            label="Organization"
-            name="organization"
-          >
-            <Select
-              placeholder="Global Organization"
-              disabled={drawerMode === 'view'}
-              options={organizations.map((org) => ({
-                label: org.name,
-                value: org.id,
-              }))}
-            />
-          </Form.Item>
+          {/* Organization, Branch/Location, Department, Role Section */}
+          <Divider>Organization & Role</Divider>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Organization"
+                name="organizationId"
+                rules={[{ required: true, message: 'Please select an organization' }]}
+              >
+                <Select
+                  placeholder="Select Organization"
+                  disabled={drawerMode === 'view'}
+                  options={organizations.map((org) => ({
+                    label: org.name,
+                    value: org.id,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Role"
+                name="roleId"
+                rules={[{ required: true, message: 'Please select a role' }]}
+              >
+                <Select
+                  placeholder="Select Role"
+                  disabled={drawerMode === 'view'}
+                  options={roles.map((role) => ({
+                    label: role.name,
+                    value: role.id,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            label="Department"
-            name="department"
-          >
-            <Select
-              placeholder="Global Department"
-              disabled={drawerMode === 'view'}
-              options={departments.map((dept) => ({
-                label: dept.name,
-                value: dept.id,
-              }))}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="Role"
-            name="role"
-          >
-            <Select
-              placeholder="Select Role"
-              disabled={drawerMode === 'view'}
-              options={roles.map((role) => ({
-                label: role.name,
-                value: role.id,
-              }))}
-            />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Branch/Location"
+                name="branchId"
+              >
+                <Select
+                  placeholder="Select Branch/Location"
+                  disabled={drawerMode === 'view'}
+                  allowClear
+                  options={branches.map((branch) => ({
+                    label: branch.name,
+                    value: branch.id,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Department"
+                name="departmentId"
+              >
+                <Select
+                  placeholder="Select Department"
+                  disabled={drawerMode === 'view'}
+                  allowClear
+                  options={departments.map((dept) => ({
+                    label: dept.name,
+                    value: dept.id,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -893,17 +1027,26 @@ export const Users = () => {
           <Form.Item name="showId" valuePropName="checked" style={{ marginBottom: '16px' }}>
             <Checkbox>Show ID</Checkbox>
           </Form.Item>
-
           <Form.Item name="showName" valuePropName="checked" style={{ marginBottom: '16px' }}>
             <Checkbox>Show Name</Checkbox>
           </Form.Item>
-
           <Form.Item name="showEmail" valuePropName="checked" style={{ marginBottom: '16px' }}>
             <Checkbox>Show Email</Checkbox>
           </Form.Item>
-
           <Form.Item name="showPhone" valuePropName="checked" style={{ marginBottom: '16px' }}>
             <Checkbox>Show Phone</Checkbox>
+          </Form.Item>
+          <Form.Item name="showOrganization" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Organization</Checkbox>
+          </Form.Item>
+          <Form.Item name="showRole" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Role</Checkbox>
+          </Form.Item>
+          <Form.Item name="showBranch" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Branch/Location</Checkbox>
+          </Form.Item>
+          <Form.Item name="showDepartment" valuePropName="checked" style={{ marginBottom: '16px' }}>
+            <Checkbox>Show Department</Checkbox>
           </Form.Item>
         </Form>
       </Modal>
@@ -970,7 +1113,7 @@ export const Users = () => {
               Click or drag file to this area to upload
             </p>
             <p style={{ fontSize: '12px', color: '#8c8c8c', marginTop: '8px' }}>
-              Please select CSV file containing Malicious Hashes
+              Please select CSV file containing user data
             </p>
             <p style={{ fontSize: '12px', color: '#8c8c8c' }}>
               Support for a single upload.

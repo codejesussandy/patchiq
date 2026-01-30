@@ -1,4 +1,5 @@
-import { Form, Input, Select, Checkbox, Button, Space, message, Typography, Divider } from 'antd';
+import { App,
+  Form, Input, Select, Checkbox, Button, Space, Typography, Divider } from 'antd';
 import { useState, useEffect } from 'react';
 import { settingsService } from '../../services/settings.service';
 import type { MailServerConfig } from '../../types/settings.types';
@@ -6,6 +7,7 @@ import type { MailServerConfig } from '../../types/settings.types';
 const { Title } = Typography;
 
 export const MailServerConfiguration = () => {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);

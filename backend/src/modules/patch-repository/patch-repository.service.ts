@@ -440,15 +440,189 @@ class PatchRepositoryService {
   // Sync Operations
   // ============================================
 
-  async triggerSync(_options: SyncOptions = {}): Promise<SyncResult[]> {
-    // This would queue sync jobs via BullMQ
-    // For now, return placeholder
-    // In production, this would:
+  async triggerSync(options: SyncOptions = {}): Promise<SyncResult[]> {
     // 1. Find enabled patch sources matching filters
-    // 2. Queue a sync job for each source
-    // 3. Return job IDs for tracking
+    const where: Record<string, unknown> = { isEnabled: true };
 
-    throw new Error('Sync functionality will be implemented with BullMQ worker');
+    if (options.sourceIds?.length) {
+      where.id = { in: options.sourceIds };
+    }
+    if (options.vendors?.length) {
+      where.vendor = { in: options.vendors };
+    }
+    if (options.platforms?.length) {
+      where.platform = { in: options.platforms };
+    }
+
+    const sources = await prisma.patchSource.findMany({ where });
+
+    if (sources.length === 0) {
+      return [];
+    }
+
+    const results: SyncResult[] = [];
+
+    for (const source of sources) {
+      const startTime = Date.now();
+      const errors: string[] = [];
+      let patchesFound = 0;
+      let patchesDownloaded = 0;
+      let patchesFailed = 0;
+
+      try {
+        // Find patches that belong to this source's vendor/platform and need downloading
+        const patchFilter: Record<string, unknown> = {
+          vendor: source.vendor,
+          downloadStatus: { in: [null, 'pending', 'failed'] },
+        };
+        if (source.platform) {
+          patchFilter.platform = source.platform;
+        }
+        // If force, re-download even completed ones
+        if (options.force) {
+          delete patchFilter.downloadStatus;
+        }
+
+        const patches = await prisma.patch.findMany({
+          where: patchFilter,
+          include: {
+            fileDetails: true,
+          },
+        });
+
+        patchesFound = patches.length;
+
+        if (options.dryRun) {
+          results.push({
+            sourceId: source.id,
+            vendor: source.vendor,
+            status: 'success',
+            patchesFound,
+            patchesDownloaded: 0,
+            patchesFailed: 0,
+            errors: [],
+            duration: Date.now() - startTime,
+          });
+          continue;
+        }
+
+        // 2. Create download jobs and queue them for each patch with a download URL
+        for (const patch of patches) {
+          if (!patch.downloadUrl) {
+            continue;
+          }
+
+          try {
+            // Create a file detail record if none exists
+            let fileDetail = patch.fileDetails.find(
+              (fd) => fd.downloadStatus !== 'completed' || options.force
+            );
+
+            if (!fileDetail) {
+              fileDetail = await prisma.patchFileDetail.create({
+                data: {
+                  patchId: patch.id,
+                  fileName: patch.downloadUrl.split('/').pop() || `${patch.patchId}.bin`,
+                  sourceUrl: patch.downloadUrl,
+                  downloadStatus: 'pending',
+                },
+              });
+            }
+
+            // Create a download job record
+            const jobId = `dl-${uuidv4()}`;
+            const targetPath = this.generateObjectKey(
+              patch.platform || 'windows',
+              patch.vendor || source.vendor,
+              (patch.product || patch.software || 'unknown') as string,
+              patch.patchId,
+              fileDetail.fileName
+            );
+
+            await prisma.patchDownloadJob.create({
+              data: {
+                jobId,
+                sourceId: source.id,
+                patchId: patch.id,
+                sourceUrl: patch.downloadUrl,
+                targetPath,
+                fileName: fileDetail.fileName,
+                expectedSize: patch.size ? BigInt(patch.size) : null,
+                checksumType: 'sha256',
+                priority: source.priority,
+                maxRetries: 3,
+                status: 'pending',
+              },
+            });
+
+            // Queue the job via BullMQ
+            const { queueDownloadJob } = await import('./download.worker');
+            await queueDownloadJob({
+              jobId,
+              sourceUrl: patch.downloadUrl,
+              targetPath,
+              fileName: fileDetail.fileName,
+              patchId: patch.id,
+              fileDetailId: fileDetail.id,
+              expectedChecksum: fileDetail.checksum || undefined,
+              checksumType: 'sha256',
+              priority: source.priority,
+            });
+
+            patchesDownloaded++;
+          } catch (err) {
+            patchesFailed++;
+            errors.push(`Patch ${patch.patchId}: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
+
+        // 3. Update source sync status
+        await prisma.patchSource.update({
+          where: { id: source.id },
+          data: {
+            lastSyncAt: new Date(),
+            lastSyncStatus: patchesFailed === 0 ? 'success' : patchesFailed < patchesFound ? 'partial' : 'failed',
+            lastSyncError: errors.length > 0 ? errors.join('; ') : null,
+          },
+        });
+
+        results.push({
+          sourceId: source.id,
+          vendor: source.vendor,
+          status: patchesFailed === 0 ? 'success' : patchesFailed < patchesFound ? 'partial' : 'failed',
+          patchesFound,
+          patchesDownloaded,
+          patchesFailed,
+          errors,
+          duration: Date.now() - startTime,
+        });
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        errors.push(errorMsg);
+
+        await prisma.patchSource.update({
+          where: { id: source.id },
+          data: {
+            lastSyncAt: new Date(),
+            lastSyncStatus: 'failed',
+            lastSyncError: errorMsg,
+          },
+        });
+
+        results.push({
+          sourceId: source.id,
+          vendor: source.vendor,
+          status: 'failed',
+          patchesFound,
+          patchesDownloaded,
+          patchesFailed,
+          errors,
+          duration: Date.now() - startTime,
+        });
+      }
+    }
+
+    return results;
   }
 
   async getSyncStatus(sourceId: string) {

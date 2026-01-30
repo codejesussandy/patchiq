@@ -288,8 +288,7 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
       placement="right"
       onClose={onClose}
       open={open}
-      width={600}
-      bodyStyle={{ paddingBottom: '80px' }}
+      styles={{ wrapper: { width: 600 }, body: { paddingBottom: '80px' } }}
     >
       <Tabs items={tabItems} />
     </Drawer>

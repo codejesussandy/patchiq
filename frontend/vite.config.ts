@@ -12,18 +12,18 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: parseInt(process.env.VITE_DEV_PORT || '5173', 10),
     host: '0.0.0.0',  // Allow connections from any host
     allowedHosts: ['dev.skenzeriq.com', 'localhost'],
     hmr: {
       // Use client-side detection for HMR
-      clientPort: 5173,
+      clientPort: parseInt(process.env.VITE_DEV_PORT || '5173', 10),
     },
     strictPort: false,
     proxy: {
       // Proxy API requests to backend for local development
       '/v1': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:3000',
         changeOrigin: true,
       },
     },

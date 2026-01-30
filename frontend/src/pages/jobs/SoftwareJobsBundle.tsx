@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Input,
   Button,
   Table,
@@ -10,7 +11,6 @@ import {
   Modal,
   Form,
   Popconfirm,
-  message,
   Checkbox,
   Row,
   Col,
@@ -57,6 +57,7 @@ type ApplicationItem = {
 };
 
 export const SoftwareJobsBundle = () => {
+  const { message } = App.useApp();
   const [searchText, setSearchText] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [bundleItems, setBundleItems] = useState<BundleItem[]>([]);

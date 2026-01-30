@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Table, Button, Space, Input, Tag, message, Spin } from 'antd';
+import { App,
+  Table, Button, Space, Input, Tag, Spin } from 'antd';
 import { ReloadOutlined, DownloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { settingsService } from '../../services/settings.service';
 import type { AgentApproval } from '../../types/settings.types';
@@ -12,6 +13,7 @@ const statusColors: Record<string, string> = {
 };
 
 export const AgentApprovals = () => {
+  const { message } = App.useApp();
   const [approvals, setApprovals] = useState<AgentApproval[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');

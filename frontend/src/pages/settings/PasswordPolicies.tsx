@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Form, Button, Typography, message, InputNumber, Switch, Row, Col } from 'antd';
+import { Form, Button, Typography, InputNumber, Switch, Row, Col, App } from 'antd';
 import { settingsService } from '../../services/settings.service';
 import type { Policy, PolicyConfiguration } from '../../types/settings.types';
 
@@ -14,6 +14,7 @@ interface PasswordPolicyFormData {
 }
 
 export const PasswordPolicies = () => {
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm<PasswordPolicyFormData>();
   const [currentPolicy, setCurrentPolicy] = useState<Policy | null>(null);

@@ -162,6 +162,50 @@ export async function getAffectedProducts(patchId: string) {
   }));
 }
 
+export async function addAffectedProduct(
+  patchId: string,
+  data: { softwareName: string; version?: string; vendor?: string; platform?: string }
+) {
+  const patch = await prisma.patch.findUnique({ where: { id: patchId } });
+
+  if (!patch) {
+    throw new NotFoundError('Patch not found');
+  }
+
+  const product = await prisma.patchAffectedProduct.create({
+    data: {
+      patchId,
+      softwareName: data.softwareName,
+      version: data.version || null,
+      vendor: data.vendor || null,
+      platform: data.platform || null,
+    },
+  });
+
+  return {
+    id: product.id,
+    softwareName: product.softwareName,
+    version: product.version,
+    vendor: product.vendor,
+    installedOn: product.installedOn,
+    platform: product.platform,
+  };
+}
+
+export async function removeAffectedProduct(patchId: string, productId: string) {
+  const product = await prisma.patchAffectedProduct.findFirst({
+    where: { id: productId, patchId },
+  });
+
+  if (!product) {
+    throw new NotFoundError('Affected product not found');
+  }
+
+  await prisma.patchAffectedProduct.delete({ where: { id: productId } });
+
+  return { success: true };
+}
+
 export async function getFileDetails(patchId: string) {
   const patch = await prisma.patch.findUnique({ where: { id: patchId } });
 
@@ -568,6 +612,7 @@ export async function getDeploymentPreview(id: string) {
     where: { id },
     include: {
       patches: true,
+      tasks: true,
     },
   });
 
@@ -575,12 +620,56 @@ export async function getDeploymentPreview(id: string) {
     throw new NotFoundError('Deployment not found');
   }
 
-  // In a real implementation, this would calculate actual target endpoints
+  // Calculate actual target endpoints based on deployment scope
+  let targetEndpoints = 0;
+
+  if (deployment.tasks.length > 0) {
+    // If tasks already exist, use the actual task count
+    targetEndpoints = deployment.tasks.length;
+  } else if (deployment.scope === 'Global') {
+    // Global scope: count all active assets
+    targetEndpoints = await prisma.asset.count({
+      where: { status: { not: 'Retired' } },
+    });
+  } else if (deployment.scope === 'Group' && deployment.targetGroups.length > 0) {
+    // Group scope: count unique endpoints across selected groups
+    const groups = await prisma.computerGroup.findMany({
+      where: { id: { in: deployment.targetGroups } },
+      select: { endpoints: true },
+    });
+    const uniqueEndpoints = new Set(groups.flatMap((g) => g.endpoints));
+    targetEndpoints = uniqueEndpoints.size;
+  } else if (deployment.scope === 'Endpoint' && deployment.targetGroups.length > 0) {
+    // Endpoint scope: targetGroups holds endpoint IDs directly
+    const validEndpoints = await prisma.asset.count({
+      where: { id: { in: deployment.targetGroups } },
+    });
+    targetEndpoints = validEndpoints;
+  }
+
+  const patchCount = deployment.patches.length;
+  const totalOperations = patchCount * targetEndpoints;
+
+  // Task status breakdown (from existing tasks if any)
+  const tasksByStatus = deployment.tasks.reduce(
+    (acc, task) => {
+      acc[task.status] = (acc[task.status] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
   return {
     deploymentId: id,
     patches: deployment.patches.map(transformPatch),
-    targetEndpoints: 10, // Mock value
-    estimatedDuration: '30 minutes', // Mock value
+    targetEndpoints,
+    totalOperations,
+    taskBreakdown: {
+      pending: tasksByStatus['pending'] || 0,
+      inProgress: tasksByStatus['in_progress'] || 0,
+      completed: tasksByStatus['completed'] || 0,
+      failed: tasksByStatus['failed'] || 0,
+    },
   };
 }
 

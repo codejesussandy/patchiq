@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
   Typography,
   Modal,
   Form,
-  message,
   Space,
   Tooltip,
   Checkbox,
@@ -35,6 +35,7 @@ interface FilterState {
 }
 
 export const DeploymentPolicies = () => {
+  const { message } = App.useApp();
   const [policies, setPolicies] = useState<DeploymentPolicy[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');

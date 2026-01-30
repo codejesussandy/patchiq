@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Modal,
   Form,
   Select,
@@ -7,7 +8,6 @@ import {
   TimePicker,
   Typography,
   Tag,
-  message,
   Descriptions,
 } from 'antd';
 import dayjs from 'dayjs';
@@ -30,6 +30,7 @@ export const ScheduleReportModal = ({
   onSuccess,
   report,
 }: ScheduleReportModalProps) => {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 

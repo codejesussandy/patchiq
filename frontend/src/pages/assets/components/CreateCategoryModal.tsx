@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import {
+  App,
   Modal,
   Form,
   Input,
   Select,
   Tabs,
-  message,
   Tag,
 } from 'antd';
 import type { TabsProps } from 'antd';
@@ -32,6 +32,7 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [activeTab, setActiveTab] = useState<string>('category');
   const [loading, setLoading] = useState(false);

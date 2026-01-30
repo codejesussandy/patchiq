@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
   Typography,
   Modal,
   Form,
-  message,
   Space,
   Tooltip,
   Checkbox,
@@ -36,6 +36,7 @@ interface FilterState {
 }
 
 export const ComputerGroups = () => {
+  const { message } = App.useApp();
   const [groups, setGroups] = useState<ComputerGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');

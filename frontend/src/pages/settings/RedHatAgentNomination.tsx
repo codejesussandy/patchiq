@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Table, Button, Space, Input, Tag, message, Spin, Modal, Form, Select, Tooltip } from 'antd';
+import { App,
+  Table, Button, Space, Input, Tag, Spin, Modal, Form, Select, Tooltip } from 'antd';
 import { ReloadOutlined, DownloadOutlined, SearchOutlined, EditOutlined } from '@ant-design/icons';
 import { settingsService } from '../../services/settings.service';
 import type { RedHatAgentNomination as RedHatAgentNominationType } from '../../types/settings.types';
@@ -12,6 +13,7 @@ const statusColors: Record<string, string> = {
 };
 
 export const RedHatAgentNomination = () => {
+  const { message } = App.useApp();
   const [nominations, setNominations] = useState<RedHatAgentNominationType[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');

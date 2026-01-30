@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Modal,
   Button,
   Form,
   Input,
   Select,
   Tree,
-  message,
   Dropdown,
 } from 'antd';
 import {
@@ -27,6 +27,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   open,
   onClose,
 }) => {
+  const { message } = App.useApp();
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [editModalVisible, setEditModalVisible] = useState(false);

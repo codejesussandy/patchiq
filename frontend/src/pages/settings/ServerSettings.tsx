@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Form, Input, Select, Switch, Button, Space, message, Typography, Divider, Card, Row, Col } from 'antd';
+import { App,
+  Form, Input, Select, Switch, Button, Space, Typography, Divider, Card, Row, Col } from 'antd';
 import { settingsService } from '../../services/settings.service';
 import type { ServerSettings as ServerSettingsType, ServerSettingsFormData } from '../../types/settings.types';
 
 const { Title } = Typography;
 
 export const ServerSettings = () => {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<ServerSettingsType | null>(null);

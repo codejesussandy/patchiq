@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
+  App,
   Table,
   Input,
   Button,
   Typography,
   Select,
-  message,
   Modal,
   Form,
   Row,
@@ -24,6 +24,7 @@ const { Title } = Typography;
 const { Option } = Select;
 
 export const SoftwareInventory = () => {
+  const { message } = App.useApp();
   const [searchParams] = useSearchParams();
   const [software, setSoftware] = useState<SoftwareInventoryType[]>([]);
   const [loading, setLoading] = useState(false);

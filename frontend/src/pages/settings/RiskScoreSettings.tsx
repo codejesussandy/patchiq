@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Form, Button, Typography, message, Checkbox, Slider, Row, Col } from 'antd';
+import { App,
+  Form, Button, Typography, Checkbox, Slider, Row, Col } from 'antd';
 import { settingsService } from '../../services/settings.service';
 import type { RiskScore, RiskScoreFormData } from '../../types/settings.types';
 
@@ -14,6 +15,7 @@ interface RiskScoreFormValues {
 }
 
 export const RiskScoreSettings = () => {
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm<RiskScoreFormValues>();
   const [_currentRiskScore, setCurrentRiskScore] = useState<RiskScore | null>(null);

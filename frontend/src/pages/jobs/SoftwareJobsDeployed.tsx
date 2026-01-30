@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
+  App,
   Input,
   Button,
   Table,
@@ -14,7 +15,6 @@ import {
   Checkbox,
   Row,
   Col,
-  message,
   Tooltip,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -177,6 +177,7 @@ const convertTask = (t: SoftwareDeploymentTask): TaskItem => {
 // API data will be loaded into state
 
 export const SoftwareJobsDeployed = () => {
+  const { message } = App.useApp();
   // Get navigation state from SoftwareJobsCatalog
   const location = useLocation();
   const locationState = location.state as LocationState | null;

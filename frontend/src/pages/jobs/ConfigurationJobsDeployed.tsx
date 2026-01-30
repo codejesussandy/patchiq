@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Input,
   Button,
   Table,
@@ -12,7 +13,6 @@ import {
   Checkbox,
   Row,
   Col,
-  message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -61,6 +61,7 @@ type ConfigurationBundleItem = {
 };
 
 export const ConfigurationJobsDeployed = () => {
+  const { message } = App.useApp();
   const [searchText, setSearchText] = useState('');
   const [deployedItems, setDeployedItems] = useState<ConfigurationDeployedItem[]>([]);
   const [configurations, setConfigurations] = useState<ConfigurationItem[]>([]);

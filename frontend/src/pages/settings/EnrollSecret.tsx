@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
   Typography,
-  message,
   Space,
   Tooltip,
   Popconfirm,
@@ -26,6 +26,7 @@ import type { EnrollSecret as EnrollSecretType } from '../../types/settings.type
 const { Title } = Typography;
 
 export const EnrollSecret = () => {
+  const { message } = App.useApp();
   const [secrets, setSecrets] = useState<EnrollSecretType[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');

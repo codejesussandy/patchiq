@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
@@ -7,7 +8,6 @@ import {
   Typography,
   Modal,
   Form,
-  message,
   Select,
   Checkbox,
   Space,
@@ -37,6 +37,7 @@ const PERMISSION_MODULES = [
 const PERMISSION_ACTIONS = ['view', 'add', 'edit', 'delete'];
 
 export const RolesAndPrivileges = () => {
+  const { message } = App.useApp();
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');

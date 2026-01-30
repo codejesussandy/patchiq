@@ -807,6 +807,114 @@ export class SettingsService {
       message: 'Agent rejected successfully',
     };
   }
+
+  // ============================================
+  // Computer Groups
+  // ============================================
+
+  async listComputerGroups() {
+    return prisma.computerGroup.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getComputerGroup(id: string) {
+    const group = await prisma.computerGroup.findUnique({ where: { id } });
+    if (!group) throw new NotFoundError('Computer group not found');
+    return group;
+  }
+
+  async createComputerGroup(data: { name: string; description?: string; endpoints?: string[] }) {
+    return prisma.computerGroup.create({
+      data: {
+        name: data.name,
+        description: data.description,
+        endpoints: data.endpoints || [],
+        endpointCount: data.endpoints?.length || 0,
+      },
+    });
+  }
+
+  async updateComputerGroup(id: string, data: { name?: string; description?: string; endpoints?: string[] }) {
+    const group = await prisma.computerGroup.findUnique({ where: { id } });
+    if (!group) throw new NotFoundError('Computer group not found');
+    return prisma.computerGroup.update({
+      where: { id },
+      data: {
+        ...data,
+        endpointCount: data.endpoints ? data.endpoints.length : undefined,
+      },
+    });
+  }
+
+  async deleteComputerGroup(id: string) {
+    const group = await prisma.computerGroup.findUnique({ where: { id } });
+    if (!group) throw new NotFoundError('Computer group not found');
+    await prisma.computerGroup.delete({ where: { id } });
+  }
+
+  async getAvailableEndpoints() {
+    const assets = await prisma.asset.findMany({
+      select: {
+        id: true,
+        hostname: true,
+        ipAddress: true,
+        status: true,
+      },
+      orderBy: { hostname: 'asc' },
+    });
+    return assets.map((a) => ({
+      id: a.id,
+      name: a.hostname,
+      ipAddress: a.ipAddress,
+      status: a.status === 'In Use' ? 'Online' : 'Offline',
+    }));
+  }
+
+  // ============================================
+  // Deployment Policies
+  // ============================================
+
+  async listDeploymentPolicies() {
+    return prisma.deploymentPolicy.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getDeploymentPolicy(id: string) {
+    const policy = await prisma.deploymentPolicy.findUnique({ where: { id } });
+    if (!policy) throw new NotFoundError('Deployment policy not found');
+    return policy;
+  }
+
+  async createDeploymentPolicy(data: { name: string; description?: string; type?: string; supportedModule?: string; relatedType?: string }) {
+    const count = await prisma.deploymentPolicy.count();
+    return prisma.deploymentPolicy.create({
+      data: {
+        policyId: `POL-${String(count + 1).padStart(4, '0')}`,
+        name: data.name,
+        description: data.description,
+        type: data.type || 'INSTANT',
+        supportedModule: data.supportedModule || 'All',
+        relatedType: data.relatedType || 'No Relation',
+      },
+    });
+  }
+
+  async updateDeploymentPolicy(id: string, data: { name?: string; description?: string; type?: string; supportedModule?: string; relatedType?: string }) {
+    const policy = await prisma.deploymentPolicy.findUnique({ where: { id } });
+    if (!policy) throw new NotFoundError('Deployment policy not found');
+    return prisma.deploymentPolicy.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async deleteDeploymentPolicy(id: string) {
+    const policy = await prisma.deploymentPolicy.findUnique({ where: { id } });
+    if (!policy) throw new NotFoundError('Deployment policy not found');
+    await prisma.deploymentPolicy.delete({ where: { id } });
+  }
 }
 
 export const settingsService = new SettingsService();

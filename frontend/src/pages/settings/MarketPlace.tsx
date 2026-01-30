@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
   Typography,
   Modal,
   Form,
-  message,
   Space,
   Tooltip,
   Switch,
@@ -33,6 +33,7 @@ interface IntegrationWithKey extends Integration {
 }
 
 export const MarketPlace = () => {
+  const { message } = App.useApp();
   const [integrations, setIntegrations] = useState<IntegrationWithKey[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');

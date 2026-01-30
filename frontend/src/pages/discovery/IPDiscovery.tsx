@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Table,
   Input,
   Button,
   Modal,
   Form,
-  message,
   Space,
   Typography,
   Tooltip,
@@ -27,6 +27,7 @@ import type { IPRange, IPRangeFilterState } from '../../types/discovery.types';
 const { Title, Text } = Typography;
 
 export const IPDiscovery = () => {
+  const { message } = App.useApp();
   // Data
   const [ranges, setRanges] = useState<IPRange[]>([]);
   const [loading, setLoading] = useState(false);

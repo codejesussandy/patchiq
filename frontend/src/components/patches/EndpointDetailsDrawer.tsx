@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Drawer,
   Typography,
   Tag,
@@ -11,7 +12,6 @@ import {
   Statistic,
   Space,
   Spin,
-  message,
   Button,
 } from 'antd';
 import {
@@ -44,6 +44,7 @@ export const EndpointDetailsDrawer = ({
   endpointId,
   onClose,
 }: EndpointDetailsDrawerProps) => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [endpoint, setEndpoint] = useState<EndpointDetails | null>(null);
@@ -486,7 +487,7 @@ export const EndpointDetailsDrawer = ({
         </Space>
       }
       placement="right"
-      width={600}
+      styles={{ wrapper: { width: 600 } }}
       open={open}
       onClose={onClose}
       destroyOnClose

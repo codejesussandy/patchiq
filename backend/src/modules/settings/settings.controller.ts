@@ -765,6 +765,113 @@ export class SettingsController {
       next(error);
     }
   }
+
+  // ============================================
+  // Computer Groups
+  // ============================================
+
+  async listComputerGroups(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.listComputerGroups();
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getComputerGroup(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.getComputerGroup(req.params.id);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createComputerGroup(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.createComputerGroup(req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateComputerGroup(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.updateComputerGroup(req.params.id, req.body);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteComputerGroup(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await settingsService.deleteComputerGroup(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAvailableEndpoints(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.getAvailableEndpoints();
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================
+  // Deployment Policies
+  // ============================================
+
+  async listDeploymentPolicies(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.listDeploymentPolicies();
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDeploymentPolicy(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.getDeploymentPolicy(req.params.id);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createDeploymentPolicy(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.createDeploymentPolicy(req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateDeploymentPolicy(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.updateDeploymentPolicy(req.params.id, req.body);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteDeploymentPolicy(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await settingsService.deleteDeploymentPolicy(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const settingsController = new SettingsController();

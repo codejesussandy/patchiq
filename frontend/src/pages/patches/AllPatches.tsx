@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  App,
   Table,
   Input,
   Button,
@@ -8,7 +9,6 @@ import {
   Space,
   Typography,
   Modal,
-  message,
   Form,
   Select,
   DatePicker,
@@ -35,7 +35,10 @@ import {
   ClockCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import { patchService, type Patch, type AffectedProduct } from '../../services/patch.service';
+import { patchService, type Patch, type AffectedSoftware } from '../../services/patch.service';
+import { settingsService } from '../../services/settings.service';
+import { assetService } from '../../services/asset.service';
+import { tagService } from '../../services/tag.service';
 import { SeverityBadge, OSIcon } from '../../components/patches';
 import dayjs from 'dayjs';
 
@@ -44,6 +47,7 @@ const { Option } = Select;
 const { TextArea } = Input;
 
 export const AllPatches = () => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [patches, setPatches] = useState<Patch[]>([]);
@@ -65,7 +69,11 @@ export const AllPatches = () => {
   const [editForm] = Form.useForm();
 
   // For Create Patch Step 2
-  const [affectedProducts] = useState<AffectedProduct[]>([]);
+  const [affectedProducts, setAffectedProducts] = useState<AffectedSoftware[]>([]);
+  const [addProductModalVisible, setAddProductModalVisible] = useState(false);
+  const [addProductForm] = Form.useForm();
+  const [addProductLoading, setAddProductLoading] = useState(false);
+  const [createdPatchId, setCreatedPatchId] = useState<string | null>(null);
 
   // Bulk Add Modal
   const [bulkAddModalVisible, setBulkAddModalVisible] = useState(false);
@@ -82,8 +90,28 @@ export const AllPatches = () => {
   const [scheduleType, setScheduleType] = useState<'immediate' | 'scheduled'>('immediate');
   const [deployScope, setDeployScope] = useState<'all' | 'groups' | 'custom'>('all');
 
+  // Dynamic option lists
+  const [groups, setGroups] = useState<any[]>([]);
+  const [endpointsList, setEndpointsList] = useState<any[]>([]);
+  const [tags, setTags] = useState<any[]>([]);
+
   useEffect(() => {
     fetchPatches();
+    const fetchOptions = async () => {
+      try {
+        const [groupsData, endpointsData, tagsData] = await Promise.all([
+          settingsService.getComputerGroups(),
+          assetService.getAssets(),
+          tagService.getTags(),
+        ]);
+        setGroups(groupsData);
+        setEndpointsList(endpointsData);
+        setTags(tagsData);
+      } catch {
+        // Silently fail - selects will just be empty
+      }
+    };
+    fetchOptions();
   }, []);
 
   const fetchPatches = async () => {
@@ -139,9 +167,52 @@ export const AllPatches = () => {
       message.error('Please upload a file');
       return;
     }
+    const file = fileList[0];
     try {
-      // In real implementation, parse CSV and create patches
-      message.success(`Processing ${fileList.length} file(s) for bulk import`);
+      const text = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(file);
+      });
+
+      const lines = text.split('\n').filter((l) => l.trim());
+      if (lines.length < 2) {
+        message.error('CSV file must have a header row and at least one data row');
+        return;
+      }
+
+      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+      let successCount = 0;
+      let failCount = 0;
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map((v) => v.trim());
+        const row: Record<string, string> = {};
+        headers.forEach((h, idx) => {
+          row[h] = values[idx] || '';
+        });
+
+        try {
+          await patchService.createPatch({
+            software: row['software'] || row['name'] || '',
+            platform: row['platform'] || row['os'] || 'Windows',
+            description: row['description'] || '',
+            category: row['category'] || 'Security Updates',
+            severity: row['severity'] || 'Medium',
+            bulletinId: row['bulletinid'] || row['bulletin_id'] || '',
+            kbNumber: row['kbnumber'] || row['kb_number'] || row['kb'] || '',
+            releaseDate: row['releasedate'] || row['release_date'] || '',
+            architecture: row['architecture'] || '64 BIT',
+          });
+          successCount++;
+        } catch {
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) message.success(`Successfully imported ${successCount} patch(es)`);
+      if (failCount > 0) message.warning(`Failed to import ${failCount} row(s)`);
       setBulkAddModalVisible(false);
       setFileList([]);
       fetchPatches();
@@ -329,34 +400,79 @@ export const AllPatches = () => {
     if (currentStep === 0) {
       try {
         await form.validateFields();
-        setCurrentStep(1);
-      } catch (error) {
-        // Validation failed
-      }
-    } else {
-      try {
-        const values = form.getFieldsValue();
-        if (editingPatch) {
-          // Update existing patch
+
+        // If creating a new patch, save it now so we can add affected products
+        if (!editingPatch && !createdPatchId) {
+          const values = form.getFieldsValue();
+          const created = await patchService.createPatch(values);
+          setCreatedPatchId(created.id);
+          message.success('Patch created. Now add affected products.');
+        } else if (editingPatch) {
+          // Update step 1 fields
+          const values = form.getFieldsValue();
           await patchService.updatePatch(editingPatch.id, {
             ...editingPatch,
             ...values,
             releaseDate: values.releaseDate?.format('YYYY-MM-DD') || editingPatch.releaseDate,
           });
-          message.success('Patch updated successfully');
-        } else {
-          // Create new patch
-          await patchService.createPatch(values);
-          message.success('Patch created successfully');
+          // Load existing affected products
+          const products = await patchService.getAffectedSoftwares(editingPatch.id);
+          setAffectedProducts(products);
         }
-        setCreateModalVisible(false);
-        setCurrentStep(0);
-        form.resetFields();
-        setEditingPatch(null);
-        fetchPatches();
+
+        setCurrentStep(1);
       } catch (error) {
-        message.error(editingPatch ? 'Failed to update patch' : 'Failed to create patch');
+        if ((error as { errorFields?: unknown }).errorFields) return; // validation error
+        message.error('Failed to save patch');
       }
+    } else {
+      // Step 2 complete — close modal
+      setCreateModalVisible(false);
+      setCurrentStep(0);
+      form.resetFields();
+      setEditingPatch(null);
+      setCreatedPatchId(null);
+      setAffectedProducts([]);
+      fetchPatches();
+    }
+  };
+
+  const handleAddAffectedProduct = async () => {
+    try {
+      const values = await addProductForm.validateFields();
+      const patchId = editingPatch?.id || createdPatchId;
+      if (!patchId) return;
+
+      setAddProductLoading(true);
+      const product = await patchService.addAffectedProduct(patchId, {
+        softwareName: values.softwareName,
+        version: values.version,
+        vendor: values.vendor,
+        platform: values.platform,
+      });
+      setAffectedProducts((prev) => [...prev, product]);
+      setAddProductModalVisible(false);
+      addProductForm.resetFields();
+      message.success('Affected product added');
+    } catch (error) {
+      if (!(error as { errorFields?: unknown }).errorFields) {
+        message.error('Failed to add affected product');
+      }
+    } finally {
+      setAddProductLoading(false);
+    }
+  };
+
+  const handleRemoveAffectedProduct = async (productId: string) => {
+    const patchId = editingPatch?.id || createdPatchId;
+    if (!patchId) return;
+
+    try {
+      await patchService.removeAffectedProduct(patchId, productId);
+      setAffectedProducts((prev) => prev.filter((p) => p.id !== productId));
+      message.success('Affected product removed');
+    } catch {
+      message.error('Failed to remove affected product');
     }
   };
 
@@ -526,9 +642,9 @@ export const AllPatches = () => {
             rules={[{ required: true, message: 'Please select tags' }]}
           >
             <Select mode="tags" placeholder="Select">
-              <Option value="Third Party">Third Party</Option>
-              <Option value="Critical">Critical</Option>
-              <Option value="Security">Security</Option>
+              {tags.map((t) => (
+                <Option key={t.id} value={t.name}>{t.name}</Option>
+              ))}
             </Select>
           </Form.Item>
         </Col>
@@ -540,7 +656,9 @@ export const AllPatches = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={5} style={{ margin: 0 }}>Affected Products</Title>
-        <Button type="link">Add Affected Products</Button>
+        <Button type="link" onClick={() => { addProductForm.resetFields(); setAddProductModalVisible(true); }}>
+          + Add Affected Product
+        </Button>
       </div>
 
       <Table
@@ -548,31 +666,58 @@ export const AllPatches = () => {
         rowKey="id"
         pagination={false}
         size="small"
+        locale={{ emptyText: 'No affected products added yet. Click "Add Affected Product" above.' }}
         columns={[
-          { title: 'Host Name', dataIndex: 'hostName', key: 'hostName' },
-          { title: 'Location', dataIndex: 'location', key: 'location' },
-          {
-            title: 'Vendor',
-            dataIndex: 'vendor',
-            key: 'vendor',
-            render: (vendor: string) => (
-              <Space>
-                <span style={{ color: '#1890ff', fontSize: 20 }}>⚡</span>
-                <span>{vendor}</span>
-              </Space>
-            ),
-          },
-          { title: 'Hardware Model', dataIndex: 'hardwareModel', key: 'hardwareModel' },
+          { title: 'Software Name', dataIndex: 'softwareName', key: 'softwareName' },
+          { title: 'Version', dataIndex: 'version', key: 'version', render: (v: string) => v || '-' },
+          { title: 'Vendor', dataIndex: 'vendor', key: 'vendor', render: (v: string) => v || '-' },
+          { title: 'Platform', dataIndex: 'platform', key: 'platform', render: (v: string) => v || '-' },
+          { title: 'Installed On', dataIndex: 'installedOn', key: 'installedOn', render: (v: number) => `${v} endpoint${v !== 1 ? 's' : ''}` },
           {
             title: '',
             key: 'action',
             width: 50,
-            render: () => (
-              <Button type="text" danger icon={<DeleteOutlined />} />
+            render: (_: unknown, record: AffectedSoftware) => (
+              <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveAffectedProduct(record.id)} />
             ),
           },
         ]}
       />
+
+      <Modal
+        title="Add Affected Product"
+        open={addProductModalVisible}
+        onCancel={() => setAddProductModalVisible(false)}
+        onOk={handleAddAffectedProduct}
+        confirmLoading={addProductLoading}
+        okText="Add"
+      >
+        <Form form={addProductForm} layout="vertical">
+          <Form.Item name="softwareName" label="Software Name" rules={[{ required: true, message: 'Please enter software name' }]}>
+            <Input placeholder="e.g., Microsoft Office" />
+          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="version" label="Version">
+                <Input placeholder="e.g., 2021" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="vendor" label="Vendor">
+                <Input placeholder="e.g., Microsoft" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="platform" label="Platform">
+            <Select placeholder="Select platform" allowClear>
+              <Option value="Windows">Windows</Option>
+              <Option value="MacOS">MacOS</Option>
+              <Option value="Linux">Linux</Option>
+              <Option value="Cross-platform">Cross-platform</Option>
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 
@@ -870,9 +1015,9 @@ export const AllPatches = () => {
                 rules={[{ required: true, message: 'Please select tags' }]}
               >
                 <Select mode="tags" placeholder="Select">
-                  <Option value="Third Party">Third Party</Option>
-                  <Option value="Critical">Critical</Option>
-                  <Option value="Security">Security</Option>
+                  {tags.map((t) => (
+                    <Option key={t.id} value={t.name}>{t.name}</Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>
@@ -1040,11 +1185,9 @@ export const AllPatches = () => {
                       placeholder="Select groups"
                       style={{ width: '100%' }}
                     >
-                      <Option value="test-group">Test Group</Option>
-                      <Option value="production-servers">Production Servers</Option>
-                      <Option value="development">Development</Option>
-                      <Option value="finance-dept">Finance Department</Option>
-                      <Option value="hr-dept">HR Department</Option>
+                      {groups.map((g) => (
+                        <Option key={g.id} value={g.id}>{g.name}</Option>
+                      ))}
                     </Select>
                   </Form.Item>
                 )}
@@ -1060,11 +1203,9 @@ export const AllPatches = () => {
                       placeholder="Select endpoints"
                       style={{ width: '100%' }}
                     >
-                      <Option value="1">DESKTOP-7CC6ETJ</Option>
-                      <Option value="2">LAPTOP-9XK2PLM</Option>
-                      <Option value="3">WORKSTATION-5YT8QWE</Option>
-                      <Option value="4">SERVER-PROD-01</Option>
-                      <Option value="5">SERVER-PROD-02</Option>
+                      {endpointsList.map((e) => (
+                        <Option key={e.id} value={e.id}>{e.hostname || e.name || e.id}</Option>
+                      ))}
                     </Select>
                   </Form.Item>
                 )}

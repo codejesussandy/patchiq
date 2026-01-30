@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  App,
   Card,
   Row,
   Col,
@@ -7,7 +8,6 @@ import {
   Button,
   Form,
   Input,
-  message,
   Spin,
   Divider,
   Space,
@@ -40,6 +40,7 @@ interface License {
 }
 
 export const PlatformLicense = () => {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [license, setLicense] = useState<License | null>(null);
   const [loading, setLoading] = useState(false);
