@@ -219,6 +219,25 @@ export const zeroTouchConfigListQuerySchema = z.object({
 });
 
 // ============================================
+// Patch Deployment from UI Schema
+// ============================================
+
+export const createPatchDeploymentFromUISchema = z.object({
+  name: z.string().min(1, 'Deployment name is required'),
+  description: z.string().optional(),
+  targetAgentIds: z.array(z.string()).min(1, 'At least one target agent is required'),
+  patches: z.array(z.object({
+    id: z.string(),
+    patchId: z.string().optional(),
+    name: z.string().optional(),
+    description: z.string().optional(),
+    severity: z.string().optional(),
+    type: z.string().optional(),
+  })).min(1, 'At least one patch is required'),
+  retryCount: z.number().int().positive().optional().default(1),
+});
+
+// ============================================
 // Type Exports
 // ============================================
 
@@ -233,3 +252,4 @@ export type DeploymentListQuery = z.infer<typeof deploymentListQuerySchema>;
 export type CreatePatchTestInput = z.infer<typeof createPatchTestSchema>;
 export type CreateZeroTouchConfigInput = z.infer<typeof createZeroTouchConfigSchema>;
 export type UpdateZeroTouchConfigInput = z.infer<typeof updateZeroTouchConfigSchema>;
+export type CreatePatchDeploymentFromUIInput = z.infer<typeof createPatchDeploymentFromUISchema>;

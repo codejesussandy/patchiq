@@ -459,18 +459,62 @@ func (m *Manager) executeCommand(cmd client.PendingCommand) {
 
 	// Patch commands
 	case "patch_install":
-		var params struct {
+		// Support both array format { patches: [...] } and legacy single format { patchId, options }
+		var arrayParams struct {
+			Patches []struct {
+				PatchID        string             `json:"patchId"`
+				KBNumber       string             `json:"kbNumber"`
+				PackageName    string             `json:"packageName"`
+				DownloadURL    string             `json:"downloadUrl"`
+				Checksum       string             `json:"checksum"`
+				ChecksumType   string             `json:"checksumType"`
+				RebootRequired bool               `json:"rebootRequired"`
+				ForceReboot    bool               `json:"forceReboot"`
+			} `json:"patches"`
+		}
+		var singleParams struct {
 			PatchID string             `json:"patchId"`
 			Options models.PatchOptions `json:"options"`
 		}
-		if err := parsePayload(cmd.Payload, &params); err != nil {
-			result.Status = "failed"
-			result.ErrorMessage = "Invalid payload: " + err.Error()
-		} else {
-			execResult := m.executors.Patch().InstallPatch(params.PatchID, params.Options)
+
+		if err := parsePayload(cmd.Payload, &arrayParams); err == nil && len(arrayParams.Patches) > 0 {
+			// Array format from deployment executor
+			var allSuccess = true
+			var messages []string
+			var lastErr string
+			for _, p := range arrayParams.Patches {
+				patchID := p.PatchID
+				if patchID == "" {
+					patchID = p.KBNumber
+				}
+				if patchID == "" {
+					patchID = p.PackageName
+				}
+				opts := models.PatchOptions{
+					Force:       p.ForceReboot,
+					AllowReboot: p.RebootRequired,
+				}
+				execResult := m.executors.Patch().InstallPatch(patchID, opts)
+				if !execResult.Success {
+					allSuccess = false
+					if execResult.ErrorMessage != "" {
+						lastErr = execResult.ErrorMessage
+					}
+				}
+				messages = append(messages, fmt.Sprintf("%s: %s", patchID, execResult.Message))
+			}
+			result.Status = boolToStatus(allSuccess)
+			result.Result = strings.Join(messages, "; ")
+			result.ErrorMessage = lastErr
+		} else if err := parsePayload(cmd.Payload, &singleParams); err == nil && singleParams.PatchID != "" {
+			// Legacy single-patch format
+			execResult := m.executors.Patch().InstallPatch(singleParams.PatchID, singleParams.Options)
 			result.Status = boolToStatus(execResult.Success)
 			result.Result = execResult.Message
 			result.ErrorMessage = execResult.ErrorMessage
+		} else {
+			result.Status = "failed"
+			result.ErrorMessage = "Invalid payload: expected { patches: [...] } or { patchId: \"...\" }"
 		}
 
 	case "patch_uninstall":

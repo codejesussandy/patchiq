@@ -2,6 +2,8 @@ import { prisma } from '@/db/client';
 import { NotFoundError, BadRequestError, ConflictError } from '@shared/errors';
 import { getPaginationParams, paginate } from '@shared/utils/pagination';
 import type { Prisma } from '@prisma/client';
+import { deploymentExecutorService } from '@modules/deployments';
+import type { PatchInstallPayload } from '@modules/deployments';
 import type {
   CreatePatchInput,
   UpdatePatchInput,
@@ -14,6 +16,7 @@ import type {
   CreatePatchTestInput,
   CreateZeroTouchConfigInput,
   UpdateZeroTouchConfigInput,
+  CreatePatchDeploymentFromUIInput,
 } from './patches.validator';
 
 // ============================================
@@ -674,7 +677,13 @@ export async function getDeploymentPreview(id: string) {
 }
 
 export async function executeDeployment(id: string, userId: string) {
-  const deployment = await prisma.patchDeployment.findUnique({ where: { id } });
+  const deployment = await prisma.patchDeployment.findUnique({
+    where: { id },
+    include: {
+      patches: true,
+      tasks: true,
+    },
+  });
 
   if (!deployment) {
     throw new NotFoundError('Deployment not found');
@@ -688,13 +697,78 @@ export async function executeDeployment(id: string, userId: string) {
     throw new BadRequestError('Deployment is already completed');
   }
 
-  await prisma.patchDeployment.update({
-    where: { id },
-    data: {
-      stage: 'IN_PROGRESS',
-      startedAt: new Date(),
-    },
-  });
+  // If tasks already exist (created via POST /deployments/patch), just flip stage
+  if (deployment.tasks.length > 0) {
+    await prisma.patchDeployment.update({
+      where: { id },
+      data: {
+        stage: 'IN_PROGRESS',
+        startedAt: new Date(),
+      },
+    });
+  } else {
+    // Resolve scope to agent IDs for deployments created via old POST /deployments route
+    let agentIds: string[] = [];
+
+    if (deployment.scope === 'Global') {
+      const agents = await prisma.agent.findMany({
+        where: { assetId: { not: null } },
+        select: { id: true },
+      });
+      agentIds = agents.map(a => a.id);
+    } else if (deployment.scope === 'Group' && deployment.targetGroups.length > 0) {
+      const groups = await prisma.computerGroup.findMany({
+        where: { id: { in: deployment.targetGroups } },
+        select: { endpoints: true },
+      });
+      const endpointIds = [...new Set(groups.flatMap(g => g.endpoints))];
+      // endpoints in ComputerGroup are asset IDs; resolve to agent IDs
+      const agents = await prisma.agent.findMany({
+        where: { assetId: { in: endpointIds } },
+        select: { id: true },
+      });
+      agentIds = agents.map(a => a.id);
+    } else if (deployment.scope === 'Endpoint' && deployment.targetGroups.length > 0) {
+      // targetGroups holds endpoint (asset) IDs for Endpoint scope
+      const agents = await prisma.agent.findMany({
+        where: { assetId: { in: deployment.targetGroups } },
+        select: { id: true },
+      });
+      agentIds = agents.map(a => a.id);
+    }
+
+    if (agentIds.length === 0) {
+      throw new BadRequestError('No target agents found for the deployment scope');
+    }
+
+    // Build patch payloads from the deployment's linked patches
+    const patchPayloads: PatchInstallPayload[] = deployment.patches.map(p => ({
+      patchId: p.patchId || p.id,
+      kbNumber: p.kbNumber || undefined,
+      packageName: p.software || undefined,
+      downloadUrl: p.downloadUrl || undefined,
+      rebootRequired: p.rebootRequired ?? false,
+    }));
+
+    // Use the deployment executor to create tasks and commands
+    await deploymentExecutorService.createPatchDeployment({
+      name: deployment.name,
+      description: deployment.description || undefined,
+      targetAgentIds: agentIds,
+      patches: patchPayloads,
+      createdBy: userId,
+    });
+
+    // Update the existing deployment stage
+    await prisma.patchDeployment.update({
+      where: { id },
+      data: {
+        stage: 'IN_PROGRESS',
+        startedAt: new Date(),
+        pending: agentIds.length,
+      },
+    });
+  }
 
   // Create audit log
   await prisma.auditLog.create({
@@ -706,8 +780,55 @@ export async function executeDeployment(id: string, userId: string) {
     },
   });
 
-  // In a real implementation, this would queue the deployment job
   return { message: 'Deployment execution initiated' };
+}
+
+// ============================================
+// Patch Deployment from UI
+// ============================================
+
+export async function createPatchDeploymentFromUI(data: CreatePatchDeploymentFromUIInput, userId: string) {
+  // Look up full patch records for the given IDs
+  const patchIds = data.patches.map(p => p.id);
+  const patches = await prisma.patch.findMany({
+    where: { id: { in: patchIds } },
+  });
+
+  if (patches.length === 0) {
+    throw new BadRequestError('No valid patches found');
+  }
+
+  // Build PatchInstallPayload[] from the DB records
+  const patchPayloads: PatchInstallPayload[] = patches.map(p => ({
+    patchId: p.patchId || p.id,
+    kbNumber: p.kbNumber || undefined,
+    packageName: p.software || undefined,
+    downloadUrl: p.downloadUrl || undefined,
+    rebootRequired: p.rebootRequired ?? false,
+  }));
+
+  // Delegate to the deployment executor which creates PatchDeployment + Tasks + AgentCommands
+  const result = await deploymentExecutorService.createPatchDeployment({
+    name: data.name,
+    description: data.description,
+    targetAgentIds: data.targetAgentIds,
+    patches: patchPayloads,
+    retryCount: data.retryCount,
+    createdBy: userId,
+  });
+
+  // Create audit log
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: 'CREATE_PATCH_DEPLOYMENT',
+      resource: 'deployments',
+      resourceId: result.deploymentId,
+      details: { name: data.name, patchCount: patches.length, agentCount: data.targetAgentIds.length },
+    },
+  });
+
+  return result;
 }
 
 // ============================================

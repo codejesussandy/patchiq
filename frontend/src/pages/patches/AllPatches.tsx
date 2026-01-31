@@ -82,6 +82,12 @@ export const AllPatches = () => {
   // Filter Modal
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [filterForm] = Form.useForm();
+  const [activeFilters, setActiveFilters] = useState<{
+    severity?: string[];
+    os?: string[];
+    category?: string[];
+    dateRange?: [dayjs.Dayjs, dayjs.Dayjs] | null;
+  }>({});
 
   // Deploy Modal
   const [deployModalVisible, setDeployModalVisible] = useState(false);
@@ -221,16 +227,28 @@ export const AllPatches = () => {
     }
   };
 
-  const handleFilterSubmit = async () => {
-    try {
-      await filterForm.validateFields();
-      // Apply filters logic here
-      message.success('Filters applied successfully');
-      setFilterModalVisible(false);
-    } catch (error) {
-      message.error('Failed to apply filters');
-    }
+  const handleFilterSubmit = () => {
+    const values = filterForm.getFieldsValue();
+    setActiveFilters({
+      severity: values.severity?.length ? values.severity : undefined,
+      os: values.os?.length ? values.os : undefined,
+      category: values.category?.length ? values.category : undefined,
+      dateRange: values.dateRange || undefined,
+    });
+    setFilterModalVisible(false);
   };
+
+  const handleClearFilters = () => {
+    filterForm.resetFields();
+    setActiveFilters({});
+  };
+
+  const activeFilterCount = [
+    activeFilters.severity,
+    activeFilters.os,
+    activeFilters.category,
+    activeFilters.dateRange,
+  ].filter(Boolean).length;
 
   // Get selected patches for deploy modal
   const getSelectedPatches = (): Patch[] => {
@@ -367,26 +385,42 @@ export const AllPatches = () => {
   ];
 
   const filteredPatches = patches.filter((patch) => {
-    // Text search filter - add null checks
+    // Text search filter
     const software = patch.software || '';
     const patchId = patch.patchId || '';
     const searchLower = searchText.toLowerCase();
     const matchesSearch = software.toLowerCase().includes(searchLower) ||
       patchId.toLowerCase().includes(searchLower);
+    if (!matchesSearch) return false;
 
     // OS filter from URL params
     if (osFilter) {
-      // Handle Linux category to include Ubuntu and Linux
       if (osFilter === 'Linux') {
-        if (patch.os !== 'Linux' && patch.os !== 'Ubuntu') {
-          return false;
-        }
+        if (patch.os !== 'Linux' && patch.os !== 'Ubuntu') return false;
       } else if (patch.os !== osFilter) {
         return false;
       }
     }
 
-    return matchesSearch;
+    // Modal filters
+    if (activeFilters.severity && !activeFilters.severity.includes(patch.severity)) {
+      return false;
+    }
+    if (activeFilters.os && !activeFilters.os.includes(patch.os)) {
+      return false;
+    }
+    if (activeFilters.category && !activeFilters.category.includes(patch.category)) {
+      return false;
+    }
+    if (activeFilters.dateRange) {
+      const [start, end] = activeFilters.dateRange;
+      const releaseDate = patch.releaseDate ? dayjs(patch.releaseDate) : null;
+      if (!releaseDate || releaseDate.isBefore(start, 'day') || releaseDate.isAfter(end, 'day')) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
   const rowSelection = {
@@ -749,7 +783,12 @@ export const AllPatches = () => {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
-          <Button icon={<FilterOutlined />} onClick={() => setFilterModalVisible(true)}>Filter</Button>
+          <Button icon={<FilterOutlined />} onClick={() => setFilterModalVisible(true)}>
+            Filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          </Button>
+          {activeFilterCount > 0 && (
+            <Button type="link" size="small" onClick={handleClearFilters}>Clear filters</Button>
+          )}
         </Space>
 
         {selectedRowKeys.length > 0 && (
@@ -1063,13 +1102,19 @@ export const AllPatches = () => {
       <Modal
         title="Filter Patches"
         open={filterModalVisible}
-        onCancel={() => {
-          setFilterModalVisible(false);
-          filterForm.resetFields();
-        }}
-        onOk={handleFilterSubmit}
-        okText="Apply Filters"
+        onCancel={() => setFilterModalVisible(false)}
         width={600}
+        footer={[
+          <Button key="reset" onClick={() => { filterForm.resetFields(); setActiveFilters({}); setFilterModalVisible(false); }}>
+            Reset
+          </Button>,
+          <Button key="cancel" onClick={() => setFilterModalVisible(false)}>
+            Cancel
+          </Button>,
+          <Button key="apply" type="primary" onClick={handleFilterSubmit}>
+            Apply Filters
+          </Button>,
+        ]}
       >
         <Form form={filterForm} layout="vertical">
           <Form.Item name="severity" label="Severity">

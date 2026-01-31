@@ -15,6 +15,7 @@ import type {
   CreateBundleInput,
   HubStats,
   BundleUploadResult,
+  GroupedPackageListResponse,
 } from '../types/hub.types';
 
 export const hubService = {
@@ -33,6 +34,11 @@ export const hubService = {
 
   async listPackages(filters?: PackageListFilters): Promise<PackageListResponse> {
     const response = await api.get('/hub/packages', { params: filters });
+    return response.data;
+  },
+
+  async listPackagesGrouped(filters?: PackageListFilters): Promise<GroupedPackageListResponse> {
+    const response = await api.get('/hub/packages/grouped', { params: filters });
     return response.data;
   },
 
@@ -68,7 +74,7 @@ export const hubService = {
 
   async getDownloadUrl(packageId: string): Promise<PackageDownloadUrl> {
     const response = await api.get(`/hub/packages/${packageId}/download-url`);
-    return response.data;
+    return response.data.data;
   },
 
   // ============================================

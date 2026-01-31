@@ -119,6 +119,10 @@ export interface AssetUpdateInput {
   purchaseCost?: number | null;
   invoiceNumber?: string | null;
   currency?: string | null;
+  currentValue?: number | null;
+  salvageValue?: number | null;
+  depreciationType?: string | null;
+  depreciationRate?: number | null;
 }
 
 export interface AssetFilters {

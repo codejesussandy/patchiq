@@ -276,6 +276,38 @@ export interface PackageResponseWithBundle extends PackageResponse {
 }
 
 /**
+ * Grouped package response - represents a software title with all its versions
+ */
+export interface GroupedPackageResponse {
+  name: string;
+  displayName: string;
+  vendor: string | null;
+  category: string | null;
+  platform: string;
+  tags: string[];
+  description: string | null;
+  latestVersion: string;
+  latestPackageId: string;
+  totalVersions: number;
+  hasFile: boolean;
+  isActive: boolean;
+  versions: PackageVersionSummary[];
+}
+
+export interface PackageVersionSummary {
+  id: string;
+  packageId: string;
+  version: string;
+  hasFile: boolean;
+  hasBundle: boolean;
+  isActive: boolean;
+  isVerified: boolean;
+  installSource: string;
+  fileSize: string | null;
+  createdAt: string;
+}
+
+/**
  * Command payload for agent execution (script-based)
  */
 export interface ScriptExecutionPayload {

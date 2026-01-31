@@ -83,6 +83,9 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
 
           // Cost fields
           currency: asset.cost?.currency,
+          currentValue: asset.cost?.currentCost,
+          salvageValue: asset.cost?.salvageValue,
+          depreciationType: asset.cost?.depreciationType,
         };
         form.setFieldsValue(formValues);
      } else if (visible && mode === 'add') {
@@ -141,6 +144,9 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
         purchaseCost: values.cost && !isNaN(parseFloat(values.cost)) ? parseFloat(values.cost) : undefined,
         invoiceNumber: values.invoiceNo,
         currency: values.currency,
+        currentValue: values.currentValue && !isNaN(parseFloat(values.currentValue)) ? parseFloat(values.currentValue) : undefined,
+        salvageValue: values.salvageValue && !isNaN(parseFloat(values.salvageValue)) ? parseFloat(values.salvageValue) : undefined,
+        depreciationType: values.depreciationType || undefined,
 
         // AMC info
         amcVendor: values.amcVendor,
@@ -410,6 +416,39 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
           <Col span={12}>
             <Form.Item label="Purchase Date" name="purchaseDate">
               <Input placeholder="Enter purchase date" />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col span={8}>
+            <Form.Item label="Current Value" name="currentValue">
+              <Input placeholder="Enter current value" type="number" />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="Salvage Value" name="salvageValue">
+              <Input placeholder="Enter salvage value" type="number" />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="Depreciation Type" name="depreciationType">
+              <Select placeholder="Select type" allowClear>
+                <Select.Option value="Straight Line">Straight Line</Select.Option>
+                <Select.Option value="Double Declining Balance">Double Declining Balance</Select.Option>
+                <Select.Option value="Sum of Years Digits">Sum of Years Digits</Select.Option>
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label="Currency" name="currency">
+              <Select placeholder="Select currency" allowClear>
+                <Select.Option value="USD">USD</Select.Option>
+                <Select.Option value="INR">INR</Select.Option>
+                <Select.Option value="EUR">EUR</Select.Option>
+                <Select.Option value="GBP">GBP</Select.Option>
+              </Select>
             </Form.Item>
           </Col>
         </Row>

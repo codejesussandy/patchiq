@@ -22,6 +22,7 @@ import {
   updateZeroTouchConfigSchema,
   zeroTouchConfigIdParamSchema,
   zeroTouchConfigListQuerySchema,
+  createPatchDeploymentFromUISchema,
 } from './patches.validator';
 
 const router = Router();
@@ -218,6 +219,14 @@ deploymentsRouter.post(
 // ============================================
 // Patch Deployment Routes
 // ============================================
+
+// POST /v1/deployments/patch - Create patch deployment from UI
+deploymentsRouter.post(
+  '/patch',
+  authenticate,
+  validateBody(createPatchDeploymentFromUISchema),
+  controller.createPatchDeploymentFromUI
+);
 
 // GET /v1/deployments - List deployments
 deploymentsRouter.get(

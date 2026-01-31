@@ -146,6 +146,10 @@ export const assetUpdateSchema = z.object({
   purchaseCost: z.union([z.number(), z.string().transform(v => parseFloat(v))]).optional().nullable(),
   invoiceNumber: z.string().max(100).optional().nullable(),
   currency: z.string().max(10).optional().nullable(),
+  currentValue: z.union([z.number(), z.string().transform(v => parseFloat(v))]).optional().nullable(),
+  salvageValue: z.union([z.number(), z.string().transform(v => parseFloat(v))]).optional().nullable(),
+  depreciationType: z.string().max(50).optional().nullable(),
+  depreciationRate: z.union([z.number(), z.string().transform(v => parseFloat(v))]).optional().nullable(),
 });
 
 export const assetIdParamSchema = z.object({

@@ -21,6 +21,8 @@ import {
   BundleDownloadResponse,
   ScriptExecutionPayload,
   CreatePackageWithScriptsInput,
+  GroupedPackageResponse,
+  PackageVersionSummary,
 } from './hub.types';
 import crypto from 'crypto';
 import * as tar from 'tar';
@@ -637,6 +639,110 @@ class HubService {
 
     return {
       data: packages.map(pkg => this.formatPackageResponse(pkg)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * List packages grouped by name + platform
+   * Each group shows the latest version as the representative, with all versions nested
+   */
+  async listPackagesGrouped(filters: PackageListFilters = {}): Promise<{
+    data: GroupedPackageResponse[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const page = filters.page || 1;
+    const limit = filters.limit || 20;
+
+    const where: Record<string, unknown> = {};
+
+    if (filters.platform) where.platform = filters.platform;
+    if (filters.category) where.category = filters.category;
+    if (filters.vendor) where.vendor = filters.vendor;
+    if (filters.isActive !== undefined) where.isActive = filters.isActive;
+
+    if (filters.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { displayName: { contains: filters.search, mode: 'insensitive' } },
+        { description: { contains: filters.search, mode: 'insensitive' } },
+        { vendor: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Fetch all matching packages (we group in-memory since Prisma doesn't support complex groupBy with nested data)
+    const allPackages = await prisma.softwarePackage.findMany({
+      where,
+      orderBy: [{ name: 'asc' }, { version: 'desc' }],
+    });
+
+    // Group by name + platform
+    const groupMap = new Map<string, typeof allPackages>();
+    for (const pkg of allPackages) {
+      const key = `${pkg.name}|||${pkg.platform}`;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, []);
+      }
+      groupMap.get(key)!.push(pkg);
+    }
+
+    // Convert to grouped responses and sort by displayName
+    const allGroups: GroupedPackageResponse[] = [];
+    for (const [, packages] of groupMap) {
+      // Sort versions: prefer verified, then by createdAt desc
+      const sorted = [...packages].sort((a, b) => {
+        if (a.isVerified !== b.isVerified) return a.isVerified ? -1 : 1;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+
+      const latest = sorted[0];
+
+      const versions: PackageVersionSummary[] = sorted.map(pkg => ({
+        id: pkg.id,
+        packageId: pkg.packageId,
+        version: pkg.version,
+        hasFile: !!(pkg.minioObjectKey || pkg.bundleObjectKey),
+        hasBundle: !!pkg.bundleObjectKey,
+        isActive: pkg.isActive,
+        isVerified: pkg.isVerified,
+        installSource: pkg.installSource,
+        fileSize: pkg.fileSize ? this.formatFileSize(pkg.fileSize) : null,
+        createdAt: pkg.createdAt.toISOString(),
+      }));
+
+      allGroups.push({
+        name: latest.name,
+        displayName: latest.displayName,
+        vendor: latest.vendor,
+        category: latest.category,
+        platform: latest.platform,
+        tags: latest.tags,
+        description: latest.description,
+        latestVersion: latest.version,
+        latestPackageId: latest.packageId,
+        totalVersions: packages.length,
+        hasFile: packages.some(p => !!(p.minioObjectKey || p.bundleObjectKey)),
+        isActive: packages.some(p => p.isActive),
+        versions,
+      });
+    }
+
+    // Sort groups by displayName
+    allGroups.sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+    // Paginate at the group level
+    const total = allGroups.length;
+    const skip = (page - 1) * limit;
+    const paginatedGroups = allGroups.slice(skip, skip + limit);
+
+    return {
+      data: paginatedGroups,
       total,
       page,
       limit,

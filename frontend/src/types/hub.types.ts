@@ -123,6 +123,44 @@ export interface HubStats {
   totalBundles: number;
 }
 
+// Grouped package types
+export interface GroupedPackageResponse {
+  name: string;
+  displayName: string;
+  vendor: string | null;
+  category: string | null;
+  platform: string;
+  tags: string[];
+  description: string | null;
+  latestVersion: string;
+  latestPackageId: string;
+  totalVersions: number;
+  hasFile: boolean;
+  isActive: boolean;
+  versions: PackageVersionSummary[];
+}
+
+export interface PackageVersionSummary {
+  id: string;
+  packageId: string;
+  version: string;
+  hasFile: boolean;
+  hasBundle: boolean;
+  isActive: boolean;
+  isVerified: boolean;
+  installSource: string;
+  fileSize: string | null;
+  createdAt: string;
+}
+
+export interface GroupedPackageListResponse {
+  data: GroupedPackageResponse[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 // Platform options
 export const PLATFORM_OPTIONS = [
   { value: 'windows', label: 'Windows' },

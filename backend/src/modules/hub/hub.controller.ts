@@ -96,6 +96,29 @@ export class HubController {
   }
 
   /**
+   * List packages grouped by name + platform
+   * GET /v1/hub/packages/grouped
+   */
+  async listPackagesGrouped(req: Request, res: Response, next: NextFunction) {
+    try {
+      const filters = {
+        platform: req.query.platform as string | undefined,
+        category: req.query.category as string | undefined,
+        vendor: req.query.vendor as string | undefined,
+        search: req.query.search as string | undefined,
+        isActive: req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined,
+        page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
+      };
+
+      const result = await hubService.listPackagesGrouped(filters);
+      res.json({ success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * List packages
    * GET /v1/hub/packages
    */

@@ -12,6 +12,7 @@ import type {
   CreatePatchTestInput,
   CreateZeroTouchConfigInput,
   UpdateZeroTouchConfigInput,
+  CreatePatchDeploymentFromUIInput,
 } from './patches.validator';
 
 // ============================================
@@ -281,6 +282,21 @@ export async function executeDeployment(req: Request, res: Response, next: NextF
     const userId = req.user!.id;
     const result = await patchesService.executeDeployment(id, userId);
     res.status(202).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ============================================
+// Patch Deployment from UI
+// ============================================
+
+export async function createPatchDeploymentFromUI(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.id;
+    const data = req.body as CreatePatchDeploymentFromUIInput;
+    const result = await patchesService.createPatchDeploymentFromUI(data, userId);
+    res.status(201).json(result);
   } catch (error) {
     next(error);
   }

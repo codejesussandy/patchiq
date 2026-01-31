@@ -32,6 +32,9 @@ router.get('/stats', hubController.getStats.bind(hubController));
 // Package Routes
 // ============================================
 
+// List packages (grouped by name + platform)
+router.get('/packages/grouped', hubController.listPackagesGrouped.bind(hubController));
+
 // List packages
 router.get('/packages', hubController.listPackages.bind(hubController));
 

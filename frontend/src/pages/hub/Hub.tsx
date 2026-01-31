@@ -25,6 +25,8 @@ import {
   Drawer,
   Typography,
   Divider,
+  Tabs,
+  Badge,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -54,6 +56,8 @@ import type {
   CreatePackageInput,
   HubStats,
   PackageListFilters,
+  GroupedPackageResponse,
+  PackageVersionSummary,
 } from '../../types/hub.types';
 import {
   PLATFORM_OPTIONS,
@@ -76,7 +80,7 @@ const { TextArea } = Input;
 
 export const Hub = () => {
   const { message } = App.useApp();
-  const [packages, setPackages] = useState<SoftwarePackage[]>([]);
+  const [groupedPackages, setGroupedPackages] = useState<GroupedPackageResponse[]>([]);
   const [stats, setStats] = useState<HubStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -88,14 +92,18 @@ export const Hub = () => {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [editingPackage, setEditingPackage] = useState<SoftwarePackage | null>(null);
   const [detailsDrawerVisible, setDetailsDrawerVisible] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<SoftwarePackage | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<GroupedPackageResponse | null>(null);
   const [uploadingPackageId, setUploadingPackageId] = useState<string | null>(null);
   const [form] = Form.useForm();
   const [deployForm] = Form.useForm();
 
   // Deploy modal state
   const [deployModalVisible, setDeployModalVisible] = useState(false);
-  const [deployingPackage, setDeployingPackage] = useState<SoftwarePackage | null>(null);
+  const [deployingPackageId, setDeployingPackageId] = useState<string | null>(null);
+  const [deployingDisplayName, setDeployingDisplayName] = useState('');
+  const [deployingPlatform, setDeployingPlatform] = useState('');
+  const [deployingVersion, setDeployingVersion] = useState('');
+  const [deployingInstallSource, setDeployingInstallSource] = useState('');
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
   const [deployLoading, setDeployLoading] = useState(false);
@@ -116,11 +124,11 @@ export const Hub = () => {
   const fetchPackages = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await hubService.listPackages({
+      const response = await hubService.listPackagesGrouped({
         ...filters,
         search: searchText || undefined,
       });
-      setPackages(response.data);
+      setGroupedPackages(response.data);
       setTotal(response.total);
     } catch (error) {
       console.error('Failed to fetch packages:', error);
@@ -249,27 +257,8 @@ export const Hub = () => {
     return false; // Prevent default upload behavior
   };
 
-  const handleEdit = (pkg: SoftwarePackage) => {
-    setEditingPackage(pkg);
-    form.setFieldsValue({
-      name: pkg.name,
-      displayName: pkg.displayName,
-      version: pkg.version,
-      platform: pkg.platform,
-      installSource: pkg.installSource,
-      vendor: pkg.vendor,
-      category: pkg.category,
-      architecture: pkg.architecture,
-      description: pkg.description,
-      tags: pkg.tags,
-      silentInstall: pkg.silentInstall,
-      requiresReboot: pkg.requiresReboot,
-      supportsRollback: pkg.supportsRollback,
-    });
-  };
-
-  const handleViewDetails = (pkg: SoftwarePackage) => {
-    setSelectedPackage(pkg);
+  const handleViewDetails = (group: GroupedPackageResponse) => {
+    setSelectedGroup(group);
     setDetailsDrawerVisible(true);
   };
 
@@ -305,17 +294,20 @@ export const Hub = () => {
     });
   }, [agents]);
 
-  // Open deploy modal
-  const handleDeploy = async (pkg: SoftwarePackage) => {
-    setDeployingPackage(pkg);
+  // Open deploy modal for a specific packageId
+  const handleDeploy = async (packageId: string, displayName: string, platform: string, version: string, installSource: string) => {
+    setDeployingPackageId(packageId);
+    setDeployingDisplayName(displayName);
+    setDeployingPlatform(platform);
+    setDeployingVersion(version);
+    setDeployingInstallSource(installSource);
     setSelectedAgents([]);
     deployForm.resetFields();
     deployForm.setFieldsValue({
-      deploymentName: `Deploy ${pkg.displayName}`,
+      deploymentName: `Deploy ${displayName}`,
       deploymentType: 'install',
     });
 
-    // Fetch agents if not already loaded
     if (agents.length === 0) {
       await fetchAgents();
     }
@@ -323,9 +315,33 @@ export const Hub = () => {
     setDeployModalVisible(true);
   };
 
+  // Deploy from the grouped table row (latest version)
+  const handleDeployGroup = async (group: GroupedPackageResponse) => {
+    const latestVersion = group.versions[0];
+    await handleDeploy(
+      group.latestPackageId,
+      group.displayName,
+      group.platform,
+      group.latestVersion,
+      latestVersion?.installSource || 'bundle',
+    );
+  };
+
+  // Deploy a specific version from the versions tab
+  const handleDeployVersion = async (version: PackageVersionSummary) => {
+    if (!selectedGroup) return;
+    await handleDeploy(
+      version.packageId,
+      selectedGroup.displayName,
+      selectedGroup.platform,
+      version.version,
+      version.installSource,
+    );
+  };
+
   // Submit deployment
   const handleDeploySubmit = async () => {
-    if (!deployingPackage) return;
+    if (!deployingPackageId) return;
 
     try {
       await deployForm.validateFields();
@@ -340,16 +356,14 @@ export const Hub = () => {
 
       const result = await softwareJobsService.createDeployment({
         name: values.deploymentName,
-        description: `Deploying ${deployingPackage.displayName} v${deployingPackage.version}`,
+        description: `Deploying ${deployingDisplayName} v${deployingVersion}`,
         type: values.deploymentType,
         targetAgentIds: selectedAgents,
         package: {
-          packageId: deployingPackage.packageId, // Include packageId for Hub package detection
-          name: deployingPackage.name,
-          source: deployingPackage.installSource,
-          version: deployingPackage.version,
-          // Include packageUrl for deb/rpm/url sources
-          ...(deployingPackage.downloadUrl && { packageUrl: deployingPackage.downloadUrl }),
+          packageId: deployingPackageId,
+          name: deployingDisplayName,
+          source: deployingInstallSource,
+          version: deployingVersion,
         },
         retryCount: 1,
         notifyOnComplete: true,
@@ -358,12 +372,12 @@ export const Hub = () => {
       message.success(
         <span>
           Deployment <strong>{result.deploymentId}</strong> created with {result.tasksCreated} task(s).{' '}
-          <a href="/jobs/software-jobs/deployed">View status →</a>
+          <a href="/jobs/software-jobs/deployed">View status</a>
         </span>
       );
 
       setDeployModalVisible(false);
-      setDeployingPackage(null);
+      setDeployingPackageId(null);
       setSelectedAgents([]);
       deployForm.resetFields();
     } catch (error: any) {
@@ -387,14 +401,7 @@ export const Hub = () => {
     }
   };
 
-  const columns: ColumnsType<SoftwarePackage> = [
-    {
-      title: 'Package ID',
-      dataIndex: 'packageId',
-      key: 'packageId',
-      width: 130,
-      render: (text) => <Text code>{text}</Text>,
-    },
+  const columns: ColumnsType<GroupedPackageResponse> = [
     {
       title: 'Name',
       dataIndex: 'displayName',
@@ -407,10 +414,19 @@ export const Hub = () => {
       ),
     },
     {
-      title: 'Version',
-      dataIndex: 'version',
-      key: 'version',
+      title: 'Latest Version',
+      dataIndex: 'latestVersion',
+      key: 'latestVersion',
+      width: 120,
+    },
+    {
+      title: 'Versions',
+      dataIndex: 'totalVersions',
+      key: 'totalVersions',
       width: 100,
+      render: (count: number) => (
+        <Badge count={count} style={{ backgroundColor: count > 1 ? '#1890ff' : '#d9d9d9' }} />
+      ),
     },
     {
       title: 'Platform',
@@ -430,38 +446,70 @@ export const Hub = () => {
       render: (category) => category ? <Tag color="blue">{category}</Tag> : '-',
     },
     {
-      title: 'Source',
-      dataIndex: 'installSource',
-      key: 'installSource',
-      width: 120,
-      render: (source, record) => (
-        <Space>
-          {record.scriptsIncluded ? (
-            <Tooltip title="Script bundle - includes install/update/rollback scripts">
-              <Tag icon={<CodeOutlined />} color="green">BUNDLE</Tag>
-            </Tooltip>
-          ) : (
-            <Tag color="purple">{source.toUpperCase()}</Tag>
-          )}
-        </Space>
-      ),
-    },
-    {
       title: 'File',
       dataIndex: 'hasFile',
       key: 'hasFile',
-      width: 100,
-      render: (hasFile, record) => (
+      width: 80,
+      render: (hasFile) => (
         hasFile ? (
-          <Tooltip title={record.fileSize}>
-            <Tag icon={<FileOutlined />} color="green">
-              {record.fileSize}
-            </Tag>
-          </Tooltip>
+          <Tag icon={<FileOutlined />} color="green">Yes</Tag>
         ) : (
-          <Tag color="orange">No File</Tag>
+          <Tag color="orange">No</Tag>
         )
       ),
+    },
+    {
+      title: 'Status',
+      key: 'status',
+      width: 80,
+      render: (_, record) => (
+        record.isActive ? (
+          <Tooltip title="Active">
+            <CheckCircleOutlined style={{ color: '#52c41a' }} />
+          </Tooltip>
+        ) : (
+          <Tooltip title="Inactive">
+            <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
+          </Tooltip>
+        )
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 120,
+      fixed: 'right',
+      render: (_, record) => (
+        <Space size="small">
+          <Tooltip title="Deploy Latest">
+            <Button
+              type="text"
+              size="small"
+              icon={<RocketOutlined />}
+              style={{ color: '#1890ff' }}
+              onClick={() => handleDeployGroup(record)}
+            />
+          </Tooltip>
+          <Tooltip title="View Details">
+            <Button
+              type="text"
+              size="small"
+              icon={<AppstoreOutlined />}
+              onClick={() => handleViewDetails(record)}
+            />
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
+
+  // Columns for the versions table inside the drawer
+  const versionColumns: ColumnsType<PackageVersionSummary> = [
+    {
+      title: 'Version',
+      dataIndex: 'version',
+      key: 'version',
+      render: (text) => <Text strong>{text}</Text>,
     },
     {
       title: 'Status',
@@ -470,13 +518,9 @@ export const Hub = () => {
       render: (_, record) => (
         <Space>
           {record.isActive ? (
-            <Tooltip title="Active">
-              <CheckCircleOutlined style={{ color: '#52c41a' }} />
-            </Tooltip>
+            <Tag color="green">Active</Tag>
           ) : (
-            <Tooltip title="Inactive">
-              <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
-            </Tooltip>
+            <Tag color="default">Inactive</Tag>
           )}
           {record.isVerified && (
             <Tooltip title="Verified">
@@ -487,30 +531,46 @@ export const Hub = () => {
       ),
     },
     {
+      title: 'Source',
+      dataIndex: 'installSource',
+      key: 'installSource',
+      width: 90,
+      render: (source, record) => (
+        record.hasBundle ? (
+          <Tag icon={<CodeOutlined />} color="green">BUNDLE</Tag>
+        ) : (
+          <Tag color="purple">{source.toUpperCase()}</Tag>
+        )
+      ),
+    },
+    {
+      title: 'File',
+      key: 'file',
+      width: 80,
+      render: (_, record) => (
+        record.hasFile ? (
+          <Tag icon={<FileOutlined />} color="green">{record.fileSize || 'Yes'}</Tag>
+        ) : (
+          <Tag color="orange">No</Tag>
+        )
+      ),
+    },
+    {
       title: 'Actions',
       key: 'actions',
-      width: 220,
-      fixed: 'right',
+      width: 120,
       render: (_, record) => (
         <Space size="small">
-          <Tooltip title="Deploy to Endpoints">
+          <Tooltip title="Deploy">
             <Button
               type="text"
               size="small"
               icon={<RocketOutlined />}
               style={{ color: '#1890ff' }}
-              onClick={() => handleDeploy(record)}
+              onClick={() => handleDeployVersion(record)}
             />
           </Tooltip>
-          <Tooltip title="Edit">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-            />
-          </Tooltip>
-          {record.hasFile ? (
+          {record.hasFile && (
             <Tooltip title="Download">
               <Button
                 type="text"
@@ -519,27 +579,10 @@ export const Hub = () => {
                 onClick={() => handleDownload(record.packageId)}
               />
             </Tooltip>
-          ) : (
-            <Upload
-              showUploadList={false}
-              beforeUpload={(file) => {
-                handleUploadFile(record.packageId, file);
-                return false;
-              }}
-            >
-              <Tooltip title="Upload File">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<UploadOutlined />}
-                  loading={uploadingPackageId === record.packageId}
-                />
-              </Tooltip>
-            </Upload>
           )}
           <Popconfirm
-            title="Delete Package"
-            description="Are you sure you want to delete this package?"
+            title="Delete this version?"
+            description="This will permanently remove this package version."
             onConfirm={() => handleDeletePackage(record.packageId)}
             okText="Yes"
             cancelText="No"
@@ -653,18 +696,18 @@ export const Hub = () => {
       <Card>
         <Table
           columns={columns}
-          dataSource={packages}
-          rowKey="id"
+          dataSource={groupedPackages}
+          rowKey={(record) => `${record.name}|||${record.platform}`}
           loading={loading}
           pagination={{
             current: filters.page,
             pageSize: filters.limit,
             total,
             showSizeChanger: true,
-            showTotal: (total) => `Total ${total} packages`,
+            showTotal: (total) => `Total ${total} software titles`,
           }}
           onChange={handleTableChange}
-          scroll={{ x: 1200 }}
+          scroll={{ x: 900 }}
         />
       </Card>
 
@@ -807,124 +850,112 @@ export const Hub = () => {
         </Form>
       </Modal>
 
-      {/* Package Details Drawer */}
+      {/* Package Details Drawer with Tabs */}
       <Drawer
-        title="Package Details"
+        title={
+          selectedGroup ? (
+            <Space>
+              {getPlatformIcon(selectedGroup.platform)}
+              <span>{selectedGroup.displayName}</span>
+            </Space>
+          ) : 'Package Details'
+        }
         placement="right"
-        styles={{ wrapper: { width: 500 } }}
+        styles={{ wrapper: { width: 600 } }}
         open={detailsDrawerVisible}
         onClose={() => {
           setDetailsDrawerVisible(false);
-          setSelectedPackage(null);
+          setSelectedGroup(null);
         }}
       >
-        {selectedPackage && (
-          <div>
-            <Space style={{ marginBottom: 16 }}>
-              {getPlatformIcon(selectedPackage.platform)}
-              <Title level={4} style={{ margin: 0 }}>
-                {selectedPackage.displayName}
-              </Title>
-            </Space>
+        {selectedGroup && (
+          <Tabs
+            defaultActiveKey="details"
+            items={[
+              {
+                key: 'details',
+                label: 'Details',
+                children: (
+                  <div>
+                    <Row gutter={[16, 16]}>
+                      <Col span={12}>
+                        <Text type="secondary">Latest Package ID</Text>
+                        <div><Text code>{selectedGroup.latestPackageId}</Text></div>
+                      </Col>
+                      <Col span={12}>
+                        <Text type="secondary">Latest Version</Text>
+                        <div><Text strong>{selectedGroup.latestVersion}</Text></div>
+                      </Col>
+                      <Col span={12}>
+                        <Text type="secondary">Platform</Text>
+                        <div><Tag>{selectedGroup.platform}</Tag></div>
+                      </Col>
+                      <Col span={12}>
+                        <Text type="secondary">Total Versions</Text>
+                        <div><Badge count={selectedGroup.totalVersions} style={{ backgroundColor: '#1890ff' }} /></div>
+                      </Col>
+                      <Col span={12}>
+                        <Text type="secondary">Category</Text>
+                        <div>{selectedGroup.category ? <Tag color="blue">{selectedGroup.category}</Tag> : '-'}</div>
+                      </Col>
+                      <Col span={12}>
+                        <Text type="secondary">Vendor</Text>
+                        <div>{selectedGroup.vendor || '-'}</div>
+                      </Col>
+                    </Row>
 
-            <Divider />
+                    <Divider />
 
-            <Row gutter={[16, 16]}>
-              <Col span={12}>
-                <Text type="secondary">Package ID</Text>
-                <div><Text code>{selectedPackage.packageId}</Text></div>
-              </Col>
-              <Col span={12}>
-                <Text type="secondary">Version</Text>
-                <div><Text strong>{selectedPackage.version}</Text></div>
-              </Col>
-              <Col span={12}>
-                <Text type="secondary">Platform</Text>
-                <div><Tag>{selectedPackage.platform}</Tag></div>
-              </Col>
-              <Col span={12}>
-                <Text type="secondary">Install Source</Text>
-                <div><Tag color="purple">{selectedPackage.installSource}</Tag></div>
-              </Col>
-              <Col span={12}>
-                <Text type="secondary">Category</Text>
-                <div>{selectedPackage.category ? <Tag color="blue">{selectedPackage.category}</Tag> : '-'}</div>
-              </Col>
-              <Col span={12}>
-                <Text type="secondary">Vendor</Text>
-                <div>{selectedPackage.vendor || '-'}</div>
-              </Col>
-              <Col span={12}>
-                <Text type="secondary">Architecture</Text>
-                <div>{selectedPackage.architecture || '-'}</div>
-              </Col>
-              <Col span={12}>
-                <Text type="secondary">File Size</Text>
-                <div>{selectedPackage.fileSize || 'No file uploaded'}</div>
-              </Col>
-            </Row>
+                    <Text type="secondary">Description</Text>
+                    <div style={{ marginTop: 8 }}>
+                      {selectedGroup.description || 'No description provided'}
+                    </div>
 
-            <Divider />
+                    <Divider />
 
-            <Text type="secondary">Description</Text>
-            <div style={{ marginTop: 8 }}>
-              {selectedPackage.description || 'No description provided'}
-            </div>
+                    <Text type="secondary">Tags</Text>
+                    <div style={{ marginTop: 8 }}>
+                      {selectedGroup.tags && selectedGroup.tags.length > 0 ? (
+                        <Space wrap>
+                          {selectedGroup.tags.map((tag) => (
+                            <Tag key={tag}>{tag}</Tag>
+                          ))}
+                        </Space>
+                      ) : (
+                        '-'
+                      )}
+                    </div>
 
-            <Divider />
+                    <Divider />
 
-            <Text type="secondary">Tags</Text>
-            <div style={{ marginTop: 8 }}>
-              {selectedPackage.tags && selectedPackage.tags.length > 0 ? (
-                <Space wrap>
-                  {selectedPackage.tags.map((tag) => (
-                    <Tag key={tag}>{tag}</Tag>
-                  ))}
-                </Space>
-              ) : (
-                '-'
-              )}
-            </div>
-
-            <Divider />
-
-            <Row gutter={[16, 16]}>
-              <Col span={8}>
-                <Text type="secondary">Silent Install</Text>
-                <div>{selectedPackage.silentInstall ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <CloseCircleOutlined style={{ color: '#ff4d4f' }} />}</div>
-              </Col>
-              <Col span={8}>
-                <Text type="secondary">Requires Reboot</Text>
-                <div>{selectedPackage.requiresReboot ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <CloseCircleOutlined style={{ color: '#ff4d4f' }} />}</div>
-              </Col>
-              <Col span={8}>
-                <Text type="secondary">Supports Rollback</Text>
-                <div>{selectedPackage.supportsRollback ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <CloseCircleOutlined style={{ color: '#ff4d4f' }} />}</div>
-              </Col>
-            </Row>
-
-            <Divider />
-
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <Text type="secondary">
-                Created: {new Date(selectedPackage.createdAt).toLocaleString()}
-              </Text>
-              <Space>
-                <Button icon={<EditOutlined />} onClick={() => handleEdit(selectedPackage)}>
-                  Edit
-                </Button>
-                {selectedPackage.hasFile && (
-                  <Button
-                    icon={<DownloadOutlined />}
-                    type="primary"
-                    onClick={() => handleDownload(selectedPackage.packageId)}
-                  >
-                    Download
-                  </Button>
-                )}
-              </Space>
-            </Space>
-          </div>
+                    <Space>
+                      <Button
+                        type="primary"
+                        icon={<RocketOutlined />}
+                        onClick={() => handleDeployGroup(selectedGroup)}
+                      >
+                        Deploy Latest
+                      </Button>
+                    </Space>
+                  </div>
+                ),
+              },
+              {
+                key: 'versions',
+                label: `Versions (${selectedGroup.totalVersions})`,
+                children: (
+                  <Table
+                    columns={versionColumns}
+                    dataSource={selectedGroup.versions}
+                    rowKey="id"
+                    size="small"
+                    pagination={false}
+                    scroll={{ x: 500 }}
+                  />
+                ),
+              },
+            ]}
+          />
         )}
       </Drawer>
 
@@ -939,7 +970,7 @@ export const Hub = () => {
         open={deployModalVisible}
         onCancel={() => {
           setDeployModalVisible(false);
-          setDeployingPackage(null);
+          setDeployingPackageId(null);
           setSelectedAgents([]);
           deployForm.resetFields();
         }}
@@ -948,7 +979,7 @@ export const Hub = () => {
             key="cancel"
             onClick={() => {
               setDeployModalVisible(false);
-              setDeployingPackage(null);
+              setDeployingPackageId(null);
               setSelectedAgents([]);
               deployForm.resetFields();
             }}
@@ -967,17 +998,16 @@ export const Hub = () => {
         ]}
         width={600}
       >
-        {deployingPackage && (
+        {deployingPackageId && (
           <>
-            {/* Package Info */}
             <Card size="small" style={{ marginBottom: 16, background: '#fafafa' }}>
               <Space>
-                {getPlatformIcon(deployingPackage.platform)}
+                {getPlatformIcon(deployingPlatform)}
                 <div>
-                  <Text strong>{deployingPackage.displayName}</Text>
+                  <Text strong>{deployingDisplayName}</Text>
                   <br />
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    {deployingPackage.packageId} • v{deployingPackage.version} • {deployingPackage.installSource.toUpperCase()}
+                    {deployingPackageId} - v{deployingVersion} - {deployingInstallSource.toUpperCase()}
                   </Text>
                 </div>
               </Space>
@@ -1009,17 +1039,17 @@ export const Hub = () => {
                   <Space>
                     <span>Target Endpoints</span>
                     <Tag color="blue">
-                      {deployingPackage.platform === 'cross-platform'
+                      {deployingPlatform === 'cross-platform'
                         ? 'All Platforms'
-                        : deployingPackage.platform.charAt(0).toUpperCase() + deployingPackage.platform.slice(1) + ' Only'}
+                        : deployingPlatform.charAt(0).toUpperCase() + deployingPlatform.slice(1) + ' Only'}
                     </Tag>
                   </Space>
                 }
                 required
                 help={
-                  getCompatibleAgents(deployingPackage.platform).length === 0
-                    ? `No ${deployingPackage.platform} endpoints available`
-                    : `${getCompatibleAgents(deployingPackage.platform).length} compatible endpoint(s) available`
+                  getCompatibleAgents(deployingPlatform).length === 0
+                    ? `No ${deployingPlatform} endpoints available`
+                    : `${getCompatibleAgents(deployingPlatform).length} compatible endpoint(s) available`
                 }
               >
                 <Select
@@ -1034,7 +1064,7 @@ export const Hub = () => {
                     agents.length === 0 ? 'Loading agents...' : 'No compatible endpoints found'
                   }
                 >
-                  {getCompatibleAgents(deployingPackage.platform).map((agent) => (
+                  {getCompatibleAgents(deployingPlatform).map((agent) => (
                     <Select.Option key={agent.id} value={agent.id}>
                       <Space>
                         {agent.osType === 'windows' && <WindowsOutlined style={{ color: '#0078d4' }} />}

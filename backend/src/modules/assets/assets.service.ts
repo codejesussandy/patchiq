@@ -899,6 +899,10 @@ export async function updateAsset(id: string, data: AssetUpdateInput, userId?: s
       purchaseCost: data.purchaseCost,
       invoiceNumber: data.invoiceNumber,
       currency: data.currency,
+      currentValue: data.currentValue,
+      salvageValue: data.salvageValue,
+      depreciationType: data.depreciationType,
+      depreciationRate: data.depreciationRate,
     },
     include: {
       tags: { include: { tag: true } },
@@ -911,7 +915,7 @@ export async function updateAsset(id: string, data: AssetUpdateInput, userId?: s
     'name', 'status', 'serialNumber', 'os', 'osVersion', 'ipAddress', 'macAddress', 'manufacturer', 'model', 'hostname',
     'ownerName', 'ownerEmail', 'ownerDepartment',
     'vendor', 'purchaseDate', 'warrantyExpiry', 'purchaseOrderNumber', 'amcVendor', 'amcCost', 'amcExpiryDate', 'endOfLife', 'endOfSupport',
-    'purchaseCost', 'invoiceNumber', 'currency',
+    'purchaseCost', 'invoiceNumber', 'currency', 'currentValue', 'salvageValue', 'depreciationType', 'depreciationRate',
   ];
   const beforeData: Record<string, unknown> = {
     name: existing.name,
@@ -939,6 +943,10 @@ export async function updateAsset(id: string, data: AssetUpdateInput, userId?: s
     purchaseCost: existing.purchaseCost?.toString(),
     invoiceNumber: existing.invoiceNumber,
     currency: existing.currency,
+    currentValue: existing.currentValue?.toString(),
+    salvageValue: existing.salvageValue?.toString(),
+    depreciationType: existing.depreciationType,
+    depreciationRate: existing.depreciationRate?.toString(),
   };
   const afterData: Record<string, unknown> = {
     name: asset.name,
@@ -966,6 +974,10 @@ export async function updateAsset(id: string, data: AssetUpdateInput, userId?: s
     purchaseCost: asset.purchaseCost?.toString(),
     invoiceNumber: asset.invoiceNumber,
     currency: asset.currency,
+    currentValue: asset.currentValue?.toString(),
+    salvageValue: asset.salvageValue?.toString(),
+    depreciationType: asset.depreciationType,
+    depreciationRate: asset.depreciationRate?.toString(),
   };
 
   const changes = diffObjects(beforeData, afterData, fieldsToTrack);
