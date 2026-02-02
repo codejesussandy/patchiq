@@ -1,7 +1,6 @@
 package collectors
 
 import (
-	"runtime"
 	"time"
 
 	"github.com/patchify/agent/internal/models"
@@ -22,42 +21,6 @@ type CollectorManager struct {
 	peripherals     Collector
 	telemetry       Collector
 	powerManagement Collector
-}
-
-// NewCollectorManager creates a new collector manager for the current OS
-func NewCollectorManager() *CollectorManager {
-	cm := &CollectorManager{}
-
-	switch runtime.GOOS {
-	case "darwin":
-		cm.hardware = NewDarwinHardwareCollector()
-		cm.software = NewDarwinSoftwareCollector()
-		cm.network = NewDarwinNetworkCollector()
-		cm.security = NewDarwinSecurityCollector()
-		cm.peripherals = NewDarwinPeripheralCollector()
-		cm.telemetry = NewDarwinTelemetryCollector()
-		cm.powerManagement = NewDarwinPowerCollector()
-	case "linux":
-		// TODO: Implement Linux collectors
-		cm.hardware = NewDarwinHardwareCollector() // Fallback for now
-		cm.software = NewDarwinSoftwareCollector()
-		cm.network = NewDarwinNetworkCollector()
-		cm.security = NewDarwinSecurityCollector()
-		cm.peripherals = NewDarwinPeripheralCollector()
-		cm.telemetry = NewDarwinTelemetryCollector()
-		cm.powerManagement = NewDarwinPowerCollector()
-	case "windows":
-		// TODO: Implement Windows collectors
-		cm.hardware = NewDarwinHardwareCollector() // Fallback for now
-		cm.software = NewDarwinSoftwareCollector()
-		cm.network = NewDarwinNetworkCollector()
-		cm.security = NewDarwinSecurityCollector()
-		cm.peripherals = NewDarwinPeripheralCollector()
-		cm.telemetry = NewDarwinTelemetryCollector()
-		cm.powerManagement = NewDarwinPowerCollector()
-	}
-
-	return cm
 }
 
 // CollectAll collects all inventory data
