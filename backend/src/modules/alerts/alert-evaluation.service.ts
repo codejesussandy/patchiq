@@ -1,4 +1,5 @@
 import { prisma } from '@/db/client';
+import { notificationsService } from '@/modules/notifications/notifications.service';
 
 interface AlertCondition {
   attribute: string;
@@ -146,6 +147,16 @@ async function evaluateConfig(
         status: 'Open',
       },
     });
+
+    // Notify admins about the new alert
+    const severity = config.config.severity || 'WARNING';
+    const notifType = severity === 'CRITICAL' ? 'error' : severity === 'WARNING' ? 'warning' : 'info';
+    notificationsService.broadcast({
+      title: config.config.name || config.type,
+      message: `Condition met: ${condDesc}`,
+      type: notifType as 'error' | 'warning' | 'info',
+      link: `/assets/${assetId}`,
+    }).catch(() => {});
   } else if (!allMet && existingAlert) {
     // Auto-resolve
     await prisma.assetAlert.update({
@@ -155,6 +166,14 @@ async function evaluateConfig(
         resolvedAt: new Date(),
       },
     });
+
+    // Notify admins about the resolved alert
+    notificationsService.broadcast({
+      title: `Alert Resolved: ${config.config.name || config.type}`,
+      message: `Alert conditions are no longer met`,
+      type: 'success',
+      link: `/assets/${assetId}`,
+    }).catch(() => {});
   }
 }
 

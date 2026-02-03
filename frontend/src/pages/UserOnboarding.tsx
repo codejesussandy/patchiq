@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Form, Input, Button, Typography, Select } from 'antd';
+import { Form, Input, Button, Typography, Select, Space } from 'antd';
 import { EyeInvisibleOutlined, EyeTwoTone, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -98,7 +98,7 @@ export const UserOnboarding = () => {
             </Form.Item>
 
             <Form.Item label="Contact Number">
-              <Input.Group compact>
+              <Space.Compact style={{ width: '100%' }}>
                 <Form.Item
                   name="countryCode"
                   noStyle
@@ -128,7 +128,7 @@ export const UserOnboarding = () => {
                     autoComplete="tel"
                   />
                 </Form.Item>
-              </Input.Group>
+              </Space.Compact>
             </Form.Item>
 
             <Form.Item
@@ -184,7 +184,7 @@ export const UserOnboarding = () => {
                 block
                 className="login-button"
                 icon={<ArrowRightOutlined />}
-                iconPosition="end"
+                iconPlacement="end"
               >
                 Setup Account
               </Button>

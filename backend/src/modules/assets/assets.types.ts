@@ -141,6 +141,7 @@ export interface CategoryResponse {
   description?: string | null;
   isDefault: boolean;
   createdAt: string;
+  subCategories?: SubCategoryResponse[];
 }
 
 export interface CategoryCreateInput {

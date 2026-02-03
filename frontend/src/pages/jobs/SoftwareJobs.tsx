@@ -21,33 +21,33 @@ export const SoftwareJobs = () => {
   const handleTabChange = (key: string) => {
     switch (key) {
       case 'catalog':
-        navigate('/jobs/software-jobs/catalog');
+        navigate('/patches/deployed/catalog');
         break;
       case 'bundle':
-        navigate('/jobs/software-jobs/bundle');
+        navigate('/patches/deployed/bundle');
         break;
       case 'deployed':
-        navigate('/jobs/software-jobs/deployed');
+        navigate('/patches/deployed/deployed');
         break;
       default:
-        navigate('/jobs/software-jobs/catalog');
+        navigate('/patches/deployed/catalog');
     }
   };
 
-  // Redirect to catalog if on base software-jobs path
+  // Redirect to catalog if on base path
   useEffect(() => {
-    if (location.pathname === '/jobs/software-jobs' || location.pathname === '/jobs/software-jobs/') {
-      navigate('/jobs/software-jobs/catalog', { replace: true });
+    if (location.pathname === '/patches/deployed' || location.pathname === '/patches/deployed/') {
+      navigate('/patches/deployed/catalog', { replace: true });
     }
   }, [location.pathname, navigate]);
 
-  if (location.pathname === '/jobs/software-jobs' || location.pathname === '/jobs/software-jobs/') {
+  if (location.pathname === '/patches/deployed' || location.pathname === '/patches/deployed/') {
     return null;
   }
 
   return (
     <div>
-      <Title level={2} style={{ marginBottom: 24 }}>Software Jobs</Title>
+      <Title level={2} style={{ marginBottom: 24 }}>Patches Deployed</Title>
       <Tabs
         activeKey={getActiveTab()}
         onChange={handleTabChange}

@@ -20,6 +20,7 @@ import { reportsRoutes } from '@modules/reports';
 import { settingsRoutes } from '@modules/settings';
 import { patchRepositoryRoutes } from '@modules/patch-repository';
 import { hubRoutes } from '@modules/hub';
+import { notificationsRoutes } from '@modules/notifications';
 
 export function createApp(): Application {
   const app = express();
@@ -175,6 +176,9 @@ export function createApp(): Application {
 
   // Hub routes (Software package repository with MinIO)
   app.use(`/${config.apiVersion}/hub`, hubRoutes);
+
+  // Notifications routes
+  app.use(`/${config.apiVersion}/notifications`, notificationsRoutes);
 
   // Tags routes (included in assets module)
 

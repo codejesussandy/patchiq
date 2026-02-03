@@ -209,7 +209,7 @@ export const PatchPreferences = () => {
               style={{ marginBottom: '32px' }}
             >
               <Radio.Group>
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                   <Radio value="PreApproved">Pre Approved</Radio>
                   <Radio value="ManuallyApproves">Manually Approves</Radio>
                   <Radio value="TestAndApprove">Test and Approve</Radio>

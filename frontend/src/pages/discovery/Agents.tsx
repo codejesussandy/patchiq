@@ -311,7 +311,7 @@ export const Agents = () => {
         <Text type="secondary" style={{ display: 'block', marginBottom: '24px' }}>
           Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
         </Text>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
           {agentDownloads.map((download) => (
             <Card
               key={download.os}

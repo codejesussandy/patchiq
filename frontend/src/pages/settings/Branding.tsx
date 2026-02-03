@@ -235,7 +235,7 @@ export const Branding = () => {
 
               {logoFile && (
                 <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#e6f7ff', borderRadius: '4px' }}>
-                  <Space direction="vertical" style={{ width: '100%' }}>
+                  <Space orientation="vertical" style={{ width: '100%' }}>
                     <Text style={{ fontSize: '12px', color: '#0050b3' }}>
                       Selected: {logoFile.name}
                     </Text>

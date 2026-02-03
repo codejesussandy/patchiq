@@ -140,14 +140,14 @@ export const EndpointDetailsDrawer = ({
               <Statistic
                 title="Total Patches"
                 value={endpoint.patchSummary.total}
-                valueStyle={{ color: '#1890ff' }}
+                styles={{ content: { color: '#1890ff' } }}
               />
             </Col>
             <Col span={8}>
               <Statistic
                 title="Installed"
                 value={endpoint.patchSummary.installed}
-                valueStyle={{ color: '#52c41a' }}
+                styles={{ content: { color: '#52c41a' } }}
                 prefix={<CheckCircleOutlined />}
               />
             </Col>
@@ -155,7 +155,7 @@ export const EndpointDetailsDrawer = ({
               <Statistic
                 title="Missing"
                 value={endpoint.patchSummary.missing}
-                valueStyle={{ color: '#faad14' }}
+                styles={{ content: { color: '#faad14' } }}
                 prefix={<ExclamationCircleOutlined />}
               />
             </Col>
@@ -165,7 +165,7 @@ export const EndpointDetailsDrawer = ({
               <Statistic
                 title="Pending"
                 value={endpoint.patchSummary.pending}
-                valueStyle={{ color: '#1890ff' }}
+                styles={{ content: { color: '#1890ff' } }}
                 prefix={<SyncOutlined />}
               />
             </Col>
@@ -173,7 +173,7 @@ export const EndpointDetailsDrawer = ({
               <Statistic
                 title="Failed"
                 value={endpoint.patchSummary.failed}
-                valueStyle={{ color: '#ff4d4f' }}
+                styles={{ content: { color: '#ff4d4f' } }}
                 prefix={<CloseCircleOutlined />}
               />
             </Col>

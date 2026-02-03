@@ -372,7 +372,7 @@ export const Hub = () => {
       message.success(
         <span>
           Deployment <strong>{result.deploymentId}</strong> created with {result.tasksCreated} task(s).{' '}
-          <a href="/jobs/software-jobs/deployed">View status</a>
+          <a href="/patches/deployed/deployed">View status</a>
         </span>
       );
 
@@ -619,7 +619,7 @@ export const Hub = () => {
             <Statistic
               title="Active Packages"
               value={stats?.activePackages || 0}
-              valueStyle={{ color: '#52c41a' }}
+              styles={{ content: { color: '#52c41a' } }}
               prefix={<CheckCircleOutlined />}
             />
           </Card>

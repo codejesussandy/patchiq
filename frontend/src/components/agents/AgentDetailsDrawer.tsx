@@ -109,7 +109,7 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
       key: 'overview',
       label: 'Overview',
       children: (
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
+        <Space orientation="vertical" style={{ width: '100%' }} size="large">
           <div>
             <Paragraph style={{ marginBottom: '8px', fontWeight: 600 }}>Heartbeat Status</Paragraph>
             <Row gutter={16}>
@@ -118,7 +118,7 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
                   title="Last Heartbeat"
                   value={agent.lastHeartbeatRelative}
                   suffix={`(${new Date(agent.lastHeartbeat).toLocaleString()})`}
-                  valueStyle={{ fontSize: '14px' }}
+                  styles={{ content: { fontSize: '14px' } }}
                 />
               </Col>
               <Col span={12}>
@@ -134,7 +134,7 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
 
           <div>
             <Paragraph style={{ marginBottom: '8px', fontWeight: 600 }}>System Information</Paragraph>
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
               <div>
                 <Text strong>Machine ID:</Text> <Text copyable>{agent.machineId}</Text>
               </div>
@@ -154,7 +154,7 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
 
           <div>
             <Paragraph style={{ marginBottom: '8px', fontWeight: 600 }}>Network Information</Paragraph>
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
               {agent.ipAddress && (
                 <div>
                   <Text strong>IP Address:</Text> <Text copyable>{agent.ipAddress}</Text>
@@ -198,11 +198,11 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
       key: 'linked',
       label: 'Linked',
       children: (
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
+        <Space orientation="vertical" style={{ width: '100%' }} size="large">
           {agent.assetId ? (
             <>
               <div style={{ padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                   <div>
                     <Text strong>Linked Asset</Text>
                   </div>

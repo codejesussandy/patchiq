@@ -12,7 +12,6 @@ import { MainLayout } from './components/MainLayout';
 // Patches
 import { AllPatches } from './pages/patches/AllPatches';
 import { PatchDetails } from './pages/patches/PatchDetails';
-import { PatchDeployed } from './pages/patches/PatchDeployed';
 import { PatchTestApprove } from './pages/patches/PatchTestApprove';
 import { ZeroTouchDeployment } from './pages/patches/ZeroTouchDeployment';
 
@@ -21,7 +20,6 @@ import { AllAssets } from './pages/assets/AllAssets';
 import { AssetDetails } from './pages/assets/components/AssetDetails';
 import { SoftwareInventory } from './pages/assets/SoftwareInventory';
 import { SoftwareLicense } from './pages/assets/SoftwareLicense';
-import { OSLicenses } from './pages/assets/OSLicenses';
 
 // Vulnerability
 import { ZeroDayVulnerabilities } from './pages/vulnerability/ZeroDayVulnerabilities';
@@ -35,7 +33,6 @@ import { Agents } from './pages/discovery/Agents';
 
 // Jobs
 import { SoftwareJobs } from './pages/jobs/SoftwareJobs';
-import { ConfigurationJobs } from './pages/jobs/ConfigurationJobs';
 import { PatchJobs } from './pages/jobs/PatchJobs';
 import { VulnerabilityJobs } from './pages/jobs/VulnerabilityJobs';
 
@@ -179,11 +176,11 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/patches/deployed"
+        path="/patches/deployed/*"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <PatchDeployed />
+              <SoftwareJobs />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -204,6 +201,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <MainLayout>
               <ZeroTouchDeployment />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patches/patch-jobs"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PatchJobs />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -250,16 +257,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/assets/os-license"
-        element={
-          <ProtectedRoute>
-            <MainLayout>
-              <OSLicenses />
-            </MainLayout>
-          </ProtectedRoute>
-        }
-      />
+      {/* OS licenses merged into /assets/software-license */}
 
       {/* Vulnerability */}
       <Route
@@ -288,6 +286,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <MainLayout>
               <ManageException />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vulnerability/vulnerability-jobs/*"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <VulnerabilityJobs />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -333,55 +341,19 @@ function AppRoutes() {
         element={<Navigate to="/discovery/ip-discovery" replace />}
       />
 
-      {/* Jobs */}
+      {/* Jobs - backwards compat redirects */}
       <Route
         path="/jobs/software-jobs/*"
-        element={
-          <ProtectedRoute>
-            <MainLayout>
-              <SoftwareJobs />
-            </MainLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/jobs/configuration-jobs/*"
-        element={
-          <ProtectedRoute>
-            <MainLayout>
-              <ConfigurationJobs />
-            </MainLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/jobs/patch-jobs"
-        element={
-          <ProtectedRoute>
-            <MainLayout>
-              <PatchJobs />
-            </MainLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/jobs/vulnerability-jobs/*"
-        element={
-          <ProtectedRoute>
-            <MainLayout>
-              <VulnerabilityJobs />
-            </MainLayout>
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/patches/deployed/catalog" replace />}
       />
       <Route
         path="/jobs"
-        element={<Navigate to="/jobs/software-jobs/catalog" replace />}
+        element={<Navigate to="/patches/deployed/catalog" replace />}
       />
 
-      {/* Hub - Software Package Repository */}
+      {/* Hub - Software Package Repository (under Assets) */}
       <Route
-        path="/hub"
+        path="/assets/hub"
         element={
           <ProtectedRoute>
             <MainLayout>
@@ -390,6 +362,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/hub" element={<Navigate to="/assets/hub" replace />} />
 
       {/* Settings - User Management Sub-pages */}
       <Route

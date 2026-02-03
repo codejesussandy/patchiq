@@ -216,7 +216,9 @@ export type Asset = {
   procurement: Procurement;
   cost: Cost;
   categoryId?: string;
+  categoryName?: string;
   subCategoryId?: string;
+  subCategoryName?: string;
   tagIds?: string[];
   alias?: string;
   ipVersion?: string;

@@ -16,6 +16,9 @@ import {
   Card,
   Checkbox,
   Switch,
+  Row,
+  Col,
+  Divider,
 } from 'antd';
 import {
   SearchOutlined,
@@ -49,6 +52,10 @@ export const ZeroTouchDeployment = () => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingConfig, setEditingConfig] = useState<ZeroTouchConfig | null>(null);
   const [editForm] = Form.useForm();
+
+  // View Details Modal
+  const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [viewingConfig, setViewingConfig] = useState<ZeroTouchConfig | null>(null);
 
   // Dynamic option lists
   const [applications, setApplications] = useState<any[]>([]);
@@ -122,7 +129,8 @@ export const ZeroTouchDeployment = () => {
   };
 
   const handleViewConfig = (config: ZeroTouchConfig) => {
-    message.info(`Viewing configuration: ${config.name}`);
+    setViewingConfig(config);
+    setViewModalVisible(true);
   };
 
   const handleDeleteConfig = (config: ZeroTouchConfig) => {
@@ -251,7 +259,7 @@ export const ZeroTouchDeployment = () => {
     <div style={{ textAlign: 'center', padding: '80px 20px' }}>
       <Empty
         description={
-          <Space direction="vertical" size="large">
+          <Space orientation="vertical" size="large">
             <Text style={{ fontSize: 16, color: '#8c8c8c' }}>
               No zero-touch configurations set up yet
             </Text>
@@ -294,7 +302,7 @@ export const ZeroTouchDeployment = () => {
         initialValue="ALL"
       >
         <Radio.Group>
-          <Space direction="vertical">
+          <Space orientation="vertical">
             <Radio value="ALL">All Applications</Radio>
             <Radio value="INCLUDE">Include Specific Applications</Radio>
             <Radio value="EXCLUDE">Exclude Specific Applications</Radio>
@@ -332,7 +340,7 @@ export const ZeroTouchDeployment = () => {
         initialValue="ALL_COMPUTERS"
       >
         <Radio.Group>
-          <Space direction="vertical">
+          <Space orientation="vertical">
             <Radio value="ALL_COMPUTERS">All Computers</Radio>
             <Radio value="SCOPE">Scope</Radio>
             <Radio value="SPECIFIC_GROUPS">Specific Groups</Radio>
@@ -400,7 +408,7 @@ export const ZeroTouchDeployment = () => {
           rules={[{ required: true, message: 'Please select at least one severity level' }]}
         >
           <Checkbox.Group>
-            <Space direction="vertical">
+            <Space orientation="vertical">
               <Checkbox value="CRITICAL">CRITICAL</Checkbox>
               <Checkbox value="High">High</Checkbox>
               <Checkbox value="Medium">Medium</Checkbox>
@@ -530,6 +538,89 @@ export const ZeroTouchDeployment = () => {
         width={800}
       >
         {renderConfigForm(editForm)}
+      </Modal>
+
+      {/* View Config Details Modal */}
+      <Modal
+        title="Configuration Details"
+        open={viewModalVisible}
+        onCancel={() => { setViewModalVisible(false); setViewingConfig(null); }}
+        footer={[
+          <Button key="close" onClick={() => { setViewModalVisible(false); setViewingConfig(null); }}>
+            Close
+          </Button>,
+        ]}
+        width={700}
+      >
+        {viewingConfig && (
+          <div>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Text type="secondary">Name</Text>
+                <div><strong>{viewingConfig.name}</strong></div>
+              </Col>
+              <Col span={12}>
+                <Text type="secondary">Status</Text>
+                <div><Tag color={
+                  viewingConfig.status === 'Active' ? 'green' :
+                  viewingConfig.status === 'Paused' ? 'orange' : 'default'
+                }>{viewingConfig.status}</Tag></div>
+              </Col>
+            </Row>
+            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+              <Col span={24}>
+                <Text type="secondary">Description</Text>
+                <div><strong>{viewingConfig.description || 'N/A'}</strong></div>
+              </Col>
+            </Row>
+            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+              <Col span={12}>
+                <Text type="secondary">Application Type</Text>
+                <div><Tag color="blue">{viewingConfig.applicationType}</Tag></div>
+              </Col>
+              <Col span={12}>
+                <Text type="secondary">Scope</Text>
+                <div><Tag color="green">{viewingConfig.scope?.replace(/_/g, ' ')}</Tag></div>
+              </Col>
+            </Row>
+
+            <Divider />
+
+            <Card title="Auto-Deployment Rules" bordered={false} style={{ backgroundColor: '#fafafa' }}>
+              <Row gutter={[16, 16]}>
+                <Col span={12}>
+                  <Text type="secondary">Severity Levels</Text>
+                  <div style={{ marginTop: 4 }}>
+                    {viewingConfig.autoDeploymentRules?.severity?.map((s) => (
+                      <Tag key={s} color="red" style={{ marginBottom: 4 }}>{s}</Tag>
+                    )) || 'None'}
+                  </div>
+                </Col>
+                <Col span={12}>
+                  <Text type="secondary">Schedule</Text>
+                  <div><strong>{viewingConfig.autoDeploymentRules?.schedule || 'N/A'}</strong></div>
+                </Col>
+              </Row>
+              <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+                <Col span={12}>
+                  <Text type="secondary">Approval Required</Text>
+                  <div><strong>{viewingConfig.autoDeploymentRules?.approvalRequired ? 'Yes' : 'No'}</strong></div>
+                </Col>
+              </Row>
+            </Card>
+
+            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+              <Col span={12}>
+                <Text type="secondary">Created By</Text>
+                <div><strong>{viewingConfig.createdBy || 'N/A'}</strong></div>
+              </Col>
+              <Col span={12}>
+                <Text type="secondary">Created On</Text>
+                <div><strong>{viewingConfig.createdOn || 'N/A'}</strong></div>
+              </Col>
+            </Row>
+          </div>
+        )}
       </Modal>
     </div>
   );

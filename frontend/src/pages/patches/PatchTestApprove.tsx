@@ -13,6 +13,8 @@ import {
   Select,
   Radio,
   Empty,
+  Row,
+  Col,
 } from 'antd';
 import {
   SearchOutlined,
@@ -41,6 +43,10 @@ export const PatchTestApprove = () => {
   // Create Test Modal
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [form] = Form.useForm();
+
+  // View Details Modal
+  const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [viewingTest, setViewingTest] = useState<PatchTest | null>(null);
 
   // Dynamic option lists
   const [applications, setApplications] = useState<any[]>([]);
@@ -102,7 +108,8 @@ export const PatchTestApprove = () => {
   };
 
   const handleViewTest = (test: PatchTest) => {
-    message.info(`Viewing test: ${test.name}`);
+    setViewingTest(test);
+    setViewModalVisible(true);
   };
 
   const handleDeleteTest = (test: PatchTest) => {
@@ -223,7 +230,7 @@ export const PatchTestApprove = () => {
     <div style={{ textAlign: 'center', padding: '80px 20px' }}>
       <Empty
         description={
-          <Space direction="vertical" size="large">
+          <Space orientation="vertical" size="large">
             <Text style={{ fontSize: 16, color: '#8c8c8c' }}>
               No patch tests configured yet
             </Text>
@@ -291,7 +298,7 @@ export const PatchTestApprove = () => {
               initialValue="ALL"
             >
               <Radio.Group>
-                <Space direction="vertical">
+                <Space orientation="vertical">
                   <Radio value="ALL">All Applications</Radio>
                   <Radio value="INCLUDE">Include Specific Applications</Radio>
                   <Radio value="EXCLUDE">Exclude Specific Applications</Radio>
@@ -329,7 +336,7 @@ export const PatchTestApprove = () => {
               initialValue="ALL_COMPUTERS"
             >
               <Radio.Group>
-                <Space direction="vertical">
+                <Space orientation="vertical">
                   <Radio value="ALL_COMPUTERS">All Computers</Radio>
                   <Radio value="SCOPE">Scope</Radio>
                   <Radio value="SPECIFIC_GROUPS">Specific Groups</Radio>
@@ -465,7 +472,7 @@ export const PatchTestApprove = () => {
             initialValue="ALL"
           >
             <Radio.Group>
-              <Space direction="vertical">
+              <Space orientation="vertical">
                 <Radio value="ALL">All Applications</Radio>
                 <Radio value="INCLUDE">Include Specific Applications</Radio>
                 <Radio value="EXCLUDE">Exclude Specific Applications</Radio>
@@ -487,11 +494,9 @@ export const PatchTestApprove = () => {
                   rules={[{ required: true, message: 'Please select applications' }]}
                 >
                   <Select mode="multiple" placeholder="Select applications">
-                    <Option value="Chrome">Google Chrome</Option>
-                    <Option value="Firefox">Mozilla Firefox</Option>
-                    <Option value="Office">Microsoft Office</Option>
-                    <Option value="Adobe">Adobe Reader</Option>
-                    <Option value="Zoom">Zoom</Option>
+                    {applications.map((app) => (
+                      <Option key={app.id} value={app.name || app.softwareName}>{app.name || app.softwareName}</Option>
+                    ))}
                   </Select>
                 </Form.Item>
               )
@@ -505,7 +510,7 @@ export const PatchTestApprove = () => {
             initialValue="ALL_COMPUTERS"
           >
             <Radio.Group>
-              <Space direction="vertical">
+              <Space orientation="vertical">
                 <Radio value="ALL_COMPUTERS">All Computers</Radio>
                 <Radio value="SCOPE">Scope</Radio>
                 <Radio value="SPECIFIC_GROUPS">Specific Groups</Radio>
@@ -534,10 +539,9 @@ export const PatchTestApprove = () => {
                       String(option?.label ?? option?.value ?? '').toLowerCase().includes(input.toLowerCase())
                     }
                   >
-                    <Option value="DESKTOP-7CC6ETJ">DESKTOP-7CC6ETJ</Option>
-                    <Option value="LAPTOP-9XK2PLM">LAPTOP-9XK2PLM</Option>
-                    <Option value="WORKSTATION-5YT8QWE">WORKSTATION-5YT8QWE</Option>
-                    <Option value="SERVER-2MN4PLK">SERVER-2MN4PLK</Option>
+                    {computers.map((c) => (
+                      <Option key={c.id} value={c.id}>{c.hostname || c.name || c.id}</Option>
+                    ))}
                   </Select>
                 </Form.Item>
               )
@@ -558,17 +562,73 @@ export const PatchTestApprove = () => {
                   rules={[{ required: true, message: 'Please select groups' }]}
                 >
                   <Select mode="multiple" placeholder="Select groups">
-                    <Option value="Engineering">Engineering</Option>
-                    <Option value="Marketing">Marketing</Option>
-                    <Option value="Sales">Sales</Option>
-                    <Option value="Finance">Finance</Option>
-                    <Option value="HR">HR</Option>
+                    {groups.map((g) => (
+                      <Option key={g.id} value={g.id}>{g.name}</Option>
+                    ))}
                   </Select>
                 </Form.Item>
               )
             }
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* View Test Details Modal */}
+      <Modal
+        title="Test Details"
+        open={viewModalVisible}
+        onCancel={() => { setViewModalVisible(false); setViewingTest(null); }}
+        footer={[
+          <Button key="close" onClick={() => { setViewModalVisible(false); setViewingTest(null); }}>
+            Close
+          </Button>,
+        ]}
+        width={600}
+      >
+        {viewingTest && (
+          <div>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Text type="secondary">Name</Text>
+                <div><strong>{viewingTest.name}</strong></div>
+              </Col>
+              <Col span={12}>
+                <Text type="secondary">Status</Text>
+                <div><Tag color={
+                  viewingTest.status === 'Approved' ? 'green' :
+                  viewingTest.status === 'Rejected' ? 'red' :
+                  viewingTest.status === 'In Progress' ? 'blue' : 'orange'
+                }>{viewingTest.status}</Tag></div>
+              </Col>
+            </Row>
+            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+              <Col span={24}>
+                <Text type="secondary">Description</Text>
+                <div><strong>{viewingTest.description || 'N/A'}</strong></div>
+              </Col>
+            </Row>
+            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+              <Col span={12}>
+                <Text type="secondary">Application Type</Text>
+                <div><Tag color="blue">{viewingTest.applicationType}</Tag></div>
+              </Col>
+              <Col span={12}>
+                <Text type="secondary">Scope</Text>
+                <div><Tag color="green">{viewingTest.scope?.replace(/_/g, ' ')}</Tag></div>
+              </Col>
+            </Row>
+            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+              <Col span={12}>
+                <Text type="secondary">Created By</Text>
+                <div><strong>{viewingTest.createdBy || 'N/A'}</strong></div>
+              </Col>
+              <Col span={12}>
+                <Text type="secondary">Created On</Text>
+                <div><strong>{viewingTest.createdOn || 'N/A'}</strong></div>
+              </Col>
+            </Row>
+          </div>
+        )}
       </Modal>
     </div>
   );
