@@ -95,6 +95,27 @@ export const getStats: RequestHandler = async (req, res, next) => {
 };
 
 /**
+ * Suggest CVEs for a given software name
+ * GET /v1/vulnerabilities/cve-suggest?software=Chrome&vendor=Google
+ */
+export const suggestCvesForSoftware: RequestHandler = async (req, res, next) => {
+  try {
+    const { software, vendor } = req.query;
+    if (!software || typeof software !== 'string') {
+      res.status(400).json({ error: 'software query param is required' });
+      return;
+    }
+    const result = await vulnerabilitiesService.suggestCvesForSoftware({
+      software,
+      vendor: typeof vendor === 'string' ? vendor : undefined,
+    });
+    res.json({ data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get vulnerability types
  * GET /v1/vulnerabilities/types
  */

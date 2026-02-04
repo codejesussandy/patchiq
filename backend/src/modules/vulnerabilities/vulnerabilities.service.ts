@@ -1048,6 +1048,49 @@ export class VulnerabilitiesService {
   /**
    * Format date to match frontend expected format
    */
+  /**
+   * Suggest CVEs for a given software name.
+   * Searches VulnerabilitySoftware by name/cpeProduct and returns unpatched CVEs.
+   */
+  async suggestCvesForSoftware(params: { software: string; vendor?: string }): Promise<Array<{
+    cveId: string;
+    severity: string;
+    description: string;
+  }>> {
+    const orConditions: Prisma.VulnerabilitySoftwareWhereInput[] = [
+      { name: { contains: params.software, mode: 'insensitive' } },
+      { cpeProduct: { contains: params.software, mode: 'insensitive' } },
+    ];
+    if (params.vendor) {
+      orConditions.push({ cpeVendor: { contains: params.vendor, mode: 'insensitive' } });
+    }
+
+    const softwareMatches = await prisma.vulnerabilitySoftware.findMany({
+      where: { OR: orConditions },
+      select: { vulnerabilityId: true },
+      distinct: ['vulnerabilityId'],
+      take: 50,
+    });
+
+    if (softwareMatches.length === 0) return [];
+
+    const vulns = await prisma.vulnerability.findMany({
+      where: {
+        id: { in: softwareMatches.map((s) => s.vulnerabilityId) },
+        patchAvailable: false,
+      },
+      select: { cveId: true, severity: true, description: true },
+      orderBy: { severity: 'asc' },
+      take: 20,
+    });
+
+    return vulns.map((v) => ({
+      cveId: v.cveId,
+      severity: v.severity || 'UNKNOWN',
+      description: v.description || '',
+    }));
+  }
+
   private formatDate(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');

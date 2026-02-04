@@ -14,21 +14,28 @@ import (
 	"github.com/patchify/agent/internal/models"
 )
 
-// DarwinSecurityCollector collects security info on macOS
-type DarwinSecurityCollector struct{}
+// UnixSecurityCollector collects security info on macOS and Linux
+type UnixSecurityCollector struct{}
 
-// NewDarwinSecurityCollector creates a new security collector for macOS
-func NewDarwinSecurityCollector() *DarwinSecurityCollector {
-	return &DarwinSecurityCollector{}
+// NewUnixSecurityCollector creates a new security collector for Unix systems (macOS/Linux)
+func NewUnixSecurityCollector() *UnixSecurityCollector {
+	return &UnixSecurityCollector{}
+}
+
+// Backward compatibility aliases
+type DarwinSecurityCollector = UnixSecurityCollector
+
+func NewDarwinSecurityCollector() *UnixSecurityCollector {
+	return NewUnixSecurityCollector()
 }
 
 // Name returns the collector name
-func (c *DarwinSecurityCollector) Name() string {
+func (c *UnixSecurityCollector) Name() string {
 	return "security"
 }
 
 // Collect gathers security information
-func (c *DarwinSecurityCollector) Collect() (interface{}, error) {
+func (c *UnixSecurityCollector) Collect() (interface{}, error) {
 	sec := &models.Security{
 		CollectedAt: time.Now().UTC().Format(time.RFC3339),
 	}
@@ -42,7 +49,7 @@ func (c *DarwinSecurityCollector) Collect() (interface{}, error) {
 	return sec, nil
 }
 
-func (c *DarwinSecurityCollector) collectEncryptionStatus() models.EncryptionStatus {
+func (c *UnixSecurityCollector) collectEncryptionStatus() models.EncryptionStatus {
 	enc := models.EncryptionStatus{
 		EncryptionType: "None",
 	}
@@ -101,7 +108,7 @@ func (c *DarwinSecurityCollector) collectEncryptionStatus() models.EncryptionSta
 	return enc
 }
 
-func (c *DarwinSecurityCollector) collectFirewallStatus() models.FirewallStatus {
+func (c *UnixSecurityCollector) collectFirewallStatus() models.FirewallStatus {
 	fw := models.FirewallStatus{}
 
 	switch runtime.GOOS {
@@ -175,7 +182,7 @@ func (c *DarwinSecurityCollector) collectFirewallStatus() models.FirewallStatus 
 	return fw
 }
 
-func (c *DarwinSecurityCollector) collectAntivirusStatus() models.AntivirusStatus {
+func (c *UnixSecurityCollector) collectAntivirusStatus() models.AntivirusStatus {
 	av := models.AntivirusStatus{}
 
 	switch runtime.GOOS {
@@ -249,7 +256,7 @@ func (c *DarwinSecurityCollector) collectAntivirusStatus() models.AntivirusStatu
 	return av
 }
 
-func (c *DarwinSecurityCollector) collectLocalUsers() []models.LocalUser {
+func (c *UnixSecurityCollector) collectLocalUsers() []models.LocalUser {
 	var users []models.LocalUser
 
 	switch runtime.GOOS {
@@ -367,7 +374,7 @@ func (c *DarwinSecurityCollector) collectLocalUsers() []models.LocalUser {
 	return users
 }
 
-func (c *DarwinSecurityCollector) collectComplianceStatus() models.ComplianceStatus {
+func (c *UnixSecurityCollector) collectComplianceStatus() models.ComplianceStatus {
 	comp := models.ComplianceStatus{}
 
 	switch runtime.GOOS {

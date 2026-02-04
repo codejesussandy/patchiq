@@ -12,7 +12,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: parseInt(process.env.VITE_DEV_PORT || '4001', 10),
+    port: parseInt(process.env.VITE_DEV_PORT || '5001', 10),
     host: '0.0.0.0',  // Allow connections from any host
     allowedHosts: ['localhost', '127.0.0.1', 'dev.skenzeriq.com', '.skenzeriq.com'],
     hmr: {
@@ -25,7 +25,7 @@ export default defineConfig({
     proxy: {
       // Proxy API requests to backend for local development (only used when running outside Docker)
       '/v1': {
-        target: process.env.VITE_BACKEND_URL || 'http://backend:4002',
+        target: process.env.VITE_BACKEND_URL || 'http://backend:5002',
         changeOrigin: true,
       },
     },

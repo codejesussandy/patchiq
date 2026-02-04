@@ -15,21 +15,28 @@ import (
 	"github.com/patchify/agent/internal/models"
 )
 
-// DarwinNetworkCollector collects network info on macOS
-type DarwinNetworkCollector struct{}
+// UnixNetworkCollector collects network info on macOS and Linux
+type UnixNetworkCollector struct{}
 
-// NewDarwinNetworkCollector creates a new network collector for macOS
-func NewDarwinNetworkCollector() *DarwinNetworkCollector {
-	return &DarwinNetworkCollector{}
+// NewUnixNetworkCollector creates a new network collector for Unix systems (macOS/Linux)
+func NewUnixNetworkCollector() *UnixNetworkCollector {
+	return &UnixNetworkCollector{}
+}
+
+// Backward compatibility aliases
+type DarwinNetworkCollector = UnixNetworkCollector
+
+func NewDarwinNetworkCollector() *UnixNetworkCollector {
+	return NewUnixNetworkCollector()
 }
 
 // Name returns the collector name
-func (c *DarwinNetworkCollector) Name() string {
+func (c *UnixNetworkCollector) Name() string {
 	return "network"
 }
 
 // Collect gathers network information
-func (c *DarwinNetworkCollector) Collect() (interface{}, error) {
+func (c *UnixNetworkCollector) Collect() (interface{}, error) {
 	nw := &models.Network{
 		CollectedAt: time.Now().UTC().Format(time.RFC3339),
 	}
@@ -56,7 +63,7 @@ func (c *DarwinNetworkCollector) Collect() (interface{}, error) {
 	return nw, nil
 }
 
-func (c *DarwinNetworkCollector) collectNetworkIdentity() models.NetworkIdentity {
+func (c *UnixNetworkCollector) collectNetworkIdentity() models.NetworkIdentity {
 	identity := models.NetworkIdentity{}
 
 	hostname, _ := os.Hostname()
@@ -117,7 +124,7 @@ func (c *DarwinNetworkCollector) collectNetworkIdentity() models.NetworkIdentity
 	return identity
 }
 
-func (c *DarwinNetworkCollector) collectNetworkAdapters() []models.NetworkAdapter {
+func (c *UnixNetworkCollector) collectNetworkAdapters() []models.NetworkAdapter {
 	var adapters []models.NetworkAdapter
 
 	// Use Go's net package for cross-platform interface enumeration
@@ -193,7 +200,7 @@ func (c *DarwinNetworkCollector) collectNetworkAdapters() []models.NetworkAdapte
 	return adapters
 }
 
-func (c *DarwinNetworkCollector) enrichAdapterInfoDarwin(adapter *models.NetworkAdapter) {
+func (c *UnixNetworkCollector) enrichAdapterInfoDarwin(adapter *models.NetworkAdapter) {
 	// Get display name and speed using networksetup
 	out, err := exec.Command("networksetup", "-listallhardwareports").Output()
 	if err == nil {
@@ -244,7 +251,7 @@ func (c *DarwinNetworkCollector) enrichAdapterInfoDarwin(adapter *models.Network
 	}
 }
 
-func (c *DarwinNetworkCollector) enrichAdapterInfoLinux(adapter *models.NetworkAdapter) {
+func (c *UnixNetworkCollector) enrichAdapterInfoLinux(adapter *models.NetworkAdapter) {
 	// Get speed using ethtool
 	if out, err := exec.Command("ethtool", adapter.Name).Output(); err == nil {
 		lines := strings.Split(string(out), "\n")
@@ -282,7 +289,7 @@ func (c *DarwinNetworkCollector) enrichAdapterInfoLinux(adapter *models.NetworkA
 	}
 }
 
-func (c *DarwinNetworkCollector) collectWiFiConnection() *models.WiFiConnection {
+func (c *UnixNetworkCollector) collectWiFiConnection() *models.WiFiConnection {
 	switch runtime.GOOS {
 	case "darwin":
 		// macOS WiFi using airport command
@@ -380,7 +387,7 @@ func (c *DarwinNetworkCollector) collectWiFiConnection() *models.WiFiConnection 
 	}
 }
 
-func (c *DarwinNetworkCollector) collectVPNConnections() []models.VPNConnection {
+func (c *UnixNetworkCollector) collectVPNConnections() []models.VPNConnection {
 	var vpns []models.VPNConnection
 
 	switch runtime.GOOS {
@@ -446,7 +453,7 @@ func (c *DarwinNetworkCollector) collectVPNConnections() []models.VPNConnection 
 	return vpns
 }
 
-func (c *DarwinNetworkCollector) getDefaultGateway() string {
+func (c *UnixNetworkCollector) getDefaultGateway() string {
 	switch runtime.GOOS {
 	case "darwin":
 		out, err := exec.Command("route", "-n", "get", "default").Output()
@@ -477,7 +484,7 @@ func (c *DarwinNetworkCollector) getDefaultGateway() string {
 	return ""
 }
 
-func (c *DarwinNetworkCollector) collectProxyConfiguration() *models.ProxyConfiguration {
+func (c *UnixNetworkCollector) collectProxyConfiguration() *models.ProxyConfiguration {
 	proxy := &models.ProxyConfiguration{}
 
 	switch runtime.GOOS {

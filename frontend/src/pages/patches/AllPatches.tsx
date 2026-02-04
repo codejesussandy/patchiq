@@ -36,6 +36,7 @@ import { settingsService } from '../../services/settings.service';
 import { assetService } from '../../services/asset.service';
 import { tagService } from '../../services/tag.service';
 import { agentService, type Agent } from '../../services/agent.service';
+import { vulnerabilityService } from '../../services/vulnerability.service';
 import { SeverityBadge, OSIcon } from '../../components/patches';
 import dayjs from 'dayjs';
 
@@ -97,6 +98,9 @@ export const AllPatches = () => {
   const [tags, setTags] = useState<any[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
 
+  // CVE auto-suggest
+  const [cveSuggestions, setCveSuggestions] = useState<Array<{ cveId: string; severity: string; description: string }>>([]);
+
   useEffect(() => {
     fetchPatches();
     const fetchOptions = async () => {
@@ -118,6 +122,23 @@ export const AllPatches = () => {
     fetchOptions();
   }, []);
 
+  // Auto-open create form when navigated with ?createPatch=true&cve=CVE-XXXX
+  useEffect(() => {
+    const createPatch = searchParams.get('createPatch');
+    const cve = searchParams.get('cve');
+    const severity = searchParams.get('severity');
+
+    if (createPatch === 'true') {
+      setCreateModalVisible(true);
+      setTimeout(() => {
+        const values: Record<string, unknown> = {};
+        if (cve) values.cveNumbers = [cve];
+        if (severity) values.severity = severity;
+        form.setFieldsValue(values);
+      }, 100);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchPatches = async () => {
     setLoading(true);
     try {
@@ -127,6 +148,15 @@ export const AllPatches = () => {
       message.error('Failed to fetch patches');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCveSuggestions = async (software: string, vendor?: string) => {
+    try {
+      const suggestions = await vulnerabilityService.suggestCvesForSoftware(software, vendor);
+      setCveSuggestions(suggestions);
+    } catch {
+      // Silently fail — user can still type CVEs manually
     }
   };
 
@@ -154,6 +184,7 @@ export const AllPatches = () => {
           referenceUrl: values.referenceUrl,
           languagesSupported: values.languagesSupported,
           tags: values.tags,
+          cveNumbers: values.cveNumbers || [],
         });
         message.success('Patch updated successfully');
         setEditModalVisible(false);
@@ -674,6 +705,25 @@ export const AllPatches = () => {
           </Form.Item>
         </Col>
       </Row>
+
+      <Form.Item name="cveNumbers" label="CVE Numbers">
+        <Select
+          mode="tags"
+          placeholder="Enter CVE numbers or select from suggestions"
+          tokenSeparators={[',', ' ']}
+          onFocus={() => {
+            const software = form.getFieldValue('software');
+            const vendor = form.getFieldValue('vendor');
+            if (software) fetchCveSuggestions(software, vendor);
+          }}
+        >
+          {cveSuggestions.map((s) => (
+            <Option key={s.cveId} value={s.cveId}>
+              {s.cveId} ({s.severity}) — {s.description.slice(0, 80)}...
+            </Option>
+          ))}
+        </Select>
+      </Form.Item>
     </Form>
   );
 
@@ -1104,6 +1154,25 @@ export const AllPatches = () => {
               </Form.Item>
             </Col>
           </Row>
+
+          <Form.Item name="cveNumbers" label="CVE Numbers">
+            <Select
+              mode="tags"
+              placeholder="Enter CVE numbers or select from suggestions"
+              tokenSeparators={[',', ' ']}
+              onFocus={() => {
+                const software = editForm.getFieldValue('name');
+                const vendor = editForm.getFieldValue('vendor');
+                if (software) fetchCveSuggestions(software, vendor);
+              }}
+            >
+              {cveSuggestions.map((s) => (
+                <Option key={s.cveId} value={s.cveId}>
+                  {s.cveId} ({s.severity}) — {s.description.slice(0, 80)}...
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
         </Form>
       </Modal>
 

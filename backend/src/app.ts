@@ -84,7 +84,7 @@ export function createApp(): Application {
 
       // Determine the actual server URL from the request
       const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-      const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:4002';
+      const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:5002';
       const serverUrl = `${protocol}://${host}`;
 
       // Replace the servers section with the dynamic URL

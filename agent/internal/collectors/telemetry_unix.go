@@ -14,21 +14,28 @@ import (
 	"github.com/patchify/agent/internal/models"
 )
 
-// DarwinTelemetryCollector collects telemetry on macOS
-type DarwinTelemetryCollector struct{}
+// UnixTelemetryCollector collects telemetry on macOS and Linux
+type UnixTelemetryCollector struct{}
 
-// NewDarwinTelemetryCollector creates a new telemetry collector for macOS
-func NewDarwinTelemetryCollector() *DarwinTelemetryCollector {
-	return &DarwinTelemetryCollector{}
+// NewUnixTelemetryCollector creates a new telemetry collector for Unix systems (macOS/Linux)
+func NewUnixTelemetryCollector() *UnixTelemetryCollector {
+	return &UnixTelemetryCollector{}
+}
+
+// Backward compatibility aliases
+type DarwinTelemetryCollector = UnixTelemetryCollector
+
+func NewDarwinTelemetryCollector() *UnixTelemetryCollector {
+	return NewUnixTelemetryCollector()
 }
 
 // Name returns the collector name
-func (c *DarwinTelemetryCollector) Name() string {
+func (c *UnixTelemetryCollector) Name() string {
 	return "telemetry"
 }
 
 // Collect gathers telemetry data
-func (c *DarwinTelemetryCollector) Collect() (interface{}, error) {
+func (c *UnixTelemetryCollector) Collect() (interface{}, error) {
 	tel := &models.Telemetry{
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 	}
@@ -52,7 +59,7 @@ func (c *DarwinTelemetryCollector) Collect() (interface{}, error) {
 
 // Note: formatDuration is defined in software.go and is reused here
 
-func (c *DarwinTelemetryCollector) collectCPUTelemetry() models.CPUTelemetry {
+func (c *UnixTelemetryCollector) collectCPUTelemetry() models.CPUTelemetry {
 	cpu := models.CPUTelemetry{}
 
 	switch runtime.GOOS {
@@ -197,7 +204,7 @@ func (c *DarwinTelemetryCollector) collectCPUTelemetry() models.CPUTelemetry {
 	return cpu
 }
 
-func (c *DarwinTelemetryCollector) collectMemoryTelemetry() models.MemoryTelemetry {
+func (c *UnixTelemetryCollector) collectMemoryTelemetry() models.MemoryTelemetry {
 	mem := models.MemoryTelemetry{}
 
 	switch runtime.GOOS {
@@ -324,7 +331,7 @@ func (c *DarwinTelemetryCollector) collectMemoryTelemetry() models.MemoryTelemet
 	return mem
 }
 
-func (c *DarwinTelemetryCollector) collectDiskTelemetry() models.DiskTelemetry {
+func (c *UnixTelemetryCollector) collectDiskTelemetry() models.DiskTelemetry {
 	disk := models.DiskTelemetry{}
 
 	out, err := exec.Command("df", "-k").Output()
@@ -379,7 +386,7 @@ func (c *DarwinTelemetryCollector) collectDiskTelemetry() models.DiskTelemetry {
 	return disk
 }
 
-func (c *DarwinTelemetryCollector) collectNetworkTelemetry() models.NetworkTelemetry {
+func (c *UnixTelemetryCollector) collectNetworkTelemetry() models.NetworkTelemetry {
 	net := models.NetworkTelemetry{}
 
 	net.LatencyMs = c.measureNetworkLatency()
@@ -474,7 +481,7 @@ func (c *DarwinTelemetryCollector) collectNetworkTelemetry() models.NetworkTelem
 	return net
 }
 
-func (c *DarwinTelemetryCollector) measureNetworkLatency() float64 {
+func (c *UnixTelemetryCollector) measureNetworkLatency() float64 {
 	targets := []string{
 		"8.8.8.8",
 		"1.1.1.1",
@@ -491,7 +498,7 @@ func (c *DarwinTelemetryCollector) measureNetworkLatency() float64 {
 	return 0
 }
 
-func (c *DarwinTelemetryCollector) pingHost(host string) float64 {
+func (c *UnixTelemetryCollector) pingHost(host string) float64 {
 	// Send 3 pings with 1 second timeout
 	cmd := exec.Command("ping", "-c", "3", "-W", "1", host)
 
@@ -503,7 +510,7 @@ func (c *DarwinTelemetryCollector) pingHost(host string) float64 {
 	return c.parsePingOutput(string(output))
 }
 
-func (c *DarwinTelemetryCollector) parsePingOutput(output string) float64 {
+func (c *UnixTelemetryCollector) parsePingOutput(output string) float64 {
 	// macOS/Linux format: "round-trip min/avg/max/stddev = 10.123/15.456/20.789/3.456 ms"
 	// or: "rtt min/avg/max/mdev = 10.123/15.456/20.789/3.456 ms"
 	lines := strings.Split(output, "\n")
@@ -526,7 +533,7 @@ func (c *DarwinTelemetryCollector) parsePingOutput(output string) float64 {
 	return 0
 }
 
-func (c *DarwinTelemetryCollector) collectProcessStats() models.ProcessStats {
+func (c *UnixTelemetryCollector) collectProcessStats() models.ProcessStats {
 	stats := models.ProcessStats{}
 
 	switch runtime.GOOS {
@@ -643,7 +650,7 @@ func (c *DarwinTelemetryCollector) collectProcessStats() models.ProcessStats {
 	return stats
 }
 
-func (c *DarwinTelemetryCollector) collectSystemErrors() models.SystemErrors {
+func (c *UnixTelemetryCollector) collectSystemErrors() models.SystemErrors {
 	errors := models.SystemErrors{}
 
 	switch runtime.GOOS {
@@ -709,7 +716,7 @@ func (c *DarwinTelemetryCollector) collectSystemErrors() models.SystemErrors {
 	return errors
 }
 
-func (c *DarwinTelemetryCollector) collectAgentUtilization() *models.AgentUtilization {
+func (c *UnixTelemetryCollector) collectAgentUtilization() *models.AgentUtilization {
 	util := &models.AgentUtilization{
 		PID:        os.Getpid(),
 		Goroutines: runtime.NumGoroutine(),
@@ -820,7 +827,7 @@ func (c *DarwinTelemetryCollector) collectAgentUtilization() *models.AgentUtiliz
 	return util
 }
 
-func (c *DarwinTelemetryCollector) collectThermalTelemetry() *models.ThermalTelemetry {
+func (c *UnixTelemetryCollector) collectThermalTelemetry() *models.ThermalTelemetry {
 	thermal := &models.ThermalTelemetry{}
 	var sensors []models.ThermalSensor
 
@@ -979,7 +986,7 @@ func (c *DarwinTelemetryCollector) collectThermalTelemetry() *models.ThermalTele
 	return thermal
 }
 
-func (c *DarwinTelemetryCollector) collectPowerTelemetry() *models.PowerTelemetry {
+func (c *UnixTelemetryCollector) collectPowerTelemetry() *models.PowerTelemetry {
 	power := &models.PowerTelemetry{}
 
 	switch runtime.GOOS {
@@ -1122,7 +1129,7 @@ func (c *DarwinTelemetryCollector) collectPowerTelemetry() *models.PowerTelemetr
 	return power
 }
 
-func (c *DarwinTelemetryCollector) collectSystemUptime() *models.SystemUptime {
+func (c *UnixTelemetryCollector) collectSystemUptime() *models.SystemUptime {
 	uptime := &models.SystemUptime{}
 
 	switch runtime.GOOS {
