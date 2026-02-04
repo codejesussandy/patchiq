@@ -759,7 +759,7 @@ export class VulnerabilitiesService {
       data: {
         type: 'vulnerability_scan',
         name: `Vulnerability Scan - ${data.scope === 'all' ? 'All Endpoints' : 'Selected Endpoints'}`,
-        status: 'pending',
+        status: 'running',
         payload: {
           scope: data.scope,
           endpointIds: data.endpointIds || [],
@@ -778,11 +778,92 @@ export class VulnerabilitiesService {
       },
     });
 
+    // Execute the scan in background (non-blocking)
+    this.executeVulnerabilityScan(job.id, data.scope, data.endpointIds).catch((err) => {
+      console.error(`[Vulnerability Scan] Job ${job.id} failed:`, err);
+    });
+
     return {
       jobId: job.id,
       status: 'initiated',
       message: 'Vulnerability scan started',
     };
+  }
+
+  /**
+   * Execute vulnerability scan for assets
+   */
+  private async executeVulnerabilityScan(
+    jobId: string,
+    scope: 'all' | 'selected',
+    endpointIds?: string[]
+  ) {
+    const { cveDatabase } = await import('@shared/services/cve-database.service');
+
+    try {
+      // Get assets to scan
+      let assetIds: string[] = [];
+
+      if (scope === 'all') {
+        // Scan all assets that have agents (Agent → Asset relationship)
+        const agents = await prisma.agent.findMany({
+          where: { assetId: { not: null } },
+          select: { assetId: true },
+        });
+        assetIds = agents.filter((a) => a.assetId).map((a) => a.assetId as string);
+      } else if (endpointIds && endpointIds.length > 0) {
+        // endpointIds are agent IDs - get their assets
+        const agents = await prisma.agent.findMany({
+          where: { id: { in: endpointIds } },
+          select: { assetId: true },
+        });
+        assetIds = agents.filter((a) => a.assetId).map((a) => a.assetId as string);
+      }
+
+      console.log(`[Vulnerability Scan] Job ${jobId}: Scanning ${assetIds.length} assets`);
+
+      // Scan each asset
+      let scannedCount = 0;
+      let vulnerabilitiesFound = 0;
+
+      for (const assetId of assetIds) {
+        try {
+          const vulns = await cveDatabase.checkAssetVulnerabilities(assetId);
+          vulnerabilitiesFound += vulns.length;
+          scannedCount++;
+        } catch (err) {
+          console.error(`[Vulnerability Scan] Failed to scan asset ${assetId}:`, err);
+        }
+      }
+
+      // Mark job as completed
+      await prisma.job.update({
+        where: { id: jobId },
+        data: {
+          status: 'completed',
+          completedAt: new Date(),
+          result: {
+            assetsScanned: scannedCount,
+            vulnerabilitiesFound,
+          },
+        },
+      });
+
+      console.log(
+        `[Vulnerability Scan] Job ${jobId} completed: ${scannedCount} assets scanned, ${vulnerabilitiesFound} vulnerabilities found`
+      );
+    } catch (error) {
+      // Mark job as failed
+      await prisma.job.update({
+        where: { id: jobId },
+        data: {
+          status: 'failed',
+          completedAt: new Date(),
+          result: { error: String(error) },
+        },
+      });
+      throw error;
+    }
   }
 
   /**
