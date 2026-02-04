@@ -63,20 +63,20 @@ make agent-run                                        # Run without hot reload
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  Frontend   │────▶│   Backend   │────▶│ PostgreSQL  │
 │  (React)    │     │  (Express)  │     │   (Prisma)  │
-│   :5173     │     │    :3000    │     │    :3001    │
+│   :6001     │     │    :3000    │     │    :6003    │
 └─────────────┘     └──────┬──────┘     └─────────────┘
-                           │
+      (via nginx)          │
                     ┌──────┴──────┐
                     │             │
               ┌─────▼─────┐ ┌─────▼─────┐
               │   Redis   │ │   MinIO   │
-              │   :3002   │ │   :9000   │
+              │   :6004   │ │   :9000   │
               └───────────┘ └───────────┘
                     ▲
               ┌─────┴─────┐
               │   Agent   │
               │   (Go)    │
-              │   :8080   │
+              │   :6007   │
               └───────────┘
 ```
 
@@ -124,17 +124,21 @@ import { config } from '@config/index';         // src/config/
 
 ## Service Ports
 
-| Service        | Port  |
-|----------------|-------|
-| Frontend       | 5173  |
-| Backend API    | 3000  |
-| Agent          | 8080  |
-| PostgreSQL     | 3001  |
-| Redis          | 3002  |
-| MinIO API      | 9000  |
-| MinIO Console  | 9001  |
-| Prisma Studio  | 5555  |
-| pgAdmin        | 5050  |
+### Staging Configuration (default)
+
+| Service           | Port  | Notes                    |
+|-------------------|-------|--------------------------|
+| Nginx/Frontend    | 6001  | Main entry point         |
+| Backend API       | 3000  | Internal via nginx       |
+| PostgreSQL        | 6003  | External mapping         |
+| Redis             | 6004  | External mapping         |
+| pgAdmin           | 6005  | Admin tool               |
+| Prisma Studio     | 6006  | DB GUI                   |
+| Agent WebUI       | 6007  | With port fallback       |
+| MinIO API         | 9000  | Internal via nginx /s3/  |
+| MinIO Console     | 9001  | Internal via nginx /minio/ |
+
+Port configuration is centralized in `.env` file. Copy `.env.example` to `.env` and adjust as needed.
 
 ## API Documentation
 

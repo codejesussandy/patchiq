@@ -12,12 +12,12 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: parseInt(process.env.VITE_PORT || '5173'),
     host: '0.0.0.0',  // Allow connections from any host
     allowedHosts: ['dev.skenzeriq.com', 'localhost'],
     hmr: {
       // Auto-detect port from browser connection (works with nginx proxy)
-      clientPort: 5173,
+      clientPort: parseInt(process.env.VITE_HMR_PORT || process.env.VITE_PORT || '5173'),
     },
     strictPort: true,
     proxy: {

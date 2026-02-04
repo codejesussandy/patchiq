@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -98,6 +99,9 @@ type Server struct {
 	lastTelemetry *models.Telemetry
 	agentInfo     *models.AgentInfo
 	startTime     time.Time
+
+	// Actual port used (may differ from config if fallback was used)
+	actualPort    int
 }
 
 // New creates a new server instance
@@ -134,6 +138,16 @@ func New(cfg *config.Config) (*Server, error) {
 	return s, nil
 }
 
+// isPortAvailable checks if a port is available for binding
+func isPortAvailable(port int) bool {
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		return false
+	}
+	ln.Close()
+	return true
+}
+
 // Start starts the HTTP server
 func (s *Server) Start() error {
 	mux := http.NewServeMux()
@@ -166,10 +180,40 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/rollbacks", s.handleGetRollbacks)
 	mux.HandleFunc("/api/rollbacks/execute", s.handleExecuteRollback)
 
-	addr := fmt.Sprintf(":%d", s.config.WebUIPort)
+	// Determine which port to use
+	port := s.config.WebUIPort
+	s.actualPort = port
+
+	// Check if port is available, try fallback if enabled
+	if !isPortAvailable(port) {
+		if s.config.WebUIPortFallback {
+			log.Printf("WARNING: Port %d is occupied", port)
+			// Try next 3 ports
+			for fallbackPort := port + 1; fallbackPort <= port+3; fallbackPort++ {
+				if isPortAvailable(fallbackPort) {
+					log.Printf("Using fallback port %d", fallbackPort)
+					port = fallbackPort
+					s.actualPort = fallbackPort
+					break
+				}
+			}
+			if port == s.config.WebUIPort {
+				log.Printf("WARNING: No fallback ports available (%d-%d all occupied)", port+1, port+3)
+			}
+		} else {
+			log.Printf("WARNING: Port %d is occupied (port fallback disabled)", port)
+		}
+	}
+
+	addr := fmt.Sprintf(":%d", port)
 	log.Printf("Starting agent web UI on http://localhost%s", addr)
 
 	return http.ListenAndServe(addr, mux)
+}
+
+// GetActualPort returns the port the server is actually listening on
+func (s *Server) GetActualPort() int {
+	return s.actualPort
 }
 
 // SetBackendManager sets the backend manager for status display

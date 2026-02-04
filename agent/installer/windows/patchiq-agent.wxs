@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PatchIQ Agent Windows Installer (WiX Manifest)
+
+  Builds an MSI that:
+  - Installs agent binary to Program Files\PatchIQ\Agent
+  - Creates a Windows Service that runs automatically
+  - Supports clean uninstall
+
+  Build with:
+    candle -arch x64 patchiq-agent.wxs -o build/
+    light -ext WixUIExtension -ext WixUtilExtension build/patchiq-agent.wixobj -o build/patchiq-agent.msi
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*"
+           Name="PatchIQ Agent"
+           Language="1033"
+           Version="1.0.0.0"
+           Manufacturer="PatchIQ"
+           UpgradeCode="8B5E8E9A-1234-5678-9ABC-DEF012345678">
+
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Description="PatchIQ Agent - Endpoint Management"
+             Comments="Installs the PatchIQ Agent as a Windows Service"
+             Manufacturer="PatchIQ"/>
+
+    <!-- Allow upgrades and prevent downgrades -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of PatchIQ Agent is already installed." />
+
+    <!-- Embed all files in the MSI -->
+    <Media Id="1" Cabinet="patchiq.cab" EmbedCab="yes" />
+
+    <!-- Installation directory structure -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="PatchIQ">
+          <Directory Id="AGENTFOLDER" Name="Agent">
+            <Directory Id="LOGSFOLDER" Name="logs"/>
+            <Directory Id="DATAFOLDER" Name="data"/>
+          </Directory>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <!-- Agent executable and Windows Service -->
+    <ComponentGroup Id="AgentComponents" Directory="AGENTFOLDER">
+      <!-- Main executable -->
+      <Component Id="AgentExecutable" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890" Win64="yes">
+        <File Id="AgentExe"
+              Source="patchiq-agent.exe"
+              KeyPath="yes"
+              Checksum="yes"/>
+
+        <!-- Windows Service Configuration -->
+        <ServiceInstall Id="AgentService"
+                        Name="PatchIQAgent"
+                        DisplayName="PatchIQ Agent"
+                        Description="PatchIQ endpoint management agent - collects inventory and deploys patches"
+                        Start="auto"
+                        Type="ownProcess"
+                        ErrorControl="normal"
+                        Account="LocalSystem"
+                        Arguments="--service"/>
+
+        <!-- Service control during install/uninstall -->
+        <ServiceControl Id="StartService"
+                        Name="PatchIQAgent"
+                        Start="install"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes"/>
+      </Component>
+
+      <!-- Create logs directory -->
+      <Component Id="LogsFolder" Guid="B2C3D4E5-F6A7-8901-BCDE-F23456789012" Win64="yes">
+        <CreateFolder Directory="LOGSFOLDER">
+          <Permission User="SYSTEM" GenericAll="yes"/>
+          <Permission User="Administrators" GenericAll="yes"/>
+        </CreateFolder>
+        <RemoveFolder Id="RemoveLogsFolder" Directory="LOGSFOLDER" On="uninstall"/>
+      </Component>
+
+      <!-- Create data directory -->
+      <Component Id="DataFolder" Guid="C3D4E5F6-A7B8-9012-CDEF-345678901234" Win64="yes">
+        <CreateFolder Directory="DATAFOLDER">
+          <Permission User="SYSTEM" GenericAll="yes"/>
+          <Permission User="Administrators" GenericAll="yes"/>
+        </CreateFolder>
+        <RemoveFolder Id="RemoveDataFolder" Directory="DATAFOLDER" On="uninstall"/>
+      </Component>
+    </ComponentGroup>
+
+    <!-- Remove parent folders on uninstall -->
+    <ComponentGroup Id="CleanupComponents" Directory="INSTALLFOLDER">
+      <Component Id="RemoveFolders" Guid="D4E5F6A7-B8C9-0123-DEF0-456789012345" Win64="yes">
+        <RemoveFolder Id="RemoveAgentFolder" Directory="AGENTFOLDER" On="uninstall"/>
+        <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall"/>
+        <RegistryValue Root="HKLM" Key="SOFTWARE\PatchIQ\Agent" Name="Installed" Type="integer" Value="1" KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+
+    <!-- Feature definition -->
+    <Feature Id="Complete" Title="PatchIQ Agent" Level="1" Description="PatchIQ Agent for endpoint management">
+      <ComponentGroupRef Id="AgentComponents"/>
+      <ComponentGroupRef Id="CleanupComponents"/>
+    </Feature>
+
+    <!-- Basic UI for installation -->
+    <UIRef Id="WixUI_Minimal"/>
+    <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
+
+    <!-- Set custom banner/dialog if desired -->
+    <!-- <WixVariable Id="WixUIBannerBmp" Value="banner.bmp"/> -->
+    <!-- <WixVariable Id="WixUIDialogBmp" Value="dialog.bmp"/> -->
+
+  </Product>
+</Wix>

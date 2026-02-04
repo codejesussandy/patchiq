@@ -14,9 +14,10 @@ type Config struct {
 	AgentName string `json:"agentName,omitempty"`
 
 	// Server settings
-	ServerURL  string `json:"serverUrl"`
-	WebUIPort  int    `json:"webUiPort"`
-	EnableWebUI bool  `json:"enableWebUi"`
+	ServerURL         string `json:"serverUrl"`
+	WebUIPort         int    `json:"webUiPort"`
+	EnableWebUI       bool   `json:"enableWebUi"`
+	WebUIPortFallback bool   `json:"webUiPortFallback"` // Try next ports if default is occupied
 
 	// Collection intervals (seconds)
 	HeartbeatInterval   int `json:"heartbeatIntervalSeconds"`
@@ -45,9 +46,10 @@ func DefaultConfig() *Config {
 	dataDir := filepath.Join(homeDir, ".patchify-agent")
 
 	cfg := &Config{
-		ServerURL:           "http://dev.skenzeriq.com:5173/api",
+		ServerURL:           "http://dev.skenzeriq.com:6001/api",
 		WebUIPort:           8080,
 		EnableWebUI:         true,
+		WebUIPortFallback:   true, // Try next ports if default is occupied
 		HeartbeatInterval:   60,
 		InventoryInterval:   21600, // 6 hours
 		TelemetryInterval:   60,

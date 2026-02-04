@@ -18,23 +18,26 @@ import (
 )
 
 var (
-	version   = "1.0.0"
-	buildDate = "unknown"
+	version          = "1.0.0"
+	buildDate        = "unknown"
+	defaultServerURL = "http://dev.skenzeriq.com:6001/api" // Set via ldflags at build time
 )
 
 func main() {
 	// Parse command line flags
 	configPath := flag.String("config", "", "Path to config file")
 	port := flag.Int("port", 8080, "Web UI port")
-	serverURL := flag.String("server", "http://192.168.1.11:3000/api", "Backend server URL (e.g., http://192.168.1.11:3000/api)")
-	showVersion := flag.Bool("version", false, "Show version")
+	serverURL := flag.String("server", defaultServerURL, "Backend server URL (e.g., http://server:6001/api)")
+	showVersion := flag.Bool("version", false, "Show version and build info")
 	noBackend := flag.Bool("no-backend", false, "Disable backend communication (local mode)")
 	setup := flag.Bool("setup", false, "Run interactive setup wizard")
 	showStatus := flag.Bool("status", false, "Show agent connection status")
+	serviceMode := flag.Bool("service", false, "Run as Windows service (headless, no WebUI)")
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Printf("Patchify Agent v%s (built %s)\n", version, buildDate)
+		fmt.Printf("Default Server: %s\n", defaultServerURL)
 		os.Exit(0)
 	}
 
@@ -50,13 +53,15 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Print banner
-	fmt.Println(`
+	// Print banner (skip if service mode)
+	if !*serviceMode {
+		fmt.Println(`
 ╔═══════════════════════════════════════════════════╗
 ║         Patchify Agent v` + version + `                  ║
 ║    Endpoint Inventory & Telemetry Collection      ║
 ╚═══════════════════════════════════════════════════╝
 `)
+	}
 
 	// Load configuration
 	var cfg *config.Config
@@ -118,14 +123,19 @@ func main() {
 	// Create shared executor manager
 	em := executors.NewExecutorManager()
 
-	// Create local web server
-	srv, err := server.New(cfg)
-	if err != nil {
-		log.Fatalf("Failed to create server: %v", err)
-	}
+	// Create local web server (unless service mode)
+	var srv *server.Server
+	if !*serviceMode {
+		srv, err = server.New(cfg)
+		if err != nil {
+			log.Fatalf("Failed to create server: %v", err)
+		}
 
-	// Start background collection for local web UI
-	srv.StartBackgroundCollection()
+		// Start background collection for local web UI
+		srv.StartBackgroundCollection()
+	} else {
+		log.Println("Running in service mode (Web UI disabled)")
+	}
 
 	// Create and start backend manager (unless disabled)
 	var backendMgr *backend.Manager
@@ -136,8 +146,10 @@ func main() {
 		} else {
 			log.Printf("Backend communication started (server: %s)", cfg.ServerURL)
 		}
-		// Connect backend to server for status display
-		srv.SetBackendManager(&BackendAdapter{mgr: backendMgr})
+		// Connect backend to server for status display (if server exists)
+		if srv != nil {
+			srv.SetBackendManager(&BackendAdapter{mgr: backendMgr})
+		}
 	} else {
 		log.Println("Running in local-only mode (no backend communication)")
 	}
@@ -157,18 +169,25 @@ func main() {
 
 	// Print status
 	log.Printf("Agent ID: %s", getAgentID(backendMgr))
-	log.Printf("Web UI: http://localhost:%d", cfg.WebUIPort)
-	log.Printf("Backend: %s", getBackendStatus(backendMgr, cfg))
-	log.Printf("API Endpoints:")
-	log.Printf("  GET  /api/agent       - Agent info")
-	log.Printf("  GET  /api/inventory   - Full inventory")
-	log.Printf("  GET  /api/telemetry   - Current telemetry")
-	log.Printf("  POST /api/collect     - Trigger full collection")
-	log.Println()
+	if !*serviceMode {
+		log.Printf("Web UI: http://localhost:%d", cfg.WebUIPort)
+		log.Printf("Backend: %s", getBackendStatus(backendMgr, cfg))
+		log.Printf("API Endpoints:")
+		log.Printf("  GET  /api/agent       - Agent info")
+		log.Printf("  GET  /api/inventory   - Full inventory")
+		log.Printf("  GET  /api/telemetry   - Current telemetry")
+		log.Printf("  POST /api/collect     - Trigger full collection")
+		log.Println()
 
-	// Start web server (blocks)
-	if err := srv.Start(); err != nil {
-		log.Fatalf("Server error: %v", err)
+		// Start web server (blocks)
+		if err := srv.Start(); err != nil {
+			log.Fatalf("Server error: %v", err)
+		}
+	} else {
+		// Service mode - just wait for shutdown signal
+		log.Printf("Backend: %s", getBackendStatus(backendMgr, cfg))
+		log.Println("Service running. Press Ctrl+C to stop.")
+		select {} // Block forever (shutdown handled by signal handler)
 	}
 }
 

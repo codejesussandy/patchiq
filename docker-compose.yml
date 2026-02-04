@@ -54,7 +54,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: patchiq_dev
     ports:
-      - "3001:5432"
+      - "${POSTGRES_EXTERNAL_PORT:-6003}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -70,7 +70,7 @@ services:
     image: redis:7-alpine
     container_name: patchiq_redis
     ports:
-      - "3002:6379"
+      - "${REDIS_EXTERNAL_PORT:-6004}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -113,7 +113,7 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     ports:
-      - "0.0.0.0:5050:80"
+      - "0.0.0.0:${PGADMIN_PORT:-6005}:80"
     depends_on:
       postgres:
         condition: service_healthy
@@ -184,7 +184,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/patchiq_dev
     command: npx prisma studio --schema src/db/prisma/schema.prisma --port 5555 --browser none
     ports:
-      - "0.0.0.0:5000:5555"
+      - "0.0.0.0:${PRISMA_STUDIO_PORT:-6006}:5555"
     depends_on:
       postgres:
         condition: service_healthy
