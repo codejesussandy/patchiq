@@ -550,6 +550,7 @@ class DeploymentExecutorService {
 
   /**
    * Update a patch deployment task status and recalculate deployment counts
+   * Also resolves AssetVulnerability records when patches are successfully deployed
    */
   private async updatePatchDeploymentTask(
     taskId: string,
@@ -559,7 +560,13 @@ class DeploymentExecutorService {
   ): Promise<void> {
     const task = await prisma.patchDeploymentTask.findUnique({
       where: { id: taskId },
-      include: { deployment: true },
+      include: {
+        deployment: {
+          include: {
+            patches: true, // Include patches to get CVE numbers
+          },
+        },
+      },
     });
 
     if (!task) return;
@@ -578,6 +585,11 @@ class DeploymentExecutorService {
           completedAt: ['completed', 'failed'].includes(status) ? new Date() : null,
         },
       });
+
+      // If patch deployment completed successfully, resolve asset vulnerabilities
+      if (status === 'completed' && task.assetId && task.deployment.patches) {
+        await this.resolveAssetVulnerabilitiesForPatches(tx, task.assetId, task.deployment.patches);
+      }
 
       // Recalculate deployment counts
       if (previousStatus !== status) {
@@ -745,6 +757,58 @@ class DeploymentExecutorService {
         },
       });
     });
+  }
+
+  /**
+   * Resolve asset vulnerabilities when patches are successfully deployed
+   * Marks AssetVulnerability records as "Patched" for CVEs covered by the patches
+   */
+  private async resolveAssetVulnerabilitiesForPatches(
+    tx: Prisma.TransactionClient,
+    assetId: string,
+    patches: { cveNumbers: string[] }[]
+  ): Promise<void> {
+    // Collect all CVE numbers from the deployed patches
+    const allCves: string[] = [];
+    for (const patch of patches) {
+      if (patch.cveNumbers && patch.cveNumbers.length > 0) {
+        allCves.push(...patch.cveNumbers);
+      }
+    }
+
+    if (allCves.length === 0) {
+      return; // No CVEs to resolve
+    }
+
+    // Find vulnerabilities matching the CVEs
+    const vulnerabilities = await tx.vulnerability.findMany({
+      where: { cveId: { in: allCves } },
+      select: { id: true, cveId: true },
+    });
+
+    if (vulnerabilities.length === 0) {
+      return; // No matching vulnerabilities in database
+    }
+
+    const vulnerabilityIds = vulnerabilities.map(v => v.id);
+
+    // Update AssetVulnerability records to "Patched"
+    const result = await tx.assetVulnerability.updateMany({
+      where: {
+        assetId,
+        vulnerabilityId: { in: vulnerabilityIds },
+        status: 'Open',
+      },
+      data: {
+        status: 'Patched',
+        resolvedAt: new Date(),
+      },
+    });
+
+    if (result.count > 0) {
+      const cveList = vulnerabilities.map(v => v.cveId).join(', ');
+      console.log(`[Patch Deploy] Resolved ${result.count} vulnerabilities for asset ${assetId}: ${cveList}`);
+    }
   }
 
   /**

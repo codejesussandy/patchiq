@@ -105,6 +105,9 @@ export async function createPatch(data: CreatePatchInput) {
     },
   });
 
+  // Link patch to vulnerabilities via CVE numbers
+  await updateVulnerabilityPatchStatus(patch.cveNumbers);
+
   return transformPatch(patch);
 }
 
@@ -114,6 +117,10 @@ export async function updatePatch(id: string, data: UpdatePatchInput) {
   if (!existing) {
     throw new NotFoundError('Patch not found');
   }
+
+  // Track CVE changes for vulnerability linking
+  const oldCves = existing.cveNumbers || [];
+  const newCves = data.cveNumbers !== undefined ? data.cveNumbers : oldCves;
 
   const patch = await prisma.patch.update({
     where: { id },
@@ -126,8 +133,23 @@ export async function updatePatch(id: string, data: UpdatePatchInput) {
       testStatus: data.testStatus,
       approvalStatus: data.approvalStatus,
       tags: data.tags,
+      cveNumbers: data.cveNumbers,
     },
   });
+
+  // Handle CVE changes for vulnerability linking
+  if (data.cveNumbers !== undefined) {
+    // Find CVEs that were removed
+    const removedCves = oldCves.filter(cve => !newCves.includes(cve));
+    // Find CVEs that were added
+    const addedCves = newCves.filter(cve => !oldCves.includes(cve));
+
+    // Revert patchAvailable for removed CVEs (if no other patch covers them)
+    await revertVulnerabilityPatchStatus(id, removedCves);
+
+    // Set patchAvailable for added CVEs
+    await updateVulnerabilityPatchStatus(addedCves);
+  }
 
   return transformPatch(patch);
 }
@@ -139,7 +161,11 @@ export async function deletePatch(id: string) {
     throw new NotFoundError('Patch not found');
   }
 
+  // Delete the patch first
   await prisma.patch.delete({ where: { id } });
+
+  // Revert patchAvailable for CVEs if no other patch covers them
+  await revertVulnerabilityPatchStatus(id, existing.cveNumbers || []);
 
   return { success: true };
 }
@@ -1008,6 +1034,54 @@ export async function deleteZeroTouchConfig(id: string) {
   await prisma.zeroTouchConfig.delete({ where: { id } });
 
   return { success: true };
+}
+
+// ============================================
+// Vulnerability Linking
+// ============================================
+
+/**
+ * Update patchAvailable flag on vulnerabilities when a patch is created/updated.
+ * This links patches to vulnerabilities via CVE numbers.
+ */
+async function updateVulnerabilityPatchStatus(cveNumbers: string[]) {
+  if (!cveNumbers || cveNumbers.length === 0) return;
+
+  const result = await prisma.vulnerability.updateMany({
+    where: { cveId: { in: cveNumbers } },
+    data: { patchAvailable: true },
+  });
+
+  if (result.count > 0) {
+    console.log(`[Patch-Vuln Link] Marked ${result.count} vulnerabilities as patchAvailable=true for CVEs: ${cveNumbers.join(', ')}`);
+  }
+}
+
+/**
+ * Revert patchAvailable flag when a patch is deleted.
+ * Only reverts if no other patch covers the same CVE.
+ */
+async function revertVulnerabilityPatchStatus(patchId: string, cveNumbers: string[]) {
+  if (!cveNumbers || cveNumbers.length === 0) return;
+
+  for (const cve of cveNumbers) {
+    // Check if any other patch covers this CVE
+    const otherPatch = await prisma.patch.findFirst({
+      where: {
+        cveNumbers: { has: cve },
+        id: { not: patchId },
+      },
+    });
+
+    if (!otherPatch) {
+      // No other patch covers this CVE, set patchAvailable = false
+      await prisma.vulnerability.updateMany({
+        where: { cveId: cve },
+        data: { patchAvailable: false },
+      });
+      console.log(`[Patch-Vuln Link] Reverted patchAvailable=false for CVE: ${cve}`);
+    }
+  }
 }
 
 // ============================================

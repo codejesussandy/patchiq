@@ -119,8 +119,12 @@ export interface VulnerabilityJob {
 export interface CreateVulnerabilityJobInput {
   name: string;
   description?: string;
-  schedule?: string;
-  targetAgentIds?: string[];
+  scope?: 'Global' | 'Group' | 'Endpoint';
+  endpoints?: string[];
+  scanType?: 'instant' | 'scheduled';
+  scheduleDate?: string;
+  scheduleTime?: string;
+  recurrence?: 'once' | 'daily' | 'weekly' | 'monthly';
 }
 
 // Types for Software Catalog

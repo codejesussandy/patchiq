@@ -49,6 +49,7 @@ export const updatePatchSchema = z.object({
   testStatus: testStatusSchema.optional(),
   approvalStatus: approvalStatusSchema.optional(),
   tags: z.array(z.string()).optional(),
+  cveNumbers: z.array(z.string()).optional(),
 });
 
 export const patchListQuerySchema = z.object({
