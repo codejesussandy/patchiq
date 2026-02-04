@@ -235,7 +235,13 @@ export class VulnerabilitiesService {
       throw new NotFoundError('Vulnerability not found');
     }
 
-    return this.transformVulnerabilityDetails(vulnerability);
+    // Fetch related patches via PatchVulnerability join table
+    const relatedPatches = await prisma.patchVulnerability.findMany({
+      where: { cveNumber: vulnerability.cveId },
+      include: { patch: { select: { id: true, title: true, severity: true, patchId: true } } },
+    });
+
+    return this.transformVulnerabilityDetails(vulnerability, relatedPatches);
   }
 
   /**
@@ -945,38 +951,43 @@ export class VulnerabilitiesService {
   /**
    * Transform vulnerability for detailed response
    */
-  private transformVulnerabilityDetails(vuln: {
-    id: string;
-    cveId: string;
-    title: string;
-    description: string | null;
-    severity: string;
-    epss: number | null;
-    riskScore: number | null;
-    cvss3BaseScore: number | null;
-    cvss2BaseScore: number | null;
-    cvss3AttackVector: string | null;
-    cvss3AttackComplexity: string | null;
-    cvss3PrivilegesRequired: string | null;
-    cvss3Scope: string | null;
-    cvss3Confidentiality: string | null;
-    cvss3Integrity: string | null;
-    cvss3Availability: string | null;
-    cvss3ImpactScore: number | null;
-    cvss3VectorString: string | null;
-    cvss2Severity: string | null;
-    exploitable: boolean;
-    isZeroDay: boolean;
-    publishedDate: Date | null;
-    fixRecommendation: string | null;
-    mitreTactic: string | null;
-    mitreTechnique: string | null;
-    mitreSubTechnique: string | null;
-    mitreDescription: string | null;
-    affectedAssets: { id: string; asset: { id: string; name: string } }[];
-    affectedSoftware: { id: string; name: string; version: string | null; vendor: string | null }[];
-    references: { url: string; source: string | null }[];
-  }) {
+  private transformVulnerabilityDetails(
+    vuln: {
+      id: string;
+      cveId: string;
+      title: string;
+      description: string | null;
+      severity: string;
+      epss: number | null;
+      riskScore: number | null;
+      cvss3BaseScore: number | null;
+      cvss2BaseScore: number | null;
+      cvss3AttackVector: string | null;
+      cvss3AttackComplexity: string | null;
+      cvss3PrivilegesRequired: string | null;
+      cvss3Scope: string | null;
+      cvss3Confidentiality: string | null;
+      cvss3Integrity: string | null;
+      cvss3Availability: string | null;
+      cvss3ImpactScore: number | null;
+      cvss3VectorString: string | null;
+      cvss2Severity: string | null;
+      exploitable: boolean;
+      isZeroDay: boolean;
+      patchAvailable?: boolean;
+      publishedDate: Date | null;
+      lastModified: Date | null;
+      fixRecommendation: string | null;
+      mitreTactic: string | null;
+      mitreTechnique: string | null;
+      mitreSubTechnique: string | null;
+      mitreDescription: string | null;
+      affectedAssets: { id: string; detectedAt: Date; asset: { id: string; name: string } }[];
+      affectedSoftware: { id: string; name: string; version: string | null; vendor: string | null }[];
+      references: { url: string; source: string | null }[];
+    },
+    relatedPatches: { patch: { id: string; title: string; severity: string | null; patchId: string } }[] = [],
+  ) {
     return {
       id: vuln.id,
       cve: vuln.cveId,
@@ -1008,7 +1019,10 @@ export class VulnerabilitiesService {
       endpoints: vuln.affectedAssets.length,
       affectedSoftwares: vuln.affectedSoftware.length,
       published: vuln.publishedDate ? this.formatDate(vuln.publishedDate) : '',
+      lastModified: vuln.lastModified ? this.formatDate(vuln.lastModified) : null,
+      detectedAt: vuln.affectedAssets.length > 0 ? this.formatDate(vuln.affectedAssets[0].detectedAt) : null,
       isZeroDay: vuln.isZeroDay,
+      patchAvailable: vuln.patchAvailable ?? false,
       references: vuln.references.map((r) => ({
         url: r.url,
         source: r.source || 'Unknown',
@@ -1022,6 +1036,12 @@ export class VulnerabilitiesService {
             description: vuln.mitreDescription,
           }
         : null,
+      relatedPatches: relatedPatches.map((pv) => ({
+        id: pv.patch.id,
+        title: pv.patch.title,
+        patchId: pv.patch.patchId,
+        severity: pv.patch.severity || '',
+      })),
     };
   }
 
