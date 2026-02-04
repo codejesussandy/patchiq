@@ -1,9 +1,14 @@
-name: Build Windows MSI Installer
+name: Windows MSI Build
 
 on:
   push:
     tags:
       - 'v*'
+    branches:
+      - full-dev-sandy
+    paths:
+      - 'agent/**'
+      - '.github/workflows/windows-msi-build.yml'
   workflow_dispatch:
     inputs:
       version:
@@ -31,7 +36,11 @@ jobs:
         shell: pwsh
         run: |
           choco install wixtoolset -y
-          echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $wixPath = "C:\Program Files (x86)\WiX Toolset v3.14\bin"
+          if (-not (Test-Path $wixPath)) {
+            $wixPath = "C:\Program Files (x86)\WiX Toolset v3.11\bin"
+          }
+          echo $wixPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Determine version
         id: version
@@ -73,42 +82,28 @@ jobs:
         run: |
           $installerDir = "installer/windows"
 
-          # Create icon placeholder if not exists
-          if (-not (Test-Path "$installerDir/patchiq.ico")) {
-            Write-Host "Creating placeholder icon..."
-            $ico = New-Object System.Collections.ArrayList
-            $ico.AddRange([byte[]](0,0,1,0,1,0,16,16,0,0,1,0,32,0,104,4,0,0,22,0,0,0)) | Out-Null
-            $ico.AddRange([byte[]](40,0,0,0,16,0,0,0,32,0,0,0,1,0,32,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)) | Out-Null
-            for ($i = 0; $i -lt 256; $i++) {
-              $ico.AddRange([byte[]](255, 128, 0, 255)) | Out-Null
-            }
-            for ($i = 0; $i -lt 64; $i++) {
-              $ico.Add([byte]0) | Out-Null
-            }
-            [System.IO.File]::WriteAllBytes("$installerDir/patchiq.ico", [byte[]]$ico.ToArray())
+          # Create icon placeholder
+          Write-Host "Creating placeholder icon..."
+          $ico = New-Object System.Collections.ArrayList
+          $ico.AddRange([byte[]](0,0,1,0,1,0,16,16,0,0,1,0,32,0,104,4,0,0,22,0,0,0)) | Out-Null
+          $ico.AddRange([byte[]](40,0,0,0,16,0,0,0,32,0,0,0,1,0,32,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)) | Out-Null
+          for ($i = 0; $i -lt 256; $i++) {
+            $ico.AddRange([byte[]](255, 128, 0, 255)) | Out-Null
           }
+          for ($i = 0; $i -lt 64; $i++) {
+            $ico.Add([byte]0) | Out-Null
+          }
+          [System.IO.File]::WriteAllBytes("$installerDir/patchiq.ico", [byte[]]$ico.ToArray())
 
-          # Create license RTF if not exists
-          if (-not (Test-Path "$installerDir/License.rtf")) {
-            Write-Host "Creating license file..."
-            @"
-{\rtf1\ansi\deff0
-{\fonttbl{\f0 Arial;}}
-\f0\fs22
-{\b PatchIQ Agent - End User License Agreement}\par
-\par
-Copyright (c) 2024 PatchIQ. All rights reserved.\par
-\par
-{\b 1. License Grant}\par
-This software is provided under the terms of your PatchIQ subscription agreement.\par
-\par
-{\b 2. Data Collection}\par
-The PatchIQ Agent collects hardware inventory, software inventory, and system telemetry data.\par
-\par
-By installing this software, you agree to these terms.\par
-}
-"@ | Out-File -FilePath "$installerDir/License.rtf" -Encoding ASCII
-          }
+          # Create license RTF
+          Write-Host "Creating license file..."
+          $license = @"
+{\rtf1\ansi\deff0{\fonttbl{\f0 Arial;}}\f0\fs22
+{\b PatchIQ Agent - End User License Agreement}\par\par
+Copyright (c) 2024 PatchIQ. All rights reserved.\par\par
+By installing this software, you agree to the terms of service.\par}
+"@
+          $license | Out-File -FilePath "$installerDir/License.rtf" -Encoding ASCII
 
       - name: Build MSI with WiX
         shell: pwsh
@@ -120,11 +115,16 @@ By installing this software, you agree to these terms.\par
 
           New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
+          # Find WiX
+          $wixPath = "C:\Program Files (x86)\WiX Toolset v3.14\bin"
+          if (-not (Test-Path "$wixPath\candle.exe")) {
+            $wixPath = "C:\Program Files (x86)\WiX Toolset v3.11\bin"
+          }
+          Write-Host "Using WiX at: $wixPath"
+
           # Compile WiX source
           Write-Host "Compiling WiX source..."
-          & "C:\Program Files (x86)\WiX Toolset v3.14\bin\candle.exe" `
-            -nologo `
-            -arch x64 `
+          & "$wixPath\candle.exe" -nologo -arch x64 `
             "-dBuildDir=$buildDir" `
             "-dVersion=$version" `
             -ext WixUtilExtension `
@@ -135,8 +135,7 @@ By installing this software, you agree to these terms.\par
 
           # Link MSI
           Write-Host "Linking MSI..."
-          & "C:\Program Files (x86)\WiX Toolset v3.14\bin\light.exe" `
-            -nologo `
+          & "$wixPath\light.exe" -nologo `
             -ext WixUIExtension `
             -ext WixUtilExtension `
             -cultures:en-us `
