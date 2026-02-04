@@ -139,7 +139,7 @@ export const SoftwareJobsCatalog = () => {
     if (item) {
       // For Hub packages, navigate to Hub page for editing
       message.info('Redirecting to Hub for package editing...');
-      navigate('/hub');
+      navigate('/assets/hub');
     }
   };
 
@@ -450,7 +450,7 @@ export const SoftwareJobsCatalog = () => {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                navigate('/hub');
+                navigate('/assets/hub');
               }}
             >
               Add Package
@@ -479,7 +479,7 @@ export const SoftwareJobsCatalog = () => {
               <Card
                 hoverable
                 style={{ height: '100%', position: 'relative' }}
-                bodyStyle={{ padding: 16 }}
+                styles={{ body: { padding: 16 } }}
               >
                 {/* Action Buttons */}
                 <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4 }}>

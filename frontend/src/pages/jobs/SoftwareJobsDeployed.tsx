@@ -847,7 +847,7 @@ export const SoftwareJobsDeployed = () => {
           IN_PROGRESS: 'blue',
         };
         return (
-          <Space direction="vertical" size={0}>
+          <Space orientation="vertical" size={0}>
             <Tag color={colors[status] || 'default'}>{status}</Tag>
             {record.errorMessage && <Text type="danger" style={{ fontSize: 11 }}>{record.errorMessage}</Text>}
           </Space>

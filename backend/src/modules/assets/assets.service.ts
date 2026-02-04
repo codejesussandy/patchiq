@@ -104,6 +104,7 @@ function formatSystemUptime(uptimeSeconds: number | null | undefined, rawSystemU
 
 export async function listCategories(): Promise<CategoryResponse[]> {
   const categories = await prisma.category.findMany({
+    include: { subCategories: true },
     orderBy: { name: 'asc' },
   });
 
@@ -205,6 +206,14 @@ function transformCategory(category: any): CategoryResponse {
     description: category.description,
     isDefault: category.isDefault ?? false,
     createdAt: category.createdAt instanceof Date ? category.createdAt.toISOString() : category.createdAt,
+    subCategories: category.subCategories?.map((sub: any) => ({
+      id: sub.id,
+      categoryId: sub.categoryId,
+      name: sub.name,
+      criticality: sub.criticality,
+      description: sub.description,
+      createdAt: sub.createdAt instanceof Date ? sub.createdAt.toISOString() : sub.createdAt,
+    })),
   };
 }
 
@@ -715,8 +724,10 @@ export async function listAssets(params: AssetQueryInput & PaginationParams) {
       where,
       include: {
         tags: { include: { tag: true } },
-        agent: { select: { id: true, status: true, hostname: true, ipAddress: true, macAddress: true } },
+        agent: { select: { id: true, status: true, hostname: true, ipAddress: true, macAddress: true, lastHeartbeat: true, agentVersion: true } },
         hardware: true,
+        category: true,
+        subCategory: true,
       },
       ...getPaginationParams(params),
       orderBy: params.sort
@@ -747,6 +758,8 @@ export async function getAssetById(id: string): Promise<AssetResponse> {
       },
       hardware: true,
       security: true,
+      category: true,
+      subCategory: true,
     },
   });
 
@@ -785,6 +798,8 @@ export async function createAsset(data: AssetCreateInput, userId?: string): Prom
       macAddress: data.macAddress,
       manufacturer: data.manufacturer,
       model: data.model,
+      categoryId: data.categoryId,
+      subCategoryId: data.subCategoryId,
       // Connect tags if provided
       tags: data.tags?.length
         ? {
@@ -796,6 +811,8 @@ export async function createAsset(data: AssetCreateInput, userId?: string): Prom
     },
     include: {
       tags: { include: { tag: true } },
+      category: true,
+      subCategory: true,
     },
   });
 
@@ -878,6 +895,8 @@ export async function updateAsset(id: string, data: AssetUpdateInput, userId?: s
       manufacturer: data.manufacturer,
       model: data.model,
       hostname: data.hostname,
+      categoryId: data.categoryId,
+      subCategoryId: data.subCategoryId,
 
       // Owner info
       ownerName: data.ownerName,
@@ -907,6 +926,8 @@ export async function updateAsset(id: string, data: AssetUpdateInput, userId?: s
     include: {
       tags: { include: { tag: true } },
       agent: { select: { id: true, status: true } },
+      category: true,
+      subCategory: true,
     },
   });
 

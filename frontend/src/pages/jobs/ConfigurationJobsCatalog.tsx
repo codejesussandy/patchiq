@@ -226,7 +226,7 @@ export const ConfigurationJobsCatalog = () => {
                 borderRadius: 8,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               }}
-              bodyStyle={{ padding: 16 }}
+              styles={{ body: { padding: 16 } }}
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
                 {/* Windows Icon */}
@@ -300,7 +300,7 @@ export const ConfigurationJobsCatalog = () => {
                 borderRadius: 8,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               }}
-              bodyStyle={{ padding: 16 }}
+              styles={{ body: { padding: 16 } }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* Icon and Actions */}
@@ -538,7 +538,7 @@ export const ConfigurationJobsCatalog = () => {
                   }
                   rules={[{ required: true, message: 'Please enter command' }]}
                 >
-                  <Input.Group compact>
+                  <Space.Compact style={{ width: '100%' }}>
                     <Input
                       placeholder="Command"
                       style={{ width: 'calc(100% - 150px)' }}
@@ -550,7 +550,7 @@ export const ConfigurationJobsCatalog = () => {
                     >
                       Generate Command
                     </Button>
-                  </Input.Group>
+                  </Space.Compact>
                 </Form.Item>
               </Col>
             </Row>

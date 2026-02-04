@@ -156,7 +156,7 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
       title: 'Patch',
       key: 'patch',
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Space>
             {getStatusIcon(record.status)}
             <Text strong>{record.name}</Text>
@@ -292,7 +292,7 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
               </Col>
               <Col span={12}>
                 {patchSummary && (
-                  <Space direction="vertical" size={4}>
+                  <Space orientation="vertical" size={4}>
                     <div>
                       <Badge status="success" text={<Text type="secondary">Installed: {patchSummary.installed}</Text>} />
                     </div>
@@ -485,7 +485,7 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
                         : 'blue',
                   children: (
                     <div>
-                      <Space direction="vertical" size={0}>
+                      <Space orientation="vertical" size={0}>
                         <Space>
                           <Text strong>{deployment.patchName}</Text>
                           <Tag color={getStatusColor(deployment.status)}>{deployment.status}</Tag>

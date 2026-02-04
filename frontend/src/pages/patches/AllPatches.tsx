@@ -804,8 +804,60 @@ export const AllPatches = () => {
             <Dropdown
               menu={{
                 items: [
-                  { key: 'download', label: 'Download', icon: <DownloadOutlined /> },
-                  { key: 'delete', label: 'Delete', icon: <DeleteOutlined />, danger: true },
+                  {
+                    key: 'download',
+                    label: 'Download CSV',
+                    icon: <DownloadOutlined />,
+                    onClick: () => {
+                      const selected = getSelectedPatches();
+                      if (selected.length === 0) return;
+                      const headers = ['Software', 'Patch ID', 'OS', 'Severity', 'Category', 'KB Number', 'Release Date'];
+                      const csvContent = [
+                        headers.join(','),
+                        ...selected.map((p) =>
+                          [p.software, p.patchId, p.os, p.severity, p.category, p.kbNumber, p.releaseDate || '']
+                            .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+                            .join(',')
+                        ),
+                      ].join('\n');
+                      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                      const link = document.createElement('a');
+                      link.href = URL.createObjectURL(blob);
+                      link.download = `patches_${new Date().toISOString().split('T')[0]}.csv`;
+                      link.click();
+                      message.success(`Exported ${selected.length} patch(es)`);
+                    },
+                  },
+                  {
+                    key: 'delete',
+                    label: 'Delete',
+                    icon: <DeleteOutlined />,
+                    danger: true,
+                    onClick: () => {
+                      Modal.confirm({
+                        title: 'Delete Patches',
+                        content: `Are you sure you want to delete ${selectedRowKeys.length} selected patch(es)?`,
+                        okText: 'Delete',
+                        okType: 'danger',
+                        onOk: async () => {
+                          let successCount = 0;
+                          let failCount = 0;
+                          for (const patchId of selectedRowKeys) {
+                            try {
+                              await patchService.deletePatch(patchId as string);
+                              successCount++;
+                            } catch {
+                              failCount++;
+                            }
+                          }
+                          if (successCount > 0) message.success(`Deleted ${successCount} patch(es)`);
+                          if (failCount > 0) message.warning(`Failed to delete ${failCount} patch(es)`);
+                          setSelectedRowKeys([]);
+                          fetchPatches();
+                        },
+                      });
+                    },
+                  },
                 ],
               }}
             >
@@ -1216,7 +1268,7 @@ export const AllPatches = () => {
               onChange={(e) => setDeployScope(e.target.value)}
               style={{ width: '100%' }}
             >
-              <Space direction="vertical" style={{ width: '100%' }}>
+              <Space orientation="vertical" style={{ width: '100%' }}>
                 <Radio value="all">All Endpoints</Radio>
                 <Radio value="groups">Specific Groups</Radio>
                 {deployScope === 'groups' && (
@@ -1267,7 +1319,7 @@ export const AllPatches = () => {
               onChange={(e) => setScheduleType(e.target.value)}
               style={{ width: '100%' }}
             >
-              <Space direction="vertical" style={{ width: '100%' }}>
+              <Space orientation="vertical" style={{ width: '100%' }}>
                 <Radio value="immediate">
                   <Space>
                     <RocketOutlined />
@@ -1318,7 +1370,7 @@ export const AllPatches = () => {
 
           {/* Deployment Options */}
           <Form.Item label="Deployment Options">
-            <Space direction="vertical" style={{ width: '100%' }}>
+            <Space orientation="vertical" style={{ width: '100%' }}>
               <Form.Item
                 name="rebootPolicy"
                 label="Reboot Policy"

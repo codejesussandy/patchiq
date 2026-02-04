@@ -822,15 +822,27 @@ export const PatchDetails = () => {
         <Card title="Supersede KB Details" bordered={false}>
           <div style={{ marginBottom: 16 }}>
             <Text type="secondary">Update Replace By</Text>
-            <div><strong>{patch.supersededBy?.length ? 'No KBs Found' : 'No KBs Found'}</strong></div>
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {patch.supersededBy?.length ? (
+                patch.supersededBy.map((kb) => (
+                  <Tag key={kb} color="blue">{kb}</Tag>
+                ))
+              ) : (
+                <strong>No KBs Found</strong>
+              )}
+            </div>
           </div>
 
           <div>
             <Text type="secondary">Update Replaces Following</Text>
             <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {patch.supersedes?.map((kb) => (
-                <Tag key={kb} color="blue">{kb}</Tag>
-              ))}
+              {patch.supersedes?.length ? (
+                patch.supersedes.map((kb) => (
+                  <Tag key={kb} color="blue">{kb}</Tag>
+                ))
+              ) : (
+                <strong>No KBs Found</strong>
+              )}
             </div>
           </div>
         </Card>
@@ -1085,12 +1097,6 @@ export const PatchDetails = () => {
             }
           }}>
             Reset
-          </Button>,
-          <Button key="draft" onClick={() => {
-            message.info('Saved as draft');
-            setInstallModalVisible(false);
-          }}>
-            Save As Draft
           </Button>,
           <Button key="publish" type="primary" onClick={handleInstallSubmit}>
             Publish

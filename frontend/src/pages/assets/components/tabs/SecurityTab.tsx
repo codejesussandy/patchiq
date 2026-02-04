@@ -229,7 +229,7 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Text strong>{name}</Text>
           {record.vendor && <Text type="secondary" style={{ fontSize: '12px' }}>{record.vendor}</Text>}
         </Space>
@@ -264,7 +264,7 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
       key: 'definitionDate',
       width: 120,
       render: (date?: string, record?: AntivirusProduct) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Text>{date ? new Date(date).toLocaleDateString() : '—'}</Text>
           {record?.definitionAge && (
             <Text type="secondary" style={{ fontSize: '11px' }}>
@@ -280,7 +280,7 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
       key: 'lastScanDate',
       width: 120,
       render: (date?: string, record?: AntivirusProduct) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Text>{date ? new Date(date).toLocaleDateString() : '—'}</Text>
           {record?.lastScanType && (
             <Tag style={{ marginTop: 4 }}>{record.lastScanType}</Tag>
@@ -326,7 +326,7 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
       key: 'status',
       width: 120,
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Badge
             status={record.isEnabled ? 'success' : 'default'}
             text={record.isEnabled ? 'Enabled' : 'Disabled'}
@@ -340,7 +340,7 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
       key: 'password',
       width: 150,
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           {record.passwordRequired !== undefined && (
             <Text type="secondary" style={{ fontSize: '12px' }}>
               Required: {record.passwordRequired ? 'Yes' : 'No'}

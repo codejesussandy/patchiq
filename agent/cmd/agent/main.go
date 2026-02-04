@@ -247,7 +247,7 @@ func runSetupWizard() {
 	fmt.Println("\nTo start the agent, run:")
 	fmt.Println("  ./patchify-agent")
 	fmt.Println("\nOr to start with a different server:")
-	fmt.Println("  ./patchify-agent --server http://your-server:3000/api")
+	fmt.Println("  ./patchify-agent --server http://your-server:4001/api")
 }
 
 func parseInt(s string) (int, error) {

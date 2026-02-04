@@ -21,7 +21,7 @@ export default defineConfig({
       host: undefined,
       clientPort: undefined,
     },
-    strictPort: false,
+    strictPort: true,
     proxy: {
       // Proxy API requests to backend for local development (only used when running outside Docker)
       '/v1': {

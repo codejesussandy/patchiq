@@ -6,6 +6,7 @@ import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import { getRelativeTime } from '@shared/utils/date';
 import { cveDatabase } from '@shared/services/cve-database.service';
 import { evaluateAlertsForAsset, evaluateSecurityAlertsForAsset } from '@/modules/alerts/alert-evaluation.service';
+import { notificationsService } from '@/modules/notifications/notifications.service';
 import type {
   RegisterAgentInput,
   HeartbeatInput,
@@ -118,6 +119,14 @@ export class AgentsService {
       role: 'agent',
     });
 
+    // Notify admins about new agent registration
+    notificationsService.broadcast({
+      title: `New Agent: ${input.hostname || input.machineId}`,
+      message: `A new agent has registered from ${input.ipAddress || 'unknown IP'}`,
+      type: 'info',
+      link: '/discovery/agents',
+    }).catch(() => {});
+
     return {
       agentId: agent.id,
       assetId: asset.id,
@@ -143,17 +152,31 @@ export class AgentsService {
     // Check if inventory was requested before we update
     const inventoryWasRequested = agent.inventoryRequested ?? false;
 
+    // Detect status change to Error
+    const newStatus = input.status === 'error' ? 'Error' : 'Connected';
+    const statusChangedToError = newStatus === 'Error' && agent.status !== 'Error';
+
     // Update agent status (and clear inventoryRequested flag if set)
     await prisma.agent.update({
       where: { id: agentId },
       data: {
-        status: input.status === 'error' ? 'Error' : 'Connected',
+        status: newStatus,
         lastHeartbeat: new Date(),
         ipAddress: input.ipAddress || agent.ipAddress,
         // Clear the flag after we've noted it
         inventoryRequested: false,
       },
     });
+
+    // Notify admins if agent just entered error state
+    if (statusChangedToError) {
+      notificationsService.broadcast({
+        title: `Agent Error: ${agent.hostname || agent.name || agentId}`,
+        message: `Agent is reporting error status`,
+        type: 'error',
+        link: '/discovery/agents',
+      }).catch(() => {});
+    }
 
     // Store telemetry data if we have an assetId
     if (agent.assetId) {

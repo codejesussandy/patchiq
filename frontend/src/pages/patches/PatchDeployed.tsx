@@ -63,6 +63,14 @@ export const PatchDeployed = () => {
   const [tasksSearchText, setTasksSearchText] = useState('');
   const [tasksFilter, setTasksFilter] = useState<string>('All');
 
+  // Filter Modal
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [filterForm] = Form.useForm();
+  const [activeFilters, setActiveFilters] = useState<{
+    type?: string[];
+    stage?: string[];
+  }>({});
+
   // Dynamic option lists
   const [groups, setGroups] = useState<any[]>([]);
 
@@ -334,10 +342,16 @@ export const PatchDeployed = () => {
     },
   ];
 
-  const filteredDeployments = deployments.filter((deployment) =>
-    deployment.name.toLowerCase().includes(searchText.toLowerCase()) ||
-    deployment.deploymentId.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const filteredDeployments = deployments.filter((deployment) => {
+    const matchesSearch = deployment.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      deployment.deploymentId.toLowerCase().includes(searchText.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (activeFilters.type && !activeFilters.type.includes(deployment.type)) return false;
+    if (activeFilters.stage && !activeFilters.stage.includes(deployment.stage)) return false;
+
+    return true;
+  });
 
   const handleCreateDeployment = async () => {
     if (currentStep === 0) {
@@ -449,7 +463,7 @@ export const PatchDeployed = () => {
           onChange={(checkedValues) => setSelectedPatches(checkedValues as string[])}
           style={{ width: '100%' }}
         >
-          <Space direction="vertical" style={{ width: '100%' }}>
+          <Space orientation="vertical" style={{ width: '100%' }}>
             {patches.map((patch) => (
               <Card key={patch.id} size="small" style={{ marginBottom: 8 }}>
                 <Checkbox value={patch.id}>
@@ -492,7 +506,12 @@ export const PatchDeployed = () => {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
-          <Button icon={<FilterOutlined />}>Filter</Button>
+          <Button icon={<FilterOutlined />} onClick={() => setFilterModalVisible(true)}>
+            Filter{Object.values(activeFilters).filter(Boolean).length > 0 ? ` (${Object.values(activeFilters).filter(Boolean).length})` : ''}
+          </Button>
+          {Object.values(activeFilters).filter(Boolean).length > 0 && (
+            <Button type="link" size="small" onClick={() => { filterForm.resetFields(); setActiveFilters({}); }}>Clear filters</Button>
+          )}
         </Space>
       </div>
 
@@ -745,6 +764,49 @@ export const PatchDeployed = () => {
           ]}
           scroll={{ x: 'max-content' }}
         />
+      </Modal>
+
+      {/* Filter Modal */}
+      <Modal
+        title="Filter Deployments"
+        open={filterModalVisible}
+        onCancel={() => setFilterModalVisible(false)}
+        width={500}
+        footer={[
+          <Button key="reset" onClick={() => { filterForm.resetFields(); setActiveFilters({}); setFilterModalVisible(false); }}>
+            Reset
+          </Button>,
+          <Button key="cancel" onClick={() => setFilterModalVisible(false)}>
+            Cancel
+          </Button>,
+          <Button key="apply" type="primary" onClick={() => {
+            const values = filterForm.getFieldsValue();
+            setActiveFilters({
+              type: values.type?.length ? values.type : undefined,
+              stage: values.stage?.length ? values.stage : undefined,
+            });
+            setFilterModalVisible(false);
+          }}>
+            Apply Filters
+          </Button>,
+        ]}
+      >
+        <Form form={filterForm} layout="vertical">
+          <Form.Item name="type" label="Deployment Type">
+            <Select mode="multiple" placeholder="Select types" allowClear>
+              <Option value="INSTALL">Install</Option>
+              <Option value="ROLLBACK">Rollback</Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="stage" label="Stage">
+            <Select mode="multiple" placeholder="Select stages" allowClear>
+              <Option value="INSTALLED">Installed</Option>
+              <Option value="COMPLETED">Completed</Option>
+              <Option value="IN_PROGRESS">In Progress</Option>
+              <Option value="FAILED">Failed</Option>
+            </Select>
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );

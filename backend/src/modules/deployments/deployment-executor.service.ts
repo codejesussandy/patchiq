@@ -25,6 +25,7 @@ import {
 } from './deployment-executor.types';
 import { hubService } from '@modules/hub/hub.service';
 import { env } from '@/config/env';
+import { notificationsService } from '@/modules/notifications/notifications.service';
 
 class DeploymentExecutorService {
   /**
@@ -464,12 +465,25 @@ class DeploymentExecutorService {
         });
 
         if (deployment && deployment.pending === 0) {
+          const finalStage = deployment.failed > 0 ? 'FAILED' : 'COMPLETED';
           await tx.softwareDeployment.update({
             where: { id: task.deploymentId },
             data: {
-              stage: deployment.failed > 0 ? 'FAILED' : 'COMPLETED',
+              stage: finalStage,
             },
           });
+
+          // Notify the deployment creator
+          if (deployment.createdBy) {
+            const isSuccess = finalStage === 'COMPLETED';
+            notificationsService.create({
+              userId: deployment.createdBy,
+              title: isSuccess ? 'Deployment Complete' : 'Deployment Failed',
+              message: `Software deployment "${deployment.deploymentName}" ${isSuccess ? 'completed successfully' : 'has failed'}`,
+              type: isSuccess ? 'success' : 'error',
+              link: '/patches/deployed/deployed',
+            }).catch(() => {});
+          }
         }
       }
     });
@@ -535,14 +549,27 @@ class DeploymentExecutorService {
         });
 
         if (deployment && deployment.pending === 0) {
+          const finalStage = deployment.failed > 0 ? 'FAILED' : 'COMPLETED';
           await tx.patchDeployment.update({
             where: { id: task.deploymentId },
             data: {
-              stage: deployment.failed > 0 ? 'FAILED' : 'COMPLETED',
+              stage: finalStage,
               status: 'COMPLETED',
               completedAt: new Date(),
             },
           });
+
+          // Notify the deployment creator
+          if (deployment.createdBy) {
+            const isSuccess = finalStage === 'COMPLETED';
+            notificationsService.create({
+              userId: deployment.createdBy,
+              title: isSuccess ? 'Patch Deployment Complete' : 'Patch Deployment Failed',
+              message: `Patch deployment "${deployment.name}" ${isSuccess ? 'completed successfully' : 'has failed'}`,
+              type: isSuccess ? 'success' : 'error',
+              link: '/patches/deployed/deployed',
+            }).catch(() => {});
+          }
         }
       }
     });

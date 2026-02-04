@@ -21,7 +21,7 @@ info:
     name: Proprietary
 
 servers:
-  - url: http://localhost:3000
+  - url: http://localhost:4002
     description: Local Development
   - url: https://api.patchiq.io
     description: Production
