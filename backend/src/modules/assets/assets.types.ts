@@ -758,3 +758,59 @@ export interface OSLicenseUpdateInput {
   cost?: string;
   notes?: string;
 }
+
+// ============================================
+// Asset Patches & Deployments Types
+// ============================================
+
+export type AssetPatchStatus = 'Installed' | 'Missing' | 'Pending' | 'Failed';
+
+export interface PatchSummary {
+  total: number;
+  installed: number;
+  missing: number;
+  failed: number;
+  pending: number;
+  criticalMissing?: number;
+  securityMissing?: number;
+  lastScanDate: string | null;
+  lastScanRelative?: string;
+  compliancePercent?: number;
+}
+
+export interface AssetRelatedPatch {
+  id: string;
+  patchId: string;
+  name: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNSPECIFIED';
+  status: AssetPatchStatus;
+  kbNumber?: string;
+  releaseDate?: string;
+  deploymentId?: string;
+  deploymentName?: string;
+  startedAt?: string;
+  completedAt?: string;
+  errorMessage?: string;
+}
+
+export interface AssetDeploymentResponse {
+  id: string;
+  deploymentId: string;
+  deploymentName: string;
+  patchId?: string;
+  patchName?: string;
+  softwareName?: string;
+  type: 'patch' | 'software';
+  date: string;
+  status: 'Success' | 'Failed' | 'Pending' | 'In Progress';
+  errorMessage?: string;
+}
+
+export interface AssetPatchesResponse {
+  data: AssetRelatedPatch[];
+  summary: PatchSummary;
+}
+
+export interface AssetDeploymentsResponse {
+  data: AssetDeploymentResponse[];
+}

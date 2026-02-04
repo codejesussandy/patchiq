@@ -98,8 +98,7 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
     try {
       const data = await assetService.getAssetSecurity(assetId);
       setSecurity(data);
-    } catch (err) {
-      console.error('Failed to fetch security data:', err);
+    } catch {
       setError('Failed to load security information');
     } finally {
       setLoading(false);

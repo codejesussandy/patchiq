@@ -18,6 +18,20 @@ interface CreateCategoryModalProps {
   onSuccess: (category: Category | SubCategory) => void;
 }
 
+interface CategoryFormValues {
+  categoryName: string;
+  categoryDescription?: string;
+}
+
+interface SubCategoryFormValues {
+  parentCategory: string;
+  subCategoryName: string;
+  subCategoryDescription?: string;
+  criticality?: string;
+  businessUnit?: string;
+  department?: string;
+}
+
 const COLORS = ['blue', 'cyan', 'geekblue', 'gold', 'green', 'lime', 'magenta', 'orange', 'purple', 'red', 'volcano', 'yellow'];
 
 const CRITICALITY_OPTIONS = [
@@ -38,13 +52,13 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string>(COLORS[0]);
 
-  const handleCreateCategory = async (values: any) => {
+  const handleCreateCategory = async (values: CategoryFormValues) => {
     setLoading(true);
     try {
       const categoryData: Category = {
         id: `cat-${Date.now()}`,
         name: values.categoryName,
-        description: values.categoryDescription,
+        description: values.categoryDescription || '',
         color: selectedColor,
         assetCount: 0,
       };
@@ -62,17 +76,17 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
     }
   };
 
-  const handleCreateSubCategory = async (values: any) => {
+  const handleCreateSubCategory = async (values: SubCategoryFormValues) => {
     setLoading(true);
     try {
       const subCategoryData: SubCategory = {
         id: `subcat-${Date.now()}`,
         categoryId: values.parentCategory,
         name: values.subCategoryName,
-        description: values.subCategoryDescription,
+        description: values.subCategoryDescription || '',
         criticality: values.criticality || 'Medium',
-        businessUnit: values.businessUnit,
-        department: values.department,
+        businessUnit: values.businessUnit || '',
+        department: values.department || '',
         assetCount: 0,
       };
 
@@ -88,11 +102,11 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
     }
   };
 
-  const handleFinish = async (values: any) => {
+  const handleFinish = async (values: CategoryFormValues | SubCategoryFormValues) => {
     if (activeTab === 'category') {
-      await handleCreateCategory(values);
+      await handleCreateCategory(values as CategoryFormValues);
     } else {
-      await handleCreateSubCategory(values);
+      await handleCreateSubCategory(values as SubCategoryFormValues);
     }
   };
 

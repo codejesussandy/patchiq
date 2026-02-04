@@ -279,7 +279,6 @@ export function AllAssets() {
 
       message.success({ content: `${platform} agent downloaded successfully!`, key: 'agent-download' });
     } catch (error) {
-      console.error('Agent download error:', error);
       const errMsg = error instanceof Error ? error.message : `Failed to download ${platform} agent`;
       message.error({ content: errMsg, key: 'agent-download' });
     }
@@ -446,8 +445,8 @@ export function AllAssets() {
              {
                key: 'edit',
                label: 'Edit',
-               onClick: (e: any) => {
-                 e.domEvent.stopPropagation();
+               onClick: (info: { domEvent: React.MouseEvent }) => {
+                 info.domEvent.stopPropagation();
                  navigate(`/assets/${record.id}`);
                },
              },
@@ -455,8 +454,8 @@ export function AllAssets() {
                key: 'delete',
                label: 'Delete',
                danger: true,
-               onClick: (e: any) => {
-                 e.domEvent.stopPropagation();
+               onClick: (info: { domEvent: React.MouseEvent }) => {
+                 info.domEvent.stopPropagation();
                  handleDelete(record.id);
                },
              },

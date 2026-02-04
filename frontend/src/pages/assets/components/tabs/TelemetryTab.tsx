@@ -111,8 +111,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
       setTelemetry(telemetryData);
       setHistory(historyData);
       setErrors(errorsData);
-    } catch (err) {
-      console.error('Failed to fetch telemetry data:', err);
+    } catch {
       setError('Failed to load telemetry information');
     } finally {
       setLoading(false);

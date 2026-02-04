@@ -202,8 +202,8 @@ export const OSLicenses = () => {
     {
       key: 'edit',
       label: 'Edit',
-      onClick: (e: any) => {
-        e.domEvent.stopPropagation();
+      onClick: (info) => {
+        info.domEvent.stopPropagation();
         handleEdit(license);
       },
     },
@@ -214,8 +214,8 @@ export const OSLicenses = () => {
       key: 'delete',
       label: 'Delete',
       danger: true,
-      onClick: (e: any) => {
-        e.domEvent.stopPropagation();
+      onClick: (info) => {
+        info.domEvent.stopPropagation();
         handleDelete(license);
       },
     },
@@ -284,8 +284,10 @@ export const OSLicenses = () => {
     },
   };
 
-  const categoryId = searchParams.get('category');
-  const subCategoryId = searchParams.get('subcategory');
+  // Note: categoryId/subCategoryId filtering not yet supported for OS licenses
+  const _categoryId = searchParams.get('category');
+  const _subCategoryId = searchParams.get('subcategory');
+  void _categoryId; void _subCategoryId; // Reserved for future use
 
   const filteredLicenses = licenses.filter((lic) => {
     const matchesSearch = lic.licenseName.toLowerCase().includes(searchText.toLowerCase());
@@ -293,16 +295,6 @@ export const OSLicenses = () => {
                           lic.osType.toLowerCase().includes(osTypeFilter.toLowerCase());
     const matchesStatus = statusFilter === 'all-status' ||
                          lic.status.toLowerCase() === statusFilter.toLowerCase();
-
-    // Category filter (for future use when OS license has category support)
-    if (categoryId && (lic as any).categoryId !== categoryId) {
-      return false;
-    }
-
-    // Sub-category filter (for future use when OS license has sub-category support)
-    if (subCategoryId && (lic as any).subCategoryId !== subCategoryId) {
-      return false;
-    }
 
     return matchesSearch && matchesOsType && matchesStatus;
   });

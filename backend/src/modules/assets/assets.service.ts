@@ -1922,23 +1922,91 @@ export async function getAssetNetwork(id: string): Promise<AssetNetwork | null> 
 export async function getAssetPeripherals(id: string): Promise<AssetPeripherals | null> {
   const asset = await prisma.asset.findUnique({
     where: { id },
+    include: {
+      peripherals: true,
+    },
   });
 
   if (!asset) {
     throw new NotFoundError('Asset not found');
   }
 
-  // Return mock data for now - in production this would come from agent data
+  // Return stored peripheral data from database
+  const peripherals = asset.peripherals;
+  if (!peripherals || !peripherals.rawPayload) {
+    // No peripheral data collected yet
+    return {
+      collectedAt: new Date().toISOString(),
+      monitors: [],
+      monitorCount: 0,
+      usbDevices: [],
+      usbDeviceCount: 0,
+      printers: [],
+      audioDevices: [],
+      bluetoothDevices: [],
+      bluetoothEnabled: false,
+    };
+  }
+
+  // Extract data from rawPayload
+  const raw = peripherals.rawPayload as Record<string, unknown>;
+  const monitors = (raw.monitors as Array<Record<string, unknown>>) || [];
+  const usbDevices = (raw.usbDevices as Array<Record<string, unknown>>) || [];
+  const printers = (raw.printers as Array<Record<string, unknown>>) || [];
+  const audioDevices = (raw.audioDevices as Array<Record<string, unknown>>) || [];
+  const bluetoothDevices = (raw.bluetoothDevices as Array<Record<string, unknown>>) || [];
+
   return {
-    collectedAt: new Date().toISOString(),
-    monitors: [],
-    monitorCount: 0,
-    usbDevices: [],
-    usbDeviceCount: 0,
-    printers: [],
-    audioDevices: [],
-    bluetoothDevices: [],
-    bluetoothEnabled: false,
+    collectedAt: peripherals.collectedAt?.toISOString() || new Date().toISOString(),
+    monitors: monitors.map((m, i) => ({
+      id: `monitor-${i}`,
+      name: (m.name as string) || 'Unknown',
+      manufacturer: m.manufacturer as string | undefined,
+      model: m.model as string | undefined,
+      serialNumber: m.serialNumber as string | undefined,
+      resolution: (m.resolution as string) || `${m.widthPx || 0}x${m.heightPx || 0}`,
+      refreshRate: m.refreshRate as number | undefined,
+      connectionType: m.connectionType as string | undefined,
+      isPrimary: (m.isPrimary as boolean) || false,
+      isBuiltIn: (m.isBuiltIn as boolean) || false,
+    })),
+    monitorCount: peripherals.monitorCount,
+    usbDevices: usbDevices.map((u, i) => ({
+      id: `usb-${i}`,
+      name: (u.name as string) || 'Unknown',
+      manufacturer: u.manufacturer as string | undefined,
+      deviceType: u.deviceType as string | undefined,
+      deviceClass: u.deviceClass as string | undefined,
+      speed: u.speed as string | undefined,
+    })),
+    usbDeviceCount: peripherals.usbDeviceCount,
+    printers: printers.map((p, i) => ({
+      id: `printer-${i}`,
+      name: (p.name as string) || 'Unknown',
+      driverName: p.driver as string | undefined,
+      connectionType: (p.connectionType as string) || 'Unknown',
+      status: (p.status as string) || 'Unknown',
+      isDefault: (p.isDefault as boolean) || false,
+      isNetwork: (p.connectionType as string)?.toLowerCase() === 'network',
+    })),
+    audioDevices: audioDevices.map((a, i) => ({
+      id: `audio-${i}`,
+      name: (a.name as string) || 'Unknown',
+      type: (a.type as 'Input' | 'Output' | 'Both') || undefined,
+      deviceType: a.manufacturer as string | undefined,
+      isDefault: (a.isDefault as boolean) || false,
+      isEnabled: true,
+    })),
+    bluetoothDevices: bluetoothDevices.map((b, i) => ({
+      id: `bt-${i}`,
+      name: (b.name as string) || 'Unknown',
+      address: b.address as string | undefined,
+      type: b.type as string | undefined,
+      connected: (b.connected as boolean) || false,
+      paired: (b.paired as boolean) || false,
+      batteryLevel: b.batteryLevel as number | undefined,
+    })),
+    bluetoothEnabled: bluetoothDevices.length > 0,
   };
 }
 
@@ -2105,20 +2173,55 @@ export async function getAssetTelemetryHistory(
 export async function getAssetErrors(id: string): Promise<SystemErrors> {
   const asset = await prisma.asset.findUnique({
     where: { id },
+    include: {
+      agent: {
+        include: {
+          telemetry: {
+            orderBy: { timestamp: 'desc' },
+            take: 1,
+          },
+        },
+      },
+    },
   });
 
   if (!asset) {
     throw new NotFoundError('Asset not found');
   }
 
-  // Return mock data for now - in production this would come from agent data
-  return {
+  // Default values
+  const errors: SystemErrors = {
     applicationCrashCount24h: 0,
     applicationCrashCount7d: 0,
     bsodCount30d: 0,
     systemEventLogErrors24h: 0,
     criticalEventCount24h: 0,
   };
+
+  // Extract error data from latest telemetry if available
+  const latestTelemetry = asset.agent?.telemetry?.[0];
+  if (latestTelemetry?.rawPayload) {
+    const payload = latestTelemetry.rawPayload as Record<string, unknown>;
+    const systemErrors = payload.systemErrors as Record<string, unknown> | undefined;
+
+    if (systemErrors) {
+      errors.applicationCrashCount24h = (systemErrors.applicationCrashCount24h as number) || 0;
+      errors.bsodCount30d = (systemErrors.bsodCount30d as number) || (systemErrors.kernelPanicCount30d as number) || 0;
+
+      // Extract last crash info if available
+      const lastCrash = systemErrors.lastCrash as Record<string, unknown> | undefined;
+      if (lastCrash) {
+        errors.lastCrash = {
+          timestamp: (lastCrash.timestamp as string) || '',
+          application: (lastCrash.application as string) || 'Unknown',
+          errorCode: lastCrash.errorCode as string | undefined,
+          description: lastCrash.description as string | undefined,
+        };
+      }
+    }
+  }
+
+  return errors;
 }
 
 export async function getAssetAuditLog(id: string): Promise<AssetAuditLog[]> {
@@ -2275,6 +2378,303 @@ export async function getAssetVulnerabilities(id: string) {
   });
 
   return { data, summary };
+}
+
+// ============================================
+// Asset Patches Service
+// ============================================
+
+export async function getAssetPatches(id: string): Promise<{
+  data: Array<{
+    id: string;
+    patchId: string;
+    name: string;
+    severity: string;
+    status: 'Installed' | 'Missing' | 'Pending' | 'Failed';
+    kbNumber?: string;
+    releaseDate?: string;
+    deploymentId?: string;
+    deploymentName?: string;
+    startedAt?: string;
+    completedAt?: string;
+    errorMessage?: string;
+  }>;
+  summary: {
+    total: number;
+    installed: number;
+    missing: number;
+    failed: number;
+    pending: number;
+    criticalMissing: number;
+    securityMissing: number;
+    lastScanDate: string | null;
+    compliancePercent: number;
+  };
+}> {
+  const asset = await prisma.asset.findUnique({
+    where: { id },
+    include: { agent: true },
+  });
+
+  if (!asset) {
+    throw new NotFoundError('Asset not found');
+  }
+
+  // Get all patch deployment tasks for this asset with their deployment and patches
+  const patchTasks = await prisma.patchDeploymentTask.findMany({
+    where: { assetId: id },
+    include: {
+      deployment: {
+        include: {
+          patches: true,
+        },
+      },
+    },
+    orderBy: { completedAt: 'desc' },
+  });
+
+  // Map task status to patch status
+  const mapStatus = (taskStatus: string): 'Installed' | 'Missing' | 'Pending' | 'Failed' => {
+    switch (taskStatus.toLowerCase()) {
+      case 'completed':
+        return 'Installed';
+      case 'failed':
+        return 'Failed';
+      case 'in_progress':
+        return 'Pending';
+      case 'pending':
+      default:
+        return 'Pending';
+    }
+  };
+
+  // Flatten patches from all deployments with their status
+  const patchesMap = new Map<string, {
+    id: string;
+    patchId: string;
+    name: string;
+    severity: string;
+    status: 'Installed' | 'Missing' | 'Pending' | 'Failed';
+    kbNumber?: string;
+    releaseDate?: string;
+    deploymentId?: string;
+    deploymentName?: string;
+    startedAt?: string;
+    completedAt?: string;
+    errorMessage?: string;
+  }>();
+
+  for (const task of patchTasks) {
+    const deployment = task.deployment;
+    const taskStatus = mapStatus(task.status);
+
+    for (const patch of deployment.patches) {
+      // Only keep the most recent status for each patch
+      const existing = patchesMap.get(patch.id);
+      if (!existing || (task.completedAt && (!existing.completedAt || task.completedAt > new Date(existing.completedAt)))) {
+        patchesMap.set(patch.id, {
+          id: task.id,
+          patchId: patch.patchId,
+          name: patch.title,
+          severity: patch.severity?.toUpperCase() || 'UNSPECIFIED',
+          status: taskStatus,
+          kbNumber: patch.kbNumber || undefined,
+          releaseDate: patch.releaseDate?.toISOString() || undefined,
+          deploymentId: deployment.id,
+          deploymentName: deployment.name,
+          startedAt: task.startedAt?.toISOString() || undefined,
+          completedAt: task.completedAt?.toISOString() || undefined,
+          errorMessage: task.errorMessage || undefined,
+        });
+      }
+    }
+  }
+
+  const data = Array.from(patchesMap.values());
+
+  // Calculate summary
+  const summary = {
+    total: data.length,
+    installed: 0,
+    missing: 0,
+    failed: 0,
+    pending: 0,
+    criticalMissing: 0,
+    securityMissing: 0,
+    lastScanDate: null as string | null,
+    compliancePercent: 0,
+  };
+
+  for (const patch of data) {
+    switch (patch.status) {
+      case 'Installed':
+        summary.installed++;
+        break;
+      case 'Failed':
+        summary.failed++;
+        break;
+      case 'Pending':
+        summary.pending++;
+        break;
+      case 'Missing':
+        summary.missing++;
+        break;
+    }
+
+    // Count critical/security missing
+    if (patch.status !== 'Installed') {
+      if (patch.severity === 'CRITICAL') {
+        summary.criticalMissing++;
+      }
+      if (patch.severity === 'HIGH' || patch.severity === 'CRITICAL') {
+        summary.securityMissing++;
+      }
+    }
+  }
+
+  // Get last scan date from agent telemetry
+  if (asset.agent) {
+    const lastTelemetry = await prisma.agentTelemetry.findFirst({
+      where: { agentId: asset.agent.id },
+      orderBy: { timestamp: 'desc' },
+      select: { timestamp: true },
+    });
+    if (lastTelemetry) {
+      summary.lastScanDate = lastTelemetry.timestamp.toISOString();
+    }
+  }
+
+  // Calculate compliance percentage
+  summary.compliancePercent = summary.total > 0
+    ? Math.round((summary.installed / summary.total) * 100)
+    : 100;
+
+  return { data, summary };
+}
+
+// ============================================
+// Asset Deployments Service
+// ============================================
+
+export async function getAssetDeployments(id: string): Promise<{
+  data: Array<{
+    id: string;
+    deploymentId: string;
+    deploymentName: string;
+    patchId?: string;
+    patchName?: string;
+    softwareName?: string;
+    type: 'patch' | 'software';
+    date: string;
+    status: 'Success' | 'Failed' | 'Pending' | 'In Progress';
+    errorMessage?: string;
+  }>;
+}> {
+  const asset = await prisma.asset.findUnique({
+    where: { id },
+    include: { agent: true },
+  });
+
+  if (!asset) {
+    throw new NotFoundError('Asset not found');
+  }
+
+  const deployments: Array<{
+    id: string;
+    deploymentId: string;
+    deploymentName: string;
+    patchId?: string;
+    patchName?: string;
+    softwareName?: string;
+    type: 'patch' | 'software';
+    date: string;
+    status: 'Success' | 'Failed' | 'Pending' | 'In Progress';
+    errorMessage?: string;
+  }> = [];
+
+  // Get patch deployment tasks for this asset
+  const patchTasks = await prisma.patchDeploymentTask.findMany({
+    where: { assetId: id },
+    include: {
+      deployment: {
+        include: {
+          patches: { take: 1 }, // Get first patch for naming
+        },
+      },
+    },
+    orderBy: { completedAt: 'desc' },
+  });
+
+  // Map task status to deployment status
+  const mapDeploymentStatus = (taskStatus: string): 'Success' | 'Failed' | 'Pending' | 'In Progress' => {
+    switch (taskStatus.toLowerCase()) {
+      case 'completed':
+        return 'Success';
+      case 'failed':
+        return 'Failed';
+      case 'in_progress':
+        return 'In Progress';
+      case 'pending':
+      default:
+        return 'Pending';
+    }
+  };
+
+  for (const task of patchTasks) {
+    const patch = task.deployment.patches[0];
+    deployments.push({
+      id: task.id,
+      deploymentId: task.deployment.id,
+      deploymentName: task.deployment.name,
+      patchId: patch?.patchId,
+      patchName: patch?.title || task.deployment.name,
+      type: 'patch',
+      date: (task.completedAt || task.startedAt || task.deployment.createdAt).toISOString(),
+      status: mapDeploymentStatus(task.status),
+      errorMessage: task.errorMessage || undefined,
+    });
+  }
+
+  // Get software deployment tasks for this asset
+  // Query by assetId directly, or fall back to endpointId (agent id) for older records
+  const softwareTasksWhere: { OR: Array<{ assetId?: string; endpointId?: string }> } = {
+    OR: [{ assetId: id }],
+  };
+  if (asset.agent) {
+    softwareTasksWhere.OR.push({ endpointId: asset.agent.id });
+  }
+
+  const softwareTasks = await prisma.softwareDeploymentTask.findMany({
+    where: softwareTasksWhere,
+    include: {
+      deployment: true,
+    },
+    orderBy: { completedAt: 'desc' },
+  });
+
+  // Track seen task IDs to avoid duplicates (same task might match both conditions)
+  const seenTaskIds = new Set(deployments.map(d => d.id));
+
+  for (const task of softwareTasks) {
+    if (seenTaskIds.has(task.id)) continue;
+    seenTaskIds.add(task.id);
+
+    deployments.push({
+      id: task.id,
+      deploymentId: task.deployment.id,
+      deploymentName: task.deployment.deploymentName,
+      softwareName: task.itemName,
+      type: 'software',
+      date: (task.completedAt || task.startedAt || task.createdAt).toISOString(),
+      status: mapDeploymentStatus(task.status),
+      errorMessage: task.errorMessage || undefined,
+    });
+  }
+
+  // Sort by date descending
+  deployments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  return { data: deployments };
 }
 
 // ============================================

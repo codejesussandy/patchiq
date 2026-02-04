@@ -126,8 +126,7 @@ export const PeripheralsTab = ({ assetId }: PeripheralsTabProps) => {
     try {
       const data = await assetService.getAssetPeripherals(assetId);
       setPeripherals(data);
-    } catch (err) {
-      console.error('Failed to fetch peripherals data:', err);
+    } catch {
       setError('Failed to load peripherals information');
     } finally {
       setLoading(false);
