@@ -606,7 +606,7 @@ export const Reports = () => {
             </Descriptions.Item>
             <Descriptions.Item label="Schedule">
               {selectedReport.schedule?.enabled ? (
-                <Space direction="vertical" size="small">
+                <Space orientation="vertical" size="small">
                   <Tag color="purple">{SCHEDULE_LABELS[selectedReport.schedule.frequency]}</Tag>
                   {selectedReport.schedule.time && <Text>Time: {selectedReport.schedule.time}</Text>}
                   {selectedReport.schedule.recipients?.length > 0 && (

@@ -3,6 +3,7 @@ import { App,
 import { useState, useEffect } from 'react';
 import type { Asset } from '../../../types/asset.types';
 import { assetService } from '../../../services/asset.service';
+import type { AssetCategory } from '../../../services/asset.service';
 import TagSelector from './TagSelector';
 import dayjs from 'dayjs';
 
@@ -21,15 +22,29 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
   const [currentStep, setCurrentStep] = useState(0);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<AssetCategory[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>();
+
+  // Fetch categories on mount
+  useEffect(() => {
+    assetService.getCategories().then(setCategories).catch(console.error);
+  }, []);
+
+  // Derive subcategories from selected category
+  const subCategories = categories.find(c => c.id === selectedCategoryId)?.subCategories || [];
 
    // Pre-populate form when editing
    useEffect(() => {
      if (visible && mode === 'edit' && asset) {
        const assetData = asset as any;
+       if (assetData.categoryId) {
+         setSelectedCategoryId(assetData.categoryId);
+       }
        const formValues = {
           // Step 1: Define Assets
           assetName: asset.name,
-          category: assetData.category || assetData.categoryId,
+          categoryId: assetData.categoryId,
+          subCategoryId: assetData.subCategoryId,
           os: asset.osType, // Backend returns osType, map to form's "os" field
           assetTags: assetData.tagIds || [],
           make: asset.manufacturer, // Backend returns manufacturer, map to form's "make" field
@@ -91,6 +106,7 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
      } else if (visible && mode === 'add') {
        // Reset form for add mode
        form.resetFields();
+       setSelectedCategoryId(undefined);
      }
    }, [visible, mode, asset, form]);
 
@@ -118,6 +134,8 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
       const transformedData = {
         // Basic info
         name: values.assetName,
+        categoryId: values.categoryId || undefined,
+        subCategoryId: values.subCategoryId || undefined,
         osType: values.os || values.osType,
         osVersion: values.osVersion,
         model: values.model,
@@ -201,16 +219,31 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item label="Category" name="category" rules={[{ required: true }]}>
-            <Select placeholder="Select">
-              <Option value="computer">Computer</Option>
-              <Option value="laptop">Laptop</Option>
-              <Option value="server">Server</Option>
+          <Form.Item label="Category" name="categoryId" rules={[{ required: true }]}>
+            <Select
+              placeholder="Select category"
+              onChange={(value: string) => {
+                setSelectedCategoryId(value);
+                form.setFieldValue('subCategoryId', undefined);
+              }}
+            >
+              {categories.map(cat => (
+                <Option key={cat.id} value={cat.id}>{cat.name}</Option>
+              ))}
             </Select>
           </Form.Item>
         </Col>
       </Row>
       <Row gutter={16}>
+        <Col span={12}>
+          <Form.Item label="Sub Category" name="subCategoryId">
+            <Select placeholder="Select sub category" allowClear disabled={!selectedCategoryId}>
+              {subCategories.map(sub => (
+                <Option key={sub.id} value={sub.id}>{sub.name}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Col>
         <Col span={12}>
           <Form.Item label="OS" name="os" rules={[{ required: true }]}>
             <Select placeholder="Select">
@@ -370,24 +403,41 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item label="Status" name="status">
-              <Select placeholder="Select" />
+              <Select placeholder="Select">
+                <Option value="In Use">In Use</Option>
+                <Option value="Available">Available</Option>
+                <Option value="Under Maintenance">Under Maintenance</Option>
+                <Option value="Retired">Retired</Option>
+              </Select>
             </Form.Item>
           </Col>
           <Col span={12}>
             <Form.Item label="Criticality" name="criticality">
-              <Select placeholder="Select" />
+              <Select placeholder="Select">
+                <Option value="Critical">Critical</Option>
+                <Option value="High">High</Option>
+                <Option value="Medium">Medium</Option>
+                <Option value="Low">Low</Option>
+              </Select>
             </Form.Item>
           </Col>
         </Row>
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item label="Service Status" name="serviceStatus">
-              <Select placeholder="Select" />
+              <Select placeholder="Select">
+                <Option value="Active">Active</Option>
+                <Option value="Inactive">Inactive</Option>
+                <Option value="Decommissioned">Decommissioned</Option>
+              </Select>
             </Form.Item>
           </Col>
           <Col span={12}>
             <Form.Item label="Operational Status" name="operationalStatus">
-              <Select placeholder="Select" />
+              <Select placeholder="Select" disabled>
+                <Option value="Connected">Connected</Option>
+                <Option value="Disconnected">Disconnected</Option>
+              </Select>
             </Form.Item>
           </Col>
         </Row>
@@ -398,7 +448,7 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item label="Invoice No." name="invoiceNo">
-              <Select placeholder="Select" />
+              <Input placeholder="Enter invoice number" />
             </Form.Item>
           </Col>
           <Col span={12}>
@@ -410,12 +460,12 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item label="Cost" name="cost">
-              <Input placeholder="Enter Cost" addonAfter="INR" />
+              <Input placeholder="Enter Cost" type="number" addonAfter="INR" />
             </Form.Item>
           </Col>
           <Col span={12}>
             <Form.Item label="Purchase Date" name="purchaseDate">
-              <Input placeholder="Enter purchase date" />
+              <DatePicker style={{ width: '100%' }} placeholder="Select purchase date" />
             </Form.Item>
           </Col>
         </Row>
@@ -457,6 +507,18 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
       <div style={{ padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
         <h4>Procurement Properties</h4>
         <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label="Vendor" name="vendor">
+              <Input placeholder="Enter vendor name" />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="Purchase Order No." name="purchaseOrderNumber">
+              <Input placeholder="Enter PO number" />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={16}>
           <Col span={6}>
             <Form.Item label="Warranty In Years" name="warrantyYears">
               <Input type="number" placeholder="0" addonAfter="in years" />
@@ -469,6 +531,35 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
           </Col>
           <Col span={12}>
             <Form.Item label="Warranty Expiry Date" name="warrantyExpiryDate">
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col span={8}>
+            <Form.Item label="AMC Vendor" name="amcVendor">
+              <Input placeholder="Enter AMC vendor" />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="AMC Cost" name="amcCost">
+              <Input placeholder="Enter AMC cost" type="number" />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="AMC Expiry Date" name="amcExpiryDate">
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label="End of Life" name="endOfLife">
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="End of Support" name="endOfSupport">
               <DatePicker style={{ width: '100%' }} />
             </Form.Item>
           </Col>

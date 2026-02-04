@@ -72,7 +72,7 @@ export const AgentApprovalSettings = () => {
           ]}
         >
           <Radio.Group>
-            <Space direction="horizontal">
+            <Space orientation="horizontal">
               <Radio value="auto">Auto</Radio>
               <Radio value="manual">Manual</Radio>
             </Space>
@@ -91,7 +91,7 @@ export const AgentApprovalSettings = () => {
           ]}
         >
           <Radio.Group>
-            <Space direction="horizontal">
+            <Space orientation="horizontal">
               <Radio value="all">All</Radio>
               <Radio value="criteria">Criteria</Radio>
             </Space>

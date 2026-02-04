@@ -1727,7 +1727,7 @@ export const AssetDetails = () => {
                   key: 'name',
                   width: 200,
                   render: (name: string, record: (typeof licensedApps)[0]) => (
-                    <Space direction="vertical" size={0}>
+                    <Space orientation="vertical" size={0}>
                       <Text strong>{name}</Text>
                       {record.vendor && (
                         <Text type="secondary" style={{ fontSize: 12 }}>
@@ -1776,7 +1776,7 @@ export const AssetDetails = () => {
                     if (!date) return '-';
                     const days = record.license?.daysRemaining;
                     return (
-                      <Space direction="vertical" size={0}>
+                      <Space orientation="vertical" size={0}>
                         <Text>{new Date(date).toLocaleDateString()}</Text>
                         {days !== undefined && (
                           <Text

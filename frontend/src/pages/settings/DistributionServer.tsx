@@ -145,7 +145,7 @@ export const DistributionServer = () => {
         <Title level={3}>Distribution Server</Title>
       </div>
 
-      <Space direction="vertical" style={{ width: '100%' }} size="large">
+      <Space orientation="vertical" style={{ width: '100%' }} size="large">
         {/* Search and Action Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
           <Input

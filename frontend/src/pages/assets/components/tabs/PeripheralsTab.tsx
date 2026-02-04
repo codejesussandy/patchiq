@@ -151,7 +151,7 @@ export const PeripheralsTab = ({ assetId }: PeripheralsTabProps) => {
       title: 'Monitor',
       key: 'monitor',
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Space>
             <Text strong>{record.name || record.model || 'Unknown Monitor'}</Text>
             {record.isPrimary && <Tag color="blue">Primary</Tag>}
@@ -168,7 +168,7 @@ export const PeripheralsTab = ({ assetId }: PeripheralsTabProps) => {
       key: 'resolution',
       width: 150,
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Text>{record.resolution || '—'}</Text>
           {record.refreshRate && (
             <Text type="secondary" style={{ fontSize: '11px' }}>{record.refreshRate} Hz</Text>
@@ -443,7 +443,7 @@ export const PeripheralsTab = ({ assetId }: PeripheralsTabProps) => {
       key: 'status',
       width: 120,
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Badge
             status={record.connected ? 'success' : 'default'}
             text={record.connected ? 'Connected' : 'Disconnected'}
@@ -608,7 +608,7 @@ export const PeripheralsTab = ({ assetId }: PeripheralsTabProps) => {
               {peripherals.dockingStations!.map((dock: DockingStation, index: number) => (
                 <Col span={12} key={dock.id || index}>
                   <Card size="small" style={{ background: '#fafafa' }}>
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space orientation="vertical" style={{ width: '100%' }}>
                       <Space>
                         <Text strong>{dock.name || dock.model || 'Unknown Dock'}</Text>
                         {dock.connectionType && <Tag>{dock.connectionType}</Tag>}
@@ -746,7 +746,7 @@ export const PeripheralsTab = ({ assetId }: PeripheralsTabProps) => {
               {peripherals.webcams!.map((webcam: Webcam, index: number) => (
                 <Col span={8} key={index}>
                   <Card size="small" style={{ background: '#fafafa' }}>
-                    <Space direction="vertical">
+                    <Space orientation="vertical">
                       <Space>
                         <VideoCameraOutlined />
                         <Text strong>{webcam.name || 'Unknown Webcam'}</Text>

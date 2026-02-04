@@ -164,7 +164,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
       key: 'memory',
       width: 120,
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           {record.memoryBytes && (
             <Text style={{ fontSize: '12px' }}>{formatBytes(record.memoryBytes)}</Text>
           )}
@@ -229,7 +229,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
               }
               value={telemetry.cpu.usagePercent}
               suffix="%"
-              valueStyle={{ color: getUsageColor(telemetry.cpu.usagePercent) }}
+              styles={{ content: { color: getUsageColor(telemetry.cpu.usagePercent) } }}
             />
             <Progress
               percent={telemetry.cpu.usagePercent}
@@ -255,7 +255,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
               }
               value={telemetry.memory.usagePercent}
               suffix="%"
-              valueStyle={{ color: getUsageColor(telemetry.memory.usagePercent) }}
+              styles={{ content: { color: getUsageColor(telemetry.memory.usagePercent) } }}
             />
             <Progress
               percent={telemetry.memory.usagePercent}
@@ -282,7 +282,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
                   ? formatBytesPerSec(telemetry.network.totalBytesSentPerSec + (telemetry.network.totalBytesReceivedPerSec || 0))
                   : '—'
               }
-              valueStyle={{ fontSize: '20px' }}
+              styles={{ content: { fontSize: '20px' } }}
             />
             {telemetry.network?.internetConnected !== undefined && (
               <Badge
@@ -309,7 +309,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
                 </Space>
               }
               value={formatUptime(telemetry.systemUptime?.uptimeSeconds)}
-              valueStyle={{ fontSize: '20px' }}
+              styles={{ content: { fontSize: '20px' } }}
             />
             {telemetry.batteryChargePercent !== undefined && (
               <div style={{ marginTop: 8 }}>
@@ -334,21 +334,21 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
               <Statistic
                 title="Load Avg (1m)"
                 value={telemetry.cpu.loadAverage1m?.toFixed(2) || '—'}
-                valueStyle={{ fontSize: '16px' }}
+                styles={{ content: { fontSize: '16px' } }}
               />
             </Col>
             <Col span={8}>
               <Statistic
                 title="Load Avg (5m)"
                 value={telemetry.cpu.loadAverage5m?.toFixed(2) || '—'}
-                valueStyle={{ fontSize: '16px' }}
+                styles={{ content: { fontSize: '16px' } }}
               />
             </Col>
             <Col span={8}>
               <Statistic
                 title="Load Avg (15m)"
                 value={telemetry.cpu.loadAverage15m?.toFixed(2) || '—'}
-                valueStyle={{ fontSize: '16px' }}
+                styles={{ content: { fontSize: '16px' } }}
               />
             </Col>
           </Row>
@@ -528,7 +528,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
             {telemetry.disk.drives.map((drive, index) => (
               <Col span={8} key={drive.mountPoint || index}>
                 <Card size="small" style={{ background: '#fafafa' }}>
-                  <Space direction="vertical" style={{ width: '100%' }}>
+                  <Space orientation="vertical" style={{ width: '100%' }}>
                     <Text strong>{drive.mountPoint || `Drive ${index + 1}`}</Text>
                     {drive.usagePercent !== undefined && (
                       <Progress

@@ -413,7 +413,7 @@ export const PolicyManagement = () => {
         open={modalVisible}
         onCancel={handleModalClose}
         width={750}
-        bodyStyle={{ maxHeight: 'calc(90vh - 110px)', overflowY: 'auto', paddingTop: '20px' }}
+        styles={{ body: { maxHeight: 'calc(90vh - 110px)', overflowY: 'auto', paddingTop: '20px' } }}
         footer={
           modalMode === 'view'
             ? [

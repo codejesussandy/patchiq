@@ -43,6 +43,7 @@ model User {
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   auditLogs           AuditLog[]
+  notifications       Notification[]
 
   @@map("users")
 }
@@ -343,6 +344,12 @@ model Asset {
   baseLocationId      String?   @map("base_location_id")
   installedLocationId String?   @map("installed_location_id")
 
+  // Category relations
+  categoryId      String?      @map("category_id")
+  category        Category?    @relation(fields: [categoryId], references: [id])
+  subCategoryId   String?      @map("sub_category_id")
+  subCategory     SubCategory? @relation(fields: [subCategoryId], references: [id])
+
   // Existing relations
   organizationId String?       @map("organization_id")
   organization   Organization? @relation(fields: [organizationId], references: [id])
@@ -362,6 +369,8 @@ model Asset {
   @@index([status])
   @@index([type])
   @@index([ownerId])
+  @@index([categoryId])
+  @@index([subCategoryId])
   @@map("assets")
 }
 
@@ -1198,6 +1207,7 @@ model Category {
   createdAt   DateTime @default(now()) @map("created_at")
 
   subCategories SubCategory[]
+  assets        Asset[]
 
   @@map("categories")
 }
@@ -1210,6 +1220,8 @@ model SubCategory {
   criticality String?
   description String?
   createdAt   DateTime @default(now()) @map("created_at")
+
+  assets      Asset[]
 
   @@unique([categoryId, name])
   @@map("sub_categories")
@@ -1688,4 +1700,26 @@ model AssetAlert {
   @@index([severity])
   @@index([status])
   @@map("asset_alerts")
+}
+
+// ============================================
+// Notification Model
+// ============================================
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String    @default("info")   // info | success | warning | error
+  read      Boolean   @default(false)
+  link      String?                      // frontend route to navigate to on click
+  metadata  Json?                        // optional extra context
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId, read])
+  @@index([createdAt])
+  @@map("notifications")
 }

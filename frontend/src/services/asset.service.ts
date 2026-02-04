@@ -40,7 +40,28 @@ export type { NetworkConfiguration } from '../types/network.types';
 export type { PeripheralInventory } from '../types/peripheral.types';
 export type { TelemetryPayload, TelemetryHistory, SystemErrors } from '../types/telemetry.types';
 
+export interface AssetCategory {
+  id: string;
+  name: string;
+  color?: string;
+  description?: string;
+  subCategories: AssetSubCategory[];
+}
+
+export interface AssetSubCategory {
+  id: string;
+  name: string;
+  criticality?: string;
+  description?: string;
+}
+
 export const assetService = {
+  // Categories
+  async getCategories(): Promise<AssetCategory[]> {
+    const response = await api.get(`/categories`);
+    return response.data;
+  },
+
   // Assets
   async getAssets(): Promise<Asset[]> {
     const response = await api.get(`/assets`);
