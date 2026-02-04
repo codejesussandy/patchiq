@@ -14,7 +14,7 @@ export default defineConfig({
   server: {
     port: parseInt(process.env.VITE_DEV_PORT || '4001', 10),
     host: '0.0.0.0',  // Allow connections from any host
-    allowedHosts: 'all',  // Allow all hosts for external access
+    allowedHosts: ['.'],  // Allow all hosts including subdomains
     hmr: {
       // Let the client detect the correct host automatically
       // This enables HMR to work whether accessed via localhost, IP, or domain
