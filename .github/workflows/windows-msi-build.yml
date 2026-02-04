@@ -131,6 +131,8 @@ jobs:
           # Link MSI
           Write-Host "Linking MSI..."
           & "$wixPath\light.exe" -nologo `
+            -b "$installerDir" `
+            -b "$buildDir" `
             -ext WixUIExtension `
             -ext WixUtilExtension `
             -cultures:en-us `
