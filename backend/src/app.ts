@@ -24,6 +24,7 @@ import { notificationsRoutes } from '@modules/notifications';
 
 export function createApp(): Application {
   const app = express();
+  app.set('trust proxy', 1);
 
   // Security middleware - configure CSP to allow Scalar API docs
   app.use(
