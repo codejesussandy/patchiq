@@ -108,10 +108,17 @@ export interface VulnerabilityJob {
   jobId: string;
   name: string;
   description?: string;
+  scope?: string;
+  endpoints?: string[];
+  scanType?: string;
+  scheduleDate?: string;
+  scheduleTime?: string;
+  recurrence?: string;
   status: 'SCHEDULED' | 'RUNNING' | 'COMPLETED' | 'FAILED';
   scheduledTime?: string;
   lastRun?: string;
   nextRun?: string;
+  result?: { assetsScanned?: number; vulnerabilitiesFound?: number } | null;
   createdBy: string;
   createdOn?: string;
 }

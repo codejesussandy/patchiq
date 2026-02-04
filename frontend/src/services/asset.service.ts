@@ -12,6 +12,7 @@ import type {
   AssetRelatedPatch,
   AssetDeployment,
   ExpandedHardware,
+  PatchSummary,
 } from '../types/asset.types';
 import type { SecurityCompliance } from '../types/security.types';
 import type { NetworkConfiguration } from '../types/network.types';
@@ -32,6 +33,7 @@ export type {
   AssetRelatedPatch,
   AssetDeployment,
   ExpandedHardware,
+  PatchSummary,
 } from '../types/asset.types';
 
 // Re-export Phase 4 types
@@ -116,14 +118,19 @@ export const assetService = {
   },
 
   // Patch-related methods (NEW)
-  async getAssetPatches(id: string): Promise<AssetRelatedPatch[]> {
+  async getAssetPatches(id: string): Promise<{ data: AssetRelatedPatch[]; summary: PatchSummary | null }> {
     const response = await api.get(`/assets/${id}/patches`);
-    return response.data;
+    const body = response.data;
+    if (Array.isArray(body)) {
+      return { data: body, summary: null };
+    }
+    return { data: body.data ?? [], summary: body.summary ?? null };
   },
 
   async getAssetDeployments(id: string): Promise<AssetDeployment[]> {
     const response = await api.get(`/assets/${id}/deployments`);
-    return response.data;
+    const body = response.data;
+    return Array.isArray(body) ? body : body.data ?? [];
   },
 
   async getAssetVulnerabilities(id: string): Promise<{

@@ -223,6 +223,7 @@ export async function listVulnerabilityJobs(params: VulnerabilityJobListQuery) {
       scheduledTime: job.scheduledTime,
       lastRun: job.lastRun?.toISOString() || null,
       nextRun: job.nextRun?.toISOString() || null,
+      result: job.result,
       createdBy: job.createdBy,
       createdOn: formatDate(job.createdAt),
     })),
@@ -255,6 +256,7 @@ export async function getVulnerabilityJobById(id: string) {
     scheduledTime: job.scheduledTime,
     lastRun: job.lastRun?.toISOString() || null,
     nextRun: job.nextRun?.toISOString() || null,
+    result: job.result,
     createdBy: job.createdBy,
     createdOn: formatDate(job.createdAt),
   };
@@ -286,6 +288,14 @@ export async function createVulnerabilityJob(data: CreateVulnerabilityJobInput, 
     },
   });
 
+  // For instant scans, trigger the actual vulnerability scan and track completion
+  if (data.scanType === 'instant') {
+    console.log(`[VulnerabilityJob] ${jobId} triggering scan (scope=${data.scope})`);
+    executeAndTrackScan(job.id, data.scope, data.endpoints, userId).catch((err) => {
+      console.error(`[VulnerabilityJob] ${jobId} background execution failed:`, err);
+    });
+  }
+
   return {
     id: job.id,
     jobId: job.jobId,
@@ -295,6 +305,76 @@ export async function createVulnerabilityJob(data: CreateVulnerabilityJobInput, 
     createdBy: job.createdBy,
     createdOn: formatDate(job.createdAt),
   };
+}
+
+/**
+ * Execute a vulnerability scan and update the VulnerabilityJob status when done.
+ * Runs in the background (non-blocking).
+ */
+async function executeAndTrackScan(
+  vulnerabilityJobId: string,
+  scope: string,
+  endpoints: string[] | undefined,
+  userId: string
+) {
+  try {
+    // Dynamic import to avoid circular dependency
+    const { vulnerabilitiesService } = await import('@modules/vulnerabilities/vulnerabilities.service');
+
+    // Map VulnerabilityJob scope to scan scope
+    const scanScope: 'all' | 'selected' = scope === 'Global' ? 'all' : 'selected';
+    const endpointIds = scope !== 'Global' ? endpoints : undefined;
+
+    const scanResult = await vulnerabilitiesService.triggerScan(
+      { scope: scanScope, endpointIds },
+      userId
+    );
+
+    // Poll the scan Job until it completes (max 30 minutes — scans can take 7-20 min with large CVE databases)
+    const scanJobId = scanResult.jobId;
+    const maxWaitMs = 30 * 60 * 1000;
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWaitMs) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const scanJob = await prisma.job.findUnique({ where: { id: scanJobId } });
+      if (!scanJob || scanJob.status === 'completed') {
+        await prisma.vulnerabilityJob.update({
+          where: { id: vulnerabilityJobId },
+          data: {
+            status: 'COMPLETED',
+            lastRun: new Date(),
+            ...(scanJob?.result != null ? { result: scanJob.result } : {}),
+          },
+        });
+        return;
+      }
+      if (scanJob.status === 'failed') {
+        await prisma.vulnerabilityJob.update({
+          where: { id: vulnerabilityJobId },
+          data: {
+            status: 'FAILED',
+            lastRun: new Date(),
+            ...(scanJob.result != null ? { result: scanJob.result } : {}),
+          },
+        });
+        return;
+      }
+    }
+
+    // Timed out waiting
+    await prisma.vulnerabilityJob.update({
+      where: { id: vulnerabilityJobId },
+      data: { status: 'FAILED', lastRun: new Date() },
+    });
+  } catch (error) {
+    // Mark as failed on any error
+    await prisma.vulnerabilityJob.update({
+      where: { id: vulnerabilityJobId },
+      data: { status: 'FAILED', lastRun: new Date() },
+    }).catch(() => {}); // Ignore update errors during error handling
+    throw error;
+  }
 }
 
 export async function deleteVulnerabilityJob(id: string) {

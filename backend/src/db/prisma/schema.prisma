@@ -1426,6 +1426,7 @@ model VulnerabilityJob {
   scheduledTime String?   @map("scheduled_time")
   lastRun       DateTime? @map("last_run")
   nextRun       DateTime? @map("next_run")
+  result        Json?     @map("result")
   createdBy     String?   @map("created_by")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")

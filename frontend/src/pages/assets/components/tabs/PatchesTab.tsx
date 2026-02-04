@@ -27,7 +27,7 @@ import {
 } from '@ant-design/icons';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
 import type { ColumnsType } from 'antd/es/table';
-import type { AssetRelatedPatch, AssetDeployment, PatchSummary, Asset } from '../../../../types/asset.types';
+import type { AssetRelatedPatch, AssetDeployment, PatchSummary } from '../../../../types/asset.types';
 import { assetService } from '../../../../services/asset.service';
 
 const { Text } = Typography;
@@ -93,7 +93,7 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
   const { message } = App.useApp();
   const [patches, setPatches] = useState<AssetRelatedPatch[]>([]);
   const [deployments, setDeployments] = useState<AssetDeployment[]>([]);
-  const [asset, setAsset] = useState<Asset | null>(null);
+  const [summary, setSummary] = useState<PatchSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,14 +105,13 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
     setLoading(true);
     setError(null);
     try {
-      const [patchesData, deploymentsData, assetData] = await Promise.all([
+      const [patchesResult, deploymentsData] = await Promise.all([
         assetService.getAssetPatches(assetId),
         assetService.getAssetDeployments(assetId),
-        assetService.getAssetWithPatchDetails(assetId),
       ]);
-      setPatches(patchesData);
+      setPatches(patchesResult.data);
+      setSummary(patchesResult.summary);
       setDeployments(deploymentsData);
-      setAsset(assetData);
     } catch {
       setError('Failed to load patch information');
     } finally {
@@ -132,7 +131,7 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
     return <Empty description={error} />;
   }
 
-  const patchSummary = asset?.patchSummary || initialSummary;
+  const patchSummary = summary || initialSummary;
 
   // Prepare chart data
   const chartData = patchSummary
@@ -155,7 +154,7 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
       title: 'Patch',
       key: 'patch',
       render: (_, record) => (
-        <Space orientation="vertical" size={0}>
+        <Space direction="vertical" size={0}>
           <Space>
             {getStatusIcon(record.status)}
             <Text strong>{record.name}</Text>
@@ -291,7 +290,7 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
               </Col>
               <Col span={12}>
                 {patchSummary && (
-                  <Space orientation="vertical" size={4}>
+                  <Space direction="vertical" size={4}>
                     <div>
                       <Badge status="success" text={<Text type="secondary">Installed: {patchSummary.installed}</Text>} />
                     </div>
@@ -484,7 +483,7 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
                         : 'blue',
                   children: (
                     <div>
-                      <Space orientation="vertical" size={0}>
+                      <Space direction="vertical" size={0}>
                         <Space>
                           <Text strong>{deployment.patchName}</Text>
                           <Tag color={getStatusColor(deployment.status)}>{deployment.status}</Tag>
