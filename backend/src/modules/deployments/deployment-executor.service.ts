@@ -53,10 +53,10 @@ class DeploymentExecutorService {
       throw new BadRequestError('At least one target agent is required');
     }
 
-    // Verify all target agents exist and get their info
+    // Verify all target agents exist and get their info (including assetId for tracking)
     const agents = await prisma.agent.findMany({
       where: { id: { in: targetAgentIds } },
-      select: { id: true, name: true, hostname: true, os: true },
+      select: { id: true, name: true, hostname: true, os: true, assetId: true },
     });
 
     if (agents.length === 0) {
@@ -218,11 +218,12 @@ class DeploymentExecutorService {
           },
         });
 
-        // Create the task linked to the command
+        // Create the task linked to the command (with asset tracking)
         await tx.softwareDeploymentTask.create({
           data: {
             deploymentId: deployment.id,
             endpointId: agent.id,
+            assetId: agent.assetId || undefined, // Link to asset for tracking
             endpointName: agent.hostname || agent.name || agent.id,
             endpointOs: agent.os || 'Unknown',
             itemName: (packageInfo as SoftwareInstallPayload).name,

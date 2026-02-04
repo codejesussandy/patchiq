@@ -64,7 +64,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
     }
   };
 
-  const handleCreateCategory = async (values: any) => {
+  const handleCreateCategory = async (values: Record<string, unknown>) => {
     try {
       if (editingCategory) {
         await categoryService.updateCategory(editingCategory.id, values);
@@ -82,7 +82,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
     }
   };
 
-  const handleCreateSubCategory = async (values: any) => {
+  const handleCreateSubCategory = async (values: Record<string, unknown>) => {
     try {
       if (!selectedParentCategoryId) {
         message.error('Please select a parent category');
@@ -171,13 +171,14 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
 
   const menuItems: MenuProps['items'] = [
     {
-      key: null as any,
+      key: 'all-assets',
       label: 'All Assets',
       style: {
         fontWeight: selectedCategoryId === null ? 'bold' : 'normal',
         backgroundColor: selectedCategoryId === null ? '#f0f0f0' : 'transparent',
       },
       onClick: () => onCategorySelect(null),
+      className: selectedCategoryId === null ? 'ant-menu-item-selected' : '',
     },
     ...categories.map((cat) => ({
       key: cat.id,
@@ -317,7 +318,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
           </div>
           <Menu
             mode="inline"
-            selectedKeys={selectedCategoryId ? [selectedCategoryId] : []}
+            selectedKeys={selectedCategoryId ? [selectedCategoryId] : ['all-assets']}
             items={menuItems}
             style={{ borderRight: 'none' }}
           />

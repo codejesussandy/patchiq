@@ -52,6 +52,7 @@ import { tagService } from '../../../services/tag.service';
 import { AddAssetModal } from './AddAssetModal';
 import TagSelector from './TagSelector';
 import TagDisplay from './TagDisplay';
+import { PatchesTab } from './tabs/PatchesTab';
 import type { MenuProps } from 'antd';
 
 const { Title, Text } = Typography;
@@ -86,13 +87,6 @@ export const AssetDetails = () => {
   const [refreshingInventory, setRefreshingInventory] = useState(false);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const telemetryPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Patches tab state
-  const [patchesTab, setPatchesTab] = useState<'missing' | 'installed' | 'exception'>('missing');
-  const [patchesSearchText, setPatchesSearchText] = useState('');
-  const [patchesLoading] = useState(false);
-  const [selectedPatchIds, setSelectedPatchIds] = useState<React.Key[]>([]);
-  const [lastScanTime] = useState<string>('2026/01/16 02:37:39 PM');
 
   // Alerts tab state
   const [alertsSearchText, setAlertsSearchText] = useState('');
@@ -185,8 +179,8 @@ export const AssetDetails = () => {
     try {
       const data = await assetService.getAssetLifeCycle(asset.id, method);
       setLifecycle(data);
-    } catch (error) {
-      console.error('Failed to fetch lifecycle data:', error);
+    } catch {
+      // Lifecycle data unavailable
     } finally {
       setLoadingLifecycle(false);
     }
@@ -198,8 +192,8 @@ export const AssetDetails = () => {
     try {
       const data = await assetService.getAssetHardware(asset.id);
       setHardware(data);
-    } catch (error) {
-      console.error('Failed to fetch hardware data:', error);
+    } catch {
+      // Hardware data unavailable
     } finally {
       setLoadingHardware(false);
     }
@@ -211,8 +205,8 @@ export const AssetDetails = () => {
     try {
       const data = await assetService.getAssetSoftware(asset.id);
       setSoftware(data);
-    } catch (error) {
-      console.error('Failed to fetch software data:', error);
+    } catch {
+      // Software data unavailable
     } finally {
       setLoadingSoftware(false);
     }
@@ -224,8 +218,7 @@ export const AssetDetails = () => {
     try {
       const result = await assetService.getAssetVulnerabilities(asset.id);
       setVulnerabilities(result.data || []);
-    } catch (error) {
-      console.error('Failed to fetch vulnerabilities data:', error);
+    } catch {
       setVulnerabilities([]);
     } finally {
       setLoadingVulnerabilities(false);
@@ -238,8 +231,7 @@ export const AssetDetails = () => {
     try {
       const result = await assetService.getAssetAlerts(asset.id);
       setAlertsData(result.data || []);
-    } catch (error) {
-      console.error('Failed to fetch alerts data:', error);
+    } catch {
       setAlertsData([]);
     } finally {
       setAlertsLoading(false);
@@ -253,8 +245,7 @@ export const AssetDetails = () => {
       const data = await assetService.getAssetTelemetry(asset.id);
       setTelemetry(data);
       setTelemetryLastUpdated(new Date());
-    } catch (error) {
-      console.error('Failed to fetch telemetry data:', error);
+    } catch {
       // Fall back to static asset performance data if telemetry fails
       setTelemetry(null);
     } finally {
@@ -362,8 +353,7 @@ export const AssetDetails = () => {
         action: log.action || '',
         changes: formatAuditDetails(log.details),
       })));
-    } catch (error) {
-      console.error('Failed to fetch audit log data:', error);
+    } catch {
       setAuditLog([]);
     } finally {
       setLoadingAuditLog(false);
@@ -405,7 +395,7 @@ export const AssetDetails = () => {
     });
   };
 
-  const handleFileUpload = ({ file, onSuccess }: any) => {
+  const handleFileUpload = ({ file, onSuccess }: { file: { name: string }; onSuccess: (status: string) => void }) => {
     setTimeout(() => {
       message.success(`${file.name} uploaded successfully`);
       onSuccess('ok');
@@ -419,8 +409,7 @@ export const AssetDetails = () => {
       message.success('Tags updated successfully');
       setEditingTags(false);
       fetchAssetDetails();
-    } catch (error) {
-      console.error('Failed to update tags:', error);
+    } catch {
       message.error('Failed to update tags');
     }
   };
@@ -466,7 +455,6 @@ export const AssetDetails = () => {
           setLocatingAsset(false);
         },
         (error) => {
-          console.error('Geolocation error:', error);
           let errorMsg = 'Unable to detect location';
           if (error.code === error.PERMISSION_DENIED) {
             errorMsg = 'Permission denied. Please enable location access.';
@@ -480,8 +468,7 @@ export const AssetDetails = () => {
         },
         { timeout: 10000, enableHighAccuracy: true }
       );
-    } catch (error) {
-      console.error('Error detecting location:', error);
+    } catch {
       message.error('Failed to detect location');
       setLocatingAsset(false);
     }
@@ -503,9 +490,9 @@ export const AssetDetails = () => {
         setRefreshingInventory(false);
         message.info('Asset data refreshed');
       }, 5000);
-    } catch (error: any) {
-      console.error('Failed to refresh inventory:', error);
-      message.error(error?.response?.data?.error || 'Failed to refresh inventory');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      message.error(err?.response?.data?.error || 'Failed to refresh inventory');
       setRefreshingInventory(false);
     }
   };
@@ -515,8 +502,8 @@ export const AssetDetails = () => {
       key: 'duplicate',
       label: 'Duplicate Asset',
       icon: <CopyOutlined />,
-      onClick: (e: any) => {
-        e.domEvent.stopPropagation();
+      onClick: (info) => {
+        info.domEvent.stopPropagation();
         handleDuplicateAsset();
       },
     },
@@ -528,8 +515,8 @@ export const AssetDetails = () => {
       label: 'Delete Asset',
       icon: <DeleteOutlined />,
       danger: true,
-      onClick: (e: any) => {
-        e.domEvent.stopPropagation();
+      onClick: (info) => {
+        info.domEvent.stopPropagation();
         handleDeleteAsset();
       },
     },
@@ -1325,7 +1312,7 @@ export const AssetDetails = () => {
     ];
 
     // Convert startup programs to service-like format and merge with services
-    const startupProgramsAsServices = (software.startupPrograms || []).map((prog: any) => ({
+    const startupProgramsAsServices = (software.startupPrograms || []).map((prog: { id: string; name: string; command?: string; enabled?: boolean }) => ({
       id: `startup-${prog.id}`,
       name: prog.name,
       displayName: prog.command || prog.name,
@@ -1842,229 +1829,6 @@ export const AssetDetails = () => {
   };
 
 
-  // Render Patches Tab
-  const renderPatchesTab = () => {
-    type PatchItem = {
-      id: string;
-      patchId: string;
-      title: string;
-      severity: 'LOW' | 'MODERATE' | 'IMPORTANT' | 'CRITICAL';
-      platform: 'Windows' | 'MacOS' | 'Ubuntu' | 'Linux';
-      releaseDate: string;
-      rollback: 'SUPPORTED' | 'NOT SUPPORTED';
-      category: string;
-      kbId?: string;
-    };
-
-    // TODO: Implement asset patches API endpoint
-    // For now, show empty state - patches will be populated when
-    // the backend /assets/:id/patches endpoint is implemented
-    const mockPatches: PatchItem[] = [];
-
-    const getPatchSeverityColor = (severity: string) => {
-      switch (severity) {
-        case 'LOW':
-          return 'green';
-        case 'MODERATE':
-          return 'orange';
-        case 'IMPORTANT':
-          return 'red';
-        case 'CRITICAL':
-          return 'red';
-        default:
-          return 'default';
-      }
-    };
-
-    const getFilteredPatches = () => {
-      let filtered = mockPatches;
-      
-      if (patchesTab === 'missing') {
-        filtered = mockPatches; // All missing patches
-      } else if (patchesTab === 'installed') {
-        filtered = []; // Empty for now
-      } else if (patchesTab === 'exception') {
-        filtered = []; // Empty for now
-      }
-
-      if (patchesSearchText) {
-        filtered = filtered.filter(p =>
-          p.patchId.toLowerCase().includes(patchesSearchText.toLowerCase()) ||
-          p.title.toLowerCase().includes(patchesSearchText.toLowerCase()) ||
-          p.category.toLowerCase().includes(patchesSearchText.toLowerCase())
-        );
-      }
-
-      return filtered;
-    };
-
-    const patchesColumns: ColumnsType<PatchItem> = [
-      {
-        title: 'ID',
-        dataIndex: 'patchId',
-        key: 'patchId',
-        sorter: (a, b) => a.patchId.localeCompare(b.patchId),
-      },
-      {
-        title: 'Title',
-        dataIndex: 'title',
-        key: 'title',
-        sorter: (a, b) => a.title.localeCompare(b.title),
-      },
-      {
-        title: 'Severity',
-        dataIndex: 'severity',
-        key: 'severity',
-        sorter: (a, b) => a.severity.localeCompare(b.severity),
-        render: (severity: string) => (
-          <Tag color={getPatchSeverityColor(severity)}>{severity}</Tag>
-        ),
-      },
-      {
-        title: 'Platform',
-        dataIndex: 'platform',
-        key: 'platform',
-        sorter: (a, b) => a.platform.localeCompare(b.platform),
-        render: (platform: string) => <OSIcon os={platform as any} />,
-      },
-      {
-        title: 'Release Date',
-        dataIndex: 'releaseDate',
-        key: 'releaseDate',
-        sorter: (a, b) => new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime(),
-      },
-      {
-        title: 'Rollback',
-        dataIndex: 'rollback',
-        key: 'rollback',
-        sorter: (a, b) => a.rollback.localeCompare(b.rollback),
-        render: (rollback: string) => (
-          <Tag color={rollback === 'SUPPORTED' ? 'green' : 'red'}>{rollback}</Tag>
-        ),
-      },
-      {
-        title: 'Category',
-        dataIndex: 'category',
-        key: 'category',
-        sorter: (a, b) => a.category.localeCompare(b.category),
-      },
-      {
-        title: 'KBID',
-        dataIndex: 'kbId',
-        key: 'kbId',
-        sorter: (a, b) => (a.kbId || '').localeCompare(b.kbId || ''),
-        render: (kbId?: string) => kbId || '-',
-      },
-      {
-        title: '',
-        key: 'action',
-        width: 150,
-        render: () => (
-          <Button type="link" size="small">
-            Add Exceptions
-          </Button>
-        ),
-      },
-    ];
-
-    const filteredPatches = getFilteredPatches();
-
-    return (
-      <div style={{ display: 'flex', gap: 16 }}>
-        {/* Sidebar */}
-        <div style={{ width: 200, borderRight: '1px solid #f0f0f0', paddingRight: 16 }}>
-          <div
-            style={{
-              padding: '8px 12px',
-              cursor: 'pointer',
-              backgroundColor: patchesTab === 'missing' ? '#e6f7ff' : 'transparent',
-              borderRadius: 4,
-              marginBottom: 4,
-              border: patchesTab === 'missing' ? '1px solid #1890ff' : '1px solid transparent',
-            }}
-            onClick={() => setPatchesTab('missing')}
-          >
-            <Text strong={patchesTab === 'missing'}>Missing ({filteredPatches.length})</Text>
-          </div>
-          <div
-            style={{
-              padding: '8px 12px',
-              cursor: 'pointer',
-              backgroundColor: patchesTab === 'installed' ? '#e6f7ff' : 'transparent',
-              borderRadius: 4,
-              marginBottom: 4,
-              border: patchesTab === 'installed' ? '1px solid #1890ff' : '1px solid transparent',
-            }}
-            onClick={() => setPatchesTab('installed')}
-          >
-            <Text strong={patchesTab === 'installed'}>Installed</Text>
-          </div>
-          <div
-            style={{
-              padding: '8px 12px',
-              cursor: 'pointer',
-              backgroundColor: patchesTab === 'exception' ? '#e6f7ff' : 'transparent',
-              borderRadius: 4,
-              marginBottom: 4,
-              border: patchesTab === 'exception' ? '1px solid #1890ff' : '1px solid transparent',
-            }}
-            onClick={() => setPatchesTab('exception')}
-          >
-            <Text strong={patchesTab === 'exception'}>Exception</Text>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div style={{ flex: 1 }}>
-          {/* Top Controls */}
-          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Space>
-              <Input
-                placeholder="Search..."
-                prefix={<SearchOutlined />}
-                value={patchesSearchText}
-                onChange={(e) => setPatchesSearchText(e.target.value)}
-                style={{ width: 300 }}
-              />
-              <Text type="secondary">Last scan at : {lastScanTime}</Text>
-            </Space>
-            <Space>
-              <Button>Scan History</Button>
-              <Button type="primary">Scan Now</Button>
-              <Button icon={<ReloadOutlined />} onClick={() => message.info('Refreshing...')}>
-                Refresh
-              </Button>
-              <Button icon={<ExportOutlined />} onClick={() => message.info('Exporting...')}>
-                Export
-              </Button>
-              <Button icon={<FilterOutlined />} />
-            </Space>
-          </div>
-
-          {/* Patches Table */}
-          <Table
-            rowSelection={{
-              selectedRowKeys: selectedPatchIds,
-              onChange: setSelectedPatchIds,
-            }}
-            columns={patchesColumns}
-            dataSource={filteredPatches}
-            rowKey="id"
-            loading={patchesLoading}
-            pagination={{
-              pageSize: 20,
-              showSizeChanger: true,
-              pageSizeOptions: ['10', '20', '50', '100'],
-              showTotal: (total, range) =>
-                `showing ${range[0]}-${range[1]} of ${total} items`,
-            }}
-            scroll={{ x: 'max-content' }}
-          />
-        </div>
-      </div>
-    );
-  };
-
   // Render Alerts Tab
   const renderAlertsTab = () => {
     type AlertItem = {
@@ -2226,20 +1990,22 @@ export const AssetDetails = () => {
 
     const severityOrder: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
 
+    type VulnRecord = { cveId: string; title: string; severity: string; cvssScore: number; status: string; exploitable: boolean };
+
     const columns = [
       {
         title: 'CVE ID',
         dataIndex: 'cveId',
         key: 'cveId',
         width: 120,
-        sorter: (a: any, b: any) => (a.cveId || '').localeCompare(b.cveId || ''),
+        sorter: (a: VulnRecord, b: VulnRecord) => (a.cveId || '').localeCompare(b.cveId || ''),
         render: (text: string) => <Text strong>{text}</Text>,
       },
       {
         title: 'Title',
         dataIndex: 'title',
         key: 'title',
-        sorter: (a: any, b: any) => (a.title || '').localeCompare(b.title || ''),
+        sorter: (a: VulnRecord, b: VulnRecord) => (a.title || '').localeCompare(b.title || ''),
         render: (text: string) => <div style={{ fontSize: '14px' }}>{text}</div>,
       },
       {
@@ -2247,7 +2013,7 @@ export const AssetDetails = () => {
         dataIndex: 'severity',
         key: 'severity',
         width: 110,
-        sorter: (a: any, b: any) => {
+        sorter: (a: VulnRecord, b: VulnRecord) => {
           const aOrder = severityOrder[a.severity?.toUpperCase()] ?? 4;
           const bOrder = severityOrder[b.severity?.toUpperCase()] ?? 4;
           return aOrder - bOrder;
@@ -2266,7 +2032,7 @@ export const AssetDetails = () => {
         dataIndex: 'cvssScore',
         key: 'cvssScore',
         width: 100,
-        sorter: (a: any, b: any) => (a.cvssScore || 0) - (b.cvssScore || 0),
+        sorter: (a: VulnRecord, b: VulnRecord) => (a.cvssScore || 0) - (b.cvssScore || 0),
         render: (score: number) => (
           <div style={{ fontWeight: 600, color: getSeverityColor(score > 8 ? 'CRITICAL' : score > 5 ? 'HIGH' : 'LOW') }}>
             {score?.toFixed(1) || '0.0'}
@@ -2278,7 +2044,7 @@ export const AssetDetails = () => {
         dataIndex: 'status',
         key: 'status',
         width: 130,
-        sorter: (a: any, b: any) => (a.status || '').localeCompare(b.status || ''),
+        sorter: (a: VulnRecord, b: VulnRecord) => (a.status || '').localeCompare(b.status || ''),
         render: (status: string) => {
           let color = 'default';
           if (status === 'Patched') color = 'green';
@@ -2292,7 +2058,7 @@ export const AssetDetails = () => {
         dataIndex: 'exploitable',
         key: 'exploitable',
         width: 80,
-        sorter: (a: any, b: any) => (a.exploitable === b.exploitable ? 0 : a.exploitable ? -1 : 1),
+        sorter: (a: VulnRecord, b: VulnRecord) => (a.exploitable === b.exploitable ? 0 : a.exploitable ? -1 : 1),
         render: (exploitable: boolean) => (
           <span style={{ color: exploitable ? '#ff4d4f' : '#52c41a' }}>
             {exploitable ? '● In Wild' : '● Safe'}
@@ -3219,7 +2985,7 @@ export const AssetDetails = () => {
     {
       key: 'patches',
       label: 'Patches',
-      children: renderPatchesTab(),
+      children: asset ? <PatchesTab assetId={asset.id} /> : <Spin />,
     },
     {
       key: 'alerts',

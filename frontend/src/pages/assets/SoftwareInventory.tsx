@@ -56,8 +56,9 @@ export const SoftwareInventory = () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.csv';
-    input.onchange = async (e: any) => {
-      const file = e.target.files[0];
+    input.onchange = async (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
       if (file) {
         try {
           setLoading(true);
@@ -120,20 +121,13 @@ export const SoftwareInventory = () => {
   const categoryId = searchParams.get('category');
   const subCategoryId = searchParams.get('subcategory');
 
+  // Silence unused variable warnings - category filtering not yet implemented for software inventory
+  void categoryId;
+  void subCategoryId;
+
   const filteredSoftware = software.filter((sw) => {
     // Text search filter
     const matchesSearch = sw.softwareName.toLowerCase().includes(searchText.toLowerCase());
-
-    // Category filter (for future use when software inventory has category support)
-    if (categoryId && (sw as any).categoryId !== categoryId) {
-      return false;
-    }
-
-    // Sub-category filter (for future use when software inventory has sub-category support)
-    if (subCategoryId && (sw as any).subCategoryId !== subCategoryId) {
-      return false;
-    }
-
     return matchesSearch;
   });
 

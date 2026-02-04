@@ -27,7 +27,9 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
 
   // Fetch categories on mount
   useEffect(() => {
-    assetService.getCategories().then(setCategories).catch(console.error);
+    assetService.getCategories().then(setCategories).catch(() => {
+      // Categories will remain empty on error
+    });
   }, []);
 
   // Derive subcategories from selected category
@@ -36,9 +38,9 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
    // Pre-populate form when editing
    useEffect(() => {
      if (visible && mode === 'edit' && asset) {
-       const assetData = asset as any;
+       const assetData = asset as Asset & Record<string, unknown>;
        if (assetData.categoryId) {
-         setSelectedCategoryId(assetData.categoryId);
+         setSelectedCategoryId(assetData.categoryId as string);
        }
        const formValues = {
           // Step 1: Define Assets
@@ -186,18 +188,17 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
       );
 
        if (mode === 'edit' && asset) {
-         await assetService.updateAsset(asset.id, cleanedData as any);
+         await assetService.updateAsset(asset.id, cleanedData as Record<string, unknown>);
          message.success('Asset updated successfully');
        } else {
-         await assetService.createAsset(cleanedData as any);
+         await assetService.createAsset(cleanedData as Record<string, unknown>);
          message.success('Asset created successfully');
        }
 
       form.resetFields();
       setCurrentStep(0);
       onSuccess();
-    } catch (error) {
-      console.error('Asset creation error:', error);
+    } catch {
       message.error(mode === 'edit' ? 'Failed to update asset' : 'Failed to create asset');
     } finally {
       setLoading(false);

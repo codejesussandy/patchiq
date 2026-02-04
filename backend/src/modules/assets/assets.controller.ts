@@ -410,9 +410,8 @@ export async function getAssetAuditLog(req: Request, res: Response, next: NextFu
 
 export async function getAssetPatches(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // This would be implemented with Patches module integration
-    // For now return empty array
-    res.json({ data: [], summary: { total: 0, installed: 0, missing: 0, failed: 0, pending: 0 } });
+    const patches = await assetsService.getAssetPatches(req.params.id);
+    res.json(patches);
   } catch (error) {
     next(error);
   }
@@ -438,9 +437,8 @@ export async function getAssetVulnerabilities(req: Request, res: Response, next:
 
 export async function getAssetDeployments(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // This would be implemented with Patches module integration
-    // For now return empty array
-    res.json({ data: [] });
+    const deployments = await assetsService.getAssetDeployments(req.params.id);
+    res.json(deployments);
   } catch (error) {
     next(error);
   }
@@ -448,8 +446,11 @@ export async function getAssetDeployments(req: Request, res: Response, next: Nex
 
 export async function uploadAssetAttachment(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // File upload handling would be implemented here
-    res.status(201).json({ success: true });
+    // File upload requires MinIO/S3 integration
+    res.status(501).json({
+      error: 'Not Implemented',
+      message: 'Asset attachment upload is not yet implemented. This feature requires file storage integration.',
+    });
   } catch (error) {
     next(error);
   }
@@ -485,8 +486,11 @@ export async function getSoftwareInventoryItem(req: Request, res: Response, next
 
 export async function importSoftwareInventory(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // File import handling would be implemented here
-    res.status(201).json({ success: true, imported: 0 });
+    // CSV/Excel import requires file parsing implementation
+    res.status(501).json({
+      error: 'Not Implemented',
+      message: 'Software inventory import is not yet implemented. This feature requires CSV/Excel parsing.',
+    });
   } catch (error) {
     next(error);
   }
@@ -543,8 +547,11 @@ export async function deleteSoftwareLicense(req: Request, res: Response, next: N
 
 export async function importSoftwareLicenses(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // File import handling would be implemented here
-    res.status(201).json({ success: true, imported: 0 });
+    // CSV/Excel import requires file parsing implementation
+    res.status(501).json({
+      error: 'Not Implemented',
+      message: 'Software license import is not yet implemented. This feature requires CSV/Excel parsing.',
+    });
   } catch (error) {
     next(error);
   }
@@ -601,8 +608,11 @@ export async function deleteOSLicense(req: Request, res: Response, next: NextFun
 
 export async function importOSLicenses(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // File import handling would be implemented here
-    res.status(201).json({ success: true, imported: 0 });
+    // CSV/Excel import requires file parsing implementation
+    res.status(501).json({
+      error: 'Not Implemented',
+      message: 'OS license import is not yet implemented. This feature requires CSV/Excel parsing.',
+    });
   } catch (error) {
     next(error);
   }

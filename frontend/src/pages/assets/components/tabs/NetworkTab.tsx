@@ -99,8 +99,7 @@ export const NetworkTab = ({ assetId }: NetworkTabProps) => {
     try {
       const data = await assetService.getAssetNetwork(assetId);
       setNetwork(data);
-    } catch (err) {
-      console.error('Failed to fetch network data:', err);
+    } catch {
       setError('Failed to load network information');
     } finally {
       setLoading(false);

@@ -77,7 +77,7 @@ const CreateTagModal: React.FC<CreateTagModalProps> = ({
     }
   }, [visible, tag, form]);
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: Record<string, unknown>) => {
     setLoading(true);
     try {
       let newTag: TagType;
@@ -91,8 +91,7 @@ const CreateTagModal: React.FC<CreateTagModalProps> = ({
       onSuccess(newTag);
       form.resetFields();
       onClose();
-    } catch (error) {
-      console.error('Failed to save tag:', error);
+    } catch {
       message.error(tag ? 'Failed to update tag' : 'Failed to create tag');
     } finally {
       setLoading(false);

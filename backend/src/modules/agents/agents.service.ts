@@ -1012,6 +1012,39 @@ export class AgentsService {
         console.error(`[Vulnerability Check] Failed for asset ${agent.assetId}:`, err);
       });
     }
+
+    // Store peripheral data if provided
+    if (inventory.peripherals) {
+      const peripherals = inventory.peripherals as Record<string, unknown>;
+      const monitors = (peripherals.monitors as Array<unknown>) || [];
+      const usbDevices = (peripherals.usbDevices as Array<unknown>) || [];
+      const printers = (peripherals.printers as Array<unknown>) || [];
+      const audioDevices = (peripherals.audioDevices as Array<unknown>) || [];
+      const bluetoothDevices = (peripherals.bluetoothDevices as Array<unknown>) || [];
+
+      await prisma.assetPeripherals.upsert({
+        where: { assetId: agent.assetId },
+        create: {
+          assetId: agent.assetId,
+          monitorCount: monitors.length,
+          usbDeviceCount: usbDevices.length,
+          printerCount: printers.length,
+          audioDeviceCount: audioDevices.length,
+          bluetoothDeviceCount: bluetoothDevices.length,
+          rawPayload: peripherals as Prisma.InputJsonValue,
+          collectedAt: new Date(),
+        },
+        update: {
+          monitorCount: monitors.length,
+          usbDeviceCount: usbDevices.length,
+          printerCount: printers.length,
+          audioDeviceCount: audioDevices.length,
+          bluetoothDeviceCount: bluetoothDevices.length,
+          rawPayload: peripherals as Prisma.InputJsonValue,
+          collectedAt: new Date(),
+        },
+      });
+    }
   }
 
   /**

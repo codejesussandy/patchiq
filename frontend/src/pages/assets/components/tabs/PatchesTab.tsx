@@ -113,8 +113,7 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
       setPatches(patchesData);
       setDeployments(deploymentsData);
       setAsset(assetData);
-    } catch (err) {
-      console.error('Failed to fetch patch data:', err);
+    } catch {
       setError('Failed to load patch information');
     } finally {
       setLoading(false);

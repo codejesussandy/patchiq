@@ -38,8 +38,8 @@ const TagDisplay: React.FC<TagDisplayProps> = ({
         });
         setTags(tagMap);
       })
-      .catch((error) => {
-        console.error('Failed to fetch tags:', error);
+      .catch(() => {
+        // Tags will remain empty on error
       })
       .finally(() => setLoading(false));
   }, [tagIds]);
