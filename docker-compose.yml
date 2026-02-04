@@ -54,7 +54,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: patchiq_dev
     ports:
-      - "5432:5432"
+      - "3001:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -70,7 +70,7 @@ services:
     image: redis:7-alpine
     container_name: patchiq_redis
     ports:
-      - "6379:6379"
+      - "3002:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -89,9 +89,10 @@ services:
     environment:
       MINIO_ROOT_USER: patchiq_admin
       MINIO_ROOT_PASSWORD: patchiq_secret_key
-    ports:
-      - "5001:9000"   # S3 API (direct access, optional)
-      - "5002:9001"   # Web Console (direct access, optional)
+    # Ports accessed via nginx reverse proxy only
+    expose:
+      - "9000"   # S3 API
+      - "9001"   # Web Console
     volumes:
       - minio_data:/data
     healthcheck:
@@ -154,8 +155,9 @@ services:
       - MOCK_EMAIL=true
       - MOCK_LDAP=true
       - MOCK_PATCHES=true
-    ports:
-      - "3000:3000"
+    # Port accessed via nginx reverse proxy only
+    expose:
+      - "3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -202,7 +204,6 @@ services:
     environment:
       - NODE_ENV=development
       - VITE_API_BASE_URL=/v1
-      - VITE_DEV_PORT=5174
     # Port exposed via nginx reverse proxy
     depends_on:
       - backend

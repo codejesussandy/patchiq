@@ -25,7 +25,7 @@ function parseRedisUrl(url: string): ConnectionOptions {
     const parsed = new URL(url);
     return {
       host: parsed.hostname || process.env.REDIS_HOST || 'localhost',
-      port: parseInt(parsed.port, 10) || parseInt(process.env.REDIS_PORT || '6379', 10),
+      port: parseInt(parsed.port, 10) || parseInt(process.env.REDIS_PORT || '3002', 10),
       password: parsed.password || undefined,
       maxRetriesPerRequest: null,
     };
@@ -33,7 +33,7 @@ function parseRedisUrl(url: string): ConnectionOptions {
     // Fallback: use env vars or defaults
     return {
       host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      port: parseInt(process.env.REDIS_PORT || '3002', 10),
       maxRetriesPerRequest: null,
     };
   }

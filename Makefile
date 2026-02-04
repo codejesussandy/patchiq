@@ -167,8 +167,8 @@ dev-services: preflight
 	@echo "$(CYAN)Starting Prisma Studio on port 5555...$(NC)"
 	@cd backend && npx prisma studio --schema src/db/prisma/schema.prisma --port 5555 --browser none > /dev/null 2>&1 &
 	@echo "$(GREEN)Infrastructure ready!$(NC)"
-	@echo "  PostgreSQL:    localhost:5432"
-	@echo "  Redis:         localhost:6379"
+	@echo "  PostgreSQL:    localhost:3001"
+	@echo "  Redis:         localhost:3002"
 	@echo "  MinIO:         localhost:5001 (API), localhost:5002 (Console)"
 	@echo "  pgAdmin:       http://localhost:5050 (admin@patchiq.io / admin123)"
 	@echo "  Prisma Studio: http://localhost:5555"

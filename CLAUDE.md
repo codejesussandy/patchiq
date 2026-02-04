@@ -63,14 +63,14 @@ make agent-run                                        # Run without hot reload
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  Frontend   │────▶│   Backend   │────▶│ PostgreSQL  │
 │  (React)    │     │  (Express)  │     │   (Prisma)  │
-│   :5173     │     │    :3000    │     │    :5432    │
+│   :5173     │     │    :3000    │     │    :3001    │
 └─────────────┘     └──────┬──────┘     └─────────────┘
                            │
                     ┌──────┴──────┐
                     │             │
               ┌─────▼─────┐ ┌─────▼─────┐
               │   Redis   │ │   MinIO   │
-              │   :6379   │ │   :9000   │
+              │   :3002   │ │   :9000   │
               └───────────┘ └───────────┘
                     ▲
               ┌─────┴─────┐
@@ -129,8 +129,8 @@ import { config } from '@config/index';         // src/config/
 | Frontend       | 5173  |
 | Backend API    | 3000  |
 | Agent          | 8080  |
-| PostgreSQL     | 5432  |
-| Redis          | 6379  |
+| PostgreSQL     | 3001  |
+| Redis          | 3002  |
 | MinIO API      | 9000  |
 | MinIO Console  | 9001  |
 | Prisma Studio  | 5555  |

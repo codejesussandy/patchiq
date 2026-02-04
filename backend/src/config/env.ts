@@ -104,7 +104,7 @@ const envSchema = z.object({
   ENCRYPTION_KEY: z.string().min(32).optional(),
 
   // Redis (for BullMQ job queue)
-  REDIS_URL: z.string().url().optional().default('redis://localhost:6379'),
+  REDIS_URL: z.string().url().optional().default('redis://localhost:3002'),
 
   // Backend Public URL (for agent downloads)
   // This is the URL agents use to reach the backend from outside the Docker network
