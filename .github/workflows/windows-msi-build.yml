@@ -97,13 +97,8 @@ jobs:
 
           # Create license RTF
           Write-Host "Creating license file..."
-          $license = @"
-{\rtf1\ansi\deff0{\fonttbl{\f0 Arial;}}\f0\fs22
-{\b PatchIQ Agent - End User License Agreement}\par\par
-Copyright (c) 2024 PatchIQ. All rights reserved.\par\par
-By installing this software, you agree to the terms of service.\par}
-"@
-          $license | Out-File -FilePath "$installerDir/License.rtf" -Encoding ASCII
+          $rtfContent = '{\rtf1\ansi\deff0{\fonttbl{\f0 Arial;}}\f0\fs22 {\b PatchIQ Agent - End User License Agreement}\par\par Copyright (c) 2024 PatchIQ. All rights reserved.\par\par By installing this software, you agree to the terms of service.\par}'
+          $rtfContent | Out-File -FilePath "$installerDir/License.rtf" -Encoding ASCII
 
       - name: Build MSI with WiX
         shell: pwsh
