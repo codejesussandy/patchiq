@@ -14,6 +14,8 @@ export type Patch = {
   releaseDate: string;
   rebootRequired: boolean;
   supportUninstallation: boolean;
+  supportsRollback?: boolean;
+  patchType?: 'UPDATE' | 'HOTFIX' | 'SERVICE_PACK' | 'DRIVER';
   architecture: string;
   referenceUrl: string;
   languagesSupported: string[];
@@ -25,12 +27,21 @@ export type Patch = {
   downloadStatus?: string;
   size?: string;
   createdAt?: string;
-  lastUpdatedAt?: string;
+  updatedAt?: string;
+  lastUpdatedAt?: string; // @deprecated - use updatedAt
   source?: string;
   releasedOn?: string;
   downloadedOn?: string;
   supersededBy?: string[];
   supersedes?: string[];
+  // Bundle info for hub-centric deployments
+  bundle?: {
+    id: string;
+    hasBundle: boolean;
+    hasScripts: boolean;
+    downloadStatus: string;
+    bundleChecksum?: string;
+  } | null;
 };
 
 export type AffectedProduct = {

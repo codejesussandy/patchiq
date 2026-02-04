@@ -252,6 +252,7 @@ class DeploymentExecutorService {
 
   /**
    * Create a patch deployment with tasks and commands
+   * Uses hub_patch_install for patches with bundles, falls back to patch_install for legacy patches
    */
   async createPatchDeployment(
     options: CreatePatchDeploymentOptions
@@ -297,6 +298,17 @@ class DeploymentExecutorService {
       throw new BadRequestError('No agents have linked assets for patch deployment');
     }
 
+    // Get patch IDs from the payload (handle both {id} and {patchId} formats)
+    const patchIds = patches.map(p => (p as any).id || (p as any).patchId).filter(Boolean);
+
+    // Fetch patches with their bundles to determine command type
+    const patchesWithBundles = await prisma.patch.findMany({
+      where: { id: { in: patchIds } },
+      include: {
+        bundle: true,
+      },
+    });
+
     const deploymentId = `PD-${uuidv4().slice(0, 8).toUpperCase()}`;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -322,12 +334,58 @@ class DeploymentExecutorService {
       let commandsCreated = 0;
 
       for (const agent of agentsWithAssets) {
-        // Create the agent command with all patches
+        // Build payload for each patch, using hub_patch_install for patches with bundles
+        const patchPayloads = [];
+        let useHubCommand = false;
+
+        for (const patch of patchesWithBundles) {
+          if (patch.bundle && (patch.bundle.bundleObjectKey || patch.bundle.scriptsIncluded)) {
+            // This patch has a bundle - use hub-centric approach
+            useHubCommand = true;
+
+            // Build bundle download URL using backend proxy
+            const backendUrl = env.BACKEND_PUBLIC_URL.replace(/\/$/, '');
+            const bundleUrl = patch.bundle.bundleObjectKey
+              ? `${backendUrl}/v1/patches/${patch.id}/bundle/stream`
+              : undefined;
+
+            patchPayloads.push({
+              operationType: 'install',
+              packageId: patch.id,
+              packageName: patch.software || patch.patchId,
+              version: patch.kbNumber || patch.patchId || '1.0.0',
+              bundleUrl,
+              bundleChecksum: patch.bundle.bundleChecksum,
+              manifest: patch.bundle.manifestJson as unknown as ScriptManifest | undefined,
+              script: patch.bundle.scriptInstall || undefined,
+              requiresRoot: true, // Patches typically require elevation
+              patchId: patch.patchId,
+              kbNumber: patch.kbNumber,
+            });
+          } else {
+            // Legacy patch without bundle
+            patchPayloads.push({
+              patchId: patch.patchId || patch.id,
+              kbNumber: patch.kbNumber,
+              packageName: patch.software,
+              rebootRequired: patch.rebootRequired,
+            });
+          }
+        }
+
+        // Determine command type based on whether any patch has a bundle
+        const commandType = useHubCommand
+          ? COMMAND_TYPES.HUB_PATCH_INSTALL
+          : COMMAND_TYPES.PATCH_INSTALL;
+
+        // Create the agent command
         const command = await tx.agentCommand.create({
           data: {
             agentId: agent.id,
-            type: COMMAND_TYPES.PATCH_INSTALL,
-            payload: { patches } as unknown as Prisma.InputJsonValue,
+            type: commandType,
+            payload: useHubCommand
+              ? (patchPayloads.length === 1 ? patchPayloads[0] : { patches: patchPayloads }) as unknown as Prisma.InputJsonValue
+              : { patches: patchPayloads } as unknown as Prisma.InputJsonValue,
             status: 'pending',
             scheduledAt: new Date(),
           },

@@ -42,6 +42,9 @@ export async function listPatches(params: PatchListQuery) {
   const [patches, total] = await Promise.all([
     prisma.patch.findMany({
       where,
+      include: {
+        bundle: true, // Include bundle info for hub-centric deployments
+      },
       orderBy: params.sort
         ? { [params.sort]: params.order }
         : { createdAt: 'desc' },
@@ -57,10 +60,11 @@ export async function getPatchById(id: string) {
   const patch = await prisma.patch.findUnique({
     where: { id },
     include: {
+      bundle: true,           // NEW: Preferred bundle storage
       affectedProducts: true,
-      fileDetails: true,
+      fileDetails: true,      // @deprecated - kept for backwards compatibility
       vulnerabilities: true,
-      patchEndpoints: true,
+      patchEndpoints: true,   // @deprecated - kept for backwards compatibility
     },
   });
 
@@ -1047,6 +1051,8 @@ function transformPatch(patch: any) {
     referenceUrl: patch.referenceUrl,
     rebootRequired: patch.rebootRequired,
     supportUninstallation: patch.supportUninstallation,
+    supportsRollback: patch.supportsRollback || false,
+    patchType: patch.patchType || 'UPDATE',
     languagesSupported: patch.languagesSupported || [],
     tags: patch.tags || [],
     cveNumbers: patch.cveNumbers || [],
@@ -1072,6 +1078,14 @@ function transformPatch(patch: any) {
     rejectionNotes: patch.rejectionNotes,
     createdAt: patch.createdAt.toISOString(),
     updatedAt: patch.updatedAt.toISOString(),
+    // Bundle info (hub-centric deployment)
+    bundle: patch.bundle ? {
+      id: patch.bundle.id,
+      hasBundle: !!patch.bundle.bundleObjectKey,
+      hasScripts: patch.bundle.scriptsIncluded,
+      downloadStatus: patch.bundle.downloadStatus,
+      bundleChecksum: patch.bundle.bundleChecksum,
+    } : null,
   };
 }
 

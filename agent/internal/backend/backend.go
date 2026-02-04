@@ -658,7 +658,7 @@ func (m *Manager) executeCommand(cmd client.PendingCommand) {
 		result.Result = fmt.Sprintf(`{"rebootRequired":%t}`, rebootRequired)
 
 	// Script bundle commands (Hub-centric approach)
-	case "script_bundle", "hub_install", "hub_update", "hub_rollback", "hub_uninstall":
+	case "script_bundle", "hub_install", "hub_update", "hub_rollback", "hub_uninstall", "hub_patch_install", "hub_patch_rollback":
 		var params models.ScriptBundleRequest
 		if err := parsePayload(cmd.Payload, &params); err != nil {
 			result.Status = "failed"
@@ -667,11 +667,11 @@ func (m *Manager) executeCommand(cmd client.PendingCommand) {
 			// Determine operation type from command type if not set in payload
 			if params.OperationType == "" {
 				switch cmd.Type {
-				case "hub_install":
+				case "hub_install", "hub_patch_install":
 					params.OperationType = "install"
 				case "hub_update":
 					params.OperationType = "update"
-				case "hub_rollback":
+				case "hub_rollback", "hub_patch_rollback":
 					params.OperationType = "rollback"
 				case "hub_uninstall":
 					params.OperationType = "uninstall"

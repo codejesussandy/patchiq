@@ -774,12 +774,12 @@ model Patch {
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  bundle            PatchBundle?           // NEW: 1:1 relation to bundle storage
+  bundle            PatchBundle?           // NEW: 1:1 relation to bundle storage (preferred)
   deployments       PatchDeployment[]
   affectedProducts  PatchAffectedProduct[]
-  fileDetails       PatchFileDetail[]
+  fileDetails       PatchFileDetail[]      // @deprecated - Use bundle instead. Kept for backwards compatibility.
   vulnerabilities   PatchVulnerability[]
-  patchEndpoints    PatchEndpoint[]
+  patchEndpoints    PatchEndpoint[]        // @deprecated - Use Agent/Asset relations instead. Kept for backwards compatibility.
 
   @@index([severity])
   @@index([approvalStatus])
@@ -939,6 +939,8 @@ model PatchAffectedProduct {
   @@map("patch_affected_products")
 }
 
+// @deprecated - Use PatchBundle instead. This model is kept for backwards compatibility.
+// Run migration script: npx ts-node -r tsconfig-paths/register src/db/prisma/scripts/migrate-patch-file-details.ts
 model PatchFileDetail {
   id              String    @id @default(uuid())
   patchId         String    @map("patch_id")
@@ -1044,6 +1046,8 @@ model PatchVulnerability {
   @@map("patch_vulnerabilities")
 }
 
+// @deprecated - Use Agent/Asset relations with PatchDeploymentTask instead.
+// Endpoint/Agent tracking should use the deployment system rather than static patch-endpoint links.
 model PatchEndpoint {
   id       String    @id @default(uuid())
   patchId  String    @map("patch_id")
