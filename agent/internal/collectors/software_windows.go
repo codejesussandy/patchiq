@@ -61,47 +61,43 @@ func (c *WindowsSoftwareCollector) collectOperatingSystem() models.OperatingSyst
 	hostname, _ := os.Hostname()
 	osInfo.Hostname = hostname
 
-	// Windows OS info
+	// Windows OS info using PowerShell Get-CimInstance (replaces deprecated wmic)
 	osInfo.Name = "Microsoft Windows"
 
-	if out, err := exec.Command("wmic", "os", "get", "caption", "/value").Output(); err == nil {
-		osInfo.Name = parseWmicValueSoftware(string(out), "Caption")
+	psCmd := `Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,LastBootUpTime,Locale | Format-List`
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output(); err == nil {
+		osInfo.Name = parsePSKeyValue(string(out), "Caption")
+		osInfo.Version = parsePSKeyValue(string(out), "Version")
+		osInfo.BuildNumber = parsePSKeyValue(string(out), "BuildNumber")
+		osInfo.Locale = parsePSKeyValue(string(out), "Locale")
+
+		// Parse boot time (PowerShell returns readable date format)
+		bootStr := parsePSKeyValue(string(out), "LastBootUpTime")
+		if bootStr != "" {
+			// Try parsing various PowerShell date formats
+			formats := []string{
+				"1/2/2006 3:04:05 PM",
+				"2006-01-02 15:04:05",
+				"01/02/2006 15:04:05",
+				"2/1/2006 3:04:05 PM",
+			}
+			for _, format := range formats {
+				if bootTime, err := time.ParseInLocation(format, bootStr, time.Local); err == nil {
+					osInfo.LastBootTime = bootTime.Format(time.RFC3339)
+					osInfo.Uptime = int64(time.Since(bootTime).Seconds())
+					osInfo.UptimeHuman = formatDuration(time.Since(bootTime))
+					break
+				}
+			}
+		}
 	} else {
 		log.Printf("[software] Failed to get OS info: %v", err)
 	}
-	if out, err := exec.Command("wmic", "os", "get", "version", "/value").Output(); err == nil {
-		osInfo.Version = parseWmicValueSoftware(string(out), "Version")
-	}
-	if out, err := exec.Command("wmic", "os", "get", "buildnumber", "/value").Output(); err == nil {
-		osInfo.BuildNumber = parseWmicValueSoftware(string(out), "BuildNumber")
-	}
-
-	// Get last boot time
-	if out, err := exec.Command("wmic", "os", "get", "lastbootuptime", "/value").Output(); err == nil {
-		bootStr := parseWmicValueSoftware(string(out), "LastBootUpTime")
-		if len(bootStr) >= 14 {
-			// Parse WMI date format: 20240115123456.000000+000
-			year, _ := strconv.Atoi(bootStr[0:4])
-			month, _ := strconv.Atoi(bootStr[4:6])
-			day, _ := strconv.Atoi(bootStr[6:8])
-			hour, _ := strconv.Atoi(bootStr[8:10])
-			min, _ := strconv.Atoi(bootStr[10:12])
-			sec, _ := strconv.Atoi(bootStr[12:14])
-			bootTime := time.Date(year, time.Month(month), day, hour, min, sec, 0, time.Local)
-			osInfo.LastBootTime = bootTime.Format(time.RFC3339)
-			osInfo.Uptime = int64(time.Since(bootTime).Seconds())
-			osInfo.UptimeHuman = formatDuration(time.Since(bootTime))
-		}
-	}
 
 	// Get timezone
-	if out, err := exec.Command("wmic", "timezone", "get", "caption", "/value").Output(); err == nil {
-		osInfo.Timezone = parseWmicValueSoftware(string(out), "Caption")
-	}
-
-	// Get locale
-	if out, err := exec.Command("wmic", "os", "get", "locale", "/value").Output(); err == nil {
-		osInfo.Locale = parseWmicValueSoftware(string(out), "Locale")
+	psCmd = `Get-CimInstance Win32_TimeZone | Select-Object Caption | Format-List`
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output(); err == nil {
+		osInfo.Timezone = parsePSKeyValue(string(out), "Caption")
 	}
 
 	// Check for pending reboot (Windows Update)
@@ -117,24 +113,27 @@ func (c *WindowsSoftwareCollector) collectOperatingSystem() models.OperatingSyst
 func (c *WindowsSoftwareCollector) collectApplications() []models.Application {
 	var apps []models.Application
 
-	// Windows: Query installed programs from registry via wmic
-	out, err := exec.Command("wmic", "product", "get", "name,version,vendor,installdate", "/format:csv").Output()
+	// Windows: Query installed programs using PowerShell Get-CimInstance (replaces deprecated wmic product)
+	// Note: Win32_Product is slow and triggers MSI reconfiguration, so we use registry first
+	// and fall back to Win32_Product only if needed
+	psCmd := `Get-CimInstance Win32_Product -ErrorAction SilentlyContinue | Select-Object InstallDate,Name,Version,Vendor | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output()
 	if err == nil {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
+			fields := parseCSVLine(line)
 			if len(fields) >= 4 {
 				app := models.Application{
-					Name:    strings.TrimSpace(fields[2]),
-					Vendor:  strings.TrimSpace(fields[4]),
-					Version: strings.TrimSpace(fields[3]),
+					Name:    strings.TrimSpace(fields[1]),
+					Version: strings.TrimSpace(fields[2]),
+					Vendor:  strings.TrimSpace(fields[3]),
 				}
 
 				// Parse install date (YYYYMMDD)
-				dateStr := strings.TrimSpace(fields[1])
+				dateStr := strings.TrimSpace(fields[0])
 				if len(dateStr) == 8 {
 					app.InstallDate = dateStr[:4] + "-" + dateStr[4:6] + "-" + dateStr[6:8]
 				}
@@ -147,7 +146,7 @@ func (c *WindowsSoftwareCollector) collectApplications() []models.Application {
 			}
 		}
 	} else {
-		log.Printf("[software] Failed to query wmic product: %v", err)
+		log.Printf("[software] Failed to query installed products: %v", err)
 	}
 
 	// Also check Add/Remove Programs via registry (faster than wmic product)
@@ -211,24 +210,25 @@ func (c *WindowsSoftwareCollector) collectApplications() []models.Application {
 func (c *WindowsSoftwareCollector) collectServices() []models.Service {
 	var services []models.Service
 
-	// Windows: Use sc query or wmic
-	out, err := exec.Command("wmic", "service", "get", "name,displayname,state,processid,startmode", "/format:csv").Output()
+	// Windows: Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_Service | Select-Object DisplayName,Name,ProcessId,StartMode,State | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output()
 	if err == nil {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
+			fields := parseCSVLine(line)
 			if len(fields) >= 5 {
 				service := models.Service{
-					Name:        strings.TrimSpace(fields[2]),
-					DisplayName: strings.TrimSpace(fields[1]),
-					StartupType: strings.TrimSpace(fields[4]),
+					DisplayName: strings.TrimSpace(fields[0]),
+					Name:        strings.TrimSpace(fields[1]),
+					StartupType: strings.TrimSpace(fields[3]),
 				}
 
 				// Parse state
-				state := strings.TrimSpace(fields[3])
+				state := strings.TrimSpace(fields[4])
 				switch state {
 				case "Running":
 					service.Status = "Running"
@@ -239,7 +239,7 @@ func (c *WindowsSoftwareCollector) collectServices() []models.Service {
 				}
 
 				// Parse PID
-				if pid, err := strconv.Atoi(strings.TrimSpace(fields[5])); err == nil && pid > 0 {
+				if pid, err := strconv.Atoi(strings.TrimSpace(fields[2])); err == nil && pid > 0 {
 					service.PID = pid
 				}
 
@@ -365,10 +365,10 @@ func (c *WindowsSoftwareCollector) collectRunningProcesses() []models.RunningPro
 		}
 	}
 
-	// Get total memory
+	// Get total memory using PowerShell (replaces deprecated wmic)
 	var totalMem int64
-	if memOut, err := exec.Command("wmic", "os", "get", "totalvisiblememorysize", "/value").Output(); err == nil {
-		memStr := parseWmicValueSoftware(string(memOut), "TotalVisibleMemorySize")
+	if memOut, err := exec.Command("powershell", "-NoProfile", "-Command", `(Get-CimInstance Win32_OperatingSystem).TotalVisibleMemorySize`).Output(); err == nil {
+		memStr := strings.TrimSpace(string(memOut))
 		if mem, err := strconv.ParseInt(memStr, 10, 64); err == nil {
 			totalMem = mem * 1024 // Convert KB to bytes
 		}

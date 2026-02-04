@@ -170,16 +170,17 @@ func (c *WindowsSecurityCollector) collectAntivirusStatus() models.AntivirusStat
 
 	av.Products = append(av.Products, defender)
 
-	// Check for third-party AV via WMI
-	if out, err := exec.Command("wmic", "/namespace:\\\\root\\SecurityCenter2", "path", "AntivirusProduct", "get", "displayName,productState", "/format:csv").Output(); err == nil {
+	// Check for third-party AV via PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntivirusProduct -ErrorAction SilentlyContinue | Select-Object displayName,productState | ConvertTo-Csv -NoTypeInformation`
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output(); err == nil {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
+			fields := parseCSVLine(line)
 			if len(fields) >= 2 {
-				name := strings.TrimSpace(fields[1])
+				name := strings.TrimSpace(fields[0])
 				if name != "" && name != "Windows Defender" {
 					product := models.AntivirusProduct{
 						Name:      name,
@@ -198,20 +199,21 @@ func (c *WindowsSecurityCollector) collectAntivirusStatus() models.AntivirusStat
 func (c *WindowsSecurityCollector) collectLocalUsers() []models.LocalUser {
 	var users []models.LocalUser
 
-	// Windows: Get local users via wmic or net user
-	out, err := exec.Command("wmic", "useraccount", "get", "name,fullname,disabled,localaccount", "/format:csv").Output()
+	// Windows: Get local users via PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_UserAccount -Filter "LocalAccount=True" | Select-Object Disabled,FullName,Name | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output()
 	if err == nil {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
-			if len(fields) >= 4 {
+			fields := parseCSVLine(line)
+			if len(fields) >= 3 {
 				localUser := models.LocalUser{
-					Username:  strings.TrimSpace(fields[3]),
-					FullName:  strings.TrimSpace(fields[2]),
-					IsEnabled: strings.TrimSpace(fields[1]) != "TRUE",
+					Username:  strings.TrimSpace(fields[2]),
+					FullName:  strings.TrimSpace(fields[1]),
+					IsEnabled: strings.ToLower(strings.TrimSpace(fields[0])) != "true",
 				}
 
 				// Check if admin by checking Administrators group membership

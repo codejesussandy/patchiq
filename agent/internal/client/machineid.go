@@ -123,16 +123,13 @@ func getWindowsMachineID() (string, error) {
 		}
 	}
 
-	// Try SMBIOS UUID via WMIC
-	cmd = exec.Command("wmic", "csproduct", "get", "UUID")
+	// Try SMBIOS UUID via PowerShell Get-CimInstance (replaces deprecated wmic)
+	cmd = exec.Command("powershell", "-NoProfile", "-Command", "(Get-CimInstance Win32_ComputerSystemProduct).UUID")
 	output, err = cmd.Output()
 	if err == nil {
-		lines := strings.Split(string(output), "\n")
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if line != "" && line != "UUID" {
-				return line, nil
-			}
+		uuid := strings.TrimSpace(string(output))
+		if uuid != "" && uuid != "UUID" {
+			return uuid, nil
 		}
 	}
 

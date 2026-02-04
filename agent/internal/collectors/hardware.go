@@ -72,3 +72,49 @@ func runCommand(name string, args ...string) (string, error) {
 	err := cmd.Run()
 	return out.String(), err
 }
+
+// parseCSVLine parses a line from PowerShell's ConvertTo-Csv output (handles quoted fields)
+func parseCSVLine(line string) []string {
+	var fields []string
+	var current strings.Builder
+	inQuotes := false
+
+	for i := 0; i < len(line); i++ {
+		c := line[i]
+		if c == '"' {
+			if inQuotes && i+1 < len(line) && line[i+1] == '"' {
+				// Escaped quote
+				current.WriteByte('"')
+				i++
+			} else {
+				inQuotes = !inQuotes
+			}
+		} else if c == ',' && !inQuotes {
+			fields = append(fields, current.String())
+			current.Reset()
+		} else {
+			current.WriteByte(c)
+		}
+	}
+	fields = append(fields, current.String())
+	return fields
+}
+
+// parsePSKeyValue parses PowerShell Format-List output (Key : Value pairs)
+func parsePSKeyValue(output, key string) string {
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) == 2 && strings.TrimSpace(parts[0]) == key {
+			return strings.TrimSpace(parts[1])
+		}
+	}
+	return ""
+}
+
+// runPowerShell executes a PowerShell command and returns the output
+func runPowerShell(cmd string) (string, error) {
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", cmd).Output()
+	return string(out), err
+}

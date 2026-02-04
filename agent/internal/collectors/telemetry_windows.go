@@ -54,24 +54,20 @@ func (c *WindowsTelemetryCollector) Collect() (interface{}, error) {
 func (c *WindowsTelemetryCollector) collectCPUTelemetry() models.CPUTelemetry {
 	cpu := models.CPUTelemetry{}
 
-	// Windows: Use wmic cpu for load percentage
-	out, err := exec.Command("wmic", "cpu", "get", "LoadPercentage", "/value").Output()
+	// Windows: Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `(Get-CimInstance Win32_Processor).LoadPercentage`
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output()
 	if err == nil {
-		for _, line := range strings.Split(string(out), "\n") {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "LoadPercentage=") {
-				if pct, err := strconv.ParseFloat(strings.TrimPrefix(line, "LoadPercentage="), 64); err == nil {
-					cpu.UsagePercent = pct
-					cpu.IdlePercent = 100 - pct
-				}
-			}
+		if pct, err := strconv.ParseFloat(strings.TrimSpace(string(out)), 64); err == nil {
+			cpu.UsagePercent = pct
+			cpu.IdlePercent = 100 - pct
 		}
 	} else {
 		log.Printf("[telemetry] Failed to get CPU load: %v", err)
 	}
 
-	// Get more detailed CPU usage via PowerShell
-	if psOut, err := exec.Command("powershell", "-Command", "(Get-Counter '\\Processor(_Total)\\% Processor Time').CounterSamples.CookedValue").Output(); err == nil {
+	// Get more detailed CPU usage via PowerShell counter
+	if psOut, err := exec.Command("powershell", "-NoProfile", "-Command", "(Get-Counter '\\Processor(_Total)\\% Processor Time').CounterSamples.CookedValue").Output(); err == nil {
 		if pct, err := strconv.ParseFloat(strings.TrimSpace(string(psOut)), 64); err == nil {
 			cpu.UsagePercent = pct
 			cpu.IdlePercent = 100 - pct
@@ -99,39 +95,29 @@ func (c *WindowsTelemetryCollector) collectCPUTelemetry() models.CPUTelemetry {
 func (c *WindowsTelemetryCollector) collectMemoryTelemetry() models.MemoryTelemetry {
 	mem := models.MemoryTelemetry{}
 
-	// Windows: Use wmic for memory info
-	out, err := exec.Command("wmic", "OS", "get", "TotalVisibleMemorySize,FreePhysicalMemory", "/value").Output()
+	// Windows: Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize,FreePhysicalMemory | Format-List`
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output()
 	if err == nil {
-		for _, line := range strings.Split(string(out), "\n") {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "TotalVisibleMemorySize=") {
-				if kb, err := strconv.ParseInt(strings.TrimPrefix(line, "TotalVisibleMemorySize="), 10, 64); err == nil {
-					mem.TotalBytes = kb * 1024
-				}
-			} else if strings.HasPrefix(line, "FreePhysicalMemory=") {
-				if kb, err := strconv.ParseInt(strings.TrimPrefix(line, "FreePhysicalMemory="), 10, 64); err == nil {
-					mem.FreeBytes = kb * 1024
-					mem.AvailableBytes = kb * 1024
-				}
-			}
+		if kb, err := strconv.ParseInt(parsePSKeyValue(string(out), "TotalVisibleMemorySize"), 10, 64); err == nil {
+			mem.TotalBytes = kb * 1024
+		}
+		if kb, err := strconv.ParseInt(parsePSKeyValue(string(out), "FreePhysicalMemory"), 10, 64); err == nil {
+			mem.FreeBytes = kb * 1024
+			mem.AvailableBytes = kb * 1024
 		}
 	} else {
 		log.Printf("[telemetry] Failed to get memory info: %v", err)
 	}
 
-	// Get swap/page file info
-	if swapOut, err := exec.Command("wmic", "pagefile", "get", "AllocatedBaseSize,CurrentUsage", "/value").Output(); err == nil {
-		for _, line := range strings.Split(string(swapOut), "\n") {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "AllocatedBaseSize=") {
-				if mb, err := strconv.ParseInt(strings.TrimPrefix(line, "AllocatedBaseSize="), 10, 64); err == nil {
-					mem.SwapTotalBytes = mb * 1024 * 1024
-				}
-			} else if strings.HasPrefix(line, "CurrentUsage=") {
-				if mb, err := strconv.ParseInt(strings.TrimPrefix(line, "CurrentUsage="), 10, 64); err == nil {
-					mem.SwapUsedBytes = mb * 1024 * 1024
-				}
-			}
+	// Get swap/page file info using PowerShell
+	psCmd = `Get-CimInstance Win32_PageFileUsage | Select-Object AllocatedBaseSize,CurrentUsage | Format-List`
+	if swapOut, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output(); err == nil {
+		if mb, err := strconv.ParseInt(parsePSKeyValue(string(swapOut), "AllocatedBaseSize"), 10, 64); err == nil {
+			mem.SwapTotalBytes = mb * 1024 * 1024
+		}
+		if mb, err := strconv.ParseInt(parsePSKeyValue(string(swapOut), "CurrentUsage"), 10, 64); err == nil {
+			mem.SwapUsedBytes = mb * 1024 * 1024
 		}
 	}
 
@@ -155,8 +141,9 @@ func (c *WindowsTelemetryCollector) collectMemoryTelemetry() models.MemoryTeleme
 func (c *WindowsTelemetryCollector) collectDiskTelemetry() models.DiskTelemetry {
 	disk := models.DiskTelemetry{}
 
-	// Windows: Use wmic logicaldisk for disk usage
-	out, err := exec.Command("wmic", "logicaldisk", "where", "drivetype=3", "get", "DeviceID,FreeSpace,Size", "/format:csv").Output()
+	// Windows: Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Select-Object DeviceID,FreeSpace,Size | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output()
 	if err != nil {
 		log.Printf("[telemetry] Failed to get disk info: %v", err)
 		return disk
@@ -164,24 +151,24 @@ func (c *WindowsTelemetryCollector) collectDiskTelemetry() models.DiskTelemetry 
 
 	lines := strings.Split(string(out), "\n")
 	for i, line := range lines {
-		if i == 0 || strings.TrimSpace(line) == "" {
+		if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 			continue
 		}
 
-		fields := strings.Split(line, ",")
-		if len(fields) < 4 {
+		fields := parseCSVLine(line)
+		if len(fields) < 3 {
 			continue
 		}
 
 		drive := models.DriveTelemetry{
-			Name:       strings.TrimSpace(fields[1]),
-			MountPoint: strings.TrimSpace(fields[1]),
+			Name:       strings.TrimSpace(fields[0]),
+			MountPoint: strings.TrimSpace(fields[0]),
 		}
 
-		if freeBytes, err := strconv.ParseInt(strings.TrimSpace(fields[2]), 10, 64); err == nil {
+		if freeBytes, err := strconv.ParseInt(strings.TrimSpace(fields[1]), 10, 64); err == nil {
 			drive.AvailableBytes = freeBytes
 		}
-		if totalBytes, err := strconv.ParseInt(strings.TrimSpace(fields[3]), 10, 64); err == nil {
+		if totalBytes, err := strconv.ParseInt(strings.TrimSpace(fields[2]), 10, 64); err == nil {
 			drive.TotalBytes = totalBytes
 		}
 
@@ -206,17 +193,18 @@ func (c *WindowsTelemetryCollector) collectNetworkTelemetry() models.NetworkTele
 
 	net.LatencyMs = c.measureNetworkLatency()
 
-	// Windows: Use wmic nic or netstat
-	out, err := exec.Command("wmic", "path", "Win32_PerfRawData_Tcpip_NetworkInterface", "get", "Name,BytesReceivedPersec,BytesSentPersec", "/format:csv").Output()
+	// Windows: Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_PerfRawData_Tcpip_NetworkInterface | Select-Object BytesReceivedPersec,BytesSentPersec,Name | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output()
 	if err == nil {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
-			if len(fields) >= 4 {
-				name := strings.TrimSpace(fields[3])
+			fields := parseCSVLine(line)
+			if len(fields) >= 3 {
+				name := strings.TrimSpace(fields[2])
 				if strings.Contains(strings.ToLower(name), "loopback") {
 					continue
 				}
@@ -225,11 +213,11 @@ func (c *WindowsTelemetryCollector) collectNetworkTelemetry() models.NetworkTele
 					Name: name,
 				}
 
-				if recv, err := strconv.ParseInt(strings.TrimSpace(fields[1]), 10, 64); err == nil {
+				if recv, err := strconv.ParseInt(strings.TrimSpace(fields[0]), 10, 64); err == nil {
 					adapter.BytesReceived = recv
 					net.BytesReceivedPerSec += recv
 				}
-				if sent, err := strconv.ParseInt(strings.TrimSpace(fields[2]), 10, 64); err == nil {
+				if sent, err := strconv.ParseInt(strings.TrimSpace(fields[1]), 10, 64); err == nil {
 					adapter.BytesSent = sent
 					net.BytesSentPerSec += sent
 				}
@@ -311,42 +299,37 @@ func (c *WindowsTelemetryCollector) collectProcessStats() models.ProcessStats {
 
 	var processes []models.ProcessInfo
 
-	// Get process list with memory info
-	out, err := exec.Command("wmic", "process", "get", "ProcessId,Name,WorkingSetSize", "/format:csv").Output()
+	// Get process list with memory info using PowerShell (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_Process | Select-Object Name,ProcessId,WorkingSetSize | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output()
 	if err == nil {
 		// Get total memory for calculating percentages
 		var totalMem int64
-		if memOut, err := exec.Command("wmic", "OS", "get", "TotalVisibleMemorySize", "/value").Output(); err == nil {
-			for _, line := range strings.Split(string(memOut), "\n") {
-				if strings.HasPrefix(strings.TrimSpace(line), "TotalVisibleMemorySize=") {
-					if kb, err := strconv.ParseInt(strings.TrimPrefix(strings.TrimSpace(line), "TotalVisibleMemorySize="), 10, 64); err == nil {
-						totalMem = kb * 1024
-					}
-				}
+		if memOut, err := exec.Command("powershell", "-NoProfile", "-Command", `(Get-CimInstance Win32_OperatingSystem).TotalVisibleMemorySize`).Output(); err == nil {
+			if kb, err := strconv.ParseInt(strings.TrimSpace(string(memOut)), 10, 64); err == nil {
+				totalMem = kb * 1024
 			}
 		}
 
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
-			if len(fields) >= 4 {
+			fields := parseCSVLine(line)
+			if len(fields) >= 3 {
 				proc := models.ProcessInfo{
-					Name:   strings.TrimSpace(fields[2]),
+					Name:   strings.TrimSpace(fields[0]),
 					Status: "Running",
 				}
 
-				if pid, err := strconv.Atoi(strings.TrimSpace(fields[3])); err == nil {
+				if pid, err := strconv.Atoi(strings.TrimSpace(fields[1])); err == nil {
 					proc.PID = pid
 				}
 
 				// WorkingSetSize is in bytes
-				if len(fields) >= 5 {
-					if memBytes, err := strconv.ParseInt(strings.TrimSpace(fields[4]), 10, 64); err == nil && totalMem > 0 {
-						proc.MemoryPercent = float64(memBytes) / float64(totalMem) * 100
-					}
+				if memBytes, err := strconv.ParseInt(strings.TrimSpace(fields[2]), 10, 64); err == nil && totalMem > 0 {
+					proc.MemoryPercent = float64(memBytes) / float64(totalMem) * 100
 				}
 
 				stats.TotalCount++
@@ -506,16 +489,12 @@ func (c *WindowsTelemetryCollector) collectAgentUtilization() *models.AgentUtili
 		}
 	}
 
-	// Get total system memory for percentage calculation
-	if out, err := exec.Command("wmic", "OS", "get", "TotalVisibleMemorySize", "/value").Output(); err == nil {
-		for _, line := range strings.Split(string(out), "\n") {
-			if strings.HasPrefix(strings.TrimSpace(line), "TotalVisibleMemorySize=") {
-				if kb, err := strconv.ParseInt(strings.TrimPrefix(strings.TrimSpace(line), "TotalVisibleMemorySize="), 10, 64); err == nil {
-					totalMem := kb * 1024
-					if totalMem > 0 && util.MemoryBytes > 0 {
-						util.MemoryPercent = float64(util.MemoryBytes) / float64(totalMem) * 100
-					}
-				}
+	// Get total system memory for percentage calculation using PowerShell (replaces deprecated wmic)
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", `(Get-CimInstance Win32_OperatingSystem).TotalVisibleMemorySize`).Output(); err == nil {
+		if kb, err := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64); err == nil {
+			totalMem := kb * 1024
+			if totalMem > 0 && util.MemoryBytes > 0 {
+				util.MemoryPercent = float64(util.MemoryBytes) / float64(totalMem) * 100
 			}
 		}
 	}
@@ -671,28 +650,15 @@ func (c *WindowsTelemetryCollector) collectPowerTelemetry() *models.PowerTelemet
 func (c *WindowsTelemetryCollector) collectSystemUptime() *models.SystemUptime {
 	uptime := &models.SystemUptime{}
 
-	// Windows: Use wmic to get LastBootUpTime
-	out, err := exec.Command("wmic", "os", "get", "LastBootUpTime", "/value").Output()
+	// Windows: Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `(Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToString('yyyy-MM-dd HH:mm:ss')`
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output()
 	if err == nil {
-		for _, line := range strings.Split(string(out), "\n") {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "LastBootUpTime=") {
-				bootStr := strings.TrimPrefix(line, "LastBootUpTime=")
-				// Format: 20231215123456.123456+000
-				if len(bootStr) >= 14 {
-					year, _ := strconv.Atoi(bootStr[0:4])
-					month, _ := strconv.Atoi(bootStr[4:6])
-					day, _ := strconv.Atoi(bootStr[6:8])
-					hour, _ := strconv.Atoi(bootStr[8:10])
-					minute, _ := strconv.Atoi(bootStr[10:12])
-					second, _ := strconv.Atoi(bootStr[12:14])
-
-					bootTime := time.Date(year, time.Month(month), day, hour, minute, second, 0, time.Local)
-					uptime.BootTime = bootTime.Format(time.RFC3339)
-					uptime.UptimeSeconds = int64(time.Since(bootTime).Seconds())
-					uptime.UptimeHuman = formatDuration(time.Since(bootTime))
-				}
-			}
+		bootStr := strings.TrimSpace(string(out))
+		if bootTime, err := time.ParseInLocation("2006-01-02 15:04:05", bootStr, time.Local); err == nil {
+			uptime.BootTime = bootTime.Format(time.RFC3339)
+			uptime.UptimeSeconds = int64(time.Since(bootTime).Seconds())
+			uptime.UptimeHuman = formatDuration(time.Since(bootTime))
 		}
 	}
 
