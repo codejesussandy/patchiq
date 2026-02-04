@@ -25,8 +25,13 @@ var (
 func main() {
 	// Parse command line flags
 	configPath := flag.String("config", "", "Path to config file")
-	port := flag.Int("port", 8080, "Web UI port")
-	serverURL := flag.String("server", "http://192.168.1.11:3000/api", "Backend server URL (e.g., http://192.168.1.11:3000/api)")
+	port := flag.Int("port", 4003, "Web UI port")
+	// Default server URL from environment variable or use localhost
+	defaultServerURL := os.Getenv("PATCHIQ_SERVER_URL")
+	if defaultServerURL == "" {
+		defaultServerURL = "http://localhost:4001/api"
+	}
+	serverURL := flag.String("server", defaultServerURL, "Backend server URL (e.g., http://your-server:4001/api)")
 	showVersion := flag.Bool("version", false, "Show version")
 	noBackend := flag.Bool("no-backend", false, "Disable backend communication (local mode)")
 	setup := flag.Bool("setup", false, "Run interactive setup wizard")

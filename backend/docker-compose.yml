@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: patchiq_dev
     ports:
-      - "5432:5432"
+      - "4004:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -28,7 +28,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: patchiq_test
     ports:
-      - "5433:5432"
+      - "4010:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -41,7 +41,7 @@ services:
     image: redis:7-alpine
     container_name: patchiq_redis
     ports:
-      - "6379:6379"
+      - "4005:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -60,8 +60,8 @@ services:
       MINIO_ROOT_USER: patchiq_admin
       MINIO_ROOT_PASSWORD: patchiq_secret_key
     ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # Web Console
+      - "4006:9000"   # S3 API
+      - "4007:9001"   # Web Console
     volumes:
       - minio_data:/data
     healthcheck:
@@ -80,6 +80,7 @@ services:
     container_name: patchiq_backend
     environment:
       - NODE_ENV=development
+      - PORT=4002
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/patchiq_dev
       - REDIS_URL=redis://redis:6379
       - MINIO_ENDPOINT=minio
@@ -89,7 +90,7 @@ services:
       - MINIO_BUCKET=patches
       - MINIO_USE_SSL=false
     ports:
-      - "3000:3000"
+      - "4002:4002"
     depends_on:
       postgres:
         condition: service_healthy

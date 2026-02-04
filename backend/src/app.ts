@@ -73,11 +73,26 @@ export function createApp(): Application {
     });
   });
 
-  // OpenAPI spec endpoint
-  app.get('/openapi.yaml', (_req, res) => {
+  // OpenAPI spec endpoint - dynamically inject server URL based on request
+  app.get('/openapi.yaml', (req, res) => {
     const specPath = path.join(__dirname, 'openapi.yaml');
     if (fs.existsSync(specPath)) {
-      res.type('text/yaml').sendFile(specPath);
+      // Read the spec file
+      let spec = fs.readFileSync(specPath, 'utf8');
+
+      // Determine the actual server URL from the request
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+      const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:4002';
+      const serverUrl = `${protocol}://${host}`;
+
+      // Replace the servers section with the dynamic URL
+      // Match the servers block and replace it
+      spec = spec.replace(
+        /servers:\s*\n\s*- url: http:\/\/localhost:\d+\s*\n\s*description: Local Development\s*\n\s*- url: https:\/\/api\.patchiq\.io\s*\n\s*description: Production/,
+        `servers:\n  - url: ${serverUrl}\n    description: Current Server`
+      );
+
+      res.type('text/yaml').send(spec);
     } else {
       res.status(404).json({ error: 'OpenAPI spec not found' });
     }

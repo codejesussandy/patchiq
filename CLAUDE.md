@@ -39,7 +39,7 @@ cd frontend && npm run test:debug         # Debug mode
 ```bash
 make db-migrate       # Run Prisma migrations
 make db-seed          # Seed with sample data
-make db-studio        # Open Prisma Studio on :5555
+make db-studio        # Open Prisma Studio on :4008
 make db-reset         # Drop + migrate + seed
 ```
 
@@ -63,20 +63,20 @@ make agent-run                                        # Run without hot reload
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  Frontend   │────▶│   Backend   │────▶│ PostgreSQL  │
 │  (React)    │     │  (Express)  │     │   (Prisma)  │
-│   :5173     │     │    :3000    │     │    :5432    │
+│   :4001     │     │    :4002    │     │    :4004    │
 └─────────────┘     └──────┬──────┘     └─────────────┘
                            │
                     ┌──────┴──────┐
                     │             │
               ┌─────▼─────┐ ┌─────▼─────┐
               │   Redis   │ │   MinIO   │
-              │   :6379   │ │   :9000   │
+              │   :4005   │ │   :4006   │
               └───────────┘ └───────────┘
                     ▲
               ┌─────┴─────┐
               │   Agent   │
               │   (Go)    │
-              │   :8080   │
+              │   :4003   │
               └───────────┘
 ```
 
@@ -126,19 +126,20 @@ import { config } from '@config/index';         // src/config/
 
 | Service        | Port  |
 |----------------|-------|
-| Frontend       | 5173  |
-| Backend API    | 3000  |
-| Agent          | 8080  |
-| PostgreSQL     | 5432  |
-| Redis          | 6379  |
-| MinIO API      | 9000  |
-| MinIO Console  | 9001  |
-| Prisma Studio  | 5555  |
-| pgAdmin        | 5050  |
+| Frontend       | 4001  |
+| Backend API    | 4002  |
+| Agent          | 4003  |
+| PostgreSQL     | 4004  |
+| Redis          | 4005  |
+| MinIO API      | 4006  |
+| MinIO Console  | 4007  |
+| Prisma Studio  | 4008  |
+| pgAdmin        | 4009  |
+| PostgreSQL Test| 4010  |
 
 ## API Documentation
 
-- Scalar API docs: http://localhost:3000/api-docs (when backend running)
+- Scalar API docs: http://localhost:4001/api-docs (when backend running)
 - `make api-endpoints` - Quick endpoint reference
 
 ---
@@ -158,8 +159,8 @@ import { config } from '@config/index';         // src/config/
 
 ### Two UI Systems
 
-- **Agent UI** (localhost:8080): Local web UI embedded in Go agent binary. Shows job status, installation progress, and local endpoint details.
-- **PatchIQ UI** (localhost:5173): Central management platform. Hub management, deployment creation, and aggregate status.
+- **Agent UI** (localhost:4003): Local web UI embedded in Go agent binary. Shows job status, installation progress, and local endpoint details.
+- **PatchIQ UI** (localhost:4001): Central management platform. Hub management, deployment creation, and aggregate status.
 
 ### Architecture Notes
 

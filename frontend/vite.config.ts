@@ -12,18 +12,20 @@ export default defineConfig({
     },
   },
   server: {
-    port: parseInt(process.env.VITE_DEV_PORT || '5173', 10),
+    port: parseInt(process.env.VITE_DEV_PORT || '4001', 10),
     host: '0.0.0.0',  // Allow connections from any host
-    allowedHosts: ['dev.skenzeriq.com', 'localhost'],
+    allowedHosts: 'all',  // Allow all hosts for external access
     hmr: {
-      // Use client-side detection for HMR
-      clientPort: parseInt(process.env.VITE_DEV_PORT || '5173', 10),
+      // Let the client detect the correct host automatically
+      // This enables HMR to work whether accessed via localhost, IP, or domain
+      host: undefined,
+      clientPort: undefined,
     },
     strictPort: false,
     proxy: {
-      // Proxy API requests to backend for local development
+      // Proxy API requests to backend for local development (only used when running outside Docker)
       '/v1': {
-        target: process.env.VITE_BACKEND_URL || 'http://localhost:3000',
+        target: process.env.VITE_BACKEND_URL || 'http://backend:4002',
         changeOrigin: true,
       },
     },

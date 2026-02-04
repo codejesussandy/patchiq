@@ -9,7 +9,7 @@ RUN apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/v3.18/
 RUN npm install
 COPY . .
 RUN npx prisma generate --schema src/db/prisma/schema.prisma
-EXPOSE 3000
+EXPOSE 4002
 CMD ["npm", "run", "dev"]
 
 # Build stage
@@ -36,10 +36,10 @@ COPY --from=builder --chown=nodejs:nodejs /app/src/db/prisma ./prisma
 # Switch to non-root user
 USER nodejs
 
-EXPOSE 3000
+EXPOSE 4002
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:4002/health || exit 1
 
 CMD ["node", "dist/server.js"]

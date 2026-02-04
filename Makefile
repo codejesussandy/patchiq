@@ -21,7 +21,7 @@ export
 # Derived public URL
 PUBLIC_SCHEME ?= http
 PUBLIC_HOST ?= localhost
-PUBLIC_PORT ?= 5173
+PUBLIC_PORT ?= 4001
 PUBLIC_URL := $(PUBLIC_SCHEME)://$(PUBLIC_HOST):$(PUBLIC_PORT)
 
 # Use docker compose v2 (with space) - check if it works, else fall back to docker-compose
@@ -96,7 +96,7 @@ help:
 preflight:
 	@echo "$(CYAN)Running pre-flight checks...$(NC)"
 	@# Kill processes on ports that Docker needs
-	@lsof -ti :3000 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@lsof -ti :4002 2>/dev/null | xargs kill -9 2>/dev/null || true
 	@lsof -ti :$(PUBLIC_PORT) 2>/dev/null | xargs kill -9 2>/dev/null || true
 	@# Remove orphan patchiq containers
 	@docker ps -aq --filter "name=patchiq" 2>/dev/null | xargs -r docker rm -f 2>/dev/null || true
@@ -116,16 +116,20 @@ dev: preflight
 	@sleep 5
 	@echo ""
 	@echo "$(GREEN)Services started!$(NC)"
-	@echo "  Frontend:     $(PUBLIC_URL)"
-	@echo "  API:          $(PUBLIC_URL)/v1"
-	@echo "  API Docs:     $(PUBLIC_URL)/api-docs"
-	@echo "  MinIO:        $(PUBLIC_URL)/minio/"
-	@echo "  Prisma:       http://localhost:5000"
-	@echo "  pgAdmin:      http://localhost:5050"
+	@echo ""
+	@echo "  $(CYAN)All services accessible via single port $(PUBLIC_PORT):$(NC)"
+	@echo "    Frontend:      $(PUBLIC_URL)"
+	@echo "    API:           $(PUBLIC_URL)/v1"
+	@echo "    API Docs:      $(PUBLIC_URL)/api-docs"
+	@echo "    Prisma Studio: $(PUBLIC_URL)/prisma/"
+	@echo "    pgAdmin:       $(PUBLIC_URL)/pgadmin/"
+	@echo "    MinIO Console: $(PUBLIC_URL)/minio/"
 	@echo ""
 	@echo "  Login: admin@patchiq.io / admin123"
 	@echo ""
 	@echo "  Agent: make agent-run  (connects to $(PUBLIC_URL)/api)"
+	@echo ""
+	@echo "  $(YELLOW)Note: Only port $(PUBLIC_PORT) is exposed. All services go through nginx.$(NC)"
 	@echo ""
 	@echo "Use 'make logs' to watch logs, 'make stop' to stop services"
 
@@ -134,7 +138,7 @@ dev-fresh:
 	@echo "$(YELLOW)Performing full fresh start...$(NC)"
 	@$(DOCKER_COMPOSE) down --remove-orphans 2>/dev/null || true
 	@docker ps -aq --filter "name=patchiq" 2>/dev/null | xargs -r docker rm -f 2>/dev/null || true
-	@lsof -ti :3000 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@lsof -ti :4002 2>/dev/null | xargs kill -9 2>/dev/null || true
 	@lsof -ti :$(PUBLIC_PORT) 2>/dev/null | xargs kill -9 2>/dev/null || true
 	@echo "$(CYAN)Starting fresh...$(NC)"
 	@$(DOCKER_COMPOSE) up -d --build --remove-orphans
@@ -164,14 +168,16 @@ dev-all: dev
 dev-services: preflight
 	@echo "$(CYAN)Starting infrastructure services (DB, Redis, MinIO, pgAdmin)...$(NC)"
 	@$(DOCKER_COMPOSE) up -d postgres redis minio pgadmin
-	@echo "$(CYAN)Starting Prisma Studio on port 5555...$(NC)"
-	@cd backend && npx prisma studio --schema src/db/prisma/schema.prisma --port 5555 --browser none > /dev/null 2>&1 &
+	@echo "$(CYAN)Starting Prisma Studio on port 4008...$(NC)"
+	@cd backend && npx prisma studio --schema src/db/prisma/schema.prisma --port 4008 --browser none > /dev/null 2>&1 &
 	@echo "$(GREEN)Infrastructure ready!$(NC)"
-	@echo "  PostgreSQL:    localhost:5432"
-	@echo "  Redis:         localhost:6379"
-	@echo "  MinIO:         localhost:5001 (API), localhost:5002 (Console)"
-	@echo "  pgAdmin:       http://localhost:5050 (admin@patchiq.io / admin123)"
-	@echo "  Prisma Studio: http://localhost:5555"
+	@echo "  PostgreSQL:    localhost:4004 (for local dev tools)"
+	@echo "  Redis:         localhost:4005 (for local dev tools)"
+	@echo "  MinIO:         localhost:4006 (API), localhost:4007 (Console)"
+	@echo "  pgAdmin:       http://localhost:4009 (admin@patchiq.io / admin123)"
+	@echo "  Prisma Studio: http://localhost:4008"
+	@echo ""
+	@echo "  $(YELLOW)Note: These direct ports are only for local dev. In Docker mode, use nginx.$(NC)"
 	@echo ""
 	@echo "Now run in separate terminals:"
 	@echo "  make dev-backend   # Start backend with hot reload"
@@ -219,8 +225,8 @@ db-seed:
 	cd backend && npm run db:seed
 
 db-studio:
-	@echo "$(CYAN)Opening Prisma Studio on http://localhost:5555 ...$(NC)"
-	cd backend && npx prisma studio --schema src/db/prisma/schema.prisma --port 5555
+	@echo "$(CYAN)Opening Prisma Studio on http://localhost:4008 ...$(NC)"
+	cd backend && npx prisma studio --schema src/db/prisma/schema.prisma --port 4008
 
 db-reset:
 	@echo "$(YELLOW)Resetting database (this will delete all data!)...$(NC)"
@@ -259,7 +265,7 @@ agent-release:
 		curl -sL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc && chmod +x /tmp/mc; \
 		MC=/tmp/mc; \
 	fi; \
-	$$MC alias set patchiq http://localhost:5001 patchiq_admin patchiq_secret_key 2>/dev/null; \
+	$$MC alias set patchiq http://localhost:4006 patchiq_admin patchiq_secret_key 2>/dev/null; \
 	$$MC mb --ignore-existing patchiq/agents 2>/dev/null; \
 	$$MC cp agent/dist/patchiq-agent-linux-amd64 patchiq/agents/linux/amd64/1.0.0/patchiq-agent; \
 	$$MC cp agent/dist/patchiq-agent-linux-arm64 patchiq/agents/linux/arm64/1.0.0/patchiq-agent; \
@@ -381,16 +387,22 @@ check-build:
 check-health:
 	@echo "$(CYAN)Checking service health...$(NC)"
 	@echo "  Public URL: $(PUBLIC_URL)"
-	@curl -sf $(PUBLIC_URL)/health > /dev/null 2>&1 && echo "  Nginx+Backend: $(GREEN)OK$(NC) ($(PUBLIC_URL)/health)" || echo "  Nginx+Backend: $(YELLOW)Not running$(NC)"
-	@curl -sf http://localhost:3000/health > /dev/null 2>&1 && echo "  Backend:       $(GREEN)OK$(NC) (direct :3000)" || echo "  Backend:       $(YELLOW)Not running$(NC)"
-	@curl -sf $(PUBLIC_URL) > /dev/null 2>&1 && echo "  Frontend:      $(GREEN)OK$(NC)" || echo "  Frontend:      $(YELLOW)Not running$(NC)"
-	@curl -sf http://localhost:8080/api/agent > /dev/null 2>&1 && echo "  Agent:         $(GREEN)OK$(NC) (:8080)" || echo "  Agent:         $(YELLOW)Not running$(NC)"
-	@curl -sf http://localhost:5000 > /dev/null 2>&1 && echo "  Prisma Studio: $(GREEN)OK$(NC) (:5000)" || echo "  Prisma Studio: $(YELLOW)Not running$(NC)"
-	@curl -sf http://localhost:5050 > /dev/null 2>&1 && echo "  pgAdmin:       $(GREEN)OK$(NC) (:5050)" || echo "  pgAdmin:       $(YELLOW)Not running$(NC)"
-	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_nginx" && echo "  Nginx:         $(GREEN)OK$(NC)" || echo "  Nginx:         $(YELLOW)Not running$(NC)"
-	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_db.*healthy" && echo "  Postgres:      $(GREEN)OK$(NC)" || echo "  Postgres:      $(YELLOW)Not running$(NC)"
-	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_redis.*healthy" && echo "  Redis:         $(GREEN)OK$(NC)" || echo "  Redis:         $(YELLOW)Not running$(NC)"
-	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_minio.*healthy" && echo "  MinIO:         $(GREEN)OK$(NC)" || echo "  MinIO:         $(YELLOW)Not running$(NC)"
+	@echo ""
+	@echo "  $(CYAN)External Access (via nginx on port $(PUBLIC_PORT)):$(NC)"
+	@curl -sf $(PUBLIC_URL)/health > /dev/null 2>&1 && echo "    Backend API:   $(GREEN)OK$(NC) ($(PUBLIC_URL)/health)" || echo "    Backend API:   $(YELLOW)Not running$(NC)"
+	@curl -sf $(PUBLIC_URL) > /dev/null 2>&1 && echo "    Frontend:      $(GREEN)OK$(NC) ($(PUBLIC_URL))" || echo "    Frontend:      $(YELLOW)Not running$(NC)"
+	@curl -sf $(PUBLIC_URL)/api-docs > /dev/null 2>&1 && echo "    API Docs:      $(GREEN)OK$(NC) ($(PUBLIC_URL)/api-docs)" || echo "    API Docs:      $(YELLOW)Not running$(NC)"
+	@curl -sf $(PUBLIC_URL)/prisma/ > /dev/null 2>&1 && echo "    Prisma Studio: $(GREEN)OK$(NC) ($(PUBLIC_URL)/prisma/)" || echo "    Prisma Studio: $(YELLOW)Not running$(NC)"
+	@curl -sf $(PUBLIC_URL)/pgadmin/ > /dev/null 2>&1 && echo "    pgAdmin:       $(GREEN)OK$(NC) ($(PUBLIC_URL)/pgadmin/)" || echo "    pgAdmin:       $(YELLOW)Not running$(NC)"
+	@curl -sf http://localhost:4003/api/agent > /dev/null 2>&1 && echo "    Agent WebUI:   $(GREEN)OK$(NC) (localhost:4003)" || echo "    Agent WebUI:   $(YELLOW)Not running$(NC)"
+	@echo ""
+	@echo "  $(CYAN)Docker Containers:$(NC)"
+	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_nginx" && echo "    Nginx:         $(GREEN)OK$(NC)" || echo "    Nginx:         $(YELLOW)Not running$(NC)"
+	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_backend" && echo "    Backend:       $(GREEN)OK$(NC)" || echo "    Backend:       $(YELLOW)Not running$(NC)"
+	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_frontend" && echo "    Frontend:      $(GREEN)OK$(NC)" || echo "    Frontend:       $(YELLOW)Not running$(NC)"
+	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_db.*healthy" && echo "    Postgres:      $(GREEN)OK$(NC)" || echo "    Postgres:      $(YELLOW)Not running$(NC)"
+	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_redis.*healthy" && echo "    Redis:         $(GREEN)OK$(NC)" || echo "    Redis:         $(YELLOW)Not running$(NC)"
+	@docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -q "patchiq_minio.*healthy" && echo "    MinIO:         $(GREEN)OK$(NC)" || echo "    MinIO:         $(YELLOW)Not running$(NC)"
 
 # Full validation - types, lint, and build
 check-all: check-types check-lint check-build
@@ -422,7 +434,7 @@ status: check-health
 minio-console:
 	@echo "$(CYAN)MinIO Console:$(NC)"
 	@echo "  URL:      $(PUBLIC_URL)/minio/"
-	@echo "  Direct:   http://localhost:5002"
+	@echo "  Direct:   http://localhost:4007"
 	@echo "  Username: patchiq_admin"
 	@echo "  Password: patchiq_secret_key"
 	@echo ""
@@ -470,7 +482,7 @@ api-endpoints:
 	@echo "    GET  /v1/patches             - List patches"
 	@echo "    GET  /v1/patches/:id         - Get patch"
 	@echo ""
-	@echo "$(GREEN)Agent Local API$(NC) - http://localhost:8080"
+	@echo "$(GREEN)Agent Local API$(NC) - http://localhost:4003"
 	@echo "    GET  /api/agent              - Agent info"
 	@echo "    GET  /api/inventory          - Full inventory"
 	@echo "    GET  /api/telemetry          - Current telemetry"
@@ -484,7 +496,7 @@ api-endpoints:
 	@echo ""
 	@echo "$(GREEN)Dev Tools:$(NC)"
 	@echo "  API Docs:      $(PUBLIC_URL)/api-docs"
-	@echo "  Prisma Studio: http://localhost:5000"
-	@echo "  pgAdmin:       http://localhost:5050"
+	@echo "  Prisma Studio: http://localhost:4008"
+	@echo "  pgAdmin:       http://localhost:4009"
 	@echo "  MinIO Console: $(PUBLIC_URL)/minio/"
 	@echo ""
