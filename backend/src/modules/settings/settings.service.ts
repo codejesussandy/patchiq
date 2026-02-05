@@ -12,7 +12,6 @@ import type {
   AuditLogResponse,
   AuditLogFilterOptions,
   PaginatedResponse,
-  MessageResponse,
   SuccessResponse,
   AgentApprovalResponse,
 } from './settings.types';
@@ -1114,7 +1113,7 @@ export class SettingsService {
     if (logoFile) {
       const objectKey = `branding/logo-${Date.now()}-${logoFile.originalname}`;
 
-      const uploadResult = await minioStorage.uploadBuffer(objectKey, logoFile.buffer, {
+      await minioStorage.uploadBuffer(objectKey, logoFile.buffer, {
         contentType: logoFile.mimetype,
         metadata: {
           'original-filename': logoFile.originalname,
