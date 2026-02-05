@@ -5,6 +5,8 @@ const sharedConfig = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   moduleNameMapper: {
+    '^@patchiq/shared-types$': '<rootDir>/../shared/dist/index.js',
+    '^@patchiq/shared-types/(.*)$': '<rootDir>/../shared/dist/$1',
     '^@scalar/express-api-reference$': '<rootDir>/tests/mocks/scalarMock.js',
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@modules/(.*)$': '<rootDir>/src/modules/$1',
