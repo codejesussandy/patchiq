@@ -252,6 +252,7 @@ class DeploymentExecutorService {
 
   /**
    * Create a patch deployment with tasks and commands
+   * Uses hub_patch_install for patches with bundles, falls back to patch_install for legacy patches
    */
   async createPatchDeployment(
     options: CreatePatchDeploymentOptions
@@ -297,6 +298,17 @@ class DeploymentExecutorService {
       throw new BadRequestError('No agents have linked assets for patch deployment');
     }
 
+    // Get patch IDs from the payload (handle both {id} and {patchId} formats)
+    const patchIds = patches.map(p => (p as any).id || (p as any).patchId).filter(Boolean);
+
+    // Fetch patches with their bundles to determine command type
+    const patchesWithBundles = await prisma.patch.findMany({
+      where: { id: { in: patchIds } },
+      include: {
+        bundle: true,
+      },
+    });
+
     const deploymentId = `PD-${uuidv4().slice(0, 8).toUpperCase()}`;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -322,12 +334,58 @@ class DeploymentExecutorService {
       let commandsCreated = 0;
 
       for (const agent of agentsWithAssets) {
-        // Create the agent command with all patches
+        // Build payload for each patch, using hub_patch_install for patches with bundles
+        const patchPayloads = [];
+        let useHubCommand = false;
+
+        for (const patch of patchesWithBundles) {
+          if (patch.bundle && (patch.bundle.bundleObjectKey || patch.bundle.scriptsIncluded)) {
+            // This patch has a bundle - use hub-centric approach
+            useHubCommand = true;
+
+            // Build bundle download URL using backend proxy
+            const backendUrl = env.BACKEND_PUBLIC_URL.replace(/\/$/, '');
+            const bundleUrl = patch.bundle.bundleObjectKey
+              ? `${backendUrl}/v1/patches/${patch.id}/bundle/stream`
+              : undefined;
+
+            patchPayloads.push({
+              operationType: 'install',
+              packageId: patch.id,
+              packageName: patch.software || patch.patchId,
+              version: patch.kbNumber || patch.patchId || '1.0.0',
+              bundleUrl,
+              bundleChecksum: patch.bundle.bundleChecksum,
+              manifest: patch.bundle.manifestJson as unknown as ScriptManifest | undefined,
+              script: patch.bundle.scriptInstall || undefined,
+              requiresRoot: true, // Patches typically require elevation
+              patchId: patch.patchId,
+              kbNumber: patch.kbNumber,
+            });
+          } else {
+            // Legacy patch without bundle
+            patchPayloads.push({
+              patchId: patch.patchId || patch.id,
+              kbNumber: patch.kbNumber,
+              packageName: patch.software,
+              rebootRequired: patch.rebootRequired,
+            });
+          }
+        }
+
+        // Determine command type based on whether any patch has a bundle
+        const commandType = useHubCommand
+          ? COMMAND_TYPES.HUB_PATCH_INSTALL
+          : COMMAND_TYPES.PATCH_INSTALL;
+
+        // Create the agent command
         const command = await tx.agentCommand.create({
           data: {
             agentId: agent.id,
-            type: COMMAND_TYPES.PATCH_INSTALL,
-            payload: { patches } as unknown as Prisma.InputJsonValue,
+            type: commandType,
+            payload: useHubCommand
+              ? (patchPayloads.length === 1 ? patchPayloads[0] : { patches: patchPayloads }) as unknown as Prisma.InputJsonValue
+              : { patches: patchPayloads } as unknown as Prisma.InputJsonValue,
             status: 'pending',
             scheduledAt: new Date(),
           },
@@ -492,6 +550,7 @@ class DeploymentExecutorService {
 
   /**
    * Update a patch deployment task status and recalculate deployment counts
+   * Also resolves AssetVulnerability records when patches are successfully deployed
    */
   private async updatePatchDeploymentTask(
     taskId: string,
@@ -501,7 +560,13 @@ class DeploymentExecutorService {
   ): Promise<void> {
     const task = await prisma.patchDeploymentTask.findUnique({
       where: { id: taskId },
-      include: { deployment: true },
+      include: {
+        deployment: {
+          include: {
+            patches: true, // Include patches to get CVE numbers
+          },
+        },
+      },
     });
 
     if (!task) return;
@@ -520,6 +585,11 @@ class DeploymentExecutorService {
           completedAt: ['completed', 'failed'].includes(status) ? new Date() : null,
         },
       });
+
+      // If patch deployment completed successfully, resolve asset vulnerabilities
+      if (status === 'completed' && task.assetId && task.deployment.patches) {
+        await this.resolveAssetVulnerabilitiesForPatches(tx, task.assetId, task.deployment.patches);
+      }
 
       // Recalculate deployment counts
       if (previousStatus !== status) {
@@ -687,6 +757,58 @@ class DeploymentExecutorService {
         },
       });
     });
+  }
+
+  /**
+   * Resolve asset vulnerabilities when patches are successfully deployed
+   * Marks AssetVulnerability records as "Patched" for CVEs covered by the patches
+   */
+  private async resolveAssetVulnerabilitiesForPatches(
+    tx: Prisma.TransactionClient,
+    assetId: string,
+    patches: { cveNumbers: string[] }[]
+  ): Promise<void> {
+    // Collect all CVE numbers from the deployed patches
+    const allCves: string[] = [];
+    for (const patch of patches) {
+      if (patch.cveNumbers && patch.cveNumbers.length > 0) {
+        allCves.push(...patch.cveNumbers);
+      }
+    }
+
+    if (allCves.length === 0) {
+      return; // No CVEs to resolve
+    }
+
+    // Find vulnerabilities matching the CVEs
+    const vulnerabilities = await tx.vulnerability.findMany({
+      where: { cveId: { in: allCves } },
+      select: { id: true, cveId: true },
+    });
+
+    if (vulnerabilities.length === 0) {
+      return; // No matching vulnerabilities in database
+    }
+
+    const vulnerabilityIds = vulnerabilities.map(v => v.id);
+
+    // Update AssetVulnerability records to "Patched"
+    const result = await tx.assetVulnerability.updateMany({
+      where: {
+        assetId,
+        vulnerabilityId: { in: vulnerabilityIds },
+        status: 'Open',
+      },
+      data: {
+        status: 'Patched',
+        resolvedAt: new Date(),
+      },
+    });
+
+    if (result.count > 0) {
+      const cveList = vulnerabilities.map(v => v.cveId).join(', ');
+      console.log(`[Patch Deploy] Resolved ${result.count} vulnerabilities for asset ${assetId}: ${cveList}`);
+    }
   }
 
   /**

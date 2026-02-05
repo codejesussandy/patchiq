@@ -2490,6 +2490,69 @@ export async function getAssetPatches(id: string): Promise<{
     }
   }
 
+  // Determine which patch OS values match this asset's OS
+  const assetOs = (asset.os || '').toLowerCase();
+  const matchingOsValues: (string | null)[] = [null]; // null = cross-platform patches always included
+  if (assetOs.includes('windows')) {
+    matchingOsValues.push('Windows');
+  }
+  if (assetOs.includes('mac') || assetOs.includes('darwin')) {
+    matchingOsValues.push('MacOS');
+  }
+  if (assetOs.includes('ubuntu')) {
+    matchingOsValues.push('Ubuntu', 'Linux');
+  } else if (assetOs.includes('linux') || assetOs.includes('rhel') || assetOs.includes('centos') || assetOs.includes('debian') || assetOs.includes('fedora') || assetOs.includes('suse')) {
+    matchingOsValues.push('Linux');
+  }
+
+  // Find applicable patches that haven't been deployed to this asset
+  const deployedPatchIds = Array.from(patchesMap.keys());
+  const applicablePatches = await prisma.patch.findMany({
+    where: {
+      os: { in: matchingOsValues.filter((v): v is string => v !== null) },
+      ...(deployedPatchIds.length > 0 ? { id: { notIn: deployedPatchIds } } : {}),
+    },
+    select: {
+      id: true,
+      patchId: true,
+      title: true,
+      severity: true,
+      kbNumber: true,
+      releaseDate: true,
+    },
+  });
+
+  // Also include null-OS patches (cross-platform)
+  const crossPlatformPatches = await prisma.patch.findMany({
+    where: {
+      os: null,
+      ...(deployedPatchIds.length > 0 ? { id: { notIn: deployedPatchIds } } : {}),
+    },
+    select: {
+      id: true,
+      patchId: true,
+      title: true,
+      severity: true,
+      kbNumber: true,
+      releaseDate: true,
+    },
+  });
+
+  // Add undeployed applicable patches as "Missing"
+  for (const patch of [...applicablePatches, ...crossPlatformPatches]) {
+    if (!patchesMap.has(patch.id)) {
+      patchesMap.set(patch.id, {
+        id: patch.id,
+        patchId: patch.patchId,
+        name: patch.title,
+        severity: patch.severity?.toUpperCase() || 'UNSPECIFIED',
+        status: 'Missing',
+        kbNumber: patch.kbNumber || undefined,
+        releaseDate: patch.releaseDate?.toISOString() || undefined,
+      });
+    }
+  }
+
   const data = Array.from(patchesMap.values());
 
   // Calculate summary

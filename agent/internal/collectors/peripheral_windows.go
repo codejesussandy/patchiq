@@ -44,19 +44,21 @@ func (c *WindowsPeripheralCollector) Collect() (interface{}, error) {
 func (c *WindowsPeripheralCollector) collectMonitors() []models.Monitor {
 	var monitors []models.Monitor
 
-	// Windows: Use wmic desktopmonitor and PowerShell for more details
-	out, err := exec.Command("wmic", "desktopmonitor", "get", "Name,MonitorManufacturer,ScreenWidth,ScreenHeight,PNPDeviceID", "/format:csv").Output()
+	// Windows: Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_DesktopMonitor | Select-Object Name,MonitorManufacturer,ScreenWidth,ScreenHeight,PNPDeviceID | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-Command", psCmd).Output()
 	if err == nil {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
+			// Parse CSV (fields are quoted)
+			fields := parseCSVLine(line)
 			if len(fields) >= 5 {
 				monitor := models.Monitor{
-					Manufacturer: strings.TrimSpace(fields[2]),
-					Name:         strings.TrimSpace(fields[3]),
+					Name:         strings.TrimSpace(fields[0]),
+					Manufacturer: strings.TrimSpace(fields[1]),
 				}
 
 				if monitor.Name == "" {
@@ -64,13 +66,11 @@ func (c *WindowsPeripheralCollector) collectMonitors() []models.Monitor {
 				}
 
 				// Parse dimensions
-				if w, err := strconv.Atoi(strings.TrimSpace(fields[4])); err == nil && w > 0 {
+				if w, err := strconv.Atoi(strings.TrimSpace(fields[2])); err == nil && w > 0 {
 					monitor.WidthPx = w
 				}
-				if len(fields) >= 6 {
-					if h, err := strconv.Atoi(strings.TrimSpace(fields[5])); err == nil && h > 0 {
-						monitor.HeightPx = h
-					}
+				if h, err := strconv.Atoi(strings.TrimSpace(fields[3])); err == nil && h > 0 {
+					monitor.HeightPx = h
 				}
 				if monitor.WidthPx > 0 && monitor.HeightPx > 0 {
 					monitor.Resolution = strconv.Itoa(monitor.WidthPx) + "x" + strconv.Itoa(monitor.HeightPx)
@@ -82,7 +82,7 @@ func (c *WindowsPeripheralCollector) collectMonitors() []models.Monitor {
 				}
 
 				// Determine connection type from PNP device ID
-				pnpID := strings.ToUpper(strings.TrimSpace(fields[1]))
+				pnpID := strings.ToUpper(strings.TrimSpace(fields[4]))
 				if strings.Contains(pnpID, "HDMI") {
 					monitor.ConnectionType = "HDMI"
 				} else if strings.Contains(pnpID, "DP") || strings.Contains(pnpID, "DISPLAYPORT") {
@@ -130,18 +130,19 @@ func (c *WindowsPeripheralCollector) collectMonitors() []models.Monitor {
 func (c *WindowsPeripheralCollector) collectUSBDevices() []models.USBDevice {
 	var devices []models.USBDevice
 
-	// Windows: Use wmic to get USB devices
-	out, err := exec.Command("wmic", "path", "Win32_PnPEntity", "where", "PNPDeviceID like 'USB%'", "get", "Name,Manufacturer,DeviceID,Status", "/format:csv").Output()
+	// Windows: Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_PnPEntity -Filter "PNPDeviceID like 'USB%'" | Select-Object DeviceID,Manufacturer,Name,Status | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-Command", psCmd).Output()
 	if err == nil {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
+			fields := parseCSVLine(line)
 			if len(fields) >= 4 {
-				deviceID := strings.TrimSpace(fields[1])
-				name := strings.TrimSpace(fields[3])
+				deviceID := strings.TrimSpace(fields[0])
+				name := strings.TrimSpace(fields[2])
 
 				// Skip generic USB hubs unless they have a name
 				if name == "" || name == "USB Root Hub" || strings.Contains(name, "USB Composite Device") {
@@ -150,7 +151,7 @@ func (c *WindowsPeripheralCollector) collectUSBDevices() []models.USBDevice {
 
 				device := models.USBDevice{
 					Name:         name,
-					Manufacturer: strings.TrimSpace(fields[2]),
+					Manufacturer: strings.TrimSpace(fields[1]),
 				}
 
 				// Extract VID and PID from device ID (e.g., USB\VID_046D&PID_C52B)
@@ -193,30 +194,31 @@ func (c *WindowsPeripheralCollector) collectUSBDevices() []models.USBDevice {
 func (c *WindowsPeripheralCollector) collectPrinters() []models.Printer {
 	var printers []models.Printer
 
-	// Windows: Use wmic printer
-	out, err := exec.Command("wmic", "printer", "get", "Name,DriverName,PortName,Default,PrinterStatus,Local,Network", "/format:csv").Output()
+	// Windows: Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_Printer | Select-Object Default,DriverName,Local,Network,Name,PortName,PrinterStatus | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-Command", psCmd).Output()
 	if err == nil {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
+			fields := parseCSVLine(line)
 			if len(fields) >= 7 {
 				printer := models.Printer{
-					Name:   strings.TrimSpace(fields[5]),
-					Driver: strings.TrimSpace(fields[2]),
+					Name:   strings.TrimSpace(fields[4]),
+					Driver: strings.TrimSpace(fields[1]),
 				}
 
 				// Check if default
-				if strings.ToLower(strings.TrimSpace(fields[1])) == "true" {
+				if strings.ToLower(strings.TrimSpace(fields[0])) == "true" {
 					printer.IsDefault = true
 				}
 
 				// Determine connection type
-				isLocal := strings.ToLower(strings.TrimSpace(fields[3])) == "true"
-				isNetwork := strings.ToLower(strings.TrimSpace(fields[4])) == "true"
-				portName := strings.TrimSpace(fields[6])
+				isLocal := strings.ToLower(strings.TrimSpace(fields[2])) == "true"
+				isNetwork := strings.ToLower(strings.TrimSpace(fields[3])) == "true"
+				portName := strings.TrimSpace(fields[5])
 
 				if isNetwork {
 					printer.ConnectionType = "Network"
@@ -231,7 +233,7 @@ func (c *WindowsPeripheralCollector) collectPrinters() []models.Printer {
 				}
 
 				// Parse printer status (0 = Ready, 1 = Paused, etc.)
-				statusCode := strings.TrimSpace(fields[7])
+				statusCode := strings.TrimSpace(fields[6])
 				switch statusCode {
 				case "0", "1":
 					printer.Status = "Ready"
@@ -260,19 +262,20 @@ func (c *WindowsPeripheralCollector) collectPrinters() []models.Printer {
 func (c *WindowsPeripheralCollector) collectAudioDevices() []models.AudioDevice {
 	var devices []models.AudioDevice
 
-	// Windows: Use wmic sounddev for audio devices
-	out, err := exec.Command("wmic", "sounddev", "get", "Name,Manufacturer,Status", "/format:csv").Output()
+	// Windows: Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_SoundDevice | Select-Object Manufacturer,Name,Status | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-Command", psCmd).Output()
 	if err == nil {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
+			fields := parseCSVLine(line)
 			if len(fields) >= 3 {
 				device := models.AudioDevice{
-					Manufacturer: strings.TrimSpace(fields[1]),
-					Name:         strings.TrimSpace(fields[2]),
+					Manufacturer: strings.TrimSpace(fields[0]),
+					Name:         strings.TrimSpace(fields[1]),
 					Type:         "Output", // Default to output, Windows doesn't distinguish easily
 				}
 
@@ -308,12 +311,6 @@ func (c *WindowsPeripheralCollector) collectAudioDevices() []models.AudioDevice 
 				}
 			}
 		}
-	}
-
-	// Also get playback/recording devices via PowerShell for better accuracy
-	if psOut, err := exec.Command("powershell", "-Command", "Get-WmiObject Win32_SoundDevice | Select-Object Name, Manufacturer | Format-List").Output(); err == nil {
-		// Just use this to enhance existing data if needed
-		_ = psOut
 	}
 
 	return devices
@@ -385,18 +382,19 @@ func (c *WindowsPeripheralCollector) collectBluetoothDevices() []models.Bluetoot
 		}
 	}
 
-	// Alternative: Use wmic for paired devices
+	// Alternative: Use PowerShell Get-CimInstance for paired devices (replaces deprecated wmic)
 	if len(devices) == 0 {
-		out, err := exec.Command("wmic", "path", "Win32_PnPEntity", "where", "PNPDeviceID like 'BTHENUM%'", "get", "Name,PNPDeviceID", "/format:csv").Output()
+		psCmd := `Get-CimInstance Win32_PnPEntity -Filter "PNPDeviceID like 'BTHENUM%'" | Select-Object Name,PNPDeviceID | ConvertTo-Csv -NoTypeInformation`
+		out, err := exec.Command("powershell", "-Command", psCmd).Output()
 		if err == nil {
 			lines := strings.Split(string(out), "\n")
 			for i, line := range lines {
-				if i == 0 || strings.TrimSpace(line) == "" {
+				if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 					continue
 				}
-				fields := strings.Split(line, ",")
+				fields := parseCSVLine(line)
 				if len(fields) >= 2 {
-					name := strings.TrimSpace(fields[1])
+					name := strings.TrimSpace(fields[0])
 					if name != "" && !strings.Contains(strings.ToLower(name), "bluetooth") {
 						device := models.BluetoothDevice{
 							Name:   name,

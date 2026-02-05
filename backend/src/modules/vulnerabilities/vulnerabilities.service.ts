@@ -235,7 +235,13 @@ export class VulnerabilitiesService {
       throw new NotFoundError('Vulnerability not found');
     }
 
-    return this.transformVulnerabilityDetails(vulnerability);
+    // Fetch related patches via PatchVulnerability join table
+    const relatedPatches = await prisma.patchVulnerability.findMany({
+      where: { cveNumber: vulnerability.cveId },
+      include: { patch: { select: { id: true, title: true, severity: true, patchId: true } } },
+    });
+
+    return this.transformVulnerabilityDetails(vulnerability, relatedPatches);
   }
 
   /**
@@ -759,7 +765,7 @@ export class VulnerabilitiesService {
       data: {
         type: 'vulnerability_scan',
         name: `Vulnerability Scan - ${data.scope === 'all' ? 'All Endpoints' : 'Selected Endpoints'}`,
-        status: 'pending',
+        status: 'running',
         payload: {
           scope: data.scope,
           endpointIds: data.endpointIds || [],
@@ -778,11 +784,92 @@ export class VulnerabilitiesService {
       },
     });
 
+    // Execute the scan in background (non-blocking)
+    this.executeVulnerabilityScan(job.id, data.scope, data.endpointIds).catch((err) => {
+      console.error(`[Vulnerability Scan] Job ${job.id} failed:`, err);
+    });
+
     return {
       jobId: job.id,
       status: 'initiated',
       message: 'Vulnerability scan started',
     };
+  }
+
+  /**
+   * Execute vulnerability scan for assets
+   */
+  private async executeVulnerabilityScan(
+    jobId: string,
+    scope: 'all' | 'selected',
+    endpointIds?: string[]
+  ) {
+    const { cveDatabase } = await import('@shared/services/cve-database.service');
+
+    try {
+      // Get assets to scan
+      let assetIds: string[] = [];
+
+      if (scope === 'all') {
+        // Scan all assets that have agents (Agent → Asset relationship)
+        const agents = await prisma.agent.findMany({
+          where: { assetId: { not: null } },
+          select: { assetId: true },
+        });
+        assetIds = agents.filter((a) => a.assetId).map((a) => a.assetId as string);
+      } else if (endpointIds && endpointIds.length > 0) {
+        // endpointIds are agent IDs - get their assets
+        const agents = await prisma.agent.findMany({
+          where: { id: { in: endpointIds } },
+          select: { assetId: true },
+        });
+        assetIds = agents.filter((a) => a.assetId).map((a) => a.assetId as string);
+      }
+
+      console.log(`[Vulnerability Scan] Job ${jobId}: Scanning ${assetIds.length} assets`);
+
+      // Scan each asset
+      let scannedCount = 0;
+      let vulnerabilitiesFound = 0;
+
+      for (const assetId of assetIds) {
+        try {
+          const vulns = await cveDatabase.checkAssetVulnerabilities(assetId);
+          vulnerabilitiesFound += vulns.length;
+          scannedCount++;
+        } catch (err) {
+          console.error(`[Vulnerability Scan] Failed to scan asset ${assetId}:`, err);
+        }
+      }
+
+      // Mark job as completed
+      await prisma.job.update({
+        where: { id: jobId },
+        data: {
+          status: 'completed',
+          completedAt: new Date(),
+          result: {
+            assetsScanned: scannedCount,
+            vulnerabilitiesFound,
+          },
+        },
+      });
+
+      console.log(
+        `[Vulnerability Scan] Job ${jobId} completed: ${scannedCount} assets scanned, ${vulnerabilitiesFound} vulnerabilities found`
+      );
+    } catch (error) {
+      // Mark job as failed
+      await prisma.job.update({
+        where: { id: jobId },
+        data: {
+          status: 'failed',
+          completedAt: new Date(),
+          result: { error: String(error) },
+        },
+      });
+      throw error;
+    }
   }
 
   /**
@@ -864,38 +951,43 @@ export class VulnerabilitiesService {
   /**
    * Transform vulnerability for detailed response
    */
-  private transformVulnerabilityDetails(vuln: {
-    id: string;
-    cveId: string;
-    title: string;
-    description: string | null;
-    severity: string;
-    epss: number | null;
-    riskScore: number | null;
-    cvss3BaseScore: number | null;
-    cvss2BaseScore: number | null;
-    cvss3AttackVector: string | null;
-    cvss3AttackComplexity: string | null;
-    cvss3PrivilegesRequired: string | null;
-    cvss3Scope: string | null;
-    cvss3Confidentiality: string | null;
-    cvss3Integrity: string | null;
-    cvss3Availability: string | null;
-    cvss3ImpactScore: number | null;
-    cvss3VectorString: string | null;
-    cvss2Severity: string | null;
-    exploitable: boolean;
-    isZeroDay: boolean;
-    publishedDate: Date | null;
-    fixRecommendation: string | null;
-    mitreTactic: string | null;
-    mitreTechnique: string | null;
-    mitreSubTechnique: string | null;
-    mitreDescription: string | null;
-    affectedAssets: { id: string; asset: { id: string; name: string } }[];
-    affectedSoftware: { id: string; name: string; version: string | null; vendor: string | null }[];
-    references: { url: string; source: string | null }[];
-  }) {
+  private transformVulnerabilityDetails(
+    vuln: {
+      id: string;
+      cveId: string;
+      title: string;
+      description: string | null;
+      severity: string;
+      epss: number | null;
+      riskScore: number | null;
+      cvss3BaseScore: number | null;
+      cvss2BaseScore: number | null;
+      cvss3AttackVector: string | null;
+      cvss3AttackComplexity: string | null;
+      cvss3PrivilegesRequired: string | null;
+      cvss3Scope: string | null;
+      cvss3Confidentiality: string | null;
+      cvss3Integrity: string | null;
+      cvss3Availability: string | null;
+      cvss3ImpactScore: number | null;
+      cvss3VectorString: string | null;
+      cvss2Severity: string | null;
+      exploitable: boolean;
+      isZeroDay: boolean;
+      patchAvailable?: boolean;
+      publishedDate: Date | null;
+      lastModified: Date | null;
+      fixRecommendation: string | null;
+      mitreTactic: string | null;
+      mitreTechnique: string | null;
+      mitreSubTechnique: string | null;
+      mitreDescription: string | null;
+      affectedAssets: { id: string; detectedAt: Date; asset: { id: string; name: string } }[];
+      affectedSoftware: { id: string; name: string; version: string | null; vendor: string | null }[];
+      references: { url: string; source: string | null }[];
+    },
+    relatedPatches: { patch: { id: string; title: string; severity: string | null; patchId: string } }[] = [],
+  ) {
     return {
       id: vuln.id,
       cve: vuln.cveId,
@@ -927,7 +1019,10 @@ export class VulnerabilitiesService {
       endpoints: vuln.affectedAssets.length,
       affectedSoftwares: vuln.affectedSoftware.length,
       published: vuln.publishedDate ? this.formatDate(vuln.publishedDate) : '',
+      lastModified: vuln.lastModified ? this.formatDate(vuln.lastModified) : null,
+      detectedAt: vuln.affectedAssets.length > 0 ? this.formatDate(vuln.affectedAssets[0].detectedAt) : null,
       isZeroDay: vuln.isZeroDay,
+      patchAvailable: vuln.patchAvailable ?? false,
       references: vuln.references.map((r) => ({
         url: r.url,
         source: r.source || 'Unknown',
@@ -941,12 +1036,61 @@ export class VulnerabilitiesService {
             description: vuln.mitreDescription,
           }
         : null,
+      relatedPatches: relatedPatches.map((pv) => ({
+        id: pv.patch.id,
+        title: pv.patch.title,
+        patchId: pv.patch.patchId,
+        severity: pv.patch.severity || '',
+      })),
     };
   }
 
   /**
    * Format date to match frontend expected format
    */
+  /**
+   * Suggest CVEs for a given software name.
+   * Searches VulnerabilitySoftware by name/cpeProduct and returns unpatched CVEs.
+   */
+  async suggestCvesForSoftware(params: { software: string; vendor?: string }): Promise<Array<{
+    cveId: string;
+    severity: string;
+    description: string;
+  }>> {
+    const orConditions: Prisma.VulnerabilitySoftwareWhereInput[] = [
+      { name: { contains: params.software, mode: 'insensitive' } },
+      { cpeProduct: { contains: params.software, mode: 'insensitive' } },
+    ];
+    if (params.vendor) {
+      orConditions.push({ cpeVendor: { contains: params.vendor, mode: 'insensitive' } });
+    }
+
+    const softwareMatches = await prisma.vulnerabilitySoftware.findMany({
+      where: { OR: orConditions },
+      select: { vulnerabilityId: true },
+      distinct: ['vulnerabilityId'],
+      take: 50,
+    });
+
+    if (softwareMatches.length === 0) return [];
+
+    const vulns = await prisma.vulnerability.findMany({
+      where: {
+        id: { in: softwareMatches.map((s) => s.vulnerabilityId) },
+        patchAvailable: false,
+      },
+      select: { cveId: true, severity: true, description: true },
+      orderBy: { severity: 'asc' },
+      take: 20,
+    });
+
+    return vulns.map((v) => ({
+      cveId: v.cveId,
+      severity: v.severity || 'UNKNOWN',
+      description: v.description || '',
+    }));
+  }
+
   private formatDate(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');

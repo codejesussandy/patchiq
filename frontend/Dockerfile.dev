@@ -13,7 +13,7 @@ RUN npm install
 COPY . .
 
 # Expose Vite's port
-EXPOSE 4001
+EXPOSE 5001
 
 # Run Vite dev server with host binding for Docker
 # --host exposes to 0.0.0.0 so Docker can forward the port

@@ -37,6 +37,13 @@ router.get('/endpoints', controller.getEndpointVulnerabilities);
 router.get('/network', controller.getNetworkVulnerabilities);
 
 // ============================================
+// CVE Suggestions for Patch Creation
+// ============================================
+
+// GET /v1/vulnerabilities/cve-suggest - Suggest CVEs for a software name
+router.get('/cve-suggest', controller.suggestCvesForSoftware);
+
+// ============================================
 // CPE Correlation & Unmatched Software
 // ============================================
 

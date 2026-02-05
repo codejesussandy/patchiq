@@ -26,7 +26,6 @@ import type {
   TestProxyServerInput,
   UpdateMailServerInput,
   TestMailServerInput,
-  AuditLogQueryInput,
   UpdateLicenseInput,
   UpdateVulnerabilityPreferenceInput,
 } from './settings.validators';

@@ -143,7 +143,8 @@ export const reportsService = {
    */
   async getTemplates(): Promise<ReportTemplate[]> {
     const response = await api.get('/reports/templates');
-    return response.data;
+    const body = response.data;
+    return Array.isArray(body) ? body : body.data ?? [];
   },
 
   // ============================================

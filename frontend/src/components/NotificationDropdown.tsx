@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Dropdown, Badge, List, Typography, Button, Empty, Spin } from 'antd';
 import {
   BellOutlined,
@@ -48,13 +48,25 @@ export const NotificationDropdown = () => {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const [unreadCount, setUnreadCount] = useState(0);
+  const pollRef = useRef<ReturnType<typeof setInterval>>(null);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const count = await notificationService.getUnreadCount();
+      setUnreadCount(count);
+    } catch {
+      // silently ignore — badge just won't update
+    }
+  }, []);
 
   const fetchNotifications = async () => {
     setLoading(true);
     try {
       const data = await notificationService.getNotifications();
-      setNotifications(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setNotifications(list);
+      setUnreadCount(list.filter((n) => !n.read).length);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
@@ -62,6 +74,16 @@ export const NotificationDropdown = () => {
     }
   };
 
+  // Fetch unread count on mount and poll every 30s
+  useEffect(() => {
+    fetchUnreadCount();
+    pollRef.current = setInterval(fetchUnreadCount, 30_000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [fetchUnreadCount]);
+
+  // Fetch full list when dropdown opens
   useEffect(() => {
     if (open) {
       fetchNotifications();
@@ -75,6 +97,7 @@ export const NotificationDropdown = () => {
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
+      setUnreadCount((c) => Math.max(0, c - 1));
     } catch (error) {
       console.error('Failed to mark as read:', error);
     }
@@ -83,8 +106,10 @@ export const NotificationDropdown = () => {
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      const wasUnread = notifications.find((n) => n.id === id && !n.read);
       await notificationService.deleteNotification(id);
       setNotifications((prev) => prev.filter((n) => n.id !== id));
+      if (wasUnread) setUnreadCount((c) => Math.max(0, c - 1));
     } catch (error) {
       console.error('Failed to delete notification:', error);
     }
@@ -94,6 +119,7 @@ export const NotificationDropdown = () => {
     try {
       await notificationService.markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
     } catch (error) {
       console.error('Failed to mark all as read:', error);
     }
@@ -105,6 +131,7 @@ export const NotificationDropdown = () => {
       setNotifications((prev) =>
         prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
       );
+      setUnreadCount((c) => Math.max(0, c - 1));
     }
     if (notification.link) {
       setOpen(false);

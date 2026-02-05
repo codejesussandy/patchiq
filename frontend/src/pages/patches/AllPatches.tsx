@@ -17,9 +17,6 @@ import {
   Col,
   Steps,
   Upload,
-  Radio,
-  Checkbox,
-  TimePicker,
   List,
   Divider,
 } from 'antd';
@@ -32,13 +29,14 @@ import {
   DeleteOutlined,
   UploadOutlined,
   RocketOutlined,
-  ClockCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { patchService, type Patch, type AffectedSoftware } from '../../services/patch.service';
 import { settingsService } from '../../services/settings.service';
 import { assetService } from '../../services/asset.service';
 import { tagService } from '../../services/tag.service';
+import { agentService, type Agent } from '../../services/agent.service';
+import { vulnerabilityService } from '../../services/vulnerability.service';
 import { SeverityBadge, OSIcon } from '../../components/patches';
 import dayjs from 'dayjs';
 
@@ -93,32 +91,53 @@ export const AllPatches = () => {
   const [deployModalVisible, setDeployModalVisible] = useState(false);
   const [deployForm] = Form.useForm();
   const [deployLoading, setDeployLoading] = useState(false);
-  const [scheduleType, setScheduleType] = useState<'immediate' | 'scheduled'>('immediate');
-  const [deployScope, setDeployScope] = useState<'all' | 'groups' | 'custom'>('all');
 
   // Dynamic option lists
   const [groups, setGroups] = useState<any[]>([]);
   const [endpointsList, setEndpointsList] = useState<any[]>([]);
   const [tags, setTags] = useState<any[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
+
+  // CVE auto-suggest
+  const [cveSuggestions, setCveSuggestions] = useState<Array<{ cveId: string; severity: string; description: string }>>([]);
 
   useEffect(() => {
     fetchPatches();
     const fetchOptions = async () => {
       try {
-        const [groupsData, endpointsData, tagsData] = await Promise.all([
+        const [groupsData, endpointsData, tagsData, agentsData] = await Promise.all([
           settingsService.getComputerGroups(),
           assetService.getAssets(),
           tagService.getTags(),
+          agentService.getAgents(),
         ]);
         setGroups(groupsData);
         setEndpointsList(endpointsData);
         setTags(tagsData);
+        setAgents(agentsData);
       } catch {
         // Silently fail - selects will just be empty
       }
     };
     fetchOptions();
   }, []);
+
+  // Auto-open create form when navigated with ?createPatch=true&cve=CVE-XXXX
+  useEffect(() => {
+    const createPatch = searchParams.get('createPatch');
+    const cve = searchParams.get('cve');
+    const severity = searchParams.get('severity');
+
+    if (createPatch === 'true') {
+      setCreateModalVisible(true);
+      setTimeout(() => {
+        const values: Record<string, unknown> = {};
+        if (cve) values.cveNumbers = [cve];
+        if (severity) values.severity = severity;
+        form.setFieldsValue(values);
+      }, 100);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchPatches = async () => {
     setLoading(true);
@@ -129,6 +148,15 @@ export const AllPatches = () => {
       message.error('Failed to fetch patches');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCveSuggestions = async (software: string, vendor?: string) => {
+    try {
+      const suggestions = await vulnerabilityService.suggestCvesForSoftware(software, vendor);
+      setCveSuggestions(suggestions);
+    } catch {
+      // Silently fail — user can still type CVEs manually
     }
   };
 
@@ -156,6 +184,7 @@ export const AllPatches = () => {
           referenceUrl: values.referenceUrl,
           languagesSupported: values.languagesSupported,
           tags: values.tags,
+          cveNumbers: values.cveNumbers || [],
         });
         message.success('Patch updated successfully');
         setEditModalVisible(false);
@@ -269,39 +298,34 @@ export const AllPatches = () => {
       setDeployLoading(true);
 
       const selectedPatches = getSelectedPatches();
-      
-      // Create deployment payload
+      const targetAgentIds = values.targetAgentIds as string[];
+
+      if (!targetAgentIds || targetAgentIds.length === 0) {
+        message.error('Please select at least one agent');
+        setDeployLoading(false);
+        return;
+      }
+
+      // Create deployment payload matching backend CreatePatchDeploymentOptions
       const deploymentPayload = {
-        name: `Bulk Deployment - ${selectedPatches.length} patches`,
-        type: 'INSTALL' as const,
-        patchIds: selectedRowKeys as string[],
-        scope: deployScope,
-        groupIds: deployScope === 'groups' ? values.groups : [],
-        endpointIds: deployScope === 'custom' ? values.endpoints : [],
-        schedule: scheduleType === 'immediate' 
-          ? { type: 'immediate' }
-          : { 
-              type: 'scheduled',
-              date: values.scheduleDate?.format('YYYY-MM-DD'),
-              time: values.scheduleTime?.format('HH:mm'),
-            },
-        options: {
-          rebootPolicy: values.rebootPolicy || 'if_required',
-          notifyUsers: values.notifyUsers || false,
-          forceRestart: values.forceRestart || false,
-          forceRestartTimeout: values.forceRestartTimeout || 30,
-        },
+        name: values.deploymentName || `Patch Deployment - ${selectedPatches.length} patches`,
+        description: values.description,
+        targetAgentIds,
+        patches: selectedPatches.map(p => ({
+          id: p.id,
+          patchId: p.patchId,
+          kbNumber: p.kbNumber,
+        })),
+        retryCount: values.retryCount || 1,
       };
 
       // Call the deployment API
       await patchService.createDeployment(deploymentPayload);
 
-      message.success(`Deployment created successfully for ${selectedPatches.length} patch(es)`);
+      message.success(`Deployment created successfully for ${selectedPatches.length} patch(es) to ${targetAgentIds.length} agent(s)`);
       setDeployModalVisible(false);
       deployForm.resetFields();
       setSelectedRowKeys([]);
-      setScheduleType('immediate');
-      setDeployScope('all');
 
       // Ask user if they want to navigate to deployed page
       Modal.confirm({
@@ -311,8 +335,8 @@ export const AllPatches = () => {
         cancelText: 'Stay Here',
         onOk: () => navigate('/patches/deployed'),
       });
-    } catch (error) {
-      message.error('Failed to create deployment');
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || 'Failed to create deployment');
     } finally {
       setDeployLoading(false);
     }
@@ -321,8 +345,6 @@ export const AllPatches = () => {
   const handleCancelDeploy = () => {
     setDeployModalVisible(false);
     deployForm.resetFields();
-    setScheduleType('immediate');
-    setDeployScope('all');
   };
 
   const columns: ColumnsType<Patch> = [
@@ -683,6 +705,25 @@ export const AllPatches = () => {
           </Form.Item>
         </Col>
       </Row>
+
+      <Form.Item name="cveNumbers" label="CVE Numbers">
+        <Select
+          mode="tags"
+          placeholder="Enter CVE numbers or select from suggestions"
+          tokenSeparators={[',', ' ']}
+          onFocus={() => {
+            const software = form.getFieldValue('software');
+            const vendor = form.getFieldValue('vendor');
+            if (software) fetchCveSuggestions(software, vendor);
+          }}
+        >
+          {cveSuggestions.map((s) => (
+            <Option key={s.cveId} value={s.cveId}>
+              {s.cveId} ({s.severity}) — {s.description.slice(0, 80)}...
+            </Option>
+          ))}
+        </Select>
+      </Form.Item>
     </Form>
   );
 
@@ -1113,6 +1154,25 @@ export const AllPatches = () => {
               </Form.Item>
             </Col>
           </Row>
+
+          <Form.Item name="cveNumbers" label="CVE Numbers">
+            <Select
+              mode="tags"
+              placeholder="Enter CVE numbers or select from suggestions"
+              tokenSeparators={[',', ' ']}
+              onFocus={() => {
+                const software = editForm.getFieldValue('name');
+                const vendor = editForm.getFieldValue('vendor');
+                if (software) fetchCveSuggestions(software, vendor);
+              }}
+            >
+              {cveSuggestions.map((s) => (
+                <Option key={s.cveId} value={s.cveId}>
+                  {s.cveId} ({s.severity}) — {s.description.slice(0, 80)}...
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
         </Form>
       </Modal>
 
@@ -1228,18 +1288,34 @@ export const AllPatches = () => {
             loading={deployLoading}
             onClick={handleDeploySubmit}
           >
-            {scheduleType === 'immediate' ? 'Deploy Now' : 'Schedule Deployment'}
+            Deploy Now
           </Button>,
         ]}
       >
         <Form form={deployForm} layout="vertical">
+          {/* Deployment Name */}
+          <Form.Item
+            name="deploymentName"
+            label="Deployment Name"
+            initialValue={`Patch Deployment - ${dayjs().format('YYYY-MM-DD HH:mm')}`}
+          >
+            <Input placeholder="Enter deployment name" />
+          </Form.Item>
+
+          <Form.Item
+            name="description"
+            label="Description"
+          >
+            <Input.TextArea rows={2} placeholder="Optional description" />
+          </Form.Item>
+
           {/* Selected Patches Summary */}
           <div style={{ marginBottom: 24 }}>
             <Text strong style={{ display: 'block', marginBottom: 8 }}>Selected Patches:</Text>
-            <div style={{ 
-              maxHeight: 150, 
-              overflowY: 'auto', 
-              border: '1px solid #f0f0f0', 
+            <div style={{
+              maxHeight: 150,
+              overflowY: 'auto',
+              border: '1px solid #f0f0f0',
               borderRadius: 8,
               padding: 12,
               backgroundColor: '#fafafa'
@@ -1251,6 +1327,7 @@ export const AllPatches = () => {
                   <List.Item style={{ padding: '4px 0', border: 'none' }}>
                     <Space>
                       <Text>{patch.software}</Text>
+                      {patch.kbNumber && <Text type="secondary">({patch.kbNumber})</Text>}
                       <SeverityBadge severity={patch.severity} />
                     </Space>
                   </List.Item>
@@ -1261,171 +1338,60 @@ export const AllPatches = () => {
 
           <Divider />
 
-          {/* Deployment Scope */}
-          <Form.Item label="Deployment Scope" required>
-            <Radio.Group 
-              value={deployScope} 
-              onChange={(e) => setDeployScope(e.target.value)}
+          {/* Target Agents */}
+          <Form.Item
+            name="targetAgentIds"
+            label="Target Agents"
+            rules={[{ required: true, message: 'Please select at least one agent' }]}
+            extra={`${agents.filter(a => a.status === 'Connected').length} agents online`}
+          >
+            <Select
+              mode="multiple"
+              placeholder="Select agents to deploy patches to"
               style={{ width: '100%' }}
-            >
-              <Space orientation="vertical" style={{ width: '100%' }}>
-                <Radio value="all">All Endpoints</Radio>
-                <Radio value="groups">Specific Groups</Radio>
-                {deployScope === 'groups' && (
-                  <Form.Item
-                    name="groups"
-                    rules={[{ required: deployScope === 'groups', message: 'Please select at least one group' }]}
-                    style={{ marginBottom: 0, marginLeft: 24 }}
-                  >
-                    <Select
-                      mode="multiple"
-                      placeholder="Select groups"
-                      style={{ width: '100%' }}
-                    >
-                      {groups.map((g) => (
-                        <Option key={g.id} value={g.id}>{g.name}</Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                )}
-                <Radio value="custom">Custom Endpoint Selection</Radio>
-                {deployScope === 'custom' && (
-                  <Form.Item
-                    name="endpoints"
-                    rules={[{ required: deployScope === 'custom', message: 'Please select at least one endpoint' }]}
-                    style={{ marginBottom: 0, marginLeft: 24 }}
-                  >
-                    <Select
-                      mode="multiple"
-                      placeholder="Select endpoints"
-                      style={{ width: '100%' }}
-                    >
-                      {endpointsList.map((e) => (
-                        <Option key={e.id} value={e.id}>{e.hostname || e.name || e.id}</Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                )}
-              </Space>
-            </Radio.Group>
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+              options={agents.map((agent) => ({
+                value: agent.id,
+                label: `${agent.hostname || agent.name} (${agent.os})`,
+                disabled: agent.status !== 'Connected',
+              }))}
+              optionRender={(option) => {
+                const agent = agents.find(a => a.id === option.value);
+                return (
+                  <Space>
+                    <span style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      backgroundColor: agent?.status === 'Connected' ? '#52c41a' : '#ff4d4f',
+                      display: 'inline-block'
+                    }} />
+                    <span>{option.label}</span>
+                    {agent?.status !== 'Connected' && (
+                      <Text type="secondary" style={{ fontSize: 12 }}>(Offline)</Text>
+                    )}
+                  </Space>
+                );
+              }}
+            />
           </Form.Item>
 
-          <Divider />
-
-          {/* Schedule */}
-          <Form.Item label="Schedule" required>
-            <Radio.Group 
-              value={scheduleType} 
-              onChange={(e) => setScheduleType(e.target.value)}
-              style={{ width: '100%' }}
-            >
-              <Space orientation="vertical" style={{ width: '100%' }}>
-                <Radio value="immediate">
-                  <Space>
-                    <RocketOutlined />
-                    Deploy Immediately
-                  </Space>
-                </Radio>
-                <Radio value="scheduled">
-                  <Space>
-                    <ClockCircleOutlined />
-                    Schedule for later
-                  </Space>
-                </Radio>
-                {scheduleType === 'scheduled' && (
-                  <Row gutter={16} style={{ marginLeft: 24, marginTop: 8 }}>
-                    <Col span={12}>
-                      <Form.Item
-                        name="scheduleDate"
-                        rules={[{ required: scheduleType === 'scheduled', message: 'Please select date' }]}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <DatePicker 
-                          style={{ width: '100%' }} 
-                          placeholder="Select date"
-                          disabledDate={(current) => current && current < dayjs().startOf('day')}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item
-                        name="scheduleTime"
-                        rules={[{ required: scheduleType === 'scheduled', message: 'Please select time' }]}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <TimePicker 
-                          style={{ width: '100%' }} 
-                          placeholder="Select time"
-                          format="HH:mm"
-                        />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                )}
-              </Space>
-            </Radio.Group>
-          </Form.Item>
-
-          <Divider />
-
-          {/* Deployment Options */}
-          <Form.Item label="Deployment Options">
-            <Space orientation="vertical" style={{ width: '100%' }}>
-              <Form.Item
-                name="rebootPolicy"
-                label="Reboot Policy"
-                initialValue="if_required"
-                style={{ marginBottom: 12 }}
-              >
-                <Select style={{ width: '100%' }}>
-                  <Option value="if_required">Reboot if required by patch</Option>
-                  <Option value="always">Always reboot after installation</Option>
-                  <Option value="never">Never reboot (may require manual reboot)</Option>
-                  <Option value="prompt_user">Prompt user to reboot</Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                name="notifyUsers"
-                valuePropName="checked"
-                style={{ marginBottom: 8 }}
-              >
-                <Checkbox>Notify users before deployment</Checkbox>
-              </Form.Item>
-
-              <Form.Item
-                name="forceRestart"
-                valuePropName="checked"
-                style={{ marginBottom: 8 }}
-              >
-                <Space>
-                  <Checkbox 
-                    onChange={(e) => {
-                      if (!e.target.checked) {
-                        deployForm.setFieldValue('forceRestartTimeout', undefined);
-                      }
-                    }}
-                  >
-                    Force restart after timeout
-                  </Checkbox>
-                  <Form.Item
-                    name="forceRestartTimeout"
-                    noStyle
-                  >
-                    <Select 
-                      placeholder="Minutes" 
-                      style={{ width: 100 }}
-                      disabled={!deployForm.getFieldValue('forceRestart')}
-                    >
-                      <Option value={15}>15 min</Option>
-                      <Option value={30}>30 min</Option>
-                      <Option value={60}>60 min</Option>
-                      <Option value={120}>2 hours</Option>
-                    </Select>
-                  </Form.Item>
-                </Space>
-              </Form.Item>
-            </Space>
+          {/* Retry Options */}
+          <Form.Item
+            name="retryCount"
+            label="Retry Count"
+            initialValue={1}
+            extra="Number of times to retry failed installations"
+          >
+            <Select style={{ width: 200 }}>
+              <Option value={0}>No retries</Option>
+              <Option value={1}>1 retry</Option>
+              <Option value={2}>2 retries</Option>
+              <Option value={3}>3 retries</Option>
+            </Select>
           </Form.Item>
         </Form>
       </Modal>

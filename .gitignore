@@ -24,7 +24,7 @@ yarn-debug.log*
 
 # Agent build artifacts
 agent/dist/
-agent/patchify-agent
+agent/patchify-agent*
 
 # Test results (root level)
 test-results/

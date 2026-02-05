@@ -14,21 +14,28 @@ import (
 	"github.com/patchify/agent/internal/models"
 )
 
-// DarwinHardwareCollector collects hardware info on macOS and Linux
-type DarwinHardwareCollector struct{}
+// UnixHardwareCollector collects hardware info on macOS and Linux
+type UnixHardwareCollector struct{}
 
-// NewDarwinHardwareCollector creates a new hardware collector for macOS
-func NewDarwinHardwareCollector() *DarwinHardwareCollector {
-	return &DarwinHardwareCollector{}
+// NewUnixHardwareCollector creates a new hardware collector for Unix systems (macOS/Linux)
+func NewUnixHardwareCollector() *UnixHardwareCollector {
+	return &UnixHardwareCollector{}
+}
+
+// Backward compatibility aliases
+type DarwinHardwareCollector = UnixHardwareCollector
+
+func NewDarwinHardwareCollector() *UnixHardwareCollector {
+	return NewUnixHardwareCollector()
 }
 
 // Name returns the collector name
-func (c *DarwinHardwareCollector) Name() string {
+func (c *UnixHardwareCollector) Name() string {
 	return "hardware"
 }
 
 // Collect gathers hardware information
-func (c *DarwinHardwareCollector) Collect() (interface{}, error) {
+func (c *UnixHardwareCollector) Collect() (interface{}, error) {
 	hw := &models.Hardware{
 		CollectedAt: time.Now().UTC().Format(time.RFC3339),
 	}
@@ -59,7 +66,7 @@ func (c *DarwinHardwareCollector) Collect() (interface{}, error) {
 	return hw, nil
 }
 
-func (c *DarwinHardwareCollector) collectSystemIdentity() models.SystemIdentity {
+func (c *UnixHardwareCollector) collectSystemIdentity() models.SystemIdentity {
 	si := models.SystemIdentity{}
 
 	switch runtime.GOOS {
@@ -97,7 +104,7 @@ func (c *DarwinHardwareCollector) collectSystemIdentity() models.SystemIdentity 
 	return si
 }
 
-func (c *DarwinHardwareCollector) collectBIOS() models.BIOS {
+func (c *UnixHardwareCollector) collectBIOS() models.BIOS {
 	bios := models.BIOS{
 		FirmwareType: "UEFI",
 	}
@@ -131,7 +138,7 @@ func (c *DarwinHardwareCollector) collectBIOS() models.BIOS {
 	return bios
 }
 
-func (c *DarwinHardwareCollector) collectProcessor() models.Processor {
+func (c *UnixHardwareCollector) collectProcessor() models.Processor {
 	proc := models.Processor{
 		Architecture: runtime.GOARCH,
 	}
@@ -243,7 +250,7 @@ func (c *DarwinHardwareCollector) collectProcessor() models.Processor {
 	return proc
 }
 
-func (c *DarwinHardwareCollector) collectMemory() models.Memory {
+func (c *UnixHardwareCollector) collectMemory() models.Memory {
 	mem := models.Memory{}
 
 	switch runtime.GOOS {
@@ -360,7 +367,7 @@ func (c *DarwinHardwareCollector) collectMemory() models.Memory {
 	return mem
 }
 
-func (c *DarwinHardwareCollector) collectStorageDrives() []models.StorageDrive {
+func (c *UnixHardwareCollector) collectStorageDrives() []models.StorageDrive {
 	var drives []models.StorageDrive
 
 	switch runtime.GOOS {
@@ -531,7 +538,7 @@ func (c *DarwinHardwareCollector) collectStorageDrives() []models.StorageDrive {
 	return drives
 }
 
-func (c *DarwinHardwareCollector) collectBattery() *models.Battery {
+func (c *UnixHardwareCollector) collectBattery() *models.Battery {
 	switch runtime.GOOS {
 	case "darwin":
 		// macOS battery info
@@ -652,7 +659,7 @@ func (c *DarwinHardwareCollector) collectBattery() *models.Battery {
 	}
 }
 
-func (c *DarwinHardwareCollector) collectGraphicsAdapters() []models.GraphicsAdapter {
+func (c *UnixHardwareCollector) collectGraphicsAdapters() []models.GraphicsAdapter {
 	var adapters []models.GraphicsAdapter
 
 	switch runtime.GOOS {

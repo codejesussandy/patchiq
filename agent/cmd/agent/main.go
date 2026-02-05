@@ -25,13 +25,13 @@ var (
 func main() {
 	// Parse command line flags
 	configPath := flag.String("config", "", "Path to config file")
-	port := flag.Int("port", 4003, "Web UI port")
+	port := flag.Int("port", 5003, "Web UI port")
 	// Default server URL from environment variable or use localhost
 	defaultServerURL := os.Getenv("PATCHIQ_SERVER_URL")
 	if defaultServerURL == "" {
-		defaultServerURL = "http://localhost:4001/api"
+		defaultServerURL = "http://localhost:5001/api"
 	}
-	serverURL := flag.String("server", defaultServerURL, "Backend server URL (e.g., http://your-server:4001/api)")
+	serverURL := flag.String("server", defaultServerURL, "Backend server URL (e.g., http://your-server:5001/api)")
 	showVersion := flag.Bool("version", false, "Show version")
 	noBackend := flag.Bool("no-backend", false, "Disable backend communication (local mode)")
 	setup := flag.Bool("setup", false, "Run interactive setup wizard")
@@ -247,7 +247,7 @@ func runSetupWizard() {
 	fmt.Println("\nTo start the agent, run:")
 	fmt.Println("  ./patchify-agent")
 	fmt.Println("\nOr to start with a different server:")
-	fmt.Println("  ./patchify-agent --server http://your-server:4001/api")
+	fmt.Println("  ./patchify-agent --server http://your-server:5001/api")
 }
 
 func parseInt(s string) (int, error) {

@@ -1,0 +1,15 @@
+{
+  "serverUrl": "http://localhost:5001/api",
+  "webUiPort": 5003,
+  "enableWebUi": true,
+  "heartbeatIntervalSeconds": 60,
+  "inventoryIntervalSeconds": 21600,
+  "telemetryIntervalSeconds": 60,
+  "collectHardware": true,
+  "collectSoftware": true,
+  "collectNetwork": true,
+  "collectSecurity": true,
+  "collectPeripherals": true,
+  "collectTelemetry": true,
+  "logLevel": "info"
+}

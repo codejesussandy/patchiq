@@ -1,5 +1,4 @@
 import https from 'https';
-import http from 'http';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
@@ -58,8 +57,6 @@ export async function testConnection(config: ProxyConfig): Promise<ProxyTestResu
       const agent = createProxyAgent(config);
 
       // Use httpbin.org to test the proxy (returns the requesting IP)
-      const testUrl = 'https://httpbin.org/ip';
-
       const options = {
         hostname: 'httpbin.org',
         port: 443,

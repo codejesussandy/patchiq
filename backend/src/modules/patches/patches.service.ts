@@ -42,6 +42,9 @@ export async function listPatches(params: PatchListQuery) {
   const [patches, total] = await Promise.all([
     prisma.patch.findMany({
       where,
+      include: {
+        bundle: true, // Include bundle info for hub-centric deployments
+      },
       orderBy: params.sort
         ? { [params.sort]: params.order }
         : { createdAt: 'desc' },
@@ -57,10 +60,11 @@ export async function getPatchById(id: string) {
   const patch = await prisma.patch.findUnique({
     where: { id },
     include: {
+      bundle: true,           // NEW: Preferred bundle storage
       affectedProducts: true,
-      fileDetails: true,
+      fileDetails: true,      // @deprecated - kept for backwards compatibility
       vulnerabilities: true,
-      patchEndpoints: true,
+      patchEndpoints: true,   // @deprecated - kept for backwards compatibility
     },
   });
 
@@ -101,6 +105,9 @@ export async function createPatch(data: CreatePatchInput) {
     },
   });
 
+  // Link patch to vulnerabilities via CVE numbers
+  await updateVulnerabilityPatchStatus(patch.id, patch.cveNumbers);
+
   return transformPatch(patch);
 }
 
@@ -110,6 +117,10 @@ export async function updatePatch(id: string, data: UpdatePatchInput) {
   if (!existing) {
     throw new NotFoundError('Patch not found');
   }
+
+  // Track CVE changes for vulnerability linking
+  const oldCves = existing.cveNumbers || [];
+  const newCves = data.cveNumbers !== undefined ? data.cveNumbers : oldCves;
 
   const patch = await prisma.patch.update({
     where: { id },
@@ -122,8 +133,23 @@ export async function updatePatch(id: string, data: UpdatePatchInput) {
       testStatus: data.testStatus,
       approvalStatus: data.approvalStatus,
       tags: data.tags,
+      cveNumbers: data.cveNumbers,
     },
   });
+
+  // Handle CVE changes for vulnerability linking
+  if (data.cveNumbers !== undefined) {
+    // Find CVEs that were removed
+    const removedCves = oldCves.filter(cve => !newCves.includes(cve));
+    // Find CVEs that were added
+    const addedCves = newCves.filter(cve => !oldCves.includes(cve));
+
+    // Revert patchAvailable for removed CVEs (if no other patch covers them)
+    await revertVulnerabilityPatchStatus(id, removedCves);
+
+    // Set patchAvailable for added CVEs
+    await updateVulnerabilityPatchStatus(id, addedCves);
+  }
 
   return transformPatch(patch);
 }
@@ -135,7 +161,11 @@ export async function deletePatch(id: string) {
     throw new NotFoundError('Patch not found');
   }
 
+  // Delete the patch first
   await prisma.patch.delete({ where: { id } });
+
+  // Revert patchAvailable for CVEs if no other patch covers them
+  await revertVulnerabilityPatchStatus(id, existing.cveNumbers || []);
 
   return { success: true };
 }
@@ -1007,6 +1037,81 @@ export async function deleteZeroTouchConfig(id: string) {
 }
 
 // ============================================
+// Vulnerability Linking
+// ============================================
+
+/**
+ * Update patchAvailable flag on vulnerabilities when a patch is created/updated.
+ * This links patches to vulnerabilities via CVE numbers.
+ */
+async function updateVulnerabilityPatchStatus(patchId: string, cveNumbers: string[]) {
+  if (!cveNumbers || cveNumbers.length === 0) return;
+
+  const result = await prisma.vulnerability.updateMany({
+    where: { cveId: { in: cveNumbers } },
+    data: { patchAvailable: true },
+  });
+
+  if (result.count > 0) {
+    console.log(`[Patch-Vuln Link] Marked ${result.count} vulnerabilities as patchAvailable=true for CVEs: ${cveNumbers.join(', ')}`);
+  }
+
+  // Create PatchVulnerability join records so "Related Patches" shows in CVE detail
+  for (const cve of cveNumbers) {
+    const existing = await prisma.patchVulnerability.findFirst({
+      where: { patchId, cveNumber: cve },
+    });
+    if (!existing) {
+      const vuln = await prisma.vulnerability.findUnique({
+        where: { cveId: cve },
+        select: { severity: true, description: true, publishedDate: true },
+      });
+      await prisma.patchVulnerability.create({
+        data: {
+          patchId,
+          cveNumber: cve,
+          severity: vuln?.severity || null,
+          description: vuln?.description || null,
+          publishedDate: vuln?.publishedDate || null,
+        },
+      });
+    }
+  }
+}
+
+/**
+ * Revert patchAvailable flag when a patch is deleted.
+ * Only reverts if no other patch covers the same CVE.
+ */
+async function revertVulnerabilityPatchStatus(patchId: string, cveNumbers: string[]) {
+  if (!cveNumbers || cveNumbers.length === 0) return;
+
+  // Remove PatchVulnerability join records for this patch
+  await prisma.patchVulnerability.deleteMany({
+    where: { patchId, cveNumber: { in: cveNumbers } },
+  });
+
+  for (const cve of cveNumbers) {
+    // Check if any other patch covers this CVE
+    const otherPatch = await prisma.patch.findFirst({
+      where: {
+        cveNumbers: { has: cve },
+        id: { not: patchId },
+      },
+    });
+
+    if (!otherPatch) {
+      // No other patch covers this CVE, set patchAvailable = false
+      await prisma.vulnerability.updateMany({
+        where: { cveId: cve },
+        data: { patchAvailable: false },
+      });
+      console.log(`[Patch-Vuln Link] Reverted patchAvailable=false for CVE: ${cve}`);
+    }
+  }
+}
+
+// ============================================
 // Helper Functions
 // ============================================
 
@@ -1047,6 +1152,8 @@ function transformPatch(patch: any) {
     referenceUrl: patch.referenceUrl,
     rebootRequired: patch.rebootRequired,
     supportUninstallation: patch.supportUninstallation,
+    supportsRollback: patch.supportsRollback || false,
+    patchType: patch.patchType || 'UPDATE',
     languagesSupported: patch.languagesSupported || [],
     tags: patch.tags || [],
     cveNumbers: patch.cveNumbers || [],
@@ -1072,6 +1179,14 @@ function transformPatch(patch: any) {
     rejectionNotes: patch.rejectionNotes,
     createdAt: patch.createdAt.toISOString(),
     updatedAt: patch.updatedAt.toISOString(),
+    // Bundle info (hub-centric deployment)
+    bundle: patch.bundle ? {
+      id: patch.bundle.id,
+      hasBundle: !!patch.bundle.bundleObjectKey,
+      hasScripts: patch.bundle.scriptsIncluded,
+      downloadStatus: patch.bundle.downloadStatus,
+      bundleChecksum: patch.bundle.bundleChecksum,
+    } : null,
   };
 }
 

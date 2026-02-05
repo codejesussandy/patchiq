@@ -61,19 +61,16 @@ func (c *WindowsNetworkCollector) collectNetworkIdentity() models.NetworkIdentit
 	hostname, _ := exec.Command("hostname").Output()
 	identity.Hostname = strings.TrimSpace(string(hostname))
 
-	// Windows: Get computer name and domain info
-	if out, err := exec.Command("wmic", "computersystem", "get", "name", "/value").Output(); err == nil {
-		identity.Hostname = parseWmicValueNetwork(string(out), "Name")
-	}
-	if out, err := exec.Command("wmic", "computersystem", "get", "domain", "/value").Output(); err == nil {
-		domain := parseWmicValueNetwork(string(out), "Domain")
+	// Windows: Get computer name and domain info using PowerShell (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_ComputerSystem | Select-Object Name,Domain,DNSHostName | Format-List`
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output(); err == nil {
+		identity.Hostname = parsePSKeyValue(string(out), "Name")
+		domain := parsePSKeyValue(string(out), "Domain")
 		if domain != "" && domain != "WORKGROUP" {
 			identity.DomainName = domain
 			identity.IsDomainJoined = true
 		}
-	}
-	if out, err := exec.Command("wmic", "computersystem", "get", "dnshostname", "/value").Output(); err == nil {
-		dnsHostname := parseWmicValueNetwork(string(out), "DNSHostName")
+		dnsHostname := parsePSKeyValue(string(out), "DNSHostName")
 		if identity.DomainName != "" {
 			identity.FQDN = dnsHostname + "." + identity.DomainName
 		}
@@ -155,18 +152,21 @@ func (c *WindowsNetworkCollector) collectNetworkAdapters() []models.NetworkAdapt
 }
 
 func (c *WindowsNetworkCollector) enrichAdapterInfoWindows(adapter *models.NetworkAdapter) {
-	// Use wmic to get network adapter details
-	out, err := exec.Command("wmic", "nic", "where", "Name like '%"+adapter.Name+"%'", "get", "speed,netconnectionid", "/format:csv").Output()
+	// Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	// Escape single quotes in adapter name for PowerShell
+	safeName := strings.ReplaceAll(adapter.Name, "'", "''")
+	psCmd := `Get-CimInstance Win32_NetworkAdapter -Filter "Name like '%` + safeName + `%'" | Select-Object NetConnectionID,Speed | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output()
 	if err == nil {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
-			if len(fields) >= 3 {
-				adapter.DisplayName = strings.TrimSpace(fields[1])
-				if speed, err := strconv.ParseInt(strings.TrimSpace(fields[2]), 10, 64); err == nil && speed > 0 {
+			fields := parseCSVLine(line)
+			if len(fields) >= 2 {
+				adapter.DisplayName = strings.TrimSpace(fields[0])
+				if speed, err := strconv.ParseInt(strings.TrimSpace(fields[1]), 10, 64); err == nil && speed > 0 {
 					adapter.SpeedMbps = int(speed / 1000000)
 				}
 			}

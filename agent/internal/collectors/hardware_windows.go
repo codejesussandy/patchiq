@@ -60,23 +60,26 @@ func (c *WindowsHardwareCollector) Collect() (interface{}, error) {
 func (c *WindowsHardwareCollector) collectSystemIdentity() models.SystemIdentity {
 	si := models.SystemIdentity{}
 
-	if out, err := exec.Command("wmic", "computersystem", "get", "manufacturer", "/value").Output(); err == nil {
-		si.Manufacturer = parseWmicValue(string(out), "Manufacturer")
+	// Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_ComputerSystem | Select-Object Manufacturer,Model | Format-List`
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output(); err == nil {
+		si.Manufacturer = parsePSKeyValue(string(out), "Manufacturer")
+		si.Model = parsePSKeyValue(string(out), "Model")
 	} else {
-		log.Printf("[hardware] Failed to get system manufacturer: %v", err)
+		log.Printf("[hardware] Failed to get system info: %v", err)
 	}
-	if out, err := exec.Command("wmic", "computersystem", "get", "model", "/value").Output(); err == nil {
-		si.Model = parseWmicValue(string(out), "Model")
+
+	// Get serial number from BIOS
+	psCmd = `Get-CimInstance Win32_BIOS | Select-Object SerialNumber | Format-List`
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output(); err == nil {
+		si.SerialNumber = parsePSKeyValue(string(out), "SerialNumber")
 	}
-	if out, err := exec.Command("wmic", "bios", "get", "serialnumber", "/value").Output(); err == nil {
-		si.SerialNumber = parseWmicValue(string(out), "SerialNumber")
-	}
-	if out, err := exec.Command("wmic", "csproduct", "get", "uuid", "/value").Output(); err == nil {
-		si.UUID = parseWmicValue(string(out), "UUID")
-	}
-	// Get SKU Number from csproduct
-	if out, err := exec.Command("wmic", "csproduct", "get", "skunumber", "/value").Output(); err == nil {
-		si.SKU = parseWmicValue(string(out), "SKUNumber")
+
+	// Get UUID and SKU from ComputerSystemProduct
+	psCmd = `Get-CimInstance Win32_ComputerSystemProduct | Select-Object UUID,SKUNumber | Format-List`
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output(); err == nil {
+		si.UUID = parsePSKeyValue(string(out), "UUID")
+		si.SKU = parsePSKeyValue(string(out), "SKUNumber")
 	}
 
 	return si
@@ -87,19 +90,21 @@ func (c *WindowsHardwareCollector) collectBIOS() models.BIOS {
 		FirmwareType: "UEFI",
 	}
 
-	if out, err := exec.Command("wmic", "bios", "get", "manufacturer", "/value").Output(); err == nil {
-		bios.Vendor = parseWmicValue(string(out), "Manufacturer")
-	} else {
-		log.Printf("[hardware] Failed to get BIOS vendor: %v", err)
-	}
-	if out, err := exec.Command("wmic", "bios", "get", "smbiosbiosversion", "/value").Output(); err == nil {
-		bios.Version = parseWmicValue(string(out), "SMBIOSBIOSVersion")
-	}
-	if out, err := exec.Command("wmic", "bios", "get", "releasedate", "/value").Output(); err == nil {
-		dateStr := parseWmicValue(string(out), "ReleaseDate")
-		if len(dateStr) >= 8 {
-			bios.ReleaseDate = dateStr[:4] + "-" + dateStr[4:6] + "-" + dateStr[6:8]
+	// Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_BIOS | Select-Object Manufacturer,SMBIOSBIOSVersion,ReleaseDate | Format-List`
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output(); err == nil {
+		bios.Vendor = parsePSKeyValue(string(out), "Manufacturer")
+		bios.Version = parsePSKeyValue(string(out), "SMBIOSBIOSVersion")
+		dateStr := parsePSKeyValue(string(out), "ReleaseDate")
+		// PowerShell returns dates in a readable format, parse it
+		if dateStr != "" {
+			// Try to extract date portion (format may vary)
+			if len(dateStr) >= 10 {
+				bios.ReleaseDate = dateStr[:10]
+			}
 		}
+	} else {
+		log.Printf("[hardware] Failed to get BIOS info: %v", err)
 	}
 
 	return bios
@@ -110,28 +115,22 @@ func (c *WindowsHardwareCollector) collectProcessor() models.Processor {
 		Architecture: "amd64",
 	}
 
-	if out, err := exec.Command("wmic", "cpu", "get", "name", "/value").Output(); err == nil {
-		proc.Name = parseWmicValue(string(out), "Name")
-	} else {
-		log.Printf("[hardware] Failed to get processor name: %v", err)
-	}
-	if out, err := exec.Command("wmic", "cpu", "get", "manufacturer", "/value").Output(); err == nil {
-		proc.Manufacturer = parseWmicValue(string(out), "Manufacturer")
-	}
-	if out, err := exec.Command("wmic", "cpu", "get", "numberofcores", "/value").Output(); err == nil {
-		if cores, err := strconv.Atoi(parseWmicValue(string(out), "NumberOfCores")); err == nil {
+	// Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_Processor | Select-Object Name,Manufacturer,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed | Format-List`
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output(); err == nil {
+		proc.Name = parsePSKeyValue(string(out), "Name")
+		proc.Manufacturer = parsePSKeyValue(string(out), "Manufacturer")
+		if cores, err := strconv.Atoi(parsePSKeyValue(string(out), "NumberOfCores")); err == nil {
 			proc.CoreCount = cores
 		}
-	}
-	if out, err := exec.Command("wmic", "cpu", "get", "numberoflogicalprocessors", "/value").Output(); err == nil {
-		if threads, err := strconv.Atoi(parseWmicValue(string(out), "NumberOfLogicalProcessors")); err == nil {
+		if threads, err := strconv.Atoi(parsePSKeyValue(string(out), "NumberOfLogicalProcessors")); err == nil {
 			proc.ThreadCount = threads
 		}
-	}
-	if out, err := exec.Command("wmic", "cpu", "get", "maxclockspeed", "/value").Output(); err == nil {
-		if speed, err := strconv.Atoi(parseWmicValue(string(out), "MaxClockSpeed")); err == nil {
+		if speed, err := strconv.Atoi(parsePSKeyValue(string(out), "MaxClockSpeed")); err == nil {
 			proc.ClockSpeedMHz = speed
 		}
+	} else {
+		log.Printf("[hardware] Failed to get processor info: %v", err)
 	}
 
 	return proc
@@ -140,8 +139,10 @@ func (c *WindowsHardwareCollector) collectProcessor() models.Processor {
 func (c *WindowsHardwareCollector) collectMemory() models.Memory {
 	mem := models.Memory{}
 
-	if out, err := exec.Command("wmic", "computersystem", "get", "totalphysicalmemory", "/value").Output(); err == nil {
-		if bytes, err := strconv.ParseInt(parseWmicValue(string(out), "TotalPhysicalMemory"), 10, 64); err == nil {
+	// Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_ComputerSystem | Select-Object TotalPhysicalMemory | Format-List`
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output(); err == nil {
+		if bytes, err := strconv.ParseInt(parsePSKeyValue(string(out), "TotalPhysicalMemory"), 10, 64); err == nil {
 			mem.TotalPhysicalGB = float64(bytes) / (1024 * 1024 * 1024)
 		}
 	} else {
@@ -149,26 +150,27 @@ func (c *WindowsHardwareCollector) collectMemory() models.Memory {
 	}
 
 	// Get memory modules
-	if out, err := exec.Command("wmic", "memorychip", "get", "banklabel,capacity,manufacturer,speed,memorytype", "/format:csv").Output(); err == nil {
+	psCmd = `Get-CimInstance Win32_PhysicalMemory | Select-Object BankLabel,Capacity,Manufacturer,Speed,SMBIOSMemoryType | ConvertTo-Csv -NoTypeInformation`
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output(); err == nil {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
+			fields := parseCSVLine(line)
 			if len(fields) >= 5 {
 				module := models.MemoryModule{
-					Slot:         strings.TrimSpace(fields[1]),
-					Manufacturer: strings.TrimSpace(fields[3]),
+					Slot:         strings.TrimSpace(fields[0]),
+					Manufacturer: strings.TrimSpace(fields[2]),
 				}
-				if capacity, err := strconv.ParseInt(strings.TrimSpace(fields[2]), 10, 64); err == nil {
+				if capacity, err := strconv.ParseInt(strings.TrimSpace(fields[1]), 10, 64); err == nil {
 					module.CapacityGB = float64(capacity) / (1024 * 1024 * 1024)
 				}
-				if speed, err := strconv.Atoi(strings.TrimSpace(fields[4])); err == nil {
+				if speed, err := strconv.Atoi(strings.TrimSpace(fields[3])); err == nil {
 					module.SpeedMHz = speed
 				}
-				// Memory type from wmic is numeric, convert common ones
-				memType := strings.TrimSpace(fields[5])
+				// SMBIOSMemoryType: 24=DDR3, 26=DDR4, 34=DDR5
+				memType := strings.TrimSpace(fields[4])
 				switch memType {
 				case "24":
 					module.Type = "DDR3"
@@ -193,34 +195,36 @@ func (c *WindowsHardwareCollector) collectMemory() models.Memory {
 func (c *WindowsHardwareCollector) collectStorageDrives() []models.StorageDrive {
 	var drives []models.StorageDrive
 
-	out, err := exec.Command("wmic", "logicaldisk", "get", "deviceid,drivetype,filesystem,freespace,size,volumename", "/format:csv").Output()
+	// Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_LogicalDisk | Select-Object DeviceID,DriveType,FileSystem,FreeSpace,Size,VolumeName | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output()
 	if err != nil {
 		log.Printf("[hardware] Failed to get storage drives: %v", err)
 	} else {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
+			fields := parseCSVLine(line)
 			if len(fields) >= 6 {
-				driveType := strings.TrimSpace(fields[2])
+				driveType := strings.TrimSpace(fields[1])
 				// Only include local disks (type 3)
 				if driveType != "3" {
 					continue
 				}
 
 				drive := models.StorageDrive{
-					DeviceID:   strings.TrimSpace(fields[1]),
-					MountPoint: strings.TrimSpace(fields[1]),
-					FileSystem: strings.TrimSpace(fields[3]),
-					Name:       strings.TrimSpace(fields[6]),
+					DeviceID:   strings.TrimSpace(fields[0]),
+					MountPoint: strings.TrimSpace(fields[0]),
+					FileSystem: strings.TrimSpace(fields[2]),
+					Name:       strings.TrimSpace(fields[5]),
 				}
 
-				if freeBytes, err := strconv.ParseInt(strings.TrimSpace(fields[4]), 10, 64); err == nil {
+				if freeBytes, err := strconv.ParseInt(strings.TrimSpace(fields[3]), 10, 64); err == nil {
 					drive.FreeSpaceGB = float64(freeBytes) / (1024 * 1024 * 1024)
 				}
-				if totalBytes, err := strconv.ParseInt(strings.TrimSpace(fields[5]), 10, 64); err == nil {
+				if totalBytes, err := strconv.ParseInt(strings.TrimSpace(fields[4]), 10, 64); err == nil {
 					drive.CapacityGB = float64(totalBytes) / (1024 * 1024 * 1024)
 				}
 
@@ -236,15 +240,16 @@ func (c *WindowsHardwareCollector) collectStorageDrives() []models.StorageDrive 
 	}
 
 	// Get physical disk info for drive type
-	if out, err := exec.Command("wmic", "diskdrive", "get", "mediatype,model", "/format:csv").Output(); err == nil {
+	psCmd = `Get-CimInstance Win32_DiskDrive | Select-Object MediaType,Model | ConvertTo-Csv -NoTypeInformation`
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output(); err == nil {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
-			if len(fields) >= 3 {
-				mediaType := strings.ToLower(strings.TrimSpace(fields[1]))
+			fields := parseCSVLine(line)
+			if len(fields) >= 2 {
+				mediaType := strings.ToLower(strings.TrimSpace(fields[0]))
 				for j := range drives {
 					if strings.Contains(mediaType, "ssd") || strings.Contains(mediaType, "solid") {
 						drives[j].Type = "SSD"
@@ -260,22 +265,24 @@ func (c *WindowsHardwareCollector) collectStorageDrives() []models.StorageDrive 
 }
 
 func (c *WindowsHardwareCollector) collectBattery() *models.Battery {
-	out, err := exec.Command("wmic", "path", "Win32_Battery", "get", "BatteryStatus,EstimatedChargeRemaining,DesignCapacity,FullChargeCapacity", "/format:csv").Output()
+	// Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_Battery | Select-Object BatteryStatus,DesignCapacity,EstimatedChargeRemaining,FullChargeCapacity | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output()
 	if err != nil {
 		return nil
 	}
 
 	lines := strings.Split(string(out), "\n")
 	for i, line := range lines {
-		if i == 0 || strings.TrimSpace(line) == "" {
+		if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 			continue
 		}
-		fields := strings.Split(line, ",")
+		fields := parseCSVLine(line)
 		if len(fields) >= 4 {
 			battery := &models.Battery{Present: true}
 
 			// Battery status: 1=Discharging, 2=AC, 3=Full, 4=Low, 5=Critical
-			status := strings.TrimSpace(fields[1])
+			status := strings.TrimSpace(fields[0])
 			switch status {
 			case "1":
 				battery.ChargingStatus = "Discharging"
@@ -287,13 +294,13 @@ func (c *WindowsHardwareCollector) collectBattery() *models.Battery {
 				battery.ChargingStatus = "Low"
 			}
 
-			if charge, err := strconv.ParseFloat(strings.TrimSpace(fields[3]), 64); err == nil {
+			if charge, err := strconv.ParseFloat(strings.TrimSpace(fields[2]), 64); err == nil {
 				battery.ChargeLevel = charge
 			}
-			if design, err := strconv.Atoi(strings.TrimSpace(fields[2])); err == nil {
+			if design, err := strconv.Atoi(strings.TrimSpace(fields[1])); err == nil {
 				battery.DesignCapacity = design
 			}
-			if full, err := strconv.Atoi(strings.TrimSpace(fields[4])); err == nil {
+			if full, err := strconv.Atoi(strings.TrimSpace(fields[3])); err == nil {
 				battery.CurrentCapacity = full
 			}
 
@@ -310,24 +317,26 @@ func (c *WindowsHardwareCollector) collectBattery() *models.Battery {
 func (c *WindowsHardwareCollector) collectGraphicsAdapters() []models.GraphicsAdapter {
 	var adapters []models.GraphicsAdapter
 
-	out, err := exec.Command("wmic", "path", "win32_videocontroller", "get", "name,adapterram,driverversion,videoprocessor", "/format:csv").Output()
+	// Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	psCmd := `Get-CimInstance Win32_VideoController | Select-Object AdapterRAM,DriverVersion,Name,VideoProcessor | ConvertTo-Csv -NoTypeInformation`
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", psCmd).Output()
 	if err != nil {
 		log.Printf("[hardware] Failed to get graphics adapters: %v", err)
 	} else {
 		lines := strings.Split(string(out), "\n")
 		for i, line := range lines {
-			if i == 0 || strings.TrimSpace(line) == "" {
+			if i == 0 || strings.TrimSpace(line) == "" { // Skip header
 				continue
 			}
-			fields := strings.Split(line, ",")
+			fields := parseCSVLine(line)
 			if len(fields) >= 4 {
 				adapter := models.GraphicsAdapter{
-					Name:          strings.TrimSpace(fields[3]),
-					DriverVersion: strings.TrimSpace(fields[2]),
+					Name:          strings.TrimSpace(fields[2]),
+					DriverVersion: strings.TrimSpace(fields[1]),
 				}
 
 				// Parse adapter RAM (in bytes)
-				if ram, err := strconv.ParseInt(strings.TrimSpace(fields[1]), 10, 64); err == nil && ram > 0 {
+				if ram, err := strconv.ParseInt(strings.TrimSpace(fields[0]), 10, 64); err == nil && ram > 0 {
 					adapter.MemoryMB = int(ram / (1024 * 1024))
 				}
 

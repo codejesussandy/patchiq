@@ -150,9 +150,18 @@ build:agent:
   script:
     - cd agent
     - go mod download
-    - GOOS=linux GOARCH=amd64 go build -o ../artifacts/patchiq-agent-linux-amd64 ./cmd/agent
-    - GOOS=darwin GOARCH=arm64 go build -o ../artifacts/patchiq-agent-darwin-arm64 ./cmd/agent
-    - GOOS=windows GOARCH=amd64 go build -o ../artifacts/patchiq-agent-windows-amd64.exe ./cmd/agent
+    # Build for all platforms
+    - GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../artifacts/patchiq-agent-linux-amd64 ./cmd/agent
+    - GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o ../artifacts/patchiq-agent-darwin-arm64 ./cmd/agent
+    - GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../artifacts/patchiq-agent-windows-amd64.exe ./cmd/agent
+    # Build Windows service
+    - GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../artifacts/patchiq-service-windows-amd64.exe ./cmd/service
+    # Copy installer scripts
+    - mkdir -p ../artifacts/windows-installer
+    - cp installer/windows/Install-PatchIQAgent.ps1 ../artifacts/windows-installer/
+    - cp installer/windows/default-config.json ../artifacts/windows-installer/config.json
+    - cp ../artifacts/patchiq-agent-windows-amd64.exe ../artifacts/windows-installer/patchiq-agent.exe
+    - cp ../artifacts/patchiq-service-windows-amd64.exe ../artifacts/windows-installer/patchiq-service.exe
   artifacts:
     paths:
       - artifacts/
@@ -160,6 +169,7 @@ build:agent:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "full-dev-local"
+    - if: $CI_COMMIT_BRANCH == "full-dev-sandy"
     - changes:
         - agent/**/*
 

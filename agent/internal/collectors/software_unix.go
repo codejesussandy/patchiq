@@ -15,21 +15,28 @@ import (
 	"github.com/patchify/agent/internal/models"
 )
 
-// DarwinSoftwareCollector collects software info on macOS
-type DarwinSoftwareCollector struct{}
+// UnixSoftwareCollector collects software info on macOS and Linux
+type UnixSoftwareCollector struct{}
 
-// NewDarwinSoftwareCollector creates a new software collector for macOS
-func NewDarwinSoftwareCollector() *DarwinSoftwareCollector {
-	return &DarwinSoftwareCollector{}
+// NewUnixSoftwareCollector creates a new software collector for Unix systems (macOS/Linux)
+func NewUnixSoftwareCollector() *UnixSoftwareCollector {
+	return &UnixSoftwareCollector{}
+}
+
+// Backward compatibility aliases
+type DarwinSoftwareCollector = UnixSoftwareCollector
+
+func NewDarwinSoftwareCollector() *UnixSoftwareCollector {
+	return NewUnixSoftwareCollector()
 }
 
 // Name returns the collector name
-func (c *DarwinSoftwareCollector) Name() string {
+func (c *UnixSoftwareCollector) Name() string {
 	return "software"
 }
 
 // Collect gathers software information
-func (c *DarwinSoftwareCollector) Collect() (interface{}, error) {
+func (c *UnixSoftwareCollector) Collect() (interface{}, error) {
 	sw := &models.Software{
 		CollectedAt: time.Now().UTC().Format(time.RFC3339),
 	}
@@ -53,7 +60,7 @@ func (c *DarwinSoftwareCollector) Collect() (interface{}, error) {
 	return sw, nil
 }
 
-func (c *DarwinSoftwareCollector) collectOperatingSystem() models.OperatingSystem {
+func (c *UnixSoftwareCollector) collectOperatingSystem() models.OperatingSystem {
 	osInfo := models.OperatingSystem{
 		Architecture: runtime.GOARCH,
 	}
@@ -168,7 +175,7 @@ func (c *DarwinSoftwareCollector) collectOperatingSystem() models.OperatingSyste
 	return osInfo
 }
 
-func (c *DarwinSoftwareCollector) collectApplications() []models.Application {
+func (c *UnixSoftwareCollector) collectApplications() []models.Application {
 	var apps []models.Application
 
 	switch runtime.GOOS {
@@ -323,7 +330,7 @@ func (c *DarwinSoftwareCollector) collectApplications() []models.Application {
 	return apps
 }
 
-func (c *DarwinSoftwareCollector) collectServices() []models.Service {
+func (c *UnixSoftwareCollector) collectServices() []models.Service {
 	var services []models.Service
 
 	switch runtime.GOOS {
@@ -393,7 +400,7 @@ func (c *DarwinSoftwareCollector) collectServices() []models.Service {
 	return services
 }
 
-func (c *DarwinSoftwareCollector) collectStartupPrograms() []models.StartupProgram {
+func (c *UnixSoftwareCollector) collectStartupPrograms() []models.StartupProgram {
 	var programs []models.StartupProgram
 
 	switch runtime.GOOS {
@@ -471,7 +478,7 @@ func (c *DarwinSoftwareCollector) collectStartupPrograms() []models.StartupProgr
 }
 
 // collectRunningProcesses collects information about all running processes
-func (c *DarwinSoftwareCollector) collectRunningProcesses() []models.RunningProcess {
+func (c *UnixSoftwareCollector) collectRunningProcesses() []models.RunningProcess {
 	var processes []models.RunningProcess
 
 	switch runtime.GOOS {
@@ -485,7 +492,7 @@ func (c *DarwinSoftwareCollector) collectRunningProcesses() []models.RunningProc
 }
 
 // collectRunningProcessesLinux collects process info from /proc filesystem
-func (c *DarwinSoftwareCollector) collectRunningProcessesLinux() []models.RunningProcess {
+func (c *UnixSoftwareCollector) collectRunningProcessesLinux() []models.RunningProcess {
 	var processes []models.RunningProcess
 
 	// Get system boot time for calculating process start times
@@ -671,7 +678,7 @@ func (c *DarwinSoftwareCollector) collectRunningProcessesLinux() []models.Runnin
 }
 
 // collectRunningProcessesDarwin collects process info on macOS
-func (c *DarwinSoftwareCollector) collectRunningProcessesDarwin() []models.RunningProcess {
+func (c *UnixSoftwareCollector) collectRunningProcessesDarwin() []models.RunningProcess {
 	var processes []models.RunningProcess
 
 	// Use ps command to get process info
@@ -747,7 +754,7 @@ func (c *DarwinSoftwareCollector) collectRunningProcessesDarwin() []models.Runni
 }
 
 // detectLicense attempts to detect license information for an application
-func (c *DarwinSoftwareCollector) detectLicense(app *models.Application) *models.SoftwareLicense {
+func (c *UnixSoftwareCollector) detectLicense(app *models.Application) *models.SoftwareLicense {
 	if app.Name == "" {
 		return nil
 	}
@@ -777,7 +784,7 @@ func (c *DarwinSoftwareCollector) detectLicense(app *models.Application) *models
 }
 
 // detectLicenseDarwin detects license info on macOS
-func (c *DarwinSoftwareCollector) detectLicenseDarwin(app *models.Application) *models.SoftwareLicense {
+func (c *UnixSoftwareCollector) detectLicenseDarwin(app *models.Application) *models.SoftwareLicense {
 	license := &models.SoftwareLicense{
 		Type:   "Unknown",
 		Status: "Unknown",
@@ -853,7 +860,7 @@ func (c *DarwinSoftwareCollector) detectLicenseDarwin(app *models.Application) *
 }
 
 // detectLicenseLinux detects license info on Linux
-func (c *DarwinSoftwareCollector) detectLicenseLinux(app *models.Application) *models.SoftwareLicense {
+func (c *UnixSoftwareCollector) detectLicenseLinux(app *models.Application) *models.SoftwareLicense {
 	appNameLower := strings.ToLower(app.Name)
 
 	// Check for JetBrains IDEs (subscription) first

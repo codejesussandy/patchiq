@@ -90,11 +90,15 @@ export const COMMAND_TYPES = {
   SCRIPT_BUNDLE: 'script_bundle',
   SCRIPT_INLINE: 'script_inline',
 
-  // Patch commands
+  // Patch commands (legacy - direct package manager)
   PATCH_INSTALL: 'patch_install',
   PATCH_UNINSTALL: 'patch_uninstall',
   PATCH_LIST: 'patch_list',
   PATCH_INSTALL_ALL: 'patch_install_all',
+
+  // Hub-centric patch commands (script bundle based)
+  HUB_PATCH_INSTALL: 'hub_patch_install',
+  HUB_PATCH_ROLLBACK: 'hub_patch_rollback',
 
   // Utility commands
   CHECK_REBOOT: 'check_reboot_required',

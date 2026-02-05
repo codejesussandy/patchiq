@@ -13,21 +13,28 @@ import (
 	"github.com/patchify/agent/internal/models"
 )
 
-// DarwinPeripheralCollector collects peripheral info on macOS
-type DarwinPeripheralCollector struct{}
+// UnixPeripheralCollector collects peripheral info on macOS and Linux
+type UnixPeripheralCollector struct{}
 
-// NewDarwinPeripheralCollector creates a new peripheral collector for macOS
-func NewDarwinPeripheralCollector() *DarwinPeripheralCollector {
-	return &DarwinPeripheralCollector{}
+// NewUnixPeripheralCollector creates a new peripheral collector for Unix systems (macOS/Linux)
+func NewUnixPeripheralCollector() *UnixPeripheralCollector {
+	return &UnixPeripheralCollector{}
+}
+
+// Backward compatibility aliases
+type DarwinPeripheralCollector = UnixPeripheralCollector
+
+func NewDarwinPeripheralCollector() *UnixPeripheralCollector {
+	return NewUnixPeripheralCollector()
 }
 
 // Name returns the collector name
-func (c *DarwinPeripheralCollector) Name() string {
+func (c *UnixPeripheralCollector) Name() string {
 	return "peripherals"
 }
 
 // Collect gathers peripheral information
-func (c *DarwinPeripheralCollector) Collect() (interface{}, error) {
+func (c *UnixPeripheralCollector) Collect() (interface{}, error) {
 	per := &models.Peripherals{
 		CollectedAt: time.Now().UTC().Format(time.RFC3339),
 	}
@@ -41,7 +48,7 @@ func (c *DarwinPeripheralCollector) Collect() (interface{}, error) {
 	return per, nil
 }
 
-func (c *DarwinPeripheralCollector) collectMonitors() []models.Monitor {
+func (c *UnixPeripheralCollector) collectMonitors() []models.Monitor {
 	var monitors []models.Monitor
 
 	switch runtime.GOOS {
@@ -164,7 +171,7 @@ func (c *DarwinPeripheralCollector) collectMonitors() []models.Monitor {
 	return monitors
 }
 
-func (c *DarwinPeripheralCollector) collectUSBDevices() []models.USBDevice {
+func (c *UnixPeripheralCollector) collectUSBDevices() []models.USBDevice {
 	var devices []models.USBDevice
 
 	switch runtime.GOOS {
@@ -266,7 +273,7 @@ func (c *DarwinPeripheralCollector) collectUSBDevices() []models.USBDevice {
 	return devices
 }
 
-func (c *DarwinPeripheralCollector) collectPrinters() []models.Printer {
+func (c *UnixPeripheralCollector) collectPrinters() []models.Printer {
 	var printers []models.Printer
 
 	switch runtime.GOOS {
@@ -351,7 +358,7 @@ func (c *DarwinPeripheralCollector) collectPrinters() []models.Printer {
 	return printers
 }
 
-func (c *DarwinPeripheralCollector) collectAudioDevices() []models.AudioDevice {
+func (c *UnixPeripheralCollector) collectAudioDevices() []models.AudioDevice {
 	var devices []models.AudioDevice
 
 	switch runtime.GOOS {
@@ -453,7 +460,7 @@ func (c *DarwinPeripheralCollector) collectAudioDevices() []models.AudioDevice {
 	return devices
 }
 
-func (c *DarwinPeripheralCollector) collectBluetoothDevices() []models.BluetoothDevice {
+func (c *UnixPeripheralCollector) collectBluetoothDevices() []models.BluetoothDevice {
 	var devices []models.BluetoothDevice
 
 	switch runtime.GOOS {

@@ -13,21 +13,28 @@ import (
 	"github.com/patchify/agent/internal/models"
 )
 
-// DarwinPowerCollector collects power management info on macOS
-type DarwinPowerCollector struct{}
+// UnixPowerCollector collects power management info on macOS and Linux
+type UnixPowerCollector struct{}
 
-// NewDarwinPowerCollector creates a new power management collector
-func NewDarwinPowerCollector() *DarwinPowerCollector {
-	return &DarwinPowerCollector{}
+// NewUnixPowerCollector creates a new power management collector for Unix systems (macOS/Linux)
+func NewUnixPowerCollector() *UnixPowerCollector {
+	return &UnixPowerCollector{}
+}
+
+// Backward compatibility aliases
+type DarwinPowerCollector = UnixPowerCollector
+
+func NewDarwinPowerCollector() *UnixPowerCollector {
+	return NewUnixPowerCollector()
 }
 
 // Name returns the collector name
-func (c *DarwinPowerCollector) Name() string {
+func (c *UnixPowerCollector) Name() string {
 	return "power"
 }
 
 // Collect gathers power management information
-func (c *DarwinPowerCollector) Collect() (interface{}, error) {
+func (c *UnixPowerCollector) Collect() (interface{}, error) {
 	pm := &models.PowerManagement{
 		CollectedAt: time.Now().UTC().Format(time.RFC3339),
 	}
@@ -41,7 +48,7 @@ func (c *DarwinPowerCollector) Collect() (interface{}, error) {
 	return pm, nil
 }
 
-func (c *DarwinPowerCollector) collectPowerPlan() models.PowerPlan {
+func (c *UnixPowerCollector) collectPowerPlan() models.PowerPlan {
 	plan := models.PowerPlan{IsActive: true}
 
 	switch runtime.GOOS {
@@ -120,7 +127,7 @@ func (c *DarwinPowerCollector) collectPowerPlan() models.PowerPlan {
 	return plan
 }
 
-func (c *DarwinPowerCollector) collectSleepSettings() models.SleepSettings {
+func (c *UnixPowerCollector) collectSleepSettings() models.SleepSettings {
 	settings := models.SleepSettings{
 		SleepEnabled:     true,
 		HibernateEnabled: false,
@@ -206,7 +213,7 @@ func (c *DarwinPowerCollector) collectSleepSettings() models.SleepSettings {
 	return settings
 }
 
-func (c *DarwinPowerCollector) collectWakeSettings() models.WakeSettings {
+func (c *UnixPowerCollector) collectWakeSettings() models.WakeSettings {
 	wake := models.WakeSettings{}
 
 	switch runtime.GOOS {
@@ -248,7 +255,7 @@ func (c *DarwinPowerCollector) collectWakeSettings() models.WakeSettings {
 	return wake
 }
 
-func (c *DarwinPowerCollector) collectBatteryPolicies() *models.BatteryPolicies {
+func (c *UnixPowerCollector) collectBatteryPolicies() *models.BatteryPolicies {
 	hasBattery := false
 
 	switch runtime.GOOS {
@@ -312,7 +319,7 @@ func (c *DarwinPowerCollector) collectBatteryPolicies() *models.BatteryPolicies 
 	return policies
 }
 
-func (c *DarwinPowerCollector) collectPowerEvents() []models.PowerEvent {
+func (c *UnixPowerCollector) collectPowerEvents() []models.PowerEvent {
 	var events []models.PowerEvent
 
 	switch runtime.GOOS {

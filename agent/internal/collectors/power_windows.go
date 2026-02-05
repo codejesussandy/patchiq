@@ -121,7 +121,8 @@ func (c *WindowsPowerCollector) collectWakeSettings() models.WakeSettings {
 func (c *WindowsPowerCollector) collectBatteryPolicies() *models.BatteryPolicies {
 	hasBattery := false
 
-	if out, err := exec.Command("wmic", "path", "Win32_Battery", "get", "Status").Output(); err == nil {
+	// Use PowerShell Get-CimInstance (replaces deprecated wmic)
+	if out, err := exec.Command("powershell", "-NoProfile", "-Command", `Get-CimInstance Win32_Battery | Select-Object Status`).Output(); err == nil {
 		if len(strings.TrimSpace(string(out))) > 10 {
 			hasBattery = true
 		}
