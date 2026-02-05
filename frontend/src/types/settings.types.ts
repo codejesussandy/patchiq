@@ -120,6 +120,7 @@ export type MailServerConfig = {
   enableAuthentication: boolean;
   username?: string;
   password?: string;
+  testEmail?: string;
 };
 
 // Proxy Server Configuration Types
@@ -158,7 +159,7 @@ export type LDAPServerConfig = {
   name: string;
   host: string;
   port?: number;
-  fqdn: string;
+  fqdn?: string;
   baseDN?: string;
   username?: string;
   password?: string;

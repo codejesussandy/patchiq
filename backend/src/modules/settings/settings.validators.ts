@@ -234,11 +234,33 @@ export const createLdapConfigSchema = z.object({
   name: z.string().min(1).max(100),
   host: z.string().min(1).max(255),
   port: z.number().int().min(1).max(65535).default(389),
-  baseDn: z.string().min(1).max(255),
-  bindDn: z.string().min(1).max(255),
-  bindPassword: z.string().min(1).max(255),
+  // Support both old field names (baseDn, bindDn, bindPassword) and new ones (baseDN, username, password)
+  baseDn: z.string().min(1).max(255).optional(),
+  baseDN: z.string().min(1).max(255).optional(),
+  bindDn: z.string().min(1).max(255).optional(),
+  username: z.string().min(1).max(255).optional(),
+  bindPassword: z.string().min(1).max(255).optional(),
+  password: z.string().min(1).max(255).optional(),
+  // Additional optional fields from frontend
+  fqdn: z.string().max(255).optional(),
+  groupBase: z.string().max(255).optional(),
+  protocol: z.enum(['LDAP', 'LDAPS']).optional(),
+  timeout: z.number().int().min(0).max(300).optional(),
+  description: z.string().max(500).optional(),
+  enabled: z.boolean().optional(),
+  enableAutoSync: z.boolean().optional(),
+  autoSyncInterval: z.string().max(50).optional(),
   userFilter: z.string().max(500).optional(),
   isActive: z.boolean().default(true),
+}).refine((data) => data.baseDn || data.baseDN, {
+  message: "baseDn or baseDN is required",
+  path: ["baseDn"],
+}).refine((data) => data.bindDn || data.username, {
+  message: "bindDn or username is required",
+  path: ["bindDn"],
+}).refine((data) => data.bindPassword || data.password, {
+  message: "bindPassword or password is required",
+  path: ["bindPassword"],
 });
 
 export const updateLdapConfigSchema = z.object({
@@ -246,8 +268,19 @@ export const updateLdapConfigSchema = z.object({
   host: z.string().min(1).max(255).optional(),
   port: z.number().int().min(1).max(65535).optional(),
   baseDn: z.string().min(1).max(255).optional(),
+  baseDN: z.string().min(1).max(255).optional(),
   bindDn: z.string().min(1).max(255).optional(),
+  username: z.string().min(1).max(255).optional(),
   bindPassword: z.string().min(1).max(255).optional(),
+  password: z.string().min(1).max(255).optional(),
+  fqdn: z.string().max(255).optional().nullable(),
+  groupBase: z.string().max(255).optional().nullable(),
+  protocol: z.enum(['LDAP', 'LDAPS']).optional(),
+  timeout: z.number().int().min(0).max(300).optional().nullable(),
+  description: z.string().max(500).optional().nullable(),
+  enabled: z.boolean().optional(),
+  enableAutoSync: z.boolean().optional(),
+  autoSyncInterval: z.string().max(50).optional().nullable(),
   userFilter: z.string().max(500).optional().nullable(),
   isActive: z.boolean().optional(),
 });
@@ -324,23 +357,51 @@ export type TestProxyServerInput = z.infer<typeof testProxyServerSchema>;
 // Mail Server Validators
 // ============================================
 
+// Backend accepts both frontend field names (smtpHost, smtpPort, protocol, email)
+// and backend field names (host, port, secure, fromAddress)
 export const updateMailServerSchema = z.object({
-  host: z.string().min(1).max(255),
-  port: z.number().int().min(1).max(65535),
-  secure: z.boolean().default(true),
+  // Accept frontend field names
+  smtpHost: z.string().min(1).max(255).optional(),
+  smtpPort: z.coerce.number().int().min(1).max(65535).optional(),
+  protocol: z.enum(['NONE', 'SSL', 'TLS']).optional(),
+  email: z.string().email().optional().nullable(),
+  enableAuthentication: z.boolean().optional(),
+  // Accept backend field names too
+  host: z.string().min(1).max(255).optional(),
+  port: z.coerce.number().int().min(1).max(65535).optional(),
+  secure: z.boolean().optional(),
   username: z.string().max(255).optional().nullable(),
   password: z.string().max(255).optional().nullable(),
   fromAddress: z.string().email().optional().nullable(),
   fromName: z.string().max(100).optional().nullable(),
+}).refine((data) => data.smtpHost || data.host, {
+  message: 'Either smtpHost or host is required',
+  path: ['smtpHost'],
+}).refine((data) => data.smtpPort || data.port, {
+  message: 'Either smtpPort or port is required',
+  path: ['smtpPort'],
 });
 
 export const testMailServerSchema = z.object({
-  host: z.string().min(1).max(255),
-  port: z.number().int().min(1).max(65535),
-  secure: z.boolean().default(true),
+  // Accept frontend field names
+  smtpHost: z.string().min(1).max(255).optional(),
+  smtpPort: z.coerce.number().int().min(1).max(65535).optional(),
+  protocol: z.enum(['NONE', 'SSL', 'TLS']).optional(),
+  email: z.string().email().optional(),
+  enableAuthentication: z.boolean().optional(),
+  // Accept backend field names too
+  host: z.string().min(1).max(255).optional(),
+  port: z.coerce.number().int().min(1).max(65535).optional(),
+  secure: z.boolean().optional(),
   username: z.string().max(255).optional(),
   password: z.string().max(255).optional(),
   testEmail: z.string().email(),
+}).refine((data) => data.smtpHost || data.host, {
+  message: 'Either smtpHost or host is required',
+  path: ['smtpHost'],
+}).refine((data) => data.smtpPort || data.port, {
+  message: 'Either smtpPort or port is required',
+  path: ['smtpPort'],
 });
 
 export type UpdateMailServerInput = z.infer<typeof updateMailServerSchema>;
@@ -539,3 +600,25 @@ export const updatePasswordPolicySchema = z.object({
 });
 
 export type UpdatePasswordPolicyInput = z.infer<typeof updatePasswordPolicySchema>;
+
+// ============================================
+// Branding Validators
+// ============================================
+
+export const updateBrandingSchema = z.object({
+  companyName: z.string().max(200).optional(),
+});
+
+export type UpdateBrandingInput = z.infer<typeof updateBrandingSchema>;
+
+// ============================================
+// Remote Desktop Validators
+// ============================================
+
+export const updateRemoteDesktopSchema = z.object({
+  connectionType: z.enum(['Local', 'Remote']).optional(),
+  remoteSessionIndicator: z.boolean().optional(),
+  userConsent: z.boolean().optional(),
+});
+
+export type UpdateRemoteDesktopInput = z.infer<typeof updateRemoteDesktopSchema>;

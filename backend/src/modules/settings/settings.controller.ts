@@ -872,6 +872,165 @@ export class SettingsController {
       next(error);
     }
   }
+
+  // ============================================
+  // Branding
+  // ============================================
+
+  async getBranding(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.getBranding();
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateBranding(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const logoFile = req.file
+        ? {
+            buffer: req.file.buffer,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+          }
+        : undefined;
+
+      const result = await settingsService.updateBranding(
+        { companyName: req.body.companyName },
+        logoFile
+      );
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================
+  // Risk Score Settings
+  // ============================================
+
+  async getRiskScoreSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.getRiskScoreSettings();
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateRiskScoreSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.updateRiskScoreSettings(req.body);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================
+  // Remote Desktop Settings
+  // ============================================
+
+  async getRemoteDesktopSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.getRemoteDesktopSettings();
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateRemoteDesktopSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.updateRemoteDesktopSettings(req.body);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resetRemoteDesktopSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.resetRemoteDesktopSettings();
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================
+  // Vendor Logos
+  // ============================================
+
+  async listVendorLogos(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.listVendorLogos();
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getVendorLogo(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.getVendorLogo(req.params.id);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createVendorLogo(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.file) {
+        res.status(400).json({ message: 'Logo file is required' });
+        return;
+      }
+
+      const result = await settingsService.createVendorLogo(
+        { name: req.body.name, type: req.body.type },
+        {
+          buffer: req.file.buffer,
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+        }
+      );
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateVendorLogo(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const logoFile = req.file
+        ? {
+            buffer: req.file.buffer,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+          }
+        : undefined;
+
+      const result = await settingsService.updateVendorLogo(
+        req.params.id,
+        { name: req.body.name, type: req.body.type },
+        logoFile
+      );
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteVendorLogo(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await settingsService.deleteVendorLogo(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const settingsController = new SettingsController();

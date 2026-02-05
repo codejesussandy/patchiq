@@ -61,6 +61,7 @@ export const LDAPServerConfiguration = () => {
   const [form] = Form.useForm();
   const [viewForm] = Form.useForm();
   const [filterForm] = Form.useForm();
+  const [testLoading, setTestLoading] = useState(false);
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     pageSize: 20,
     current: 1,
@@ -208,6 +209,24 @@ export const LDAPServerConfiguration = () => {
       fetchLdapConfigs();
     } catch (error) {
       message.error(`Failed to ${editingConfig ? 'update' : 'create'} LDAP server configuration`);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!editingConfig) {
+      message.warning('Please save the configuration first, then test the connection.');
+      return;
+    }
+
+    setTestLoading(true);
+    try {
+      await settingsService.testLDAPServerConfig(editingConfig.id);
+      message.success('LDAP connection test successful!');
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'LDAP connection test failed';
+      message.error(errorMessage);
+    } finally {
+      setTestLoading(false);
     }
   };
 
@@ -480,9 +499,10 @@ export const LDAPServerConfiguration = () => {
           </Button>,
           <Button
             key="test"
-            onClick={() => {
-              message.info('Test connection feature coming soon');
-            }}
+            onClick={handleTestConnection}
+            loading={testLoading}
+            disabled={!editingConfig}
+            title={!editingConfig ? 'Save the configuration first to test' : 'Test LDAP connection'}
           >
             Test
           </Button>,
