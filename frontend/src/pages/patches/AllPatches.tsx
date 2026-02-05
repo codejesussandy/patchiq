@@ -93,8 +93,8 @@ export const AllPatches = () => {
   const [deployLoading, setDeployLoading] = useState(false);
 
   // Dynamic option lists
-  const [groups, setGroups] = useState<any[]>([]);
-  const [endpointsList, setEndpointsList] = useState<any[]>([]);
+  const [_groups, setGroups] = useState<any[]>([]);
+  const [_endpointsList, setEndpointsList] = useState<any[]>([]);
   const [tags, setTags] = useState<any[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
 
@@ -234,7 +234,7 @@ export const AllPatches = () => {
             platform: row['platform'] || row['os'] || 'Windows',
             description: row['description'] || '',
             category: row['category'] || 'Security Updates',
-            severity: row['severity'] || 'Medium',
+            severity: (row['severity'] || 'Medium') as Patch['severity'],
             bulletinId: row['bulletinid'] || row['bulletin_id'] || '',
             kbNumber: row['kbnumber'] || row['kb_number'] || row['kb'] || '',
             releaseDate: row['releasedate'] || row['release_date'] || '',

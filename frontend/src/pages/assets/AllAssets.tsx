@@ -441,11 +441,11 @@ export function AllAssets() {
         key: 'action',
         width: col.width,
          render: (_, record) => {
-           const actionMenuItems = [
+           const actionMenuItems: MenuProps['items'] = [
              {
                key: 'edit',
                label: 'Edit',
-               onClick: (info: { domEvent: React.MouseEvent }) => {
+               onClick: (info) => {
                  info.domEvent.stopPropagation();
                  navigate(`/assets/${record.id}`);
                },
@@ -454,7 +454,7 @@ export function AllAssets() {
                key: 'delete',
                label: 'Delete',
                danger: true,
-               onClick: (info: { domEvent: React.MouseEvent }) => {
+               onClick: (info) => {
                  info.domEvent.stopPropagation();
                  handleDelete(record.id);
                },

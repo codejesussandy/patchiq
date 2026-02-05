@@ -56,8 +56,7 @@ export const CreateReport = () => {
         name: values.name,
         description: values.description || '',
         type: 'vulnerability',
-        downloadFormats: ['pdf'],
-        createdBy: 'Admin',
+        format: 'PDF',
       });
 
       message.success('Report created successfully');

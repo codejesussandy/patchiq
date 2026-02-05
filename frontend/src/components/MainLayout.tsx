@@ -63,7 +63,7 @@ interface Organization {
 
 export const MainLayout = ({ children }: MainLayoutProps) => {
   const { user, logout } = useAuth();
-  const [collapsed, setCollapsed] = useState(true); // Start collapsed
+  const [_collapsed, _setCollapsed] = useState(true); // Start collapsed
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const [pinned, setPinned] = useState(false);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

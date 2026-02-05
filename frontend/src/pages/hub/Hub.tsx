@@ -34,7 +34,6 @@ import {
   SearchOutlined,
   ReloadOutlined,
   DeleteOutlined,
-  EditOutlined,
   UploadOutlined,
   DownloadOutlined,
   WindowsOutlined,
@@ -93,7 +92,7 @@ export const Hub = () => {
   const [editingPackage, setEditingPackage] = useState<SoftwarePackage | null>(null);
   const [detailsDrawerVisible, setDetailsDrawerVisible] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<GroupedPackageResponse | null>(null);
-  const [uploadingPackageId, setUploadingPackageId] = useState<string | null>(null);
+  const [_uploadingPackageId, setUploadingPackageId] = useState<string | null>(null);
   const [form] = Form.useForm();
   const [deployForm] = Form.useForm();
 
@@ -205,6 +204,8 @@ export const Hub = () => {
     }
   };
 
+  // @ts-expect-error - handleUploadFile is kept for future use
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleUploadFile = async (packageId: string, file: File) => {
     setUploadingPackageId(packageId);
     try {

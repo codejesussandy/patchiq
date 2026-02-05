@@ -450,7 +450,7 @@ setup:
 	@test -f .env && echo "  .env exists" || echo "  $(RED).env missing$(NC)"
 	@test -f backend/.env && echo "  backend/.env exists" || echo "  $(RED)backend/.env missing$(NC)"
 	@test -d node_modules && echo "  node_modules installed" || echo "  $(RED)node_modules missing$(NC)"
-	@test -d backend/node_modules/.prisma && echo "  Prisma client generated" || echo "  $(RED)Prisma client missing$(NC)"
+	@(test -d backend/node_modules/.prisma || test -d node_modules/.pnpm/@prisma+client*/node_modules/.prisma) && echo "  Prisma client generated" || echo "  $(RED)Prisma client missing$(NC)"
 	@echo ""
 	@echo "$(GREEN)Setup complete!$(NC) Run 'make dev' to start developing."
 

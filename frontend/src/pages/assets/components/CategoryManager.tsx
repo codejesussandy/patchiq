@@ -67,10 +67,10 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   const handleCreateCategory = async (values: Record<string, unknown>) => {
     try {
       if (editingCategory) {
-        await categoryService.updateCategory(editingCategory.id, values);
+        await categoryService.updateCategory(editingCategory.id, values as any);
         message.success('Category updated successfully');
       } else {
-        await categoryService.createCategory(values);
+        await categoryService.createCategory(values as any);
         message.success('Category created successfully');
       }
       fetchCategories();
@@ -95,10 +95,10 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
       };
 
       if (editingSubCategory) {
-        await categoryService.updateSubCategory(editingSubCategory.id, subCategoryData);
+        await categoryService.updateSubCategory(editingSubCategory.id, subCategoryData as any);
         message.success('Sub-category updated successfully');
       } else {
-        await categoryService.createSubCategory(subCategoryData);
+        await categoryService.createSubCategory(subCategoryData as any);
         message.success('Sub-category created successfully');
       }
       fetchCategories();

@@ -317,7 +317,7 @@ export const SoftwareLicense = () => {
   );
 
   // Type-specific first row of form
-  const renderTypeSpecificFields = (formInstance: typeof form) => {
+  const renderTypeSpecificFields = (_formInstance: typeof form) => {
     if (activeTab === 'software') {
       return (
         <Row gutter={16}>

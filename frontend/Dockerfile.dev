@@ -4,7 +4,7 @@
 FROM node:20-alpine
 
 WORKDIR /app
-RUN corepack enable
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
 # Install dependencies first for better caching
 # Note: pnpm-lock.yaml lives at workspace root, not in frontend/.

@@ -1,7 +1,7 @@
 # Base stage
 FROM node:20-alpine AS base
 WORKDIR /app
-RUN corepack enable
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 # Note: pnpm-lock.yaml lives at workspace root, not in backend/.
 # Docker build context is ./backend so we can't copy the lockfile.
 # The workspace:* dependency on @patchiq/shared-types must be stripped
@@ -28,7 +28,7 @@ RUN pnpm prune --prod
 # Production stage
 FROM node:20-alpine AS production
 WORKDIR /app
-RUN corepack enable
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
