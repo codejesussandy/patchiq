@@ -1,3 +1,6 @@
+// TODO: Align with @patchiq/shared-types when API contracts are finalized
+// Mismatch: agent telemetry types, not DB entities
+
 // Real-Time Telemetry Types
 // Based on contracts/schemas/telemetry.schema.json
 

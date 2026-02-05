@@ -1,3 +1,6 @@
+// TODO: Align with @patchiq/shared-types when API contracts are finalized
+// Mismatch: shared uses string for severity/os; frontend has bundle fields not in shared
+
 export type Patch = {
   id: string;
   software: string;

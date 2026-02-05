@@ -1,3 +1,6 @@
+// TODO: Align with @patchiq/shared-types when API contracts are finalized
+// Mismatch: UI-only aggregation/chart types, no shared equivalents
+
 // Dashboard Types
 
 export interface ExploitabilityBreakdown {
