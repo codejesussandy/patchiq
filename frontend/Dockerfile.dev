@@ -4,10 +4,14 @@
 FROM node:20-alpine
 
 WORKDIR /app
+RUN corepack enable
 
 # Install dependencies first for better caching
-COPY package*.json ./
-RUN npm install
+# Note: pnpm-lock.yaml lives at workspace root, not in frontend/.
+# Strip workspace:* dependency since Docker context is outside the workspace.
+COPY package.json ./
+RUN node -e "const p=require('./package.json'); delete p.dependencies['@patchiq/shared-types']; require('fs').writeFileSync('package.json', JSON.stringify(p, null, 2)+'\n')"
+RUN pnpm install
 
 # Copy source code
 COPY . .
@@ -17,4 +21,4 @@ EXPOSE 5001
 
 # Run Vite dev server with host binding for Docker
 # --host exposes to 0.0.0.0 so Docker can forward the port
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["pnpm", "run", "dev", "--", "--host", "0.0.0.0"]

@@ -5,7 +5,7 @@
 # Configuration: Set PUBLIC_HOST, PUBLIC_PORT, PUBLIC_SCHEME in .env
 # See .env.example for details.
 
-.PHONY: help dev dev-fresh dev-services dev-backend dev-frontend dev-agent stop clean logs logs-backend logs-frontend db-migrate db-seed db-studio db-reset agent-build agent-run agent-install-air test test-backend test-frontend check check-types check-lint check-build check-health check-all install status minio-console api-docs api-endpoints dev-all clean-all preflight
+.PHONY: help setup dev dev-docker dev-fresh dev-services dev-backend dev-frontend dev-agent stop clean logs logs-backend logs-frontend db-migrate db-seed db-studio db-reset agent-build agent-run agent-install-air test test-backend test-frontend check check-types check-lint check-build check-health check-all install status minio-console api-docs api-endpoints dev-all clean-all preflight
 
 # Colors for output
 GREEN := \033[0;32m
@@ -35,7 +35,9 @@ help:
 	@echo "  Public URL: $(GREEN)$(PUBLIC_URL)$(NC)"
 	@echo ""
 	@echo "$(GREEN)Quick Start:$(NC)"
-	@echo "  make dev              - Start full stack (clean ports, rebuild if needed)"
+	@echo "  make setup            - First-time onboarding (env files, deps, prisma)"
+	@echo "  make dev              - Start infra in Docker, backend + frontend via Turbo"
+	@echo "  make dev-docker       - Start full stack in Docker (nginx reverse proxy)"
 	@echo "  make dev-fresh        - Full reset: stop all, remove containers, start fresh"
 	@echo "  make dev-all          - Start everything including agent with hot reload"
 	@echo "  make stop             - Stop all Docker services"
@@ -102,8 +104,21 @@ preflight:
 	@docker ps -aq --filter "name=patchiq" 2>/dev/null | xargs -r docker rm -f 2>/dev/null || true
 	@echo "$(GREEN)Pre-flight checks complete$(NC)"
 
-# Start full stack with Docker (with pre-flight checks)
+# Start infra in Docker, then run backend + frontend via Turborepo
 dev: preflight
+	@echo "$(CYAN)Starting infrastructure services...$(NC)"
+	@$(DOCKER_COMPOSE) up -d postgres redis minio
+	@echo "$(CYAN)Waiting for services to be healthy...$(NC)"
+	@sleep 3
+	@echo ""
+	@echo "$(GREEN)Infrastructure ready! Starting backend + frontend via Turbo...$(NC)"
+	@echo "  Frontend: http://localhost:5173"
+	@echo "  Backend:  http://localhost:5002"
+	@echo ""
+	pnpm turbo dev
+
+# Start full stack with Docker and nginx reverse proxy
+dev-docker: preflight
 	@echo "$(CYAN)Starting PatchIQ development stack...$(NC)"
 	@$(DOCKER_COMPOSE) up -d --remove-orphans
 	@echo ""
@@ -156,8 +171,8 @@ dev-fresh:
 	@echo ""
 	@echo "  Login: admin@patchiq.io / admin123"
 
-# Start everything including agent
-dev-all: dev
+# Start everything including agent (Docker mode)
+dev-all: dev-docker
 	@echo ""
 	@echo "$(CYAN)Starting agent...$(NC)"
 	@cd agent && go build -o patchify-agent ./cmd/agent 2>/dev/null || true
@@ -165,17 +180,14 @@ dev-all: dev
 	@echo "Or run 'make agent-run' to start agent without hot reload"
 
 # Start only infrastructure services (for local backend/frontend development)
-dev-services: preflight
+dev-services:
 	@echo "$(CYAN)Starting infrastructure services (DB, Redis, MinIO, pgAdmin)...$(NC)"
 	@$(DOCKER_COMPOSE) up -d postgres redis minio pgadmin
-	@echo "$(CYAN)Starting Prisma Studio on port 5008...$(NC)"
-	@cd backend && npx prisma studio --schema src/db/prisma/schema.prisma --port 5008 --browser none > /dev/null 2>&1 &
 	@echo "$(GREEN)Infrastructure ready!$(NC)"
-	@echo "  PostgreSQL:    localhost:5004 (for local dev tools)"
-	@echo "  Redis:         localhost:5005 (for local dev tools)"
-	@echo "  MinIO:         localhost:5006 (API), localhost:5007 (Console)"
-	@echo "  pgAdmin:       http://localhost:5009 (admin@patchiq.io / admin123)"
-	@echo "  Prisma Studio: http://localhost:5008"
+	@echo "  PostgreSQL:    localhost:$${POSTGRES_PORT:-5432}"
+	@echo "  Redis:         localhost:$${REDIS_PORT:-6379}"
+	@echo "  MinIO:         localhost:$${MINIO_PORT:-9000} (API), localhost:$${MINIO_CONSOLE_PORT:-9001} (Console)"
+	@echo "  pgAdmin:       (via nginx or docker exec)"
 	@echo ""
 	@echo "  $(YELLOW)Note: These direct ports are only for local dev. In Docker mode, use nginx.$(NC)"
 	@echo ""
@@ -186,12 +198,12 @@ dev-services: preflight
 # Start backend locally (outside Docker, for easier debugging)
 dev-backend:
 	@echo "$(CYAN)Starting backend with hot reload...$(NC)"
-	cd backend && npm run dev
+	cd backend && pnpm run dev
 
 # Start frontend locally (outside Docker, for easier debugging)
 dev-frontend:
 	@echo "$(CYAN)Starting frontend with HMR...$(NC)"
-	cd frontend && npm run dev
+	cd frontend && pnpm run dev
 
 # Start agent with hot reload using Air
 dev-agent:
@@ -222,7 +234,7 @@ db-migrate:
 
 db-seed:
 	@echo "$(CYAN)Seeding database...$(NC)"
-	cd backend && npm run db:seed
+	cd backend && pnpm run db:seed
 
 db-studio:
 	@echo "$(CYAN)Opening Prisma Studio on http://localhost:5008 ...$(NC)"
@@ -230,8 +242,8 @@ db-studio:
 
 db-reset:
 	@echo "$(YELLOW)Resetting database (this will delete all data!)...$(NC)"
-	cd backend && npm run db:push -- --force-reset
-	cd backend && npm run db:seed
+	cd backend && pnpm run db:push -- --force-reset
+	cd backend && pnpm run db:seed
 	@echo "$(GREEN)Database reset complete.$(NC)"
 
 # ===================
@@ -310,11 +322,11 @@ test: test-backend test-frontend
 
 test-backend:
 	@echo "$(CYAN)Running backend tests...$(NC)"
-	cd backend && npm test
+	cd backend && pnpm test
 
 test-frontend:
 	@echo "$(CYAN)Running frontend Playwright tests...$(NC)"
-	cd frontend && npm test
+	cd frontend && pnpm test
 
 # ===================
 # Logs Targets
@@ -344,8 +356,8 @@ clean:
 	@echo "$(GREEN)Cleanup complete.$(NC)"
 
 clean-all: clean
-	@echo "$(YELLOW)Removing node_modules...$(NC)"
-	rm -rf backend/node_modules frontend/node_modules
+	@echo "$(YELLOW)Removing node_modules and build caches...$(NC)"
+	rm -rf backend/node_modules frontend/node_modules shared/node_modules node_modules .turbo
 	@echo "$(GREEN)Full cleanup complete.$(NC)"
 
 # ===================
@@ -360,25 +372,22 @@ check: check-types check-lint
 # Type checking only (fast)
 check-types:
 	@echo "$(CYAN)Running type checks...$(NC)"
-	@echo "  Backend..."
-	@cd backend && npm run build --if-present 2>&1 | head -50 || (echo "$(YELLOW)Backend type errors found$(NC)" && exit 1)
-	@echo "  Frontend..."
-	@cd frontend && npx tsc --noEmit 2>&1 | head -50 || (echo "$(YELLOW)Frontend type errors found$(NC)" && exit 1)
+	pnpm turbo check
 	@echo "$(GREEN)Type checks passed$(NC)"
 
 # Lint checking
 check-lint:
 	@echo "$(CYAN)Running lint checks...$(NC)"
-	@cd frontend && npm run lint 2>&1 | head -30 || true
+	@cd frontend && pnpm run lint 2>&1 | head -30 || true
 	@echo "$(GREEN)Lint checks done$(NC)"
 
 # Build check - ensures everything compiles
 check-build:
 	@echo "$(CYAN)Running build checks...$(NC)"
 	@echo "  Backend..."
-	@cd backend && npm run build 2>&1 || (echo "$(YELLOW)Backend build failed$(NC)" && exit 1)
+	@cd backend && pnpm run build 2>&1 || (echo "$(YELLOW)Backend build failed$(NC)" && exit 1)
 	@echo "  Frontend..."
-	@cd frontend && npm run build 2>&1 || (echo "$(YELLOW)Frontend build failed$(NC)" && exit 1)
+	@cd frontend && pnpm run build 2>&1 || (echo "$(YELLOW)Frontend build failed$(NC)" && exit 1)
 	@echo "  Agent..."
 	@cd agent && go build -o /dev/null ./cmd/agent 2>&1 || (echo "$(YELLOW)Agent build failed$(NC)" && exit 1)
 	@echo "$(GREEN)All builds passed$(NC)"
@@ -416,9 +425,34 @@ check-all: check-types check-lint check-build
 # Install all dependencies
 install:
 	@echo "$(CYAN)Installing dependencies...$(NC)"
-	cd backend && npm install
-	cd frontend && npm install
+	pnpm install
 	@echo "$(GREEN)Dependencies installed.$(NC)"
+
+# First-time project setup
+setup:
+	@echo "$(CYAN)PatchIQ first-time setup$(NC)"
+	@echo "========================"
+	@echo ""
+	@echo "$(CYAN)1/5 Creating env files...$(NC)"
+	@test -f .env || cp .env.example .env && echo "  Created .env"
+	@test -f backend/.env || cp backend/.env.example backend/.env && echo "  Created backend/.env"
+	@echo ""
+	@echo "$(CYAN)2/5 Installing dependencies...$(NC)"
+	pnpm install
+	@echo ""
+	@echo "$(CYAN)3/5 Building shared types...$(NC)"
+	pnpm --filter @patchiq/shared-types build
+	@echo ""
+	@echo "$(CYAN)4/5 Generating Prisma client...$(NC)"
+	cd backend && npx prisma generate --schema src/db/prisma/schema.prisma
+	@echo ""
+	@echo "$(CYAN)5/5 Verifying setup...$(NC)"
+	@test -f .env && echo "  .env exists" || echo "  $(RED).env missing$(NC)"
+	@test -f backend/.env && echo "  backend/.env exists" || echo "  $(RED)backend/.env missing$(NC)"
+	@test -d node_modules && echo "  node_modules installed" || echo "  $(RED)node_modules missing$(NC)"
+	@test -d backend/node_modules/.prisma && echo "  Prisma client generated" || echo "  $(RED)Prisma client missing$(NC)"
+	@echo ""
+	@echo "$(GREEN)Setup complete!$(NC) Run 'make dev' to start developing."
 
 # Check if services are healthy
 status: check-health
