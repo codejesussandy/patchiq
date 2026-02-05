@@ -33,10 +33,11 @@ type JobHistoryEntry struct {
 
 // Manager handles communication with the PatchIQ backend
 type Manager struct {
-	config     *config.Config
-	client     *client.Client
-	collectors *collectors.CollectorManager
-	executors  *executors.ExecutorManager
+	config       *config.Config
+	client       *client.Client
+	collectors   *collectors.CollectorManager
+	executors    *executors.ExecutorManager
+	agentVersion string
 
 	mu               sync.RWMutex
 	registered       bool
@@ -46,25 +47,31 @@ type Manager struct {
 	lastError        string
 	startTime        time.Time
 	consecutiveErrors int
+	tokenExpiresAt   time.Time
 
 	// Job tracking
 	jobHistory     []JobHistoryEntry
 	activeJobs     map[string]*JobHistoryEntry
 	maxJobHistory  int
 
-	stopCh chan struct{}
-	wg     sync.WaitGroup
+	stopCh           chan struct{}
+	resetHeartbeat   chan struct{}
+	resetTelemetry   chan struct{}
+	wg               sync.WaitGroup
 }
 
 // New creates a new backend manager
-func New(cfg *config.Config, cm *collectors.CollectorManager, em *executors.ExecutorManager) *Manager {
+func New(cfg *config.Config, cm *collectors.CollectorManager, em *executors.ExecutorManager, agentVersion string) *Manager {
 	return &Manager{
 		config:        cfg,
-		client:        client.New(cfg.ServerURL, "1.0.0"),
+		client:        client.New(cfg.ServerURL, agentVersion),
+		agentVersion:  agentVersion,
 		collectors:    cm,
 		executors:     em,
-		startTime:     time.Now(),
-		stopCh:        make(chan struct{}),
+		startTime:      time.Now(),
+		stopCh:         make(chan struct{}),
+		resetHeartbeat: make(chan struct{}, 1),
+		resetTelemetry: make(chan struct{}, 1),
 		jobHistory:    make([]JobHistoryEntry, 0),
 		activeJobs:    make(map[string]*JobHistoryEntry),
 		maxJobHistory: 100, // Keep last 100 jobs
@@ -77,6 +84,19 @@ func (m *Manager) Start() error {
 	creds, err := client.LoadCredentials(m.config.DataDir)
 	if err != nil {
 		log.Printf("Warning: Failed to load credentials: %v", err)
+	}
+
+	if creds != nil && creds.AgentID != "" {
+		// Invalidate credentials if server URL changed or missing (legacy/stale credentials)
+		if creds.ServerURL == "" || creds.ServerURL != m.config.ServerURL {
+			if creds.ServerURL == "" {
+				log.Printf("Credentials missing server URL (legacy), clearing stale credentials")
+			} else {
+				log.Printf("Server URL changed (%s -> %s), clearing old credentials", creds.ServerURL, m.config.ServerURL)
+			}
+			_ = client.DeleteCredentials(m.config.DataDir)
+			creds = nil
+		}
 	}
 
 	if creds != nil && creds.AgentID != "" {
@@ -136,7 +156,7 @@ func (m *Manager) register() error {
 		OS:           osName,
 		OSVersion:    osVersion,
 		Architecture: runtime.GOARCH,
-		AgentVersion: "1.0.0",
+		AgentVersion: m.agentVersion,
 		IPAddress:    ipAddress,
 	}
 
@@ -145,13 +165,14 @@ func (m *Manager) register() error {
 		return err
 	}
 
-	// Save credentials
+	// Save credentials (include server URL so we can detect server changes)
 	creds := &client.Credentials{
 		AgentID:      resp.AgentID,
 		AssetID:      resp.AssetID,
 		AccessToken:  resp.AccessToken,
 		RefreshToken: resp.RefreshToken,
 		MachineID:    machineID,
+		ServerURL:    m.config.ServerURL,
 	}
 
 	if err := client.SaveCredentials(m.config.DataDir, creds); err != nil {
@@ -162,18 +183,33 @@ func (m *Manager) register() error {
 	m.registered = true
 	m.mu.Unlock()
 
+	// Track token expiry for proactive refresh (refresh at 80% of lifetime)
+	if resp.TokenExpiresIn > 0 {
+		m.mu.Lock()
+		m.tokenExpiresAt = time.Now().Add(time.Duration(resp.TokenExpiresIn) * time.Second)
+		m.mu.Unlock()
+	}
+
 	if resp.IsReRegistration {
 		log.Printf("Re-registered with backend, agent ID: %s", resp.AgentID)
 	} else {
 		log.Printf("Registered with backend, agent ID: %s, asset ID: %s", resp.AgentID, resp.AssetID)
 	}
 
-	// Apply server config if provided
-	if resp.Config.HeartbeatIntervalSeconds > 0 {
+	// Apply server config if provided and signal loops to reset tickers
+	if resp.Config.HeartbeatIntervalSeconds > 0 && resp.Config.HeartbeatIntervalSeconds != m.config.HeartbeatInterval {
 		m.config.HeartbeatInterval = resp.Config.HeartbeatIntervalSeconds
+		select {
+		case m.resetHeartbeat <- struct{}{}:
+		default:
+		}
 	}
-	if resp.Config.TelemetryIntervalSeconds > 0 {
+	if resp.Config.TelemetryIntervalSeconds > 0 && resp.Config.TelemetryIntervalSeconds != m.config.TelemetryInterval {
 		m.config.TelemetryInterval = resp.Config.TelemetryIntervalSeconds
+		select {
+		case m.resetTelemetry <- struct{}{}:
+		default:
+		}
 	}
 
 	return nil
@@ -203,9 +239,18 @@ func (m *Manager) heartbeatLoop() {
 
 				log.Printf("Heartbeat failed: %v (consecutive errors: %d)", err, m.consecutiveErrors)
 
-				// If we have too many errors, try to re-register
-				if m.consecutiveErrors >= 5 {
+				// Immediately re-register on auth errors (401/403) or after 5 consecutive failures
+				needsReregister := false
+				if _, ok := err.(*client.ErrAuth); ok {
+					log.Println("Authentication rejected, re-registering immediately...")
+					_ = client.DeleteCredentials(m.config.DataDir)
+					needsReregister = true
+				} else if m.consecutiveErrors >= 5 {
 					log.Println("Too many heartbeat failures, attempting re-registration...")
+					needsReregister = true
+				}
+
+				if needsReregister {
 					if err := m.register(); err != nil {
 						log.Printf("Re-registration failed: %v", err)
 					} else {
@@ -220,16 +265,59 @@ func (m *Manager) heartbeatLoop() {
 				m.lastError = ""
 				m.mu.Unlock()
 			}
+		case <-m.resetHeartbeat:
+			ticker.Reset(time.Duration(m.config.HeartbeatInterval) * time.Second)
+			log.Printf("Heartbeat interval updated to %ds", m.config.HeartbeatInterval)
 		case <-m.stopCh:
 			return
 		}
 	}
 }
 
+func (m *Manager) refreshTokenIfNeeded() {
+	m.mu.RLock()
+	expiresAt := m.tokenExpiresAt
+	m.mu.RUnlock()
+
+	if expiresAt.IsZero() {
+		return
+	}
+
+	// Refresh when 80% of the token lifetime has elapsed
+	timeLeft := time.Until(expiresAt)
+	if timeLeft > 10*time.Minute {
+		return
+	}
+
+	log.Println("Access token expiring soon, refreshing...")
+	if err := m.client.RefreshToken(); err != nil {
+		log.Printf("Token refresh failed: %v, will re-register on next auth error", err)
+		return
+	}
+
+	// Update expiry (assume same lifetime as original)
+	m.mu.Lock()
+	m.tokenExpiresAt = time.Now().Add(1 * time.Hour)
+	m.mu.Unlock()
+
+	// Persist new tokens
+	creds, _ := client.LoadCredentials(m.config.DataDir)
+	if creds != nil {
+		creds.AccessToken = m.client.GetAccessToken()
+		creds.RefreshToken = m.client.GetRefreshToken()
+		_ = client.SaveCredentials(m.config.DataDir, creds)
+	}
+
+	log.Println("Token refreshed successfully")
+}
+
 func (m *Manager) sendHeartbeat() error {
 	if !m.client.IsRegistered() {
 		return m.register()
 	}
+
+	// Proactively refresh token before it expires
+	m.refreshTokenIfNeeded()
 
 	// Collect current metrics for heartbeat
 	telemetry, _ := m.collectors.CollectTelemetry()
@@ -367,6 +455,9 @@ func (m *Manager) telemetryLoop() {
 		select {
 		case <-ticker.C:
 			m.submitTelemetryNow()
+		case <-m.resetTelemetry:
+			ticker.Reset(time.Duration(m.config.TelemetryInterval) * time.Second)
+			log.Printf("Telemetry interval updated to %ds", m.config.TelemetryInterval)
 		case <-m.stopCh:
 			return
 		}

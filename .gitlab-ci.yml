@@ -12,6 +12,8 @@ variables:
   # Staging server
   STAGING_HOST: "192.168.1.13"
   STAGING_USER: "patchiq"
+  # Agent build configuration (embedded at compile time)
+  PATCHIQ_SERVER_URL: "http://dev.skenzeriq.com:6001/api"
 
 # Cache node_modules between jobs
 .node_cache: &node_cache
@@ -148,20 +150,14 @@ build:agent:
   stage: build
   image: golang:1.23-alpine
   script:
+    - mkdir -p artifacts
     - cd agent
     - go mod download
-    # Build for all platforms
-    - GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../artifacts/patchiq-agent-linux-amd64 ./cmd/agent
-    - GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o ../artifacts/patchiq-agent-darwin-arm64 ./cmd/agent
-    - GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../artifacts/patchiq-agent-windows-amd64.exe ./cmd/agent
-    # Build Windows service
-    - GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../artifacts/patchiq-service-windows-amd64.exe ./cmd/service
-    # Copy installer scripts
-    - mkdir -p ../artifacts/windows-installer
-    - cp installer/windows/Install-PatchIQAgent.ps1 ../artifacts/windows-installer/
-    - cp installer/windows/default-config.json ../artifacts/windows-installer/config.json
-    - cp ../artifacts/patchiq-agent-windows-amd64.exe ../artifacts/windows-installer/patchiq-agent.exe
-    - cp ../artifacts/patchiq-service-windows-amd64.exe ../artifacts/windows-installer/patchiq-service.exe
+    - GOOS=linux GOARCH=amd64 go build -ldflags "-X main.defaultServerURL=${PATCHIQ_SERVER_URL}" -o ../artifacts/patchiq-agent-linux-amd64 ./cmd/agent
+    - GOOS=linux GOARCH=arm64 go build -ldflags "-X main.defaultServerURL=${PATCHIQ_SERVER_URL}" -o ../artifacts/patchiq-agent-linux-arm64 ./cmd/agent
+    - GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.defaultServerURL=${PATCHIQ_SERVER_URL}" -o ../artifacts/patchiq-agent-darwin-amd64 ./cmd/agent
+    - GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.defaultServerURL=${PATCHIQ_SERVER_URL}" -o ../artifacts/patchiq-agent-darwin-arm64 ./cmd/agent
+    - GOOS=windows GOARCH=amd64 go build -ldflags "-X main.defaultServerURL=${PATCHIQ_SERVER_URL}" -o ../artifacts/patchiq-agent-windows-amd64.exe ./cmd/agent
   artifacts:
     paths:
       - artifacts/
@@ -169,7 +165,30 @@ build:agent:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "full-dev-local"
-    - if: $CI_COMMIT_BRANCH == "full-dev-sandy"
+    - if: $CI_COMMIT_BRANCH == "full-dev-local-v2"
+    - changes:
+        - agent/**/*
+
+# Build Windows MSI installer using WiX toolset
+build:agent-msi:
+  stage: build
+  image: dactiv/wix:latest
+  needs: ["build:agent"]
+  script:
+    - mkdir -p agent/installer/windows/build
+    - cp artifacts/patchiq-agent-windows-amd64.exe agent/installer/windows/patchiq-agent.exe
+    - cd agent/installer/windows
+    - candle -arch x64 patchiq-agent.wxs -o build/
+    - light -ext WixUIExtension -ext WixUtilExtension build/patchiq-agent.wixobj -o build/patchiq-agent.msi
+    - cp build/patchiq-agent.msi ../../../artifacts/
+  artifacts:
+    paths:
+      - artifacts/patchiq-agent.msi
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "full-dev-local"
+    - if: $CI_COMMIT_BRANCH == "full-dev-local-v2"
     - changes:
         - agent/**/*
 

@@ -217,9 +217,9 @@ export function AllAssets() {
       linux: 'Linux',
     };
     const filenameMap: Record<string, string> = {
-      windows: 'patchify-agent.exe',
-      macos: 'patchify-agent-macos',
-      linux: 'patchify-agent',
+      windows: 'patchiq-agent.msi',
+      macos: 'patchiq-agent-macos',
+      linux: 'patchiq-agent',
     };
 
     try {
@@ -271,7 +271,10 @@ export function AllAssets() {
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = filenameMap[platform];
+      // Use filename from Content-Disposition header if available
+      const contentDisposition = downloadResponse.headers.get('content-disposition');
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+      link.download = filenameMatch?.[1] || filenameMap[platform];
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -166,10 +167,20 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/rollbacks", s.handleGetRollbacks)
 	mux.HandleFunc("/api/rollbacks/execute", s.handleExecuteRollback)
 
-	addr := fmt.Sprintf(":%d", s.config.WebUIPort)
-	log.Printf("Starting agent web UI on http://localhost%s", addr)
-
-	return http.ListenAndServe(addr, mux)
+	// Try configured port, then fallback to next ports if busy
+	port := s.config.WebUIPort
+	for i := 0; i < 10; i++ {
+		addr := fmt.Sprintf(":%d", port)
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			log.Printf("Port %d in use, trying %d...", port, port+1)
+			port++
+			continue
+		}
+		log.Printf("Starting agent web UI on http://localhost:%d", port)
+		return http.Serve(ln, mux)
+	}
+	return fmt.Errorf("could not find an available port (tried %d-%d)", s.config.WebUIPort, port-1)
 }
 
 // SetBackendManager sets the backend manager for status display

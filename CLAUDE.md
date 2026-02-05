@@ -39,7 +39,7 @@ cd frontend && npm run test:debug         # Debug mode
 ```bash
 make db-migrate       # Run Prisma migrations
 make db-seed          # Seed with sample data
-make db-studio        # Open Prisma Studio on :5008
+make db-studio        # Open Prisma Studio on :5555
 make db-reset         # Drop + migrate + seed
 ```
 
@@ -63,20 +63,20 @@ make agent-run                                        # Run without hot reload
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  Frontend   │────▶│   Backend   │────▶│ PostgreSQL  │
 │  (React)    │     │  (Express)  │     │   (Prisma)  │
-│   :5001     │     │    :5002    │     │    :5004    │
+│   :6001     │     │    :3000    │     │    :6003    │
 └─────────────┘     └──────┬──────┘     └─────────────┘
-                           │
+      (via nginx)          │
                     ┌──────┴──────┐
                     │             │
               ┌─────▼─────┐ ┌─────▼─────┐
               │   Redis   │ │   MinIO   │
-              │   :5005   │ │   :5006   │
+              │   :6004   │ │   :9000   │
               └───────────┘ └───────────┘
                     ▲
               ┌─────┴─────┐
               │   Agent   │
               │   (Go)    │
-              │   :5003   │
+              │   :6007   │
               └───────────┘
 ```
 
@@ -124,22 +124,25 @@ import { config } from '@config/index';         // src/config/
 
 ## Service Ports
 
-| Service        | Port  |
-|----------------|-------|
-| Frontend       | 5001  |
-| Backend API    | 5002  |
-| Agent          | 5003  |
-| PostgreSQL     | 5004  |
-| Redis          | 5005  |
-| MinIO API      | 5006  |
-| MinIO Console  | 5007  |
-| Prisma Studio  | 5008  |
-| pgAdmin        | 5009  |
-| PostgreSQL Test| 5010  |
+### Staging Configuration (default)
+
+| Service           | Port  | Notes                    |
+|-------------------|-------|--------------------------|
+| Nginx/Frontend    | 6001  | Main entry point         |
+| Backend API       | 3000  | Internal via nginx       |
+| PostgreSQL        | 6003  | External mapping         |
+| Redis             | 6004  | External mapping         |
+| pgAdmin           | 6005  | Admin tool               |
+| Prisma Studio     | 6006  | DB GUI                   |
+| Agent WebUI       | 6007  | With port fallback       |
+| MinIO API         | 9000  | Internal via nginx /s3/  |
+| MinIO Console     | 9001  | Internal via nginx /minio/ |
+
+Port configuration is centralized in `.env` file. Copy `.env.example` to `.env` and adjust as needed.
 
 ## API Documentation
 
-- Scalar API docs: http://localhost:5001/api-docs (when backend running)
+- Scalar API docs: http://localhost:3000/api-docs (when backend running)
 - `make api-endpoints` - Quick endpoint reference
 
 ---
@@ -159,8 +162,8 @@ import { config } from '@config/index';         // src/config/
 
 ### Two UI Systems
 
-- **Agent UI** (localhost:5003): Local web UI embedded in Go agent binary. Shows job status, installation progress, and local endpoint details.
-- **PatchIQ UI** (localhost:5001): Central management platform. Hub management, deployment creation, and aggregate status.
+- **Agent UI** (localhost:8080): Local web UI embedded in Go agent binary. Shows job status, installation progress, and local endpoint details.
+- **PatchIQ UI** (localhost:5173): Central management platform. Hub management, deployment creation, and aggregate status.
 
 ### Architecture Notes
 

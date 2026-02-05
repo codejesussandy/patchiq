@@ -6,7 +6,7 @@
 #   All services derive their public URLs from these three variables.
 #
 # This orchestrates all services for local development:
-# - Nginx (reverse proxy - single entry point on port 5001)
+# - Nginx (reverse proxy - single entry point)
 # - PostgreSQL (primary database)
 # - Redis (job queue)
 # - MinIO (S3-compatible storage for patches)
@@ -15,25 +15,24 @@
 # - Prisma Studio (Database GUI)
 # - pgAdmin (PostgreSQL admin)
 #
-# IMPORTANT: Only port 5001 is exposed externally!
-# All services are accessed through nginx reverse proxy:
-#   Frontend:      http://your-host:5001/
-#   Backend API:   http://your-host:5001/v1
-#   API Docs:      http://your-host:5001/api-docs
-#   Prisma Studio: http://your-host:5001/prisma/
-#   pgAdmin:       http://your-host:5001/pgadmin/
-#   MinIO Console: http://your-host:5001/minio/
-#
 # The agent runs locally outside Docker for easier debugging.
 # Use `make dev-agent` to start the agent with hot reload.
+#
+# Access all services via nginx:
+#   Frontend:      ${PUBLIC_SCHEME}://${PUBLIC_HOST}:${PUBLIC_PORT}/
+#   Backend API:   ${PUBLIC_SCHEME}://${PUBLIC_HOST}:${PUBLIC_PORT}/v1
+#   API Docs:      ${PUBLIC_SCHEME}://${PUBLIC_HOST}:${PUBLIC_PORT}/api-docs
+#   Prisma Studio: ${PUBLIC_SCHEME}://${PUBLIC_HOST}:${PUBLIC_PORT}/prisma/
+#   pgAdmin:       ${PUBLIC_SCHEME}://${PUBLIC_HOST}:${PUBLIC_PORT}/pgadmin/
+#   MinIO Console: ${PUBLIC_SCHEME}://${PUBLIC_HOST}:${PUBLIC_PORT}/minio/
 
 services:
-  # Nginx - Reverse proxy (SINGLE ENTRY POINT - only externally exposed port)
+  # Nginx - Reverse proxy (single entry point)
   nginx:
     image: nginx:alpine
     container_name: patchiq_nginx
     ports:
-      - "${PUBLIC_PORT:-5001}:80"
+      - "${PUBLIC_PORT:-5173}:80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
@@ -46,7 +45,7 @@ services:
       - patchiq_network
     restart: unless-stopped
 
-  # PostgreSQL - Primary database (internal only)
+  # PostgreSQL - Primary database
   postgres:
     image: postgres:16-alpine
     container_name: patchiq_db
@@ -54,9 +53,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: patchiq_dev
-    # No external port - only accessible within Docker network
-    expose:
-      - "5432"
+    ports:
+      - "${POSTGRES_EXTERNAL_PORT:-6003}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -67,13 +65,12 @@ services:
     networks:
       - patchiq_network
 
-  # Redis - Job queue (internal only)
+  # Redis - Job queue (BullMQ)
   redis:
     image: redis:7-alpine
     container_name: patchiq_redis
-    # No external port - only accessible within Docker network
-    expose:
-      - "6379"
+    ports:
+      - "${REDIS_EXTERNAL_PORT:-6004}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -84,7 +81,7 @@ services:
     networks:
       - patchiq_network
 
-  # MinIO - S3-compatible patch storage (internal only, accessed via nginx /minio/ and /s3/)
+  # MinIO - S3-compatible patch storage
   minio:
     image: minio/minio:RELEASE.2022-05-26T05-48-41Z
     container_name: patchiq_minio
@@ -92,10 +89,10 @@ services:
     environment:
       MINIO_ROOT_USER: patchiq_admin
       MINIO_ROOT_PASSWORD: patchiq_secret_key
-    # No external ports - accessed via nginx at /minio/ and /s3/
+    # Ports accessed via nginx reverse proxy only
     expose:
-      - "9000"
-      - "9001"
+      - "9000"   # S3 API
+      - "9001"   # Web Console
     volumes:
       - minio_data:/data
     healthcheck:
@@ -106,7 +103,7 @@ services:
     networks:
       - patchiq_network
 
-  # pgAdmin - Web-based PostgreSQL administration (internal only, accessed via nginx /pgadmin/)
+  # pgAdmin - Web-based PostgreSQL administration
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: patchiq_pgadmin
@@ -115,10 +112,8 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin123
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
-      SCRIPT_NAME: /pgadmin
-    # No external port - accessed via nginx at /pgadmin/
-    expose:
-      - "80"
+    ports:
+      - "0.0.0.0:${PGADMIN_PORT:-6005}:80"
     depends_on:
       postgres:
         condition: service_healthy
@@ -128,7 +123,7 @@ services:
       - patchiq_network
     restart: unless-stopped
 
-  # Backend - Express API with hot reload via nodemon (internal only, accessed via nginx /v1)
+  # Backend - Express API with hot reload via nodemon
   backend:
     build:
       context: ./backend
@@ -137,7 +132,7 @@ services:
     container_name: patchiq_backend
     environment:
       - NODE_ENV=development
-      - PORT=5002
+      - PORT=3000
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/patchiq_dev
       - REDIS_URL=redis://redis:6379
       - MINIO_ENDPOINT=minio
@@ -148,23 +143,21 @@ services:
       - MINIO_USE_SSL=false
       # MinIO public access goes through nginx reverse proxy
       - MINIO_PUBLIC_ENDPOINT=${PUBLIC_HOST:-localhost}
-      - MINIO_PUBLIC_PORT=${PUBLIC_PORT:-5001}
+      - MINIO_PUBLIC_PORT=${PUBLIC_PORT:-6001}
       - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-change-in-production}
       - JWT_ACCESS_TOKEN_EXPIRY=1h
       - JWT_REFRESH_TOKEN_EXPIRY=7d
-      - CORS_ORIGIN=${PUBLIC_SCHEME:-http}://${PUBLIC_HOST:-localhost}:${PUBLIC_PORT:-5001}
+      - CORS_ORIGIN=${PUBLIC_SCHEME:-http}://${PUBLIC_HOST:-localhost}:${PUBLIC_PORT:-6001}
       # Backend public URL - agents use this to reach the backend via nginx
-      - BACKEND_PUBLIC_URL=${PUBLIC_SCHEME:-http}://${PUBLIC_HOST:-localhost}:${PUBLIC_PORT:-5001}
+      - BACKEND_PUBLIC_URL=${PUBLIC_SCHEME:-http}://${PUBLIC_HOST:-localhost}:${PUBLIC_PORT:-6001}
       # Mock services for local development
       - MOCK_NVD=true
       - MOCK_EMAIL=true
       - MOCK_LDAP=true
       - MOCK_PATCHES=true
-      # Encryption key (32+ characters)
-      - ENCRYPTION_KEY=dev-32-byte-encryption-key-here!!
-    # No external port - accessed via nginx at /v1, /health, /api-docs
+    # Port accessed via nginx reverse proxy only
     expose:
-      - "5002"
+      - "3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -180,7 +173,7 @@ services:
       - patchiq_network
     restart: unless-stopped
 
-  # Prisma Studio - Database GUI (internal only, accessed via nginx /prisma/)
+  # Prisma Studio - Database GUI (access directly on port 5555)
   prisma-studio:
     build:
       context: ./backend
@@ -190,9 +183,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/patchiq_dev
     command: npx prisma studio --schema src/db/prisma/schema.prisma --port 5555 --browser none
-    # No external port - accessed via nginx at /prisma/
-    expose:
-      - "5555"
+    ports:
+      - "0.0.0.0:${PRISMA_STUDIO_PORT:-6006}:5555"
     depends_on:
       postgres:
         condition: service_healthy
@@ -203,7 +195,7 @@ services:
       - patchiq_network
     restart: unless-stopped
 
-  # Frontend - Vite with Hot Module Replacement (internal only, accessed via nginx /)
+  # Frontend - Vite with Hot Module Replacement
   frontend:
     build:
       context: ./frontend
@@ -212,10 +204,7 @@ services:
     environment:
       - NODE_ENV=development
       - VITE_API_BASE_URL=/v1
-      - VITE_DEV_PORT=5001
-    # No external port - accessed via nginx at /
-    expose:
-      - "5001"
+    # Port exposed via nginx reverse proxy
     depends_on:
       - backend
     volumes:

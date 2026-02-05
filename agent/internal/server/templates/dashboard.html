@@ -166,7 +166,7 @@
                     <div class="progress-fill {{if lt .Telemetry.CPU.UsagePercent 60.0}}green{{else if lt .Telemetry.CPU.UsagePercent 85.0}}yellow{{else}}red{{end}}"
                          style="width: {{.Telemetry.CPU.UsagePercent}}%"></div>
                 </div>
-                {{if .Telemetry.CPU.LoadAverage}}
+                {{if ge (len .Telemetry.CPU.LoadAverage) 3}}
                 <div class="card-label">Load: {{index .Telemetry.CPU.LoadAverage 0 | printf "%.2f"}} / {{index .Telemetry.CPU.LoadAverage 1 | printf "%.2f"}} / {{index .Telemetry.CPU.LoadAverage 2 | printf "%.2f"}}</div>
                 {{end}}
             </div>

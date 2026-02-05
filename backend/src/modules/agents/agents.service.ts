@@ -38,20 +38,40 @@ export class AgentsService {
 
     if (existingAgent) {
       // Re-registration - update agent info
+      const agentUpdateData: Record<string, unknown> = {
+        hostname: input.hostname,
+        os: input.os,
+        osVersion: input.osVersion,
+        architecture: input.architecture,
+        agentVersion: input.agentVersion,
+        ipAddress: input.ipAddress,
+        macAddress: input.macAddress,
+        serialNumber: input.serialNumber,
+        status: 'Connected',
+        lastHeartbeat: new Date(),
+      };
+
+      // If agent has no linked asset, create one now
+      if (!existingAgent.assetId) {
+        const asset = await prisma.asset.create({
+          data: {
+            name: input.hostname,
+            status: 'In Use',
+            os: input.os,
+            osVersion: input.osVersion,
+            manufacturer: input.manufacturer,
+            model: input.model,
+            serialNumber: input.serialNumber,
+            ipAddress: input.ipAddress,
+            macAddress: input.macAddress,
+          },
+        });
+        agentUpdateData.assetId = asset.id;
+      }
+
       const agent = await prisma.agent.update({
         where: { id: existingAgent.id },
-        data: {
-          hostname: input.hostname,
-          os: input.os,
-          osVersion: input.osVersion,
-          architecture: input.architecture,
-          agentVersion: input.agentVersion,
-          ipAddress: input.ipAddress,
-          macAddress: input.macAddress,
-          serialNumber: input.serialNumber,
-          status: 'Connected',
-          lastHeartbeat: new Date(),
-        },
+        data: agentUpdateData,
       });
 
       // Generate new tokens
@@ -178,19 +198,8 @@ export class AgentsService {
       }).catch(() => {});
     }
 
-    // Store telemetry data if we have an assetId
+    // Evaluate alerts from heartbeat metrics (telemetry records are created by processTelemetry)
     if (agent.assetId) {
-      await prisma.agentTelemetry.create({
-        data: {
-          agentId,
-          cpuUsage: input.cpuUsage,
-          memoryUsage: input.memoryUsage,
-          diskUsage: input.diskUsage,
-          uptime: input.uptime,
-        },
-      });
-
-      // Fire-and-forget alert evaluation
       evaluateAlertsForAsset(agent.assetId, {
         cpuUsage: input.cpuUsage,
         memoryUsage: input.memoryUsage,
@@ -500,7 +509,7 @@ export class AgentsService {
       status: input.status as 'in_progress' | 'completed' | 'failed',
       result: input.result as Record<string, unknown> | undefined,
       errorMessage: input.errorMessage,
-      output: typeof input.result === 'string' ? input.result : undefined,
+      output: input.output || (typeof input.result === 'string' ? input.result : undefined),
     });
   }
 
@@ -721,8 +730,37 @@ export class AgentsService {
       include: { asset: true },
     });
 
-    if (!agent || !agent.assetId) {
-      throw new NotFoundError('Agent or linked asset not found');
+    if (!agent) {
+      throw new NotFoundError('Agent not found');
+    }
+
+    // If agent has no linked asset, create one now from inventory data
+    if (!agent.assetId) {
+      const hw = inventory.hardware as Record<string, unknown> | undefined;
+      const sysId = hw?.systemIdentity as Record<string, unknown> | undefined;
+      const sw = inventory.software as Record<string, unknown> | undefined;
+      const os = sw?.operatingSystem as Record<string, unknown> | undefined;
+
+      const asset = await prisma.asset.create({
+        data: {
+          name: agent.hostname || agentId,
+          status: 'In Use',
+          os: agent.os || (os?.name as string) || undefined,
+          osVersion: agent.osVersion || (os?.version as string) || undefined,
+          manufacturer: (sysId?.manufacturer as string) || undefined,
+          model: (sysId?.model as string) || undefined,
+          serialNumber: agent.serialNumber || (sysId?.serialNumber as string) || undefined,
+          ipAddress: agent.ipAddress || undefined,
+          macAddress: agent.macAddress || undefined,
+        },
+      });
+
+      await prisma.agent.update({
+        where: { id: agent.id },
+        data: { assetId: asset.id },
+      });
+
+      agent.assetId = asset.id;
     }
 
     // Extract hardware data from agent's nested structure

@@ -94,7 +94,7 @@ func (c *WindowsSecurityCollector) collectEncryptionStatus() models.EncryptionSt
 			}
 		}
 	} else {
-		log.Printf("[security] BitLocker status unavailable (may require admin): %v", err)
+		// BitLocker status requires admin privileges; silently skip
 	}
 
 	return enc

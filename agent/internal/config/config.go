@@ -45,7 +45,7 @@ func DefaultConfig() *Config {
 	dataDir := filepath.Join(homeDir, ".patchify-agent")
 
 	cfg := &Config{
-		ServerURL:           "http://dev.skenzeriq.com:5001/api",
+		ServerURL:           "",
 		WebUIPort:           5003,
 		EnableWebUI:         true,
 		HeartbeatInterval:   60,

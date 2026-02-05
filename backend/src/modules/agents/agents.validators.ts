@@ -46,6 +46,7 @@ export const commandResultSchema = z.object({
   status: z.enum(['completed', 'failed']),
   result: z.string().optional(),
   errorMessage: z.string().optional(),
+  output: z.string().optional(),
 });
 
 // Inventory schema

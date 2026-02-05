@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PatchIQ Agent Windows Installer (Simple)
+  Installs the agent binary without service registration.
+  User can run the agent manually or set up as a service later.
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*"
+           Name="PatchIQ Agent"
+           Language="1033"
+           Version="1.0.1.0"
+           Manufacturer="PatchIQ"
+           UpgradeCode="8B5E8E9A-1234-5678-9ABC-DEF012345678">
+
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Description="PatchIQ Agent - Endpoint Management"
+             Manufacturer="PatchIQ"/>
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of PatchIQ Agent is already installed." />
+    <Media Id="1" Cabinet="patchiq.cab" EmbedCab="yes" />
+
+    <!-- Installation directory structure -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="PatchIQ">
+          <Directory Id="AGENTFOLDER" Name="Agent"/>
+        </Directory>
+      </Directory>
+      <Directory Id="DesktopFolder" Name="Desktop"/>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="PatchIQ"/>
+      </Directory>
+    </Directory>
+
+    <!-- Agent components -->
+    <ComponentGroup Id="AgentComponents" Directory="AGENTFOLDER">
+      <!-- Main executable -->
+      <Component Id="AgentExecutable" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890" Win64="yes">
+        <File Id="AgentExe" Source="patchiq-agent.exe" KeyPath="yes"/>
+      </Component>
+
+      <!-- Config file template -->
+      <Component Id="ConfigFile" Guid="B2C3D4E5-F6A7-8901-BCDE-F23456789012" Win64="yes">
+        <File Id="ConfigJson" Source="config.json" KeyPath="yes"/>
+      </Component>
+
+      <!-- Start script -->
+      <Component Id="StartScript" Guid="C3D4E5F6-A7B8-9012-CDEF-345678901234" Win64="yes">
+        <File Id="StartBat" Source="start-agent.bat" KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+
+    <!-- Shortcuts -->
+    <ComponentGroup Id="ShortcutComponents" Directory="ApplicationProgramsFolder">
+      <Component Id="ApplicationShortcut" Guid="D4E5F6A7-B8C9-0123-DEF0-456789012345" Win64="yes">
+        <Shortcut Id="ApplicationStartMenuShortcut"
+                  Name="PatchIQ Agent"
+                  Description="Run PatchIQ Agent"
+                  Target="[AGENTFOLDER]start-agent.bat"
+                  WorkingDirectory="AGENTFOLDER"
+                  Icon="AgentIcon"/>
+        <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall"/>
+        <RegistryValue Root="HKCU" Key="Software\PatchIQ\Agent" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+
+    <!-- Icon -->
+    <Icon Id="AgentIcon" SourceFile="patchiq-agent.exe"/>
+
+    <!-- Feature definition -->
+    <Feature Id="Complete" Title="PatchIQ Agent" Level="1">
+      <ComponentGroupRef Id="AgentComponents"/>
+      <ComponentGroupRef Id="ShortcutComponents"/>
+    </Feature>
+
+  </Product>
+</Wix>

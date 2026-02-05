@@ -2,6 +2,36 @@ import './types';
 import { createApp } from './app';
 import { config } from '@config/index';
 import { prisma } from '@db/client';
+import { startWorker, shutdownWorker } from '@modules/patch-repository';
+import { executeDeployment } from '@modules/patches/patches.service';
+
+let schedulerInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Check for scheduled deployments that are due and execute them.
+ */
+async function checkScheduledDeployments() {
+  try {
+    const due = await prisma.patchDeployment.findMany({
+      where: {
+        stage: 'PENDING',
+        scheduledAt: { lte: new Date() },
+      },
+      select: { id: true, name: true },
+    });
+
+    for (const deployment of due) {
+      try {
+        await executeDeployment(deployment.id, 'system');
+        console.log(`[scheduler] Executed scheduled deployment: ${deployment.name} (${deployment.id})`);
+      } catch (err) {
+        console.error(`[scheduler] Failed to execute deployment ${deployment.id}:`, err);
+      }
+    }
+  } catch (err) {
+    console.error('[scheduler] Error checking scheduled deployments:', err);
+  }
+}
 
 async function main() {
   const app = createApp();
@@ -14,6 +44,18 @@ async function main() {
     console.error('Failed to connect to database:', error);
     process.exit(1);
   }
+
+  // Start background workers
+  try {
+    startWorker();
+    console.log('Download worker started');
+  } catch (error) {
+    console.error('Failed to start download worker:', error);
+  }
+
+  // Start scheduled deployment checker (every 60 seconds)
+  schedulerInterval = setInterval(checkScheduledDeployments, 60_000);
+  console.log('Deployment scheduler started (60s interval)');
 
   const server = app.listen(config.port, '0.0.0.0', () => {
     console.log(`
@@ -35,6 +77,21 @@ async function main() {
 
     server.close(async () => {
       console.log('HTTP server closed');
+
+      // Stop scheduler
+      if (schedulerInterval) {
+        clearInterval(schedulerInterval);
+        schedulerInterval = null;
+        console.log('Deployment scheduler stopped');
+      }
+
+      // Stop download worker
+      try {
+        await shutdownWorker();
+        console.log('Download worker stopped');
+      } catch (error) {
+        console.error('Error shutting down download worker:', error);
+      }
 
       try {
         await prisma.$disconnect();

@@ -29,7 +29,7 @@ func main() {
 	// Default server URL from environment variable or use localhost
 	defaultServerURL := os.Getenv("PATCHIQ_SERVER_URL")
 	if defaultServerURL == "" {
-		defaultServerURL = "http://localhost:5001/api"
+		defaultServerURL = "http://localhost:6001/api"
 	}
 	serverURL := flag.String("server", defaultServerURL, "Backend server URL (e.g., http://your-server:5001/api)")
 	showVersion := flag.Bool("version", false, "Show version")
@@ -63,6 +63,10 @@ func main() {
 ╚═══════════════════════════════════════════════════╝
 `)
 
+	// Detect which flags were explicitly passed on the command line
+	explicitFlags := map[string]bool{}
+	flag.Visit(func(f *flag.Flag) { explicitFlags[f.Name] = true })
+
 	// Load configuration
 	var cfg *config.Config
 	var err error
@@ -71,6 +75,15 @@ func main() {
 		cfg, err = config.Load(*configPath)
 		if err != nil {
 			log.Fatalf("Failed to load config: %v", err)
+		}
+		log.Printf("Loaded config from %s", *configPath)
+		// Also save to default location so future runs without -config use the same settings
+		homeDir, _ := os.UserHomeDir()
+		defaultConfigPath := filepath.Join(homeDir, ".patchify-agent", "config.json")
+		if err := cfg.Save(defaultConfigPath); err != nil {
+			log.Printf("Warning: Could not save config to %s: %v", defaultConfigPath, err)
+		} else {
+			log.Printf("Configuration saved to %s", defaultConfigPath)
 		}
 	} else {
 		// Try default locations
@@ -96,13 +109,13 @@ func main() {
 		}
 	}
 
-	// Override settings from command line
-	if *port != 8080 {
+	// Override settings from command line ONLY if explicitly passed
+	if explicitFlags["port"] {
 		cfg.WebUIPort = *port
 	}
-	if *serverURL != "" {
+	if explicitFlags["server"] {
 		cfg.ServerURL = *serverURL
-		// Auto-save config when server URL is provided via CLI
+		// Auto-save config when server URL is explicitly provided via CLI
 		homeDir, _ := os.UserHomeDir()
 		configSavePath := filepath.Join(homeDir, ".patchify-agent", "config.json")
 		if err := cfg.Save(configSavePath); err != nil {
@@ -110,6 +123,9 @@ func main() {
 		} else {
 			log.Printf("Configuration saved to %s", configSavePath)
 		}
+	} else if cfg.ServerURL == "" {
+		// No config file had a server URL — use the built-in default (from ldflags/env)
+		cfg.ServerURL = *serverURL
 	}
 
 	// Ensure data directory exists
@@ -135,7 +151,7 @@ func main() {
 	// Create and start backend manager (unless disabled)
 	var backendMgr *backend.Manager
 	if !*noBackend && cfg.ServerURL != "" {
-		backendMgr = backend.New(cfg, cm, em)
+		backendMgr = backend.New(cfg, cm, em, version)
 		if err := backendMgr.Start(); err != nil {
 			log.Printf("Warning: Failed to start backend communication: %v", err)
 		} else {

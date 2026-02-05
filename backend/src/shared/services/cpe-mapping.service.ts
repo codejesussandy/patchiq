@@ -189,6 +189,11 @@ class CpeMappingService {
   private async findNormalizedMapping(software: AgentSoftware): Promise<CpeResolution | null> {
     const normalizedName = this.normalizeSoftwareName(software.name);
 
+    // Names shorter than 3 chars are too ambiguous to match reliably
+    if (normalizedName.length < 3) {
+      return null;
+    }
+
     const mapping = await prisma.cpeMapping.findFirst({
       where: {
         isActive: true,
@@ -219,6 +224,11 @@ class CpeMappingService {
   private async findDirectMatch(software: AgentSoftware): Promise<CpeResolution | null> {
     const normalizedName = this.normalizeSoftwareName(software.name);
 
+    // Names shorter than 3 chars are too ambiguous to match reliably
+    if (normalizedName.length < 3) {
+      return null;
+    }
+
     const vulnSoftware = await prisma.vulnerabilitySoftware.findFirst({
       where: {
         OR: [
@@ -248,31 +258,13 @@ class CpeMappingService {
 
   /**
    * Find fuzzy match using name patterns
+   *
+   * DISABLED: Substring matching against ~998K VulnerabilitySoftware rows
+   * produces far too many false positives. Examples of bad matches:
+   *   libmd0 -> apple/mdnsresponder, gh -> ghostscript, bolt -> boltcms/bolt
+   * Software that doesn't match in stages 1-3 goes to UnmatchedSoftware for review.
    */
-  private async findFuzzyMatch(software: AgentSoftware): Promise<CpeResolution | null> {
-    const normalizedName = this.normalizeSoftwareName(software.name);
-
-    // Try partial match on cpeProduct
-    const vulnSoftware = await prisma.vulnerabilitySoftware.findFirst({
-      where: {
-        cpeProduct: { contains: normalizedName, mode: 'insensitive' },
-        cpeVendor: { not: null },
-      },
-      select: {
-        cpeVendor: true,
-        cpeProduct: true,
-      },
-    });
-
-    if (vulnSoftware?.cpeVendor && vulnSoftware?.cpeProduct) {
-      return {
-        cpeVendor: vulnSoftware.cpeVendor,
-        cpeProduct: vulnSoftware.cpeProduct,
-        confidence: 0.5,
-        source: 'fuzzy_match',
-      };
-    }
-
+  private async findFuzzyMatch(_software: AgentSoftware): Promise<CpeResolution | null> {
     return null;
   }
 
@@ -288,9 +280,8 @@ class CpeMappingService {
   normalizeSoftwareName(name: string): string {
     let normalized = name.toLowerCase().trim();
 
-    // Remove common prefixes
+    // Step 1: Remove language-specific prefixes (NOT 'lib' — handled last)
     const prefixes = [
-      'lib',
       'python3-',
       'python-',
       'node-',
@@ -309,10 +300,10 @@ class CpeMappingService {
       }
     }
 
-    // Remove trailing version numbers (and any trailing dots/dashes left behind)
-    normalized = normalized.replace(/[-._]*[0-9]+$/, '');
+    // Step 2: Remove trailing version numbers (e.g., libssl3 -> libssl, libjpeg8 -> libjpeg)
+    normalized = normalized.replace(/[-._]*[0-9]+(\.[0-9]+)*$/, '');
 
-    // Remove common suffixes
+    // Step 3: Remove common suffixes
     const suffixes = ['-dev', '-bin', '-common', '-data', '-doc', '-utils'];
     for (const suffix of suffixes) {
       if (normalized.endsWith(suffix)) {
@@ -321,7 +312,16 @@ class CpeMappingService {
       }
     }
 
-    // Clean up
+    // Step 4: Conditionally strip 'lib' prefix — only if the remainder is >= 3 chars
+    // This prevents libmd0 -> "md" (2 chars) or libc-bin -> "c" (1 char)
+    if (normalized.startsWith('lib') && normalized.length > 3) {
+      const withoutLib = normalized.substring(3);
+      if (withoutLib.length >= 3) {
+        normalized = withoutLib;
+      }
+    }
+
+    // Clean up trailing separators
     normalized = normalized.replace(/[-_\s]+$/, '').trim();
 
     return normalized || name.toLowerCase();

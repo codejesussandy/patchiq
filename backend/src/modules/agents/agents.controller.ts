@@ -221,19 +221,31 @@ export class AgentsController {
       // Initialize MinIO
       await minioStorage.initialize();
 
-      // Determine server URL - prefer configured public URL, fall back to request headers
-      let serverUrl: string;
-      const defaultBackendUrl = `http://localhost:${env.PORT}`;
-      if (env.BACKEND_PUBLIC_URL && env.BACKEND_PUBLIC_URL !== defaultBackendUrl) {
-        // Use configured public URL (remove trailing slash if present, add /api)
-        const baseUrl = env.BACKEND_PUBLIC_URL.replace(/\/+$/, '');
-        serverUrl = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
-      } else {
-        // Fall back to request headers for local development
-        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-        const host = req.headers['x-forwarded-host'] || req.headers.host || `localhost:${env.PORT}`;
-        serverUrl = `${protocol}://${host}/api`;
+      // Check if this is an MSI installer - serve directly without ZIP wrapper
+      const isMsi = version.filePath.endsWith('.msi');
+      if (isMsi) {
+        const msiFilename = `patchiq-agent-${version.platform.toLowerCase()}-${version.architecture}-v${version.version}.msi`;
+        res.setHeader('Content-Type', 'application/x-msi');
+        res.setHeader('Content-Disposition', `attachment; filename="${msiFilename}"`);
+
+        try {
+          const msiStream = await minioStorage.downloadStream(version.filePath, AGENTS_BUCKET);
+          msiStream.pipe(res);
+        } catch (streamError) {
+          console.error('MinIO stream error:', streamError);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Failed to fetch MSI installer' });
+          }
+        }
+        return;
       }
+
+      // Determine server URL from request headers so the agent config
+      // gets the actual address the user used to reach this server.
+      // This ensures agents on remote machines connect to the right host.
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+      const host = req.headers['x-forwarded-host'] || req.headers.host || `localhost:${env.PORT}`;
+      const serverUrl = `${protocol}://${host}/api`;
 
       // Generate filenames
       const isWindows = version.platform === 'Windows';

@@ -13,6 +13,7 @@ type Credentials struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
 	MachineID    string `json:"machineId"`
+	ServerURL    string `json:"serverUrl,omitempty"`
 }
 
 // SaveCredentials saves agent credentials to disk

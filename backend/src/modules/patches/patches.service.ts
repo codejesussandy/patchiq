@@ -4,6 +4,8 @@ import { getPaginationParams, paginate } from '@shared/utils/pagination';
 import type { Prisma } from '@prisma/client';
 import { deploymentExecutorService } from '@modules/deployments';
 import type { PatchInstallPayload } from '@modules/deployments';
+import { queueDownloadJob } from '@modules/patch-repository';
+import { v4 as uuidv4 } from 'uuid';
 import type {
   CreatePatchInput,
   UpdatePatchInput,
@@ -95,6 +97,7 @@ export async function createPatch(data: CreatePatchInput) {
       kbNumber: data.kbNumber,
       bulletinId: data.bulletinId,
       releaseDate: data.releaseDate ? new Date(data.releaseDate) : null,
+      downloadUrl: data.downloadUrl || null,
       referenceUrl: data.referenceUrl,
       rebootRequired: data.rebootRequired ?? false,
       supportUninstallation: data.supportUninstallation ?? false,
@@ -107,6 +110,13 @@ export async function createPatch(data: CreatePatchInput) {
 
   // Link patch to vulnerabilities via CVE numbers
   await updateVulnerabilityPatchStatus(patch.id, patch.cveNumbers);
+
+  // Auto-queue download if downloadUrl is provided
+  if (patch.downloadUrl) {
+    autoQueueDownload(patch.id, patch.downloadUrl, patch.software || patch.title).catch((err) => {
+      console.error(`[Auto-Download] Failed to queue download for patch ${patch.id}:`, err);
+    });
+  }
 
   return transformPatch(patch);
 }
@@ -130,6 +140,7 @@ export async function updatePatch(id: string, data: UpdatePatchInput) {
       description: data.description,
       severity: data.severity,
       category: data.category,
+      downloadUrl: data.downloadUrl,
       testStatus: data.testStatus,
       approvalStatus: data.approvalStatus,
       tags: data.tags,
@@ -149,6 +160,13 @@ export async function updatePatch(id: string, data: UpdatePatchInput) {
 
     // Set patchAvailable for added CVEs
     await updateVulnerabilityPatchStatus(id, addedCves);
+  }
+
+  // Auto-queue download if downloadUrl was added/changed and no download completed yet
+  if (data.downloadUrl && data.downloadUrl !== existing.downloadUrl && existing.downloadStatus !== 'completed') {
+    autoQueueDownload(patch.id, data.downloadUrl, patch.software || patch.title).catch((err) => {
+      console.error(`[Auto-Download] Failed to queue download for patch ${patch.id}:`, err);
+    });
   }
 
   return transformPatch(patch);
@@ -1109,6 +1127,51 @@ async function revertVulnerabilityPatchStatus(patchId: string, cveNumbers: strin
       console.log(`[Patch-Vuln Link] Reverted patchAvailable=false for CVE: ${cve}`);
     }
   }
+}
+
+// ============================================
+// Auto-Download Helper
+// ============================================
+
+/**
+ * Automatically queue a download job when a patch has a downloadUrl.
+ * Creates a PatchDownloadJob record and queues it via BullMQ.
+ */
+async function autoQueueDownload(patchId: string, downloadUrl: string, fileName: string) {
+  const jobId = uuidv4();
+  const targetPath = `patches/${patchId}/${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+  // Create the PatchDownloadJob record
+  await prisma.patchDownloadJob.create({
+    data: {
+      jobId,
+      patchId,
+      sourceUrl: downloadUrl,
+      targetPath,
+      fileName: fileName || 'patch-file',
+      status: 'pending',
+      priority: 50,
+      maxRetries: 3,
+    },
+  });
+
+  // Queue via BullMQ
+  await queueDownloadJob({
+    jobId,
+    sourceUrl: downloadUrl,
+    targetPath,
+    fileName: fileName || 'patch-file',
+    patchId,
+    priority: 50,
+  });
+
+  // Update patch downloadStatus
+  await prisma.patch.update({
+    where: { id: patchId },
+    data: { downloadStatus: 'pending' },
+  });
+
+  console.log(`[Auto-Download] Queued download for patch ${patchId}: ${downloadUrl}`);
 }
 
 // ============================================

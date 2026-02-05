@@ -13,6 +13,16 @@ import (
 	"time"
 )
 
+// ErrAuth indicates an authentication failure (401/403) requiring re-registration
+type ErrAuth struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *ErrAuth) Error() string {
+	return fmt.Sprintf("auth failed (status %d): %s", e.StatusCode, e.Message)
+}
+
 // Client handles communication with the PatchIQ backend
 type Client struct {
 	baseURL      string
@@ -64,6 +74,16 @@ func (c *Client) GetAgentID() string {
 // IsRegistered returns true if the agent has valid credentials
 func (c *Client) IsRegistered() bool {
 	return c.agentID != "" && c.accessToken != ""
+}
+
+// GetAccessToken returns the current access token
+func (c *Client) GetAccessToken() string {
+	return c.accessToken
+}
+
+// GetRefreshToken returns the current refresh token
+func (c *Client) GetRefreshToken() string {
+	return c.refreshToken
 }
 
 // Register registers the agent with the backend
@@ -140,6 +160,9 @@ func (c *Client) Heartbeat(req *HeartbeatRequest) (*HeartbeatResponse, error) {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return nil, &ErrAuth{StatusCode: resp.StatusCode, Message: "heartbeat rejected"}
+	}
 	if resp.StatusCode != http.StatusOK {
 		var errResp ErrorResponse
 		if json.Unmarshal(respBody, &errResp) == nil {
@@ -247,6 +270,9 @@ func (c *Client) SubmitInventory(req *InventoryRequest) error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return &ErrAuth{StatusCode: resp.StatusCode, Message: "inventory rejected"}
+	}
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("submit inventory failed with status %d: %s", resp.StatusCode, string(respBody))
@@ -279,6 +305,9 @@ func (c *Client) SubmitTelemetry(req *TelemetryRequest) error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return &ErrAuth{StatusCode: resp.StatusCode, Message: "telemetry rejected"}
+	}
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("submit telemetry failed with status %d: %s", resp.StatusCode, string(respBody))
@@ -393,8 +422,15 @@ func (c *Client) GetPatchDownloadURLs(patchIDs []string) ([]PatchDownloadInfo, e
 		return nil, fmt.Errorf("failed to marshal patch download request: %w", err)
 	}
 
-	// Use the v1 API endpoint
-	httpReq, err := http.NewRequest("POST", c.baseURL+"/../v1/patch-repository/patches/agent-downloads", bytes.NewBuffer(body))
+	// Build the v1 API URL by stripping /api suffix and appending /v1/...
+	base := c.baseURL
+	for _, suffix := range []string{"/v1", "/v2", "/api"} {
+		if len(base) > len(suffix) && base[len(base)-len(suffix):] == suffix {
+			base = base[:len(base)-len(suffix)]
+			break
+		}
+	}
+	httpReq, err := http.NewRequest("POST", base+"/v1/patch-repository/patches/agent-downloads", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
