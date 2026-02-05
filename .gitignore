@@ -33,3 +33,6 @@ test-results/
 tmp/
 temp/
 *.tmp
+
+# Turborepo
+.turbo/
