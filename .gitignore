@@ -36,3 +36,6 @@ temp/
 
 # Turborepo
 .turbo/
+
+# Shared types build output
+shared/dist/
