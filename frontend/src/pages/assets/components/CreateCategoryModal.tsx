@@ -84,7 +84,7 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
         categoryId: values.parentCategory,
         name: values.subCategoryName,
         description: values.subCategoryDescription || '',
-        criticality: values.criticality || 'Medium',
+        criticality: (values.criticality || 'Medium') as SubCategory['criticality'],
         businessUnit: values.businessUnit || '',
         department: values.department || '',
         assetCount: 0,

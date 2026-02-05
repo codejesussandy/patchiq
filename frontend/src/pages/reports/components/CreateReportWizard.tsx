@@ -12,9 +12,7 @@ import {
   DatePicker,
   Switch,
   TimePicker,
-  Checkbox,
   Transfer,
-  Space,
   Typography,
   Divider,
   Tag,
@@ -357,11 +355,12 @@ export const CreateReportWizard = ({
 
   // Render Step 2: Configuration
   const renderStep2 = () => {
-    const reportType = form.getFieldValue('type') as ReportType;
+    // reportType available for future use
+    void (form.getFieldValue('type') as ReportType);
 
     return (
       <div>
-        <Divider orientation="left">Timeline</Divider>
+        <Divider titlePlacement="left">Timeline</Divider>
         <Row gutter={16}>
           <Col span={24}>
             <Form.Item
@@ -376,7 +375,7 @@ export const CreateReportWizard = ({
 
         {availableFilters.length > 0 && (
           <>
-            <Divider orientation="left">Filters</Divider>
+            <Divider titlePlacement="left">Filters</Divider>
             <Row gutter={16}>
               {availableFilters.includes('severity') && (
                 <Col span={12}>
@@ -427,7 +426,7 @@ export const CreateReportWizard = ({
           </>
         )}
 
-        <Divider orientation="left">Columns</Divider>
+        <Divider titlePlacement="left">Columns</Divider>
         <Row gutter={16}>
           <Col span={24}>
             <Form.Item label="Select Columns to Include">
@@ -460,7 +459,7 @@ export const CreateReportWizard = ({
 
     return (
       <div>
-        <Divider orientation="left">Export Format</Divider>
+        <Divider titlePlacement="left">Export Format</Divider>
         <Row gutter={16}>
           <Col span={24}>
             <Form.Item
@@ -477,7 +476,7 @@ export const CreateReportWizard = ({
           </Col>
         </Row>
 
-        <Divider orientation="left">Schedule</Divider>
+        <Divider titlePlacement="left">Schedule</Divider>
         <Row gutter={16}>
           <Col span={24}>
             <Form.Item label="Enable Schedule" name="enableSchedule" valuePropName="checked">

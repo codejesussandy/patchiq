@@ -1,6 +1,8 @@
-export type AgentStatus = 'Connected' | 'Disconnected' | 'Pending' | 'Error';
-export type OSFamily = 'Windows' | 'MacOS' | 'Linux';
+// Re-export matching enums from shared package
+export type { AgentStatus, OSFamily } from '@patchiq/shared-types';
 
+// TODO: Align with @patchiq/shared-types when shared models use enum types
+// Mismatch: shared Agent uses string for status/os, lacks lastHeartbeatRelative/tags/groups
 export type Agent = {
   // Core identifiers
   id: string;
@@ -8,10 +10,10 @@ export type Agent = {
   name: string;
 
   // Status
-  status: AgentStatus;
+  status: import('@patchiq/shared-types').AgentStatus;
 
   // Operating system
-  os: OSFamily;
+  os: import('@patchiq/shared-types').OSFamily;
   osVersion: string;
   agentVersion: string;
 

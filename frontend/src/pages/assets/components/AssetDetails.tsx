@@ -28,7 +28,6 @@ import {
   AppleOutlined,
   EditOutlined,
   MoreOutlined,
-  FilterOutlined,
   DownloadOutlined,
   DeleteOutlined,
   CopyOutlined,
@@ -43,7 +42,8 @@ import {
   SettingOutlined,
   DesktopOutlined,
 } from '@ant-design/icons';
-import { OSIcon } from '../../../components/patches';
+// OSIcon import removed - unused
+// import { OSIcon } from '../../../components/patches';
 import type { ColumnsType } from 'antd/es/table';
 import type { Asset, AssetLifeCycle, Hardware, Software } from '../../../types/asset.types';
 import type { TelemetryPayload } from '../../../types/telemetry.types';
@@ -95,13 +95,14 @@ export const AssetDetails = () => {
   const [alertsData, setAlertsData] = useState<Array<{
     id: string;
     alert: string;
-    severity: 'CRITICAL' | 'CLEAR' | 'WARNING' | 'INFO';
+    severity: string;
     module: string;
     attribute: string;
     value: string;
     message: string;
     status: string;
     createdOn: string;
+    [key: string]: unknown;
   }>>([]);
 
   // Audit log state
@@ -1263,7 +1264,7 @@ export const AssetDetails = () => {
         title: 'Vendor',
         dataIndex: 'vendor',
         key: 'vendor',
-        filters: uniqueVendors.map((vendor) => ({ text: vendor, value: vendor })),
+        filters: uniqueVendors.map((vendor) => ({ text: vendor || '', value: vendor || '' })),
         filteredValue: appVendorFilters.length > 0 ? appVendorFilters : null,
         onFilter: (value: unknown, record: { vendor?: string }) => record.vendor === value,
       },
@@ -1446,10 +1447,10 @@ export const AssetDetails = () => {
               </Tooltip>
             </div>
             <Table
-              columns={applicationColumns}
+              columns={applicationColumns as any}
               dataSource={userApps}
               rowKey="id"
-              onChange={handleAppTableChange}
+              onChange={handleAppTableChange as any}
               pagination={{
                 pageSize: 25,
                 showSizeChanger: true,
@@ -1472,7 +1473,7 @@ export const AssetDetails = () => {
               </Tooltip>
             </div>
             <Table
-              columns={applicationColumns}
+              columns={applicationColumns as any}
               dataSource={systemApps}
               rowKey="id"
               pagination={{
@@ -1990,7 +1991,7 @@ export const AssetDetails = () => {
 
     const severityOrder: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
 
-    type VulnRecord = { cveId: string; title: string; severity: string; cvssScore: number; status: string; exploitable: boolean };
+    type VulnRecord = { cveId: string; title: string; severity: string; cvssScore: number; status: string; exploitable: boolean; description?: string; affectedSoftware?: string; affectedVersions?: string; dateDiscovered?: string; datePublished?: string; patchVersion?: string; exploitAvailable?: boolean; [key: string]: unknown };
 
     const columns = [
       {
@@ -2846,7 +2847,7 @@ export const AssetDetails = () => {
             <Upload
               fileList={fileList}
               onChange={({ fileList }) => setFileList(fileList)}
-              customRequest={handleFileUpload}
+              customRequest={handleFileUpload as any}
               multiple
             >
               <Button type="primary" icon={<UploadOutlined />}>

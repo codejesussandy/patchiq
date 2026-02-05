@@ -33,3 +33,9 @@ test-results/
 tmp/
 temp/
 *.tmp
+
+# Turborepo
+.turbo/
+
+# Shared types build output
+shared/dist/

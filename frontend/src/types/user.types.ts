@@ -1,3 +1,6 @@
+// TODO: Align with @patchiq/shared-types when API contracts are finalized
+// Mismatch: phone vs contactNumber, lastLogin vs lastLoginAt; extra fields: gender, status, branch, orgUnit, dashboard, password
+
 // Comprehensive User type combining auth and settings contexts
 export type User = {
   // Core fields

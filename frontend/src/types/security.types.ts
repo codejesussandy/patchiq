@@ -1,3 +1,6 @@
+// TODO: Align with @patchiq/shared-types when API contracts are finalized
+// Mismatch: agent inventory types, not DB entities
+
 // Security & Compliance Types
 // Based on contracts/schemas/security.schema.json
 

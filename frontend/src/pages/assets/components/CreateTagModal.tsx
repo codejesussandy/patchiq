@@ -82,10 +82,10 @@ const CreateTagModal: React.FC<CreateTagModalProps> = ({
     try {
       let newTag: TagType;
       if (tag) {
-        newTag = await tagService.updateTag(tag.id, values);
+        newTag = await tagService.updateTag(tag.id, values as any);
         message.success('Tag updated successfully');
       } else {
-        newTag = await tagService.createTag(values);
+        newTag = await tagService.createTag(values as any);
         message.success('Tag created successfully');
       }
       onSuccess(newTag);

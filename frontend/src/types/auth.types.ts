@@ -1,10 +1,10 @@
+// Auth request types - imported from shared package (exact matches)
+export type { LoginRequest, ForgotPasswordRequest, ResetPasswordRequest, OnboardingRequest } from '@patchiq/shared-types';
+import type { ErrorResponse } from '@patchiq/shared-types';
+export type ApiError = ErrorResponse;
+
 import type { User } from './user.types';
 export type { User } from './user.types';
-
-export type LoginRequest = {
-  email: string;
-  password: string;
-};
 
 export type LoginResponse = {
   success: boolean;
@@ -16,31 +16,14 @@ export type LoginResponse = {
   message: string;
 };
 
-export type ForgotPasswordRequest = {
-  email: string;
-};
-
 export type ForgotPasswordResponse = {
   success: boolean;
   message: string;
 };
 
-export type ResetPasswordRequest = {
-  token: string;
-  password: string;
-  confirmPassword: string;
-};
-
 export type ResetPasswordResponse = {
   success: boolean;
   message: string;
-};
-
-export type OnboardingRequest = {
-  name: string;
-  contactNumber: string;
-  password: string;
-  confirmPassword: string;
 };
 
 export type OnboardingResponse = {
@@ -49,18 +32,6 @@ export type OnboardingResponse = {
     user: User;
   };
   message: string;
-};
-
-export type ApiError = {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: Array<{
-      field: string;
-      message: string;
-    }>;
-  };
 };
 
 export type AuthContextType = {

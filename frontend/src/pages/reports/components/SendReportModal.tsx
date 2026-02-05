@@ -5,16 +5,14 @@ import {
   Form,
   Input,
   Select,
-  Typography,
   Tag,
   Descriptions,
 } from 'antd';
 import { reportsService } from '../../../services/reports.service';
-import type { Report, ReportFormat } from '../../../types/reports.types';
+import type { Report } from '../../../types/reports.types';
 import { REPORT_TYPE_LABELS, REPORT_FORMAT_LABELS } from '../../../types/reports.types';
 
 const { TextArea } = Input;
-const { Text } = Typography;
 
 interface SendReportModalProps {
   open: boolean;

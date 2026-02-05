@@ -1,3 +1,6 @@
+// TODO: Align with @patchiq/shared-types when API contracts are finalized
+// Mismatch: shared Asset is flat DB entity; frontend has nested hardware types (Processor, RAM, Storage, etc.)
+
 export type OperationalStatus = 'Connected' | 'Disconnected';
 export type AssetStatus = 'In Use' | 'Available' | 'Under Maintenance' | 'Retired';
 export type AssetType = 'Computer' | 'Server' | 'Mobile' | 'Printer' | 'Laptop' | 'Tablet' | 'Desktop' | 'Virtual Machine';

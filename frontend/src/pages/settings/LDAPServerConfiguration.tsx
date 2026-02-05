@@ -394,7 +394,7 @@ export const LDAPServerConfiguration = () => {
       config.id.toLowerCase().includes(searchLower) ||
       config.name.toLowerCase().includes(searchLower) ||
       config.host.toLowerCase().includes(searchLower) ||
-      config.fqdn.toLowerCase().includes(searchLower) ||
+      (config.fqdn && config.fqdn.toLowerCase().includes(searchLower)) ||
       (config.description && config.description.toLowerCase().includes(searchLower))
     );
   });

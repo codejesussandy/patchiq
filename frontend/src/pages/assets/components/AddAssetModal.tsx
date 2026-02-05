@@ -60,7 +60,7 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
           assignDevice: assetData.assignDevice,
           baseLocation: assetData.baseLocation || asset.location?.base?.address,
           installedLocation: assetData.installedLocation,
-          installedDate: assetData.installedDate ? dayjs(assetData.installedDate) : undefined,
+          installedDate: assetData.installedDate ? dayjs(assetData.installedDate as string) : undefined,
           hostname: asset.hostname,
           ipAddress: asset.ipAddress,
           macAddress: asset.macAddress,
@@ -191,7 +191,7 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
          await assetService.updateAsset(asset.id, cleanedData as Record<string, unknown>);
          message.success('Asset updated successfully');
        } else {
-         await assetService.createAsset(cleanedData as Record<string, unknown>);
+         await assetService.createAsset(cleanedData as any);
          message.success('Asset created successfully');
        }
 

@@ -1,3 +1,6 @@
+// TODO: Align with @patchiq/shared-types when API contracts are finalized
+// Mismatch: field name mismatches (e.g. applicationName vs name)
+
 // Jobs Types
 // Centralized type definitions for all job-related data
 

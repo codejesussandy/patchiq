@@ -12,15 +12,19 @@
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "check": "tsc --noEmit",
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@patchiq/shared-types": "workspace:*",
     "antd": "^6.0.0",
     "axios": "^1.13.2",
+    "dayjs": "^1.11.19",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.6",
