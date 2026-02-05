@@ -221,6 +221,25 @@ export class AgentsController {
       // Initialize MinIO
       await minioStorage.initialize();
 
+      // Check if this is an MSI installer - serve directly without ZIP wrapper
+      const isMsi = version.filePath.endsWith('.msi');
+      if (isMsi) {
+        const msiFilename = `patchiq-agent-${version.platform.toLowerCase()}-${version.architecture}-v${version.version}.msi`;
+        res.setHeader('Content-Type', 'application/x-msi');
+        res.setHeader('Content-Disposition', `attachment; filename="${msiFilename}"`);
+
+        try {
+          const msiStream = await minioStorage.downloadStream(version.filePath, AGENTS_BUCKET);
+          msiStream.pipe(res);
+        } catch (streamError) {
+          console.error('MinIO stream error:', streamError);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Failed to fetch MSI installer' });
+          }
+        }
+        return;
+      }
+
       // Determine server URL - prefer configured public URL, fall back to request headers
       let serverUrl: string;
       const defaultBackendUrl = `http://localhost:${env.PORT}`;
