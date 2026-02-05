@@ -8,7 +8,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@shared': path.resolve(__dirname, '../shared'),
     },
   },
   server: {
@@ -25,7 +24,7 @@ export default defineConfig({
     proxy: {
       // Proxy API requests to backend for local development (only used when running outside Docker)
       '/v1': {
-        target: process.env.VITE_BACKEND_URL || 'http://backend:5002',
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:5002',
         changeOrigin: true,
       },
     },

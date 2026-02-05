@@ -1,3 +1,6 @@
+// TODO: Align with @patchiq/shared-types when API contracts are finalized
+// Mismatch: ReportFormat (Excel vs XLSX), ReportStatus (draft|generating vs pending|processing), ReportType (different sets)
+
 /**
  * Reports Module Types - Aligned with backend types
  */

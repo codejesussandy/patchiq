@@ -1,3 +1,6 @@
+// TODO: Align with @patchiq/shared-types when API contracts are finalized
+// Mismatch: mostly form types; entity types (Branch, Role, Policy) differ from shared
+
 // Branch Location Types
 export type Branch = {
   id: string;

@@ -1,3 +1,6 @@
+// TODO: Align with @patchiq/shared-types when API contracts are finalized
+// Mismatch: frontend-specific package management types; no shared equivalents
+
 /**
  * Hub (Software Package Repository) Types
  */

@@ -1,3 +1,6 @@
+// TODO: Align with @patchiq/shared-types when API contracts are finalized
+// Mismatch: form data types are frontend-only; entity types differ in optional/null pattern
+
 // Re-export the canonical Agent type from agent.types.ts
 // Note: Discovery module uses the same Agent type as the main agent module
 export type { Agent, AgentStatus } from './agent.types';
