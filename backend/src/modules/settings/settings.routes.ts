@@ -1,7 +1,24 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { settingsController } from './settings.controller';
 import { authenticate } from '@middleware/auth';
 import { validateBody, validateParams } from '@middleware/validation';
+
+// Configure multer for file uploads (memory storage)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size for logos
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['image/png', 'image/jpeg', 'image/gif', 'image/svg+xml'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PNG, JPG, GIF, and SVG are allowed.'));
+    }
+  },
+});
 import {
   createOrganizationSchema,
   updateOrganizationSchema,
@@ -28,6 +45,8 @@ import {
   testMailServerSchema,
   updateLicenseSchema,
   updateVulnerabilityPreferenceSchema,
+  updateRiskScoreSettingsSchema,
+  updateRemoteDesktopSchema,
   idParamSchema,
 } from './settings.validators';
 
@@ -184,5 +203,33 @@ router.get('/deployment-policies/:id', validateParams(idParamSchema), settingsCo
 router.post('/deployment-policies', settingsController.createDeploymentPolicy.bind(settingsController));
 router.put('/deployment-policies/:id', validateParams(idParamSchema), settingsController.updateDeploymentPolicy.bind(settingsController));
 router.delete('/deployment-policies/:id', validateParams(idParamSchema), settingsController.deleteDeploymentPolicy.bind(settingsController));
+
+// ============================================
+// Branding
+// ============================================
+router.get('/branding', settingsController.getBranding.bind(settingsController));
+router.post('/branding', upload.single('logo'), settingsController.updateBranding.bind(settingsController));
+
+// ============================================
+// Vendor Logos
+// ============================================
+router.get('/vendor-logos', settingsController.listVendorLogos.bind(settingsController));
+router.get('/vendor-logos/:id', validateParams(idParamSchema), settingsController.getVendorLogo.bind(settingsController));
+router.post('/vendor-logos', upload.single('logo'), settingsController.createVendorLogo.bind(settingsController));
+router.put('/vendor-logos/:id', validateParams(idParamSchema), upload.single('logo'), settingsController.updateVendorLogo.bind(settingsController));
+router.delete('/vendor-logos/:id', validateParams(idParamSchema), settingsController.deleteVendorLogo.bind(settingsController));
+
+// ============================================
+// Risk Score Settings
+// ============================================
+router.get('/risk-score', settingsController.getRiskScoreSettings.bind(settingsController));
+router.put('/risk-score', validateBody(updateRiskScoreSettingsSchema), settingsController.updateRiskScoreSettings.bind(settingsController));
+
+// ============================================
+// Remote Desktop Settings
+// ============================================
+router.get('/remote-desktop', settingsController.getRemoteDesktopSettings.bind(settingsController));
+router.put('/remote-desktop', validateBody(updateRemoteDesktopSchema), settingsController.updateRemoteDesktopSettings.bind(settingsController));
+router.post('/remote-desktop/reset', settingsController.resetRemoteDesktopSettings.bind(settingsController));
 
 export { router as settingsRoutes };

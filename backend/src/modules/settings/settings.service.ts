@@ -2,6 +2,10 @@ import { prisma } from '@db/client';
 import { NotFoundError, BadRequestError } from '@shared/errors';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import { encrypt, decrypt } from '@shared/utils/crypto';
+import { emailService, type MailServerConfig } from '@shared/services/email.service';
+import { ldapService, type LdapConfig } from '@shared/services/ldap.service';
+import { proxyService, type ProxyConfig } from '@shared/services/proxy.service';
+import { minioStorage } from '@shared/services/minio.service';
 import type {
   AlertConfigResponse,
   LdapConfigResponse,
@@ -167,16 +171,21 @@ export class SettingsService {
   }
 
   async createLdapConfig(input: CreateLdapConfigInput): Promise<LdapConfigResponse> {
+    // Normalize field names (support both old and new naming conventions)
+    const baseDn = input.baseDn || (input as any).baseDN;
+    const bindDn = input.bindDn || (input as any).username;
+    const bindPassword = input.bindPassword || (input as any).password;
+
     // Encrypt sensitive fields
-    const bindDnEnc = encrypt(input.bindDn);
-    const bindPasswordEnc = encrypt(input.bindPassword);
+    const bindDnEnc = encrypt(bindDn);
+    const bindPasswordEnc = encrypt(bindPassword);
 
     const config = await prisma.ldapConfig.create({
       data: {
         name: input.name,
         host: input.host,
         port: input.port,
-        baseDn: input.baseDn,
+        baseDn,
         bindDnEnc,
         bindPasswordEnc,
         userFilter: input.userFilter,
@@ -196,20 +205,25 @@ export class SettingsService {
       throw new NotFoundError('LDAP configuration not found');
     }
 
+    // Normalize field names (support both old and new naming conventions)
+    const baseDn = input.baseDn || (input as any).baseDN;
+    const bindDn = input.bindDn || (input as any).username;
+    const bindPassword = input.bindPassword || (input as any).password;
+
     const updateData: Record<string, unknown> = {
       name: input.name,
       host: input.host,
       port: input.port,
-      baseDn: input.baseDn,
+      baseDn: baseDn,
       userFilter: input.userFilter,
       isActive: input.isActive,
     };
 
-    if (input.bindDn) {
-      updateData.bindDnEnc = encrypt(input.bindDn);
+    if (bindDn) {
+      updateData.bindDnEnc = encrypt(bindDn);
     }
-    if (input.bindPassword) {
-      updateData.bindPasswordEnc = encrypt(input.bindPassword);
+    if (bindPassword) {
+      updateData.bindPasswordEnc = encrypt(bindPassword);
     }
 
     const updated = await prisma.ldapConfig.update({
@@ -247,14 +261,29 @@ export class SettingsService {
     const bindDn = decrypt(config.bindDnEnc);
     const bindPassword = decrypt(config.bindPasswordEnc);
 
-    // TODO: Implement actual LDAP connection test
-    console.log(`[DEV] Testing LDAP connection to ${config.host}:${config.port}`);
-    console.log(`[DEV] Base DN: ${config.baseDn}, Bind DN: ${bindDn}`);
+    console.log(`[LDAP Test] Testing connection to ${config.host}:${config.port}`);
+    console.log(`[LDAP Test] Base DN: ${config.baseDn}, Bind DN: ${bindDn}`);
 
-    // Simulated success for now
+    // Perform actual LDAP connection test
+    const ldapConfig: LdapConfig = {
+      host: config.host,
+      port: config.port,
+      baseDn: config.baseDn,
+      bindDn,
+      bindPassword,
+      useTLS: config.port === 636, // LDAPS uses port 636
+      userFilter: config.userFilter || undefined,
+    };
+
+    const result = await ldapService.testConnection(ldapConfig);
+
+    if (!result.success) {
+      throw new BadRequestError(result.message);
+    }
+
     return {
       success: true,
-      message: 'LDAP connection successful',
+      message: result.message,
     };
   }
 
@@ -412,12 +441,29 @@ export class SettingsService {
   }
 
   async testProxyServer(input: Record<string, unknown>): Promise<SuccessResponse> {
-    // TODO: Implement actual proxy test
-    console.log(`[DEV] Testing proxy connection to ${input.host}:${input.port}`);
+    const host = input.host as string;
+    const port = Number(input.port);
+    const protocol = (input.protocol as 'HTTP' | 'HTTPS' | 'SOCKS5') || 'HTTP';
+
+    console.log(`[Proxy Test] Testing proxy connection to ${host}:${port} (${protocol})`);
+
+    const proxyConfig: ProxyConfig = {
+      host,
+      port,
+      protocol,
+      username: input.username as string | undefined,
+      password: input.password as string | undefined,
+    };
+
+    const result = await proxyService.testConnection(proxyConfig);
+
+    if (!result.success) {
+      throw new BadRequestError(result.message);
+    }
 
     return {
       success: true,
-      message: 'Proxy connection successful',
+      message: result.message,
     };
   }
 
@@ -426,26 +472,92 @@ export class SettingsService {
       where: { category: 'mail' },
     });
 
-    const defaults: Record<string, unknown> = {
+    // Build internal config first
+    const internal: Record<string, unknown> = {
       host: '',
       port: 587,
       secure: true,
       username: null,
       fromAddress: null,
       fromName: null,
+      enableAuthentication: false,
     };
 
-    const result = { ...defaults };
     for (const setting of settings) {
       const key = setting.key.replace('mail.', '');
-      result[key] = setting.value;
+      // Don't return encrypted password
+      if (key !== 'password') {
+        internal[key] = setting.value;
+      }
     }
 
-    return result;
+    // Convert secure (boolean) to protocol (NONE/SSL/TLS)
+    let protocol: 'NONE' | 'SSL' | 'TLS' = 'NONE';
+    if (internal.secure === true) {
+      // Port 465 typically uses SSL, others use TLS
+      protocol = internal.port === 465 ? 'SSL' : 'TLS';
+    }
+
+    // Return with frontend field names
+    return {
+      smtpHost: internal.host,
+      smtpPort: internal.port,
+      protocol,
+      email: internal.fromAddress,
+      enableAuthentication: internal.enableAuthentication || !!internal.username,
+      username: internal.username,
+      fromName: internal.fromName,
+      // Also return backend names for compatibility
+      host: internal.host,
+      port: internal.port,
+      secure: internal.secure,
+      fromAddress: internal.fromAddress,
+    };
   }
 
   async updateMailServer(input: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const updates = Object.entries(input).filter(([, value]) => value !== undefined);
+    // Normalize frontend field names to backend field names
+    const normalized: Record<string, unknown> = {};
+
+    // Map smtpHost -> host
+    if (input.smtpHost !== undefined) {
+      normalized.host = input.smtpHost;
+    } else if (input.host !== undefined) {
+      normalized.host = input.host;
+    }
+
+    // Map smtpPort -> port
+    if (input.smtpPort !== undefined) {
+      normalized.port = Number(input.smtpPort);
+    } else if (input.port !== undefined) {
+      normalized.port = Number(input.port);
+    }
+
+    // Map protocol (NONE/SSL/TLS) -> secure (boolean)
+    if (input.protocol !== undefined) {
+      normalized.secure = input.protocol !== 'NONE';
+    } else if (input.secure !== undefined) {
+      normalized.secure = input.secure;
+    }
+
+    // Map email -> fromAddress
+    if (input.email !== undefined) {
+      normalized.fromAddress = input.email;
+    } else if (input.fromAddress !== undefined) {
+      normalized.fromAddress = input.fromAddress;
+    }
+
+    // Handle enableAuthentication flag
+    if (input.enableAuthentication !== undefined) {
+      normalized.enableAuthentication = input.enableAuthentication;
+    }
+
+    // Pass through username, password, fromName
+    if (input.username !== undefined) normalized.username = input.username;
+    if (input.password !== undefined) normalized.password = input.password;
+    if (input.fromName !== undefined) normalized.fromName = input.fromName;
+
+    const updates = Object.entries(normalized).filter(([, value]) => value !== undefined);
 
     for (const [key, value] of updates) {
       // Encrypt password if provided
@@ -464,13 +576,58 @@ export class SettingsService {
   }
 
   async testMailServer(input: Record<string, unknown>): Promise<SuccessResponse> {
-    // TODO: Implement actual mail server test
-    console.log(`[DEV] Testing mail server ${input.host}:${input.port}`);
-    console.log(`[DEV] Sending test email to ${input.testEmail}`);
+    // Normalize frontend field names to backend field names
+    const host = (input.smtpHost || input.host) as string;
+    const port = Number(input.smtpPort || input.port);
+    const testEmail = input.testEmail as string;
+
+    // Determine secure from protocol or secure flag
+    let secure = false;
+    if (input.protocol !== undefined) {
+      secure = input.protocol !== 'NONE';
+    } else if (input.secure !== undefined) {
+      secure = input.secure as boolean;
+    }
+
+    // Get password - if provided use it, otherwise try to get stored one
+    let password = input.password as string | undefined;
+    if (!password && input.enableAuthentication) {
+      // Try to get stored password
+      const storedPassword = await prisma.setting.findUnique({
+        where: { key: 'mail.password' },
+      });
+      if (storedPassword?.value) {
+        try {
+          password = decrypt(storedPassword.value as string);
+        } catch {
+          // Password couldn't be decrypted
+        }
+      }
+    }
+
+    const mailConfig: MailServerConfig = {
+      host,
+      port,
+      secure,
+      username: input.username as string | undefined,
+      password,
+      fromAddress: (input.email || input.fromAddress) as string | undefined,
+      fromName: input.fromName as string | undefined,
+    };
+
+    console.log(`[Mail Test] Testing mail server ${host}:${port} (secure: ${secure})`);
+    console.log(`[Mail Test] Sending test email to ${testEmail}`);
+
+    // Send actual test email
+    const result = await emailService.sendTestEmail(mailConfig, testEmail);
+
+    if (!result.success) {
+      throw new BadRequestError(result.message);
+    }
 
     return {
       success: true,
-      message: 'Test email sent successfully',
+      message: result.message,
     };
   }
 
@@ -914,6 +1071,271 @@ export class SettingsService {
     const policy = await prisma.deploymentPolicy.findUnique({ where: { id } });
     if (!policy) throw new NotFoundError('Deployment policy not found');
     await prisma.deploymentPolicy.delete({ where: { id } });
+  }
+
+  // ============================================
+  // Branding
+  // ============================================
+
+  async getBranding(): Promise<Record<string, unknown>> {
+    const settings = await prisma.setting.findMany({
+      where: { category: 'branding' },
+    });
+
+    const defaults: Record<string, unknown> = {
+      companyName: 'SkenzerIQ',
+      logoUrl: null,
+      logoFileName: null,
+    };
+
+    const result = { ...defaults };
+    for (const setting of settings) {
+      const key = setting.key.replace('branding.', '');
+      result[key] = setting.value;
+    }
+
+    return result;
+  }
+
+  async updateBranding(
+    input: { companyName?: string },
+    logoFile?: { buffer: Buffer; originalname: string; mimetype: string }
+  ): Promise<Record<string, unknown>> {
+    // Update company name if provided
+    if (input.companyName !== undefined) {
+      await prisma.setting.upsert({
+        where: { key: 'branding.companyName' },
+        update: { value: JSON.parse(JSON.stringify(input.companyName)) },
+        create: { key: 'branding.companyName', value: JSON.parse(JSON.stringify(input.companyName)), category: 'branding' },
+      });
+    }
+
+    // Upload logo if provided
+    if (logoFile) {
+      const objectKey = `branding/logo-${Date.now()}-${logoFile.originalname}`;
+
+      const uploadResult = await minioStorage.uploadBuffer(objectKey, logoFile.buffer, {
+        contentType: logoFile.mimetype,
+        metadata: {
+          'original-filename': logoFile.originalname,
+        },
+      });
+
+      // Get presigned URL for the logo (long expiry for branding)
+      const logoUrl = await minioStorage.getPresignedUrl(objectKey, { expirySeconds: 604800 }); // 7 days
+
+      // Store logo info
+      await prisma.setting.upsert({
+        where: { key: 'branding.logoUrl' },
+        update: { value: JSON.parse(JSON.stringify(logoUrl)) },
+        create: { key: 'branding.logoUrl', value: JSON.parse(JSON.stringify(logoUrl)), category: 'branding' },
+      });
+
+      await prisma.setting.upsert({
+        where: { key: 'branding.logoFileName' },
+        update: { value: JSON.parse(JSON.stringify(logoFile.originalname)) },
+        create: { key: 'branding.logoFileName', value: JSON.parse(JSON.stringify(logoFile.originalname)), category: 'branding' },
+      });
+
+      await prisma.setting.upsert({
+        where: { key: 'branding.logoObjectKey' },
+        update: { value: JSON.parse(JSON.stringify(objectKey)) },
+        create: { key: 'branding.logoObjectKey', value: JSON.parse(JSON.stringify(objectKey)), category: 'branding' },
+      });
+    }
+
+    return this.getBranding();
+  }
+
+  // ============================================
+  // Risk Score Settings
+  // ============================================
+
+  async getRiskScoreSettings(): Promise<Record<string, unknown>> {
+    const settings = await prisma.setting.findMany({
+      where: { category: 'risk-score' },
+    });
+
+    const defaults: Record<string, unknown> = {
+      applyDefaultSettings: true,
+      vulnerabilityScoreWeight: 0.25,
+      vulnerabilitySeverityWeight: 0.25,
+      threatsWeight: 0.25,
+      endpointVisitsWeight: 0.25,
+    };
+
+    const result = { ...defaults };
+    for (const setting of settings) {
+      const key = setting.key.replace('risk-score.', '');
+      result[key] = setting.value;
+    }
+
+    return result;
+  }
+
+  async updateRiskScoreSettings(input: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const updates = Object.entries(input).filter(([, value]) => value !== undefined);
+
+    for (const [key, value] of updates) {
+      await prisma.setting.upsert({
+        where: { key: `risk-score.${key}` },
+        update: { value: JSON.parse(JSON.stringify(value)) },
+        create: { key: `risk-score.${key}`, value: JSON.parse(JSON.stringify(value)), category: 'risk-score' },
+      });
+    }
+
+    return this.getRiskScoreSettings();
+  }
+
+  // ============================================
+  // Remote Desktop Settings
+  // ============================================
+
+  async getRemoteDesktopSettings(): Promise<Record<string, unknown>> {
+    const settings = await prisma.setting.findMany({
+      where: { category: 'remote-desktop' },
+    });
+
+    const defaults: Record<string, unknown> = {
+      connectionType: 'Local',
+      remoteSessionIndicator: false,
+      userConsent: true,
+    };
+
+    const result = { ...defaults };
+    for (const setting of settings) {
+      const key = setting.key.replace('remote-desktop.', '');
+      result[key] = setting.value;
+    }
+
+    return result;
+  }
+
+  async updateRemoteDesktopSettings(input: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const updates = Object.entries(input).filter(([, value]) => value !== undefined);
+
+    for (const [key, value] of updates) {
+      await prisma.setting.upsert({
+        where: { key: `remote-desktop.${key}` },
+        update: { value: JSON.parse(JSON.stringify(value)) },
+        create: { key: `remote-desktop.${key}`, value: JSON.parse(JSON.stringify(value)), category: 'remote-desktop' },
+      });
+    }
+
+    return this.getRemoteDesktopSettings();
+  }
+
+  async resetRemoteDesktopSettings(): Promise<Record<string, unknown>> {
+    // Delete all remote-desktop settings to reset to defaults
+    await prisma.setting.deleteMany({
+      where: { category: 'remote-desktop' },
+    });
+
+    return this.getRemoteDesktopSettings();
+  }
+
+  // ============================================
+  // Vendor Logos
+  // ============================================
+
+  async listVendorLogos() {
+    return prisma.vendorLogo.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getVendorLogo(id: string) {
+    const logo = await prisma.vendorLogo.findUnique({ where: { id } });
+    if (!logo) throw new NotFoundError('Vendor logo not found');
+    return logo;
+  }
+
+  async createVendorLogo(
+    data: { name: string; type: string },
+    logoFile: { buffer: Buffer; originalname: string; mimetype: string }
+  ) {
+    const objectKey = `vendor-logos/${data.type}/${Date.now()}-${logoFile.originalname}`;
+
+    await minioStorage.uploadBuffer(objectKey, logoFile.buffer, {
+      contentType: logoFile.mimetype,
+      metadata: {
+        'original-filename': logoFile.originalname,
+      },
+    });
+
+    // Get presigned URL (7 days expiry)
+    const logoUrl = await minioStorage.getPresignedUrl(objectKey, { expirySeconds: 604800 });
+
+    return prisma.vendorLogo.create({
+      data: {
+        name: data.name,
+        type: data.type,
+        logoUrl,
+        fileName: logoFile.originalname,
+        objectKey,
+      },
+    });
+  }
+
+  async updateVendorLogo(
+    id: string,
+    data: { name?: string; type?: string },
+    logoFile?: { buffer: Buffer; originalname: string; mimetype: string }
+  ) {
+    const existing = await prisma.vendorLogo.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Vendor logo not found');
+
+    const updateData: Record<string, unknown> = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.type !== undefined) updateData.type = data.type;
+
+    // If new logo file provided, upload it
+    if (logoFile) {
+      // Delete old logo from MinIO if exists
+      if (existing.objectKey) {
+        try {
+          await minioStorage.deleteObject(existing.objectKey);
+        } catch {
+          // Ignore deletion errors
+        }
+      }
+
+      const objectKey = `vendor-logos/${data.type || existing.type}/${Date.now()}-${logoFile.originalname}`;
+
+      await minioStorage.uploadBuffer(objectKey, logoFile.buffer, {
+        contentType: logoFile.mimetype,
+        metadata: {
+          'original-filename': logoFile.originalname,
+        },
+      });
+
+      const logoUrl = await minioStorage.getPresignedUrl(objectKey, { expirySeconds: 604800 });
+
+      updateData.logoUrl = logoUrl;
+      updateData.fileName = logoFile.originalname;
+      updateData.objectKey = objectKey;
+    }
+
+    return prisma.vendorLogo.update({
+      where: { id },
+      data: updateData,
+    });
+  }
+
+  async deleteVendorLogo(id: string) {
+    const logo = await prisma.vendorLogo.findUnique({ where: { id } });
+    if (!logo) throw new NotFoundError('Vendor logo not found');
+
+    // Delete from MinIO if exists
+    if (logo.objectKey) {
+      try {
+        await minioStorage.deleteObject(logo.objectKey);
+      } catch {
+        // Ignore deletion errors
+      }
+    }
+
+    await prisma.vendorLogo.delete({ where: { id } });
   }
 }
 

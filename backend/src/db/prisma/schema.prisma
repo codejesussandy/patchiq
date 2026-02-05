@@ -1844,3 +1844,20 @@ model Notification {
   @@index([createdAt])
   @@map("notifications")
 }
+
+// ============================================
+// Vendor Logo Model
+// ============================================
+
+model VendorLogo {
+  id        String   @id @default(uuid())
+  name      String
+  type      String   // integration, vendor, os
+  logoUrl   String   @map("logo_url")
+  fileName  String   @map("file_name")
+  objectKey String?  @map("object_key")  // MinIO object key
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("vendor_logos")
+}

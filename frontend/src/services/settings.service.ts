@@ -362,8 +362,8 @@ export const settingsService = {
     await api.delete(`/settings/ldap-configs/${id}`);
   },
 
-  async testLDAPServerConfig(data: LDAPServerFormData): Promise<any> {
-    const response = await api.post(`/settings/ldap-configs/test`, data);
+  async testLDAPServerConfig(id: string): Promise<any> {
+    const response = await api.post(`/settings/ldap-configs/${id}/test`);
     return response.data;
   },
 

@@ -40,13 +40,18 @@ export const MailServerConfiguration = () => {
   };
 
   const handleTest = async () => {
+    const values = form.getFieldsValue();
+    if (!values.testEmail) {
+      message.warning('Please enter a test email address');
+      return;
+    }
     setTestLoading(true);
     try {
-      const values = form.getFieldsValue();
       await settingsService.testMailServerConfig(values);
-      message.success('Mail server connection test successful');
-    } catch (error) {
-      message.error('Mail server connection test failed');
+      message.success('Test email sent successfully! Please check your inbox.');
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Mail server connection test failed';
+      message.error(errorMessage);
     } finally {
       setTestLoading(false);
     }
@@ -145,6 +150,17 @@ export const MailServerConfiguration = () => {
               </>
             ) : null
           }
+        </Form.Item>
+
+        <Form.Item
+          name="testEmail"
+          label="Test Email Address"
+          rules={[
+            { type: 'email', message: 'Please enter a valid email' },
+          ]}
+          tooltip="Enter an email address to receive the test email when clicking Test"
+        >
+          <Input placeholder="recipient@example.com" />
         </Form.Item>
 
         <Form.Item>

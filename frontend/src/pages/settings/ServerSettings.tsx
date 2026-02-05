@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { App,
-  Form, Input, Select, Switch, Button, Space, Typography, Divider, Card, Row, Col } from 'antd';
+  Form, InputNumber, Select, Switch, Button, Space, Typography, Divider, Card, Row, Col } from 'antd';
 import { settingsService } from '../../services/settings.service';
 import type { ServerSettings as ServerSettingsType, ServerSettingsFormData } from '../../types/settings.types';
 
@@ -98,14 +98,14 @@ export const ServerSettings = () => {
                   label={false}
                   rules={[
                     { required: true, message: 'Please enter session timeout' },
-                    { pattern: /^\d+$/, message: 'Must be a number' },
                   ]}
                   noStyle
                 >
-                  <Input
-                    type="number"
+                  <InputNumber
+                    min={1}
+                    max={1440}
                     placeholder="60"
-                    suffix="Minute"
+                    addonAfter="Minute"
                     style={{ width: '100%' }}
                   />
                 </Form.Item>
@@ -121,14 +121,14 @@ export const ServerSettings = () => {
                   label={false}
                   rules={[
                     { required: true, message: 'Please enter session idle timeout' },
-                    { pattern: /^\d+$/, message: 'Must be a number' },
                   ]}
                   noStyle
                 >
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    suffix="Minute"
+                  <InputNumber
+                    min={1}
+                    max={1440}
+                    placeholder="15"
+                    addonAfter="Minute"
                     style={{ width: '100%' }}
                   />
                 </Form.Item>
@@ -150,14 +150,14 @@ export const ServerSettings = () => {
                   label={false}
                   rules={[
                     { required: true, message: 'Please enter endpoint online status timeout' },
-                    { pattern: /^\d+$/, message: 'Must be a number' },
                   ]}
                   noStyle
                 >
-                  <Input
-                    type="number"
+                  <InputNumber
+                    min={1}
+                    max={168}
                     placeholder="1"
-                    suffix="Hour"
+                    addonAfter="Hour"
                     style={{ width: '100%' }}
                   />
                 </Form.Item>
@@ -173,14 +173,14 @@ export const ServerSettings = () => {
                   label={false}
                   rules={[
                     { required: true, message: 'Please enter scan job timeout' },
-                    { pattern: /^\d+$/, message: 'Must be a number' },
                   ]}
                   noStyle
                 >
-                  <Input
-                    type="number"
+                  <InputNumber
+                    min={1}
+                    max={168}
                     placeholder="1"
-                    suffix="Hour"
+                    addonAfter="Hour"
                     style={{ width: '100%' }}
                   />
                 </Form.Item>

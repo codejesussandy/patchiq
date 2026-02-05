@@ -40,13 +40,18 @@ export const ProxyServerConfiguration = () => {
   };
 
   const handleTest = async () => {
+    const values = form.getFieldsValue();
+    if (!values.host || !values.port) {
+      message.warning('Please enter proxy host and port first');
+      return;
+    }
     setTestLoading(true);
     try {
-      const values = form.getFieldsValue();
       await settingsService.testProxyServerConfig(values);
-      message.success('Proxy server connection test successful');
-    } catch (error) {
-      message.error('Proxy server connection test failed');
+      message.success('Proxy server connection test successful!');
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Proxy server connection test failed';
+      message.error(errorMessage);
     } finally {
       setTestLoading(false);
     }
