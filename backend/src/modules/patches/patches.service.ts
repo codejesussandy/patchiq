@@ -1055,21 +1055,13 @@ export async function createPatchDeploymentFromUI(data: CreatePatchDeploymentFro
     }
   }
 
-  // Build PatchInstallPayload[] from the DB records
-  const patchPayloads: PatchInstallPayload[] = patches.map(p => ({
-    patchId: p.patchId || p.id,
-    kbNumber: p.kbNumber || undefined,
-    packageName: p.software || undefined,
-    downloadUrl: p.downloadUrl || undefined,
-    rebootRequired: p.rebootRequired ?? false,
-  }));
-
   // Delegate to the deployment executor which creates PatchDeployment + Tasks + AgentCommands
+  // Pass original patch UUIDs so the executor can do its own bundle-aware lookup
   const result = await deploymentExecutorService.createPatchDeployment({
     name: data.name,
     description: data.description,
     targetAgentIds: data.targetAgentIds,
-    patches: patchPayloads,
+    patches: patches.map(p => ({ id: p.id })),
     retryCount: data.retryCount,
     autoRollback: data.autoRollback,
     createdBy: userId,
@@ -1818,7 +1810,7 @@ async function autoQueueDownload(patchId: string, downloadUrl: string, fileName:
  * Does NOT upload anything to MinIO — just creates inline scripts for
  * the agent to execute via the hub_patch_install command type.
  */
-async function autoGeneratePatchBundle(patchId: string): Promise<void> {
+export async function autoGeneratePatchBundle(patchId: string): Promise<void> {
   const patch = await prisma.patch.findUnique({
     where: { id: patchId },
     include: { bundle: true },

@@ -842,6 +842,17 @@ export class VulnerabilitiesService {
         }
       }
 
+      // Auto-generate patch suggestions for newly discovered vulnerabilities
+      let patchesCreated = 0;
+      try {
+        patchesCreated = await cveDatabase.generatePatchSuggestions();
+        if (patchesCreated > 0) {
+          console.log(`[Vulnerability Scan] Auto-generated ${patchesCreated} patch suggestions`);
+        }
+      } catch (err) {
+        console.error('[Vulnerability Scan] Failed to generate patch suggestions:', err);
+      }
+
       // Mark job as completed
       await prisma.job.update({
         where: { id: jobId },
@@ -851,12 +862,13 @@ export class VulnerabilitiesService {
           result: {
             assetsScanned: scannedCount,
             vulnerabilitiesFound,
+            patchesCreated,
           },
         },
       });
 
       console.log(
-        `[Vulnerability Scan] Job ${jobId} completed: ${scannedCount} assets scanned, ${vulnerabilitiesFound} vulnerabilities found`
+        `[Vulnerability Scan] Job ${jobId} completed: ${scannedCount} assets scanned, ${vulnerabilitiesFound} vulnerabilities found, ${patchesCreated} patches created`
       );
     } catch (error) {
       // Mark job as failed

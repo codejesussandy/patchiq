@@ -65,7 +65,7 @@ export interface CreatePatchDeploymentOptions {
   name: string;
   description?: string;
   targetAgentIds: string[];
-  patches: PatchInstallPayload[];
+  patches: (PatchInstallPayload | { id: string })[];
   retryCount?: number;
   autoRollback?: boolean;
   triggerType?: string;

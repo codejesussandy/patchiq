@@ -2985,7 +2985,7 @@ export const AssetDetails = () => {
     {
       key: 'patches',
       label: 'Patches',
-      children: asset ? <PatchesTab assetId={asset.id} /> : <Spin />,
+      children: asset ? <PatchesTab assetId={asset.id} agentId={asset?.agent?.id} /> : <Spin />,
     },
     {
       key: 'alerts',

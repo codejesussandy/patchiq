@@ -29,11 +29,13 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTo
 import type { ColumnsType } from 'antd/es/table';
 import type { AssetRelatedPatch, AssetDeployment, PatchSummary } from '../../../../types/asset.types';
 import { assetService } from '../../../../services/asset.service';
+import { patchService } from '../../../../services/patch.service';
 
 const { Text } = Typography;
 
 interface PatchesTabProps {
   assetId: string;
+  agentId?: string;
   patchSummary?: PatchSummary;
 }
 
@@ -89,12 +91,13 @@ const CHART_COLORS = {
   failed: '#fa8c16',
 };
 
-export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTabProps) => {
+export const PatchesTab = ({ assetId, agentId, patchSummary: initialSummary }: PatchesTabProps) => {
   const { message } = App.useApp();
   const [patches, setPatches] = useState<AssetRelatedPatch[]>([]);
   const [deployments, setDeployments] = useState<AssetDeployment[]>([]);
   const [summary, setSummary] = useState<PatchSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deploying, setDeploying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -116,6 +119,32 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
       setError('Failed to load patch information');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeploy = async (patchList: { id: string; name?: string }[]) => {
+    if (!agentId) {
+      message.warning('No agent connected to this asset');
+      return;
+    }
+    setDeploying(true);
+    try {
+      await patchService.createDeployment({
+        name: patchList.length === 1
+          ? `Deploy ${patchList[0].name || 'Patch'}`
+          : `Deploy ${patchList.length} Missing Patches`,
+        targetAgentIds: [agentId],
+        patches: patchList.map(p => ({ id: p.id })),
+        skipApprovalCheck: true,
+      });
+      message.success(patchList.length === 1
+        ? `Deployment created for ${patchList[0].name}`
+        : `Deployment created for ${patchList.length} patches`);
+      fetchPatchData();
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || 'Failed to create deployment');
+    } finally {
+      setDeploying(false);
     }
   };
 
@@ -222,7 +251,10 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
               type="primary"
               size="small"
               icon={<DeploymentUnitOutlined />}
-              onClick={() => message.info(`Deploy ${record.name} initiated`)}
+              disabled={!agentId || deploying}
+              loading={deploying}
+              title={!agentId ? 'No agent connected to this asset' : undefined}
+              onClick={() => handleDeploy([{ id: record.id, name: record.name }])}
             >
               Deploy
             </Button>
@@ -415,7 +447,10 @@ export const PatchesTab = ({ assetId, patchSummary: initialSummary }: PatchesTab
             <Button
               type="primary"
               icon={<DeploymentUnitOutlined />}
-              onClick={() => message.info('Deploying all missing patches...')}
+              disabled={!agentId || deploying}
+              loading={deploying}
+              title={!agentId ? 'No agent connected to this asset' : undefined}
+              onClick={() => handleDeploy(missingPatches.map(p => ({ id: p.id, name: p.name })))}
             >
               Deploy All Missing
             </Button>

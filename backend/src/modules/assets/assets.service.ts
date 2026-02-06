@@ -2490,56 +2490,62 @@ export async function getAssetPatches(id: string): Promise<{
     }
   }
 
-  // Determine which patch OS values match this asset's OS
+  // Build set of installed software CPE pairs for this asset
+  const installedSoftware = await prisma.assetSoftware.findMany({
+    where: { assetId: id, cpeVendor: { not: null }, cpeProduct: { not: null } },
+    select: { cpeVendor: true, cpeProduct: true },
+  });
+  const installedCpeKeys = new Set(
+    installedSoftware.map(s => `${s.cpeVendor!.toLowerCase()}::${s.cpeProduct!.toLowerCase()}`),
+  );
+
+  // Determine which OS values match this asset
   const assetOs = (asset.os || '').toLowerCase();
-  const matchingOsValues: (string | null)[] = [null]; // null = cross-platform patches always included
-  if (assetOs.includes('windows')) {
-    matchingOsValues.push('Windows');
-  }
-  if (assetOs.includes('mac') || assetOs.includes('darwin')) {
-    matchingOsValues.push('MacOS');
-  }
-  if (assetOs.includes('ubuntu')) {
-    matchingOsValues.push('Ubuntu', 'Linux');
-  } else if (assetOs.includes('linux') || assetOs.includes('rhel') || assetOs.includes('centos') || assetOs.includes('debian') || assetOs.includes('fedora') || assetOs.includes('suse')) {
-    matchingOsValues.push('Linux');
-  }
+  const matchingOsValues: string[] = [];
+  if (assetOs.includes('windows')) matchingOsValues.push('Windows');
+  if (assetOs.includes('mac') || assetOs.includes('darwin')) matchingOsValues.push('MacOS');
+  if (assetOs.includes('ubuntu')) matchingOsValues.push('Ubuntu', 'Linux');
+  else if (assetOs.includes('linux') || assetOs.includes('rhel') || assetOs.includes('centos') || assetOs.includes('debian') || assetOs.includes('fedora') || assetOs.includes('suse')) matchingOsValues.push('Linux');
 
-  // Find applicable patches that haven't been deployed to this asset
   const deployedPatchIds = Array.from(patchesMap.keys());
-  const applicablePatches = await prisma.patch.findMany({
+  const notInDeployed = deployedPatchIds.length > 0 ? { id: { notIn: deployedPatchIds } } : {};
+
+  // Category 1: Patches WITH vendor+product — only include if asset has matching installed software
+  const vendorProductPatches = await prisma.patch.findMany({
     where: {
-      os: { in: matchingOsValues.filter((v): v is string => v !== null) },
-      ...(deployedPatchIds.length > 0 ? { id: { notIn: deployedPatchIds } } : {}),
+      vendor: { not: null },
+      product: { not: null },
+      ...notInDeployed,
     },
     select: {
-      id: true,
-      patchId: true,
-      title: true,
-      severity: true,
-      kbNumber: true,
-      releaseDate: true,
+      id: true, patchId: true, title: true, severity: true, kbNumber: true, releaseDate: true,
+      vendor: true, product: true, os: true,
     },
   });
 
-  // Also include null-OS patches (cross-platform)
-  const crossPlatformPatches = await prisma.patch.findMany({
+  const softwareMatchedPatches = vendorProductPatches.filter(patch => {
+    const patchKey = `${patch.vendor!.toLowerCase()}::${patch.product!.toLowerCase()}`;
+    if (!installedCpeKeys.has(patchKey)) return false;
+    // Also verify OS compatibility — skip wrong-platform patches even if software name matches
+    if (patch.os && matchingOsValues.length > 0 && !matchingOsValues.includes(patch.os)) return false;
+    return true;
+  });
+
+  // Category 2: Patches WITHOUT vendor+product but WITH os set (legacy/manual patches)
+  // Only include if OS matches — no more os=NULL cross-platform catch-all
+  const legacyOsPatches = matchingOsValues.length > 0 ? await prisma.patch.findMany({
     where: {
-      os: null,
-      ...(deployedPatchIds.length > 0 ? { id: { notIn: deployedPatchIds } } : {}),
+      OR: [{ vendor: null }, { product: null }],
+      os: { in: matchingOsValues },
+      ...notInDeployed,
     },
     select: {
-      id: true,
-      patchId: true,
-      title: true,
-      severity: true,
-      kbNumber: true,
-      releaseDate: true,
+      id: true, patchId: true, title: true, severity: true, kbNumber: true, releaseDate: true,
     },
-  });
+  }) : [];
 
   // Add undeployed applicable patches as "Missing"
-  for (const patch of [...applicablePatches, ...crossPlatformPatches]) {
+  for (const patch of [...softwareMatchedPatches, ...legacyOsPatches]) {
     if (!patchesMap.has(patch.id)) {
       patchesMap.set(patch.id, {
         id: patch.id,
