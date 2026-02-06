@@ -111,12 +111,24 @@ export async function createPatch(data: CreatePatchInput) {
   // Link patch to vulnerabilities via CVE numbers
   await updateVulnerabilityPatchStatus(patch.id, patch.cveNumbers);
 
+  // Auto-correlate CVEs if none were provided
+  if (!patch.cveNumbers || patch.cveNumbers.length === 0) {
+    autoCorrelateCves(patch.id).catch((err) => {
+      console.error(`[CVE Correlator] Failed for patch ${patch.id}:`, err);
+    });
+  }
+
   // Auto-queue download if downloadUrl is provided
   if (patch.downloadUrl) {
     autoQueueDownload(patch.id, patch.downloadUrl, patch.software || patch.title).catch((err) => {
       console.error(`[Auto-Download] Failed to queue download for patch ${patch.id}:`, err);
     });
   }
+
+  // Auto-generate PatchBundle with inline scripts
+  autoGeneratePatchBundle(patch.id).catch((err) => {
+    console.error(`[PatchBundle] Failed to auto-generate for patch ${patch.id}:`, err);
+  });
 
   return transformPatch(patch);
 }
@@ -162,10 +174,33 @@ export async function updatePatch(id: string, data: UpdatePatchInput) {
     await updateVulnerabilityPatchStatus(id, addedCves);
   }
 
+  // Auto-correlate CVEs if they were cleared
+  if (data.cveNumbers !== undefined && data.cveNumbers.length === 0) {
+    autoCorrelateCves(id).catch((err) => {
+      console.error(`[CVE Correlator] Failed for patch ${id}:`, err);
+    });
+  }
+
+  // Trigger zero-touch evaluation if patch was just approved
+  if (data.approvalStatus?.toLowerCase() === 'approved' &&
+      existing.approvalStatus?.toLowerCase() !== 'approved') {
+    evaluateZeroTouchRules(id).catch((err) => {
+      console.error(`[Zero-Touch] Failed for patch ${id}:`, err);
+    });
+  }
+
   // Auto-queue download if downloadUrl was added/changed and no download completed yet
   if (data.downloadUrl && data.downloadUrl !== existing.downloadUrl && existing.downloadStatus !== 'completed') {
     autoQueueDownload(patch.id, data.downloadUrl, patch.software || patch.title).catch((err) => {
       console.error(`[Auto-Download] Failed to queue download for patch ${patch.id}:`, err);
+    });
+  }
+
+  // Re-generate PatchBundle scripts if relevant fields changed
+  const bundleRelevantChanged = data.software !== undefined || data.downloadUrl !== undefined;
+  if (bundleRelevantChanged) {
+    autoGeneratePatchBundle(patch.id).catch((err) => {
+      console.error(`[PatchBundle] Failed to re-generate for patch ${patch.id}:`, err);
     });
   }
 
@@ -318,19 +353,87 @@ export async function getEndpoints(patchId: string) {
 }
 
 export async function scanEndpoints(patchId: string, data: ScanEndpointsInput) {
-  const patch = await prisma.patch.findUnique({ where: { id: patchId } });
+  const patch = await prisma.patch.findUnique({
+    where: { id: patchId },
+    include: {
+      affectedProducts: true,
+      vulnerabilities: true,
+    },
+  });
 
   if (!patch) {
     throw new NotFoundError('Patch not found');
   }
 
-  // In a real implementation, this would queue a scan job
-  // For now, we just return a success message
+  // Determine scope of assets to check
+  const assetWhere: Prisma.AssetWhereInput = { status: { not: 'Retired' } };
+
+  if (data.scope === 'Specific Groups' && data.endpointIds.length > 0) {
+    assetWhere.id = { in: data.endpointIds };
+  }
+
+  if (patch.os) {
+    assetWhere.os = { contains: patch.os, mode: 'insensitive' };
+  }
+
+  const assets = await prisma.asset.findMany({
+    where: assetWhere,
+    include: {
+      software: true,
+      vulnerabilities: { include: { vulnerability: true } },
+    },
+  });
+
+  let missingCount = 0;
+  let notApplicableCount = 0;
+
+  for (const asset of assets) {
+    const applicability = determineApplicability(patch, asset);
+
+    const existing = await prisma.patchEndpoint.findFirst({
+      where: { patchId, assetId: asset.id },
+    });
+
+    if (existing) {
+      await prisma.patchEndpoint.update({
+        where: { id: existing.id },
+        data: {
+          status: applicability,
+          name: asset.name,
+          os: asset.os || undefined,
+          lastSeen: new Date(),
+        },
+      });
+    } else {
+      await prisma.patchEndpoint.create({
+        data: {
+          patchId,
+          assetId: asset.id,
+          name: asset.name,
+          os: asset.os || undefined,
+          status: applicability,
+          lastSeen: new Date(),
+        },
+      });
+    }
+
+    if (applicability === 'missing') missingCount++;
+    else notApplicableCount++;
+  }
+
+  // Update patch endpoint count
+  await prisma.patch.update({
+    where: { id: patchId },
+    data: { endpoints: missingCount },
+  });
+
   return {
-    message: 'Scan initiated',
+    message: 'Scan completed',
     patchId,
     scope: data.scope,
-    endpointIds: data.endpointIds,
+    assetsScanned: assets.length,
+    missing: missingCount,
+    notApplicable: notApplicableCount,
   };
 }
 
@@ -436,6 +539,11 @@ export async function approvePatch(id: string, userId: string) {
     },
   });
 
+  // Trigger zero-touch evaluation for newly approved patch
+  evaluateZeroTouchRules(id).catch((err) => {
+    console.error(`[Zero-Touch] Failed for patch ${id}:`, err);
+  });
+
   return transformPatch(updated);
 }
 
@@ -531,6 +639,34 @@ export async function createDeployment(data: CreateDeploymentInput, userId: stri
     throw new BadRequestError('One or more patches not found');
   }
 
+  // Approval enforcement
+  const approvalSetting = await prisma.setting.findUnique({
+    where: { key: 'patch-management.requireApprovalForDeployment' },
+  });
+  const requireApproval = approvalSetting?.value === true;
+
+  if (requireApproval && !data.skipApprovalCheck) {
+    const unapprovedPatches = patches.filter(p => p.approvalStatus?.toLowerCase() !== 'approved');
+    if (unapprovedPatches.length > 0) {
+      const names = unapprovedPatches.map(p => `${p.patchId || p.id} (${p.approvalStatus})`).join(', ');
+      throw new BadRequestError(
+        `Cannot deploy unapproved patches when approval enforcement is enabled. Unapproved: ${names}`,
+        { unapprovedPatchIds: unapprovedPatches.map(p => p.id) },
+      );
+    }
+  }
+
+  if (requireApproval && data.skipApprovalCheck) {
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'APPROVAL_OVERRIDE',
+        resource: 'deployments',
+        details: { patchIds: data.patches, reason: 'skipApprovalCheck flag was set' },
+      },
+    });
+  }
+
   const deployment = await prisma.patchDeployment.create({
     data: {
       name: data.name,
@@ -543,6 +679,9 @@ export async function createDeployment(data: CreateDeploymentInput, userId: stri
       stage: data.schedule ? 'PENDING' : 'IN_PROGRESS',
       targetGroups: data.targetGroups || [],
       scheduledAt: data.schedule ? new Date(data.schedule) : null,
+      triggerType: data.triggerType || 'manual',
+      skipApprovalCheck: data.skipApprovalCheck || false,
+      approvalOverrideBy: data.skipApprovalCheck ? userId : null,
       createdBy: userId,
       patches: {
         connect: data.patches.map((patchId) => ({ id: patchId })),
@@ -745,6 +884,38 @@ export async function executeDeployment(id: string, userId: string) {
     throw new BadRequestError('Deployment is already completed');
   }
 
+  // Approval enforcement (skip for system-triggered scheduled deployments)
+  if (userId !== 'system') {
+    const approvalSetting = await prisma.setting.findUnique({
+      where: { key: 'patch-management.requireApprovalForDeployment' },
+    });
+    const requireApproval = approvalSetting?.value === true;
+
+    if (requireApproval && !deployment.skipApprovalCheck) {
+      const unapprovedPatches = deployment.patches.filter(p => p.approvalStatus?.toLowerCase() !== 'approved');
+      if (unapprovedPatches.length > 0) {
+        const names = unapprovedPatches.map(p => `${p.patchId || p.id} (${p.approvalStatus})`).join(', ');
+        throw new BadRequestError(
+          `Cannot execute deployment with unapproved patches. Unapproved: ${names}`,
+          { unapprovedPatchIds: unapprovedPatches.map(p => p.id) },
+        );
+      }
+    }
+  }
+
+  // Check for superseded patches and log warnings
+  const supersededWarnings: string[] = [];
+  for (const p of deployment.patches) {
+    if (p.supersededBy && p.supersededBy.length > 0) {
+      supersededWarnings.push(
+        `Patch ${p.patchId || p.id} has been superseded by: ${p.supersededBy.join(', ')}`,
+      );
+    }
+  }
+  if (supersededWarnings.length > 0) {
+    console.warn(`[Deployment] Executing deployment with superseded patches:\n  ${supersededWarnings.join('\n  ')}`);
+  }
+
   // If tasks already exist (created via POST /deployments/patch), just flip stage
   if (deployment.tasks.length > 0) {
     await prisma.patchDeployment.update({
@@ -846,6 +1017,44 @@ export async function createPatchDeploymentFromUI(data: CreatePatchDeploymentFro
     throw new BadRequestError('No valid patches found');
   }
 
+  // Approval enforcement
+  const approvalSetting = await prisma.setting.findUnique({
+    where: { key: 'patch-management.requireApprovalForDeployment' },
+  });
+  const requireApproval = approvalSetting?.value === true;
+
+  if (requireApproval && !data.skipApprovalCheck) {
+    const unapprovedPatches = patches.filter(p => p.approvalStatus?.toLowerCase() !== 'approved');
+    if (unapprovedPatches.length > 0) {
+      const names = unapprovedPatches.map(p => `${p.patchId || p.id} (${p.approvalStatus})`).join(', ');
+      throw new BadRequestError(
+        `Cannot deploy unapproved patches when approval enforcement is enabled. Unapproved: ${names}`,
+        { unapprovedPatchIds: unapprovedPatches.map(p => p.id) },
+      );
+    }
+  }
+
+  if (requireApproval && data.skipApprovalCheck) {
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'APPROVAL_OVERRIDE',
+        resource: 'deployments',
+        details: { patchIds: data.patches.map(p => p.id), reason: 'skipApprovalCheck flag was set on UI deployment' },
+      },
+    });
+  }
+
+  // Check for superseded patches and build warnings
+  const warnings: string[] = [];
+  for (const p of patches) {
+    if (p.supersededBy && p.supersededBy.length > 0) {
+      warnings.push(
+        `Patch ${p.patchId || p.id} has been superseded by: ${p.supersededBy.join(', ')}. Consider deploying the newer patch instead.`,
+      );
+    }
+  }
+
   // Build PatchInstallPayload[] from the DB records
   const patchPayloads: PatchInstallPayload[] = patches.map(p => ({
     patchId: p.patchId || p.id,
@@ -862,6 +1071,7 @@ export async function createPatchDeploymentFromUI(data: CreatePatchDeploymentFro
     targetAgentIds: data.targetAgentIds,
     patches: patchPayloads,
     retryCount: data.retryCount,
+    autoRollback: data.autoRollback,
     createdBy: userId,
   });
 
@@ -876,7 +1086,7 @@ export async function createPatchDeploymentFromUI(data: CreatePatchDeploymentFro
     },
   });
 
-  return result;
+  return { ...result, warnings };
 }
 
 // ============================================
@@ -1055,6 +1265,144 @@ export async function deleteZeroTouchConfig(id: string) {
 }
 
 // ============================================
+// Zero-Touch Rule Evaluation
+// ============================================
+
+/**
+ * Evaluate active ZeroTouchConfigs against a newly approved patch.
+ * If rules match, auto-create a deployment targeting the configured scope.
+ */
+export async function evaluateZeroTouchRules(patchId: string): Promise<void> {
+  const patch = await prisma.patch.findUnique({ where: { id: patchId } });
+  if (!patch) return;
+
+  const configs = await prisma.zeroTouchConfig.findMany({
+    where: { status: 'Active' },
+  });
+
+  if (configs.length === 0) return;
+
+  for (const config of configs) {
+    try {
+      const rules = config.autoDeploymentRules as any;
+      if (!rules) continue;
+
+      // 1. Severity match
+      const severities: string[] = rules.severity || [];
+      if (severities.length > 0) {
+        const patchSeverity = (patch.severity || '').toLowerCase();
+        const matches = severities.some((s: string) => s.toLowerCase() === patchSeverity);
+        if (!matches) continue;
+      }
+
+      // 2. Application filter
+      const appType = (config.applicationType || 'ALL').toUpperCase();
+      const apps: string[] = (config.applications as string[]) || [];
+      const patchSoftware = (patch.software || '').toLowerCase();
+
+      if (appType === 'INCLUDE') {
+        const inList = apps.some((a: string) => a.toLowerCase() === patchSoftware);
+        if (!inList) continue;
+      } else if (appType === 'EXCLUDE') {
+        const inList = apps.some((a: string) => a.toLowerCase() === patchSoftware);
+        if (inList) continue;
+      }
+      // 'ALL' always matches
+
+      // 3. Resolve scope to agent IDs
+      let agentIds: string[] = [];
+      const scope = (config.scope || '').toUpperCase().replace(/\s+/g, '_');
+
+      if (scope === 'ALL_COMPUTERS') {
+        const agents = await prisma.agent.findMany({
+          where: { status: { notIn: ['Inactive', 'Disconnected'] }, assetId: { not: null } },
+          select: { id: true },
+        });
+        agentIds = agents.map((a) => a.id);
+      } else if (scope === 'SPECIFIC_GROUPS') {
+        const groupIds: string[] = (config.groups as string[]) || [];
+        if (groupIds.length > 0) {
+          const memberships = await prisma.agentGroupMembership.findMany({
+            where: { groupId: { in: groupIds } },
+            select: { agentId: true },
+          });
+          agentIds = [...new Set(memberships.map((m) => m.agentId))];
+        }
+      } else {
+        // SCOPE / specific computers
+        const computerIds: string[] = (config.computers as string[]) || [];
+        if (computerIds.length > 0) {
+          const agents = await prisma.agent.findMany({
+            where: {
+              OR: [
+                { id: { in: computerIds } },
+                { assetId: { in: computerIds } },
+              ],
+            },
+            select: { id: true },
+          });
+          agentIds = agents.map((a) => a.id);
+        }
+      }
+
+      if (agentIds.length === 0) {
+        console.log(`[Zero-Touch] Config "${config.name}" matched but no agents in scope`);
+        continue;
+      }
+
+      // 4. Create deployment
+      const approvalRequired = rules.approvalRequired ?? true;
+
+      if (approvalRequired) {
+        // Create a PENDING deployment that still needs manual approval
+        const depId = await generateDeploymentId();
+        await prisma.patchDeployment.create({
+          data: {
+            deploymentId: depId,
+            name: `[Zero-Touch] ${patch.title || patch.patchId}`,
+            description: `Auto-created by zero-touch rule "${config.name}"`,
+            type: 'INSTANT',
+            configType: 'INSTALL',
+            scope: 'Endpoint',
+            status: 'PENDING',
+            stage: 'PENDING',
+            pending: agentIds.length,
+            succeeded: 0,
+            failed: 0,
+            triggerType: 'zero-touch',
+            createdBy: 'system',
+            patches: { connect: [{ id: patch.id }] },
+          },
+        });
+        console.log(`[Zero-Touch] Created PENDING deployment ${depId} for "${config.name}" (${agentIds.length} agents)`);
+      } else {
+        // Execute immediately via the deployment executor
+        const result = await deploymentExecutorService.createPatchDeployment({
+          name: `[Zero-Touch] ${patch.title || patch.patchId}`,
+          description: `Auto-created by zero-touch rule "${config.name}"`,
+          targetAgentIds: agentIds,
+          patches: [{ id: patch.id }] as any,
+          triggerType: 'zero-touch',
+          createdBy: 'system',
+        });
+        console.log(`[Zero-Touch] Executed deployment ${result.deploymentId} for "${config.name}" (${result.commandsCreated} commands)`);
+      }
+
+      // 5. Update config stats
+      await prisma.zeroTouchConfig.update({
+        where: { id: config.id },
+        data: {
+          lastTriggeredAt: new Date(),
+          deploymentsCreated: { increment: 1 },
+        },
+      });
+    } catch (err) {
+      console.error(`[Zero-Touch] Error evaluating config "${config.name}":`, err);
+    }
+  }
+}
+
+// ============================================
 // Vulnerability Linking
 // ============================================
 
@@ -1062,7 +1410,7 @@ export async function deleteZeroTouchConfig(id: string) {
  * Update patchAvailable flag on vulnerabilities when a patch is created/updated.
  * This links patches to vulnerabilities via CVE numbers.
  */
-async function updateVulnerabilityPatchStatus(patchId: string, cveNumbers: string[]) {
+async function updateVulnerabilityPatchStatus(patchId: string, cveNumbers: string[], correlationSource: string = 'manual') {
   if (!cveNumbers || cveNumbers.length === 0) return;
 
   const result = await prisma.vulnerability.updateMany({
@@ -1091,6 +1439,7 @@ async function updateVulnerabilityPatchStatus(patchId: string, cveNumbers: strin
           severity: vuln?.severity || null,
           description: vuln?.description || null,
           publishedDate: vuln?.publishedDate || null,
+          correlationSource,
         },
       });
     }
@@ -1126,6 +1475,291 @@ async function revertVulnerabilityPatchStatus(patchId: string, cveNumbers: strin
       });
       console.log(`[Patch-Vuln Link] Reverted patchAvailable=false for CVE: ${cve}`);
     }
+  }
+}
+
+// ============================================
+// CVE Auto-Correlation
+// ============================================
+
+/**
+ * Auto-correlate CVEs for a patch that has empty cveNumbers.
+ * Searches our NVD database using 3 strategies:
+ * 1. KB number in vulnerability descriptions/references
+ * 2. Vendor+Product CPE match in VulnerabilitySoftware
+ * 3. Software name match against VulnerabilitySoftware.cpeProduct
+ */
+export async function autoCorrelateCves(patchId: string): Promise<string[]> {
+  const patch = await prisma.patch.findUnique({ where: { id: patchId } });
+  if (!patch) return [];
+
+  // Skip if patch already has CVE numbers
+  if (patch.cveNumbers && patch.cveNumbers.length > 0) {
+    return patch.cveNumbers;
+  }
+
+  const foundCves = new Set<string>();
+  const correlationSources = new Map<string, string>();
+
+  // Strategy 1: KB number search
+  if (patch.kbNumber) {
+    const kbVulns = await prisma.vulnerability.findMany({
+      where: {
+        OR: [
+          { description: { contains: patch.kbNumber, mode: 'insensitive' } },
+        ],
+      },
+      select: { cveId: true },
+      take: 50,
+    });
+
+    const kbRefs = await prisma.vulnerabilityReference.findMany({
+      where: { url: { contains: patch.kbNumber, mode: 'insensitive' } },
+      select: { vulnerability: { select: { cveId: true } } },
+      take: 50,
+    });
+
+    for (const v of kbVulns) {
+      foundCves.add(v.cveId);
+      correlationSources.set(v.cveId, 'auto-kb');
+    }
+    for (const r of kbRefs) {
+      foundCves.add(r.vulnerability.cveId);
+      correlationSources.set(r.vulnerability.cveId, 'auto-kb');
+    }
+  }
+
+  // Strategy 2: Vendor + Product CPE match
+  if (patch.vendor && patch.product) {
+    const vulnSoftware = await prisma.vulnerabilitySoftware.findMany({
+      where: {
+        cpeVendor: { equals: patch.vendor.toLowerCase(), mode: 'insensitive' },
+        cpeProduct: { equals: patch.product.toLowerCase(), mode: 'insensitive' },
+      },
+      select: { vulnerability: { select: { cveId: true } } },
+      take: 100,
+    });
+
+    for (const vs of vulnSoftware) {
+      if (!foundCves.has(vs.vulnerability.cveId)) {
+        foundCves.add(vs.vulnerability.cveId);
+        correlationSources.set(vs.vulnerability.cveId, 'auto-vendor');
+      }
+    }
+  }
+
+  // Strategy 3: Software name fallback (only if no matches yet)
+  if (patch.software && foundCves.size === 0) {
+    const normalizedName = patch.software
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .replace(/^lib/, '');
+
+    if (normalizedName.length >= 3) {
+      const vulnSoftware = await prisma.vulnerabilitySoftware.findMany({
+        where: {
+          cpeProduct: { equals: normalizedName, mode: 'insensitive' },
+        },
+        select: { vulnerability: { select: { cveId: true } } },
+        take: 50,
+      });
+
+      for (const vs of vulnSoftware) {
+        if (!foundCves.has(vs.vulnerability.cveId)) {
+          foundCves.add(vs.vulnerability.cveId);
+          correlationSources.set(vs.vulnerability.cveId, 'auto-nvd');
+        }
+      }
+    }
+  }
+
+  if (foundCves.size === 0) {
+    return [];
+  }
+
+  const cveArray = Array.from(foundCves);
+  console.log(
+    `[CVE Correlator] Found ${cveArray.length} CVEs for patch ${patch.patchId || patch.id}: ` +
+    `${cveArray.slice(0, 5).join(', ')}${cveArray.length > 5 ? '...' : ''}`,
+  );
+
+  // Update the patch with discovered CVEs
+  await prisma.patch.update({
+    where: { id: patchId },
+    data: { cveNumbers: cveArray },
+  });
+
+  // Create PatchVulnerability records with correlation source
+  for (const cve of cveArray) {
+    const existing = await prisma.patchVulnerability.findFirst({
+      where: { patchId, cveNumber: cve },
+    });
+    if (!existing) {
+      const vuln = await prisma.vulnerability.findUnique({
+        where: { cveId: cve },
+        select: { severity: true, description: true, publishedDate: true },
+      });
+      await prisma.patchVulnerability.create({
+        data: {
+          patchId,
+          cveNumber: cve,
+          severity: vuln?.severity || null,
+          description: vuln?.description || null,
+          publishedDate: vuln?.publishedDate || null,
+          correlationSource: correlationSources.get(cve) || 'auto-nvd',
+        },
+      });
+    }
+  }
+
+  // Mark matching vulnerabilities as patchAvailable
+  await prisma.vulnerability.updateMany({
+    where: { cveId: { in: cveArray } },
+    data: { patchAvailable: true },
+  });
+
+  return cveArray;
+}
+
+// ============================================
+// Patch Applicability Helpers
+// ============================================
+
+/**
+ * Determine if an asset needs a specific patch.
+ */
+function determineApplicability(
+  patch: {
+    vendor: string | null;
+    product: string | null;
+    os: string | null;
+    software: string | null;
+    cveNumbers: string[];
+    affectedProducts?: Array<{ softwareName: string; version: string | null; vendor: string | null; platform: string | null }>;
+  },
+  asset: {
+    os: string | null;
+    software: Array<{ name: string; version: string | null; vendor: string | null; cpeVendor: string | null; cpeProduct: string | null }>;
+    vulnerabilities: Array<{ vulnerability: { cveId: string } }>;
+  },
+): 'missing' | 'not_applicable' {
+  // Strategy 1: CVE-based matching
+  if (patch.cveNumbers.length > 0) {
+    const assetCveIds = new Set(asset.vulnerabilities.map(v => v.vulnerability.cveId));
+    if (patch.cveNumbers.some(cve => assetCveIds.has(cve))) {
+      return 'missing';
+    }
+  }
+
+  // Strategy 2: AffectedProduct matching
+  if (patch.affectedProducts && patch.affectedProducts.length > 0) {
+    for (const affected of patch.affectedProducts) {
+      for (const sw of asset.software) {
+        const nameMatch =
+          sw.name.toLowerCase().includes(affected.softwareName.toLowerCase()) ||
+          affected.softwareName.toLowerCase().includes(sw.name.toLowerCase());
+        const vendorMatch = !affected.vendor || !sw.vendor ||
+          sw.vendor.toLowerCase().includes(affected.vendor.toLowerCase());
+        if (nameMatch && vendorMatch) return 'missing';
+      }
+    }
+  }
+
+  // Strategy 3: CPE vendor/product matching
+  if (patch.vendor && patch.product) {
+    const pv = patch.vendor.toLowerCase();
+    const pp = patch.product.toLowerCase();
+    for (const sw of asset.software) {
+      if (
+        (sw.cpeVendor?.toLowerCase() === pv && sw.cpeProduct?.toLowerCase() === pp) ||
+        (sw.vendor?.toLowerCase().includes(pv) && sw.name.toLowerCase().includes(pp))
+      ) {
+        return 'missing';
+      }
+    }
+  }
+
+  // Strategy 4: OS + software name matching
+  if (patch.os && patch.software && asset.os) {
+    const osMatch = asset.os.toLowerCase().includes(patch.os.toLowerCase());
+    if (osMatch) {
+      for (const sw of asset.software) {
+        if (sw.name.toLowerCase().includes(patch.software.toLowerCase())) {
+          return 'missing';
+        }
+      }
+    }
+  }
+
+  return 'not_applicable';
+}
+
+/**
+ * Check all patches for applicability against a specific asset.
+ * Called after processInventory() to keep patch applicability up to date.
+ */
+export async function checkPatchApplicabilityForAsset(assetId: string): Promise<void> {
+  try {
+    const asset = await prisma.asset.findUnique({
+      where: { id: assetId },
+      include: {
+        software: true,
+        vulnerabilities: { include: { vulnerability: true } },
+      },
+    });
+
+    if (!asset) return;
+
+    const patches = await prisma.patch.findMany({
+      where: {
+        OR: [
+          { cveNumbers: { isEmpty: false } },
+          { affectedProducts: { some: {} } },
+        ],
+      },
+      include: { affectedProducts: true },
+      take: 500,
+    });
+
+    let updated = 0;
+    for (const patch of patches) {
+      const applicability = determineApplicability(
+        patch,
+        { ...asset, vulnerabilities: asset.vulnerabilities || [] },
+      );
+
+      if (applicability === 'missing') {
+        const existing = await prisma.patchEndpoint.findFirst({
+          where: { patchId: patch.id, assetId },
+        });
+
+        if (!existing) {
+          await prisma.patchEndpoint.create({
+            data: {
+              patchId: patch.id,
+              assetId,
+              name: asset.name,
+              os: asset.os || undefined,
+              status: 'missing',
+              lastSeen: new Date(),
+            },
+          });
+          updated++;
+        } else if (existing.status !== 'missing') {
+          await prisma.patchEndpoint.update({
+            where: { id: existing.id },
+            data: { status: 'missing', lastSeen: new Date() },
+          });
+          updated++;
+        }
+      }
+    }
+
+    if (updated > 0) {
+      console.log(`[Patch Applicability] Updated ${updated} patch-asset mappings for asset ${assetId}`);
+    }
+  } catch (err) {
+    console.error(`[Patch Applicability] Failed for asset ${assetId}:`, err);
   }
 }
 
@@ -1172,6 +1806,186 @@ async function autoQueueDownload(patchId: string, downloadUrl: string, fileName:
   });
 
   console.log(`[Auto-Download] Queued download for patch ${patchId}: ${downloadUrl}`);
+}
+
+// ============================================
+// PatchBundle Auto-Generation
+// ============================================
+
+/**
+ * Auto-generate a PatchBundle with inline install/rollback/verify scripts
+ * when a patch has enough metadata (vendor, software, OS).
+ * Does NOT upload anything to MinIO — just creates inline scripts for
+ * the agent to execute via the hub_patch_install command type.
+ */
+async function autoGeneratePatchBundle(patchId: string): Promise<void> {
+  const patch = await prisma.patch.findUnique({
+    where: { id: patchId },
+    include: { bundle: true },
+  });
+
+  if (!patch) return;
+
+  // Skip if bundle already has a tar.gz upload (manually uploaded)
+  if (patch.bundle?.bundleObjectKey) return;
+
+  // Need at least OS + (kbNumber or software) to generate scripts
+  const os = (patch.os || '').toLowerCase();
+  const kbNumber = patch.kbNumber;
+  const packageName = patch.software;
+  const downloadUrl = patch.downloadUrl;
+
+  if (!os || (!kbNumber && !packageName)) return;
+
+  let scriptInstall: string | null = null;
+  let scriptRollback: string | null = null;
+  let scriptVerify: string | null = null;
+
+  if (os.includes('windows') || os === 'w') {
+    // Windows patches
+    if (kbNumber) {
+      const msuUrl = downloadUrl || '';
+      scriptInstall = [
+        '#!/usr/bin/env powershell',
+        `# Auto-generated install script for ${kbNumber}`,
+        `$KB = "${kbNumber}"`,
+        '',
+        '# Check if already installed',
+        '$installed = Get-HotFix -Id $KB -ErrorAction SilentlyContinue',
+        'if ($installed) { Write-Host "Patch $KB is already installed"; exit 0 }',
+        '',
+        msuUrl ? `$msuPath = "$env:TEMP\\$KB.msu"` : '',
+        msuUrl ? `Invoke-WebRequest -Uri "${msuUrl}" -OutFile $msuPath -UseBasicParsing` : '',
+        msuUrl ? `wusa.exe $msuPath /quiet /norestart` : `dism.exe /Online /Add-Package /PackageName:$KB /Quiet /NoRestart`,
+        'if ($LASTEXITCODE -eq 3010) { Write-Host "Reboot required"; exit 0 }',
+        'if ($LASTEXITCODE -ne 0) { Write-Error "Install failed with exit code $LASTEXITCODE"; exit 1 }',
+        'Write-Host "Patch $KB installed successfully"',
+      ].filter(Boolean).join('\n');
+
+      scriptRollback = [
+        '#!/usr/bin/env powershell',
+        `# Auto-generated rollback script for ${kbNumber}`,
+        `$KB = "${kbNumber}"`,
+        `wusa.exe /uninstall /kb:$($KB -replace 'KB','') /quiet /norestart`,
+        'if ($LASTEXITCODE -ne 0) { Write-Error "Rollback failed"; exit 1 }',
+        'Write-Host "Patch $KB rolled back"',
+      ].join('\n');
+
+      scriptVerify = [
+        '#!/usr/bin/env powershell',
+        `# Auto-generated verify script for ${kbNumber}`,
+        `$KB = "${kbNumber}"`,
+        '$installed = Get-HotFix -Id $KB -ErrorAction SilentlyContinue',
+        'if ($installed) { Write-Host "VERIFIED: $KB installed"; exit 0 }',
+        'else { Write-Error "NOT FOUND: $KB"; exit 1 }',
+      ].join('\n');
+    }
+  } else if (os.includes('linux') || os.includes('ubuntu') || os.includes('debian') || os.includes('rhel') || os.includes('centos') || os.includes('fedora') || os === 'l') {
+    // Linux patches
+    if (packageName) {
+      const isDebian = os.includes('ubuntu') || os.includes('debian') || os === 'l' || os === 'linux';
+      const isRhel = os.includes('rhel') || os.includes('centos') || os.includes('fedora') || os.includes('rocky') || os.includes('alma');
+      const pkgManager = isRhel ? 'dnf' : 'apt-get';
+      const cleanName = packageName.replace(/[^a-zA-Z0-9._-]/g, '');
+
+      scriptInstall = [
+        '#!/bin/bash',
+        'set -e',
+        `# Auto-generated install script for ${cleanName}`,
+        '',
+        isDebian ? 'export DEBIAN_FRONTEND=noninteractive' : '',
+        isDebian ? `apt-get update -qq` : '',
+        `${pkgManager} install -y ${cleanName}`,
+        `echo "Package ${cleanName} installed successfully"`,
+      ].filter(Boolean).join('\n');
+
+      scriptRollback = [
+        '#!/bin/bash',
+        'set -e',
+        `# Auto-generated rollback script for ${cleanName}`,
+        `${pkgManager} remove -y ${cleanName}`,
+        `echo "Package ${cleanName} removed"`,
+      ].join('\n');
+
+      scriptVerify = [
+        '#!/bin/bash',
+        `# Auto-generated verify script for ${cleanName}`,
+        isDebian
+          ? `dpkg -s ${cleanName} 2>/dev/null | grep -q "Status: install ok installed"`
+          : `rpm -q ${cleanName} >/dev/null 2>&1`,
+        'if [ $? -eq 0 ]; then echo "VERIFIED: ' + cleanName + ' installed"; exit 0; fi',
+        'echo "NOT FOUND: ' + cleanName + '"; exit 1',
+      ].join('\n');
+    }
+  } else if (os.includes('mac') || os.includes('darwin') || os === 'm') {
+    // macOS patches
+    if (packageName) {
+      const cleanName = packageName.replace(/[^a-zA-Z0-9._-]/g, '');
+
+      scriptInstall = [
+        '#!/bin/bash',
+        'set -e',
+        `# Auto-generated install script for ${cleanName}`,
+        `if command -v brew &>/dev/null; then`,
+        `  brew install ${cleanName} || brew upgrade ${cleanName}`,
+        `else`,
+        `  softwareupdate --install "${cleanName}" --no-scan`,
+        `fi`,
+        `echo "Package ${cleanName} installed successfully"`,
+      ].join('\n');
+
+      scriptRollback = [
+        '#!/bin/bash',
+        'set -e',
+        `# Auto-generated rollback script for ${cleanName}`,
+        `if command -v brew &>/dev/null; then`,
+        `  brew uninstall ${cleanName}`,
+        `fi`,
+        `echo "Package ${cleanName} removed"`,
+      ].join('\n');
+
+      scriptVerify = [
+        '#!/bin/bash',
+        `# Auto-generated verify script for ${cleanName}`,
+        `if command -v brew &>/dev/null && brew list ${cleanName} &>/dev/null; then`,
+        `  echo "VERIFIED: ${cleanName} installed"; exit 0`,
+        `fi`,
+        `echo "NOT FOUND: ${cleanName}"; exit 1`,
+      ].join('\n');
+    }
+  }
+
+  // If we couldn't generate scripts, skip
+  if (!scriptInstall) return;
+
+  if (patch.bundle) {
+    // Update existing bundle with inline scripts
+    await prisma.patchBundle.update({
+      where: { id: patch.bundle.id },
+      data: {
+        scriptInstall,
+        scriptRollback,
+        scriptVerify,
+        scriptsIncluded: true,
+      },
+    });
+  } else {
+    // Create new bundle with inline scripts
+    await prisma.patchBundle.create({
+      data: {
+        patchId,
+        scriptInstall,
+        scriptRollback,
+        scriptVerify,
+        scriptsIncluded: true,
+        sourceUrl: patch.downloadUrl,
+        downloadStatus: patch.downloadUrl ? 'pending' : 'completed',
+        requiresRoot: true,
+      },
+    });
+  }
+
+  console.log(`[PatchBundle] Auto-generated inline scripts for patch ${patch.patchId || patch.id} (${os})`);
 }
 
 // ============================================
@@ -1271,6 +2085,10 @@ function transformDeployment(deployment: any) {
     scheduledAt: deployment.scheduledAt?.toISOString() || null,
     startedAt: deployment.startedAt?.toISOString() || null,
     completedAt: deployment.completedAt?.toISOString() || null,
+    triggerType: deployment.triggerType || null,
+    skipApprovalCheck: deployment.skipApprovalCheck || false,
+    approvalOverrideBy: deployment.approvalOverrideBy || null,
+    autoRollback: deployment.autoRollback || false,
     createdBy: deployment.createdBy,
     createdAt: deployment.createdAt.toISOString(),
     updatedAt: deployment.updatedAt.toISOString(),
@@ -1321,6 +2139,8 @@ function transformZeroTouchConfig(config: any) {
     groups: config.groups || [],
     autoDeploymentRules: config.autoDeploymentRules,
     status: config.status,
+    lastTriggeredAt: config.lastTriggeredAt?.toISOString() || null,
+    deploymentsCreated: config.deploymentsCreated || 0,
     createdBy: config.createdBy,
     createdAt: config.createdAt.toISOString(),
     updatedAt: config.updatedAt.toISOString(),

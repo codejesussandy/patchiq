@@ -1336,6 +1336,44 @@ export class SettingsService {
 
     await prisma.vendorLogo.delete({ where: { id } });
   }
+  // ============================================
+  // Patch Management Settings (singleton)
+  // ============================================
+
+  async getPatchManagementSettings(): Promise<Record<string, unknown>> {
+    const settings = await prisma.setting.findMany({
+      where: { category: 'patch-management' },
+    });
+
+    const defaults: Record<string, unknown> = {
+      requireApprovalForDeployment: false,
+      requireTestBeforeApproval: true,
+      autoApproveFromVendors: [],
+      autoApproveSeverities: [],
+    };
+
+    const result = { ...defaults };
+    for (const setting of settings) {
+      const key = setting.key.replace('patch-management.', '');
+      result[key] = setting.value;
+    }
+
+    return result;
+  }
+
+  async updatePatchManagementSettings(input: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const updates = Object.entries(input).filter(([, value]) => value !== undefined);
+
+    for (const [key, value] of updates) {
+      await prisma.setting.upsert({
+        where: { key: `patch-management.${key}` },
+        update: { value: JSON.parse(JSON.stringify(value)) },
+        create: { key: `patch-management.${key}`, value: JSON.parse(JSON.stringify(value)), category: 'patch-management' },
+      });
+    }
+
+    return this.getPatchManagementSettings();
+  }
 }
 
 export const settingsService = new SettingsService();

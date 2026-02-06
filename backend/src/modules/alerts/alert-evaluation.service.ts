@@ -155,6 +155,8 @@ async function evaluateConfig(
       title: config.config.name || config.type,
       message: `Condition met: ${condDesc}`,
       type: notifType as 'error' | 'warning' | 'info',
+      category: 'alert',
+      dedupKey: `alert-${config.id}-${assetId}`,
       link: `/assets/${assetId}`,
     }).catch(() => {});
   } else if (!allMet && existingAlert) {
@@ -172,6 +174,7 @@ async function evaluateConfig(
       title: `Alert Resolved: ${config.config.name || config.type}`,
       message: `Alert conditions are no longer met`,
       type: 'success',
+      category: 'alert',
       link: `/assets/${assetId}`,
     }).catch(() => {});
   }

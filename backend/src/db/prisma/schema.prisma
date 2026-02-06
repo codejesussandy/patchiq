@@ -43,7 +43,8 @@ model User {
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   auditLogs           AuditLog[]
-  notifications       Notification[]
+  notifications            Notification[]
+  notificationPreference   NotificationPreference?
 
   @@map("users")
 }
@@ -210,6 +211,7 @@ model AgentCommand {
   // Relations to deployment tasks
   softwareTask SoftwareDeploymentTask?
   patchTask    PatchDeploymentTask?
+  configTask   ConfigDeploymentTask?
 
   @@index([agentId, status])
   @@map("agent_commands")
@@ -862,6 +864,12 @@ model PatchDeployment {
   // Retry Policy (NEW)
   retryCount      Int       @default(1) @map("retry_count")
   retryDelay      Int       @default(300) @map("retry_delay")       // seconds between retries
+  autoRollback    Boolean   @default(false) @map("auto_rollback")
+
+  // Trigger & Approval
+  triggerType         String?   @map("trigger_type")                    // manual | scheduled | zero-touch | policy
+  skipApprovalCheck   Boolean   @default(false) @map("skip_approval_check")
+  approvalOverrideBy  String?   @map("approval_override_by")
 
   // Scheduling
   scheduledAt  DateTime? @map("scheduled_at")
@@ -909,6 +917,7 @@ model PatchDeploymentTask {
   previousVersion    String?   @map("previous_version")   // Version before patch
   installedVersion   String?   @map("installed_version")  // Version after patch
   rollbackAvailable  Boolean   @default(false) @map("rollback_available")
+  retryAttempt       Int       @default(0) @map("retry_attempt")
 
   // Verification (NEW)
   verifiedAt   DateTime?       @map("verified_at")
@@ -1040,7 +1049,8 @@ model PatchVulnerability {
   cveNumber     String    @map("cve_number")
   severity      String?
   description   String?
-  publishedDate DateTime? @map("published_date")
+  publishedDate     DateTime? @map("published_date")
+  correlationSource String    @default("manual") @map("correlation_source")  // manual | auto-kb | auto-vendor | auto-nvd
 
   @@index([patchId])
   @@map("patch_vulnerabilities")
@@ -1091,6 +1101,8 @@ model ZeroTouchConfig {
   autoDeploymentRules Json     @default("{}") @map("auto_deployment_rules")
   status              String   @default("Active")
   createdBy           String?  @map("created_by")
+  lastTriggeredAt     DateTime? @map("last_triggered_at")
+  deploymentsCreated  Int       @default(0) @map("deployments_created")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
@@ -1760,6 +1772,12 @@ model ConfigDeploymentTask {
   endpointOs   String           @map("endpoint_os")
   itemName     String           @map("item_name")
   status       String           @default("PENDING") // SUCCESS | FAILED | PENDING | IN_PROGRESS
+  commandId    String?          @unique @map("command_id")
+  command      AgentCommand?    @relation(fields: [commandId], references: [id])
+  startedAt    DateTime?        @map("started_at")
+  completedAt  DateTime?        @map("completed_at")
+  errorMessage String?          @map("error_message")
+  output       String?
   createdBy    String?          @map("created_by")
   createdAt    DateTime         @default(now()) @map("created_at")
   updatedAt    DateTime         @updatedAt @map("updated_at")
@@ -1834,6 +1852,7 @@ model Notification {
   title     String
   message   String
   type      String    @default("info")   // info | success | warning | error
+  category  String    @default("system") @map("category")  // agent | deployment | vulnerability | alert | system
   read      Boolean   @default(false)
   link      String?                      // frontend route to navigate to on click
   metadata  Json?                        // optional extra context
@@ -1842,7 +1861,28 @@ model Notification {
 
   @@index([userId, read])
   @@index([createdAt])
+  @@index([category])
   @@map("notifications")
+}
+
+model NotificationPreference {
+  id                  String   @id @default(uuid())
+  userId              String   @unique @map("user_id")
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentInApp          Boolean  @default(true)  @map("agent_in_app")
+  agentEmail          Boolean  @default(false) @map("agent_email")
+  deploymentInApp     Boolean  @default(true)  @map("deployment_in_app")
+  deploymentEmail     Boolean  @default(false) @map("deployment_email")
+  vulnerabilityInApp  Boolean  @default(true)  @map("vulnerability_in_app")
+  vulnerabilityEmail  Boolean  @default(true)  @map("vulnerability_email")
+  alertInApp          Boolean  @default(true)  @map("alert_in_app")
+  alertEmail          Boolean  @default(true)  @map("alert_email")
+  systemInApp         Boolean  @default(true)  @map("system_in_app")
+  systemEmail         Boolean  @default(false) @map("system_email")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("notification_preferences")
 }
 
 // ============================================

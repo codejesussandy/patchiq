@@ -20,7 +20,7 @@ import { reportsRoutes } from '@modules/reports';
 import { settingsRoutes } from '@modules/settings';
 import { patchRepositoryRoutes } from '@modules/patch-repository';
 import { hubRoutes } from '@modules/hub';
-import { notificationsRoutes } from '@modules/notifications';
+import { notificationsRoutes, notificationsController } from '@modules/notifications';
 
 export function createApp(): Application {
   const app = express();
@@ -147,6 +147,10 @@ export function createApp(): Application {
       });
     }).catch(next);
   });
+
+  // SSE stream — mounted before assets routes (which have global authenticate)
+  // EventSource can't send headers, so SSE uses query-param token auth
+  app.get(`/${config.apiVersion}/notifications/stream`, notificationsController.sseStream);
 
   // Assets module routes (includes assets, categories, subcategories, tags, licenses)
   app.use(`/${config.apiVersion}`, assetsRoutes);

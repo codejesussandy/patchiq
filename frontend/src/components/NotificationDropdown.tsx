@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Dropdown, Badge, List, Typography, Button, Empty, Spin } from 'antd';
+import { Dropdown, Badge, List, Typography, Button, Empty, Spin, Tag } from 'antd';
 import {
   BellOutlined,
   CheckOutlined,
@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { notificationService, type Notification, type NotificationType } from '../services/notification.service';
+import { useNotificationSSE } from '../hooks/useNotificationSSE';
 
 const { Text } = Typography;
 
@@ -40,6 +41,14 @@ const formatTime = (dateString: string) => {
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   return `${days}d ago`;
+};
+
+const categoryColor: Record<string, string> = {
+  agent: 'blue',
+  deployment: 'green',
+  vulnerability: 'red',
+  alert: 'orange',
+  system: 'default',
 };
 
 export const NotificationDropdown = () => {
@@ -74,10 +83,28 @@ export const NotificationDropdown = () => {
     }
   };
 
-  // Fetch unread count on mount and poll every 30s
+  // SSE real-time updates
+  useNotificationSSE({
+    onNotification: (sseNotif) => {
+      const newNotif: Notification = {
+        id: sseNotif.id || crypto.randomUUID(),
+        title: sseNotif.title,
+        message: sseNotif.message,
+        type: (sseNotif.type as NotificationType) || 'info',
+        category: sseNotif.category as Notification['category'],
+        read: false,
+        createdAt: sseNotif.createdAt || new Date().toISOString(),
+        link: sseNotif.link,
+      };
+      setNotifications((prev) => [newNotif, ...prev].slice(0, 20));
+      setUnreadCount((c) => c + 1);
+    },
+  });
+
+  // Fetch unread count on mount and poll every 60s (SSE is primary, polling is fallback)
   useEffect(() => {
     fetchUnreadCount();
-    pollRef.current = setInterval(fetchUnreadCount, 30_000);
+    pollRef.current = setInterval(fetchUnreadCount, 60_000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
@@ -142,8 +169,8 @@ export const NotificationDropdown = () => {
   const dropdownContent = (
     <div
       style={{
-        width: 360,
-        maxHeight: 480,
+        width: 380,
+        maxHeight: 520,
         background: '#fff',
         borderRadius: 8,
         boxShadow: '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12)',
@@ -211,6 +238,14 @@ export const NotificationDropdown = () => {
                     <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
                       {item.message}
                     </Text>
+                    {item.category && (
+                      <Tag
+                        color={categoryColor[item.category] || 'default'}
+                        style={{ marginTop: 4, fontSize: 10 }}
+                      >
+                        {item.category}
+                      </Tag>
+                    )}
                   </div>
                   <div style={{ flexShrink: 0, display: 'flex', gap: 4 }}>
                     {!item.read && (
@@ -237,6 +272,23 @@ export const NotificationDropdown = () => {
             )}
           />
         )}
+      </div>
+
+      {/* Footer */}
+      <div
+        style={{
+          padding: '8px 16px',
+          borderTop: '1px solid #f0f0f0',
+          textAlign: 'center',
+        }}
+      >
+        <Button
+          type="link"
+          size="small"
+          onClick={() => { setOpen(false); navigate('/notifications'); }}
+        >
+          View All Notifications
+        </Button>
       </div>
     </div>
   );

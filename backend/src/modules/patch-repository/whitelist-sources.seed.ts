@@ -30,6 +30,7 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
       'download.microsoft.com',
     ],
     priority: 100,
+    syncSchedule: '0 */6 * * *',
     metadata: {
       description: 'Microsoft Windows Update core service',
       category: 'Core Update Service',
@@ -49,6 +50,7 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
       '*.tlu.dl.delivery.mp.microsoft.com',
     ],
     priority: 95,
+    syncSchedule: '0 */8 * * *',
     metadata: {
       description: 'Delivery Optimization and Microsoft Store',
       category: 'Delivery Optimization & Store',
@@ -75,6 +77,7 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
       'gdmf.apple.com',
     ],
     priority: 100,
+    syncSchedule: '0 */6 * * *',
     metadata: {
       description: 'Apple macOS core updates, firmware, and App Store',
     },
@@ -92,6 +95,7 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
       'subscription.rhsm.redhat.com',
     ],
     priority: 90,
+    syncSchedule: '0 */12 * * *',
     metadata: { distribution: 'RHEL' },
   },
   {
@@ -118,6 +122,7 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
       'security.ubuntu.com',
     ],
     priority: 90,
+    syncSchedule: '0 */12 * * *',
     metadata: { distribution: 'Ubuntu', notes: 'Includes ESM' },
   },
   {
@@ -241,6 +246,7 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
       'ftp.dell.com',
     ],
     priority: 90,
+    syncSchedule: '0 */12 * * *',
   },
   {
     name: 'HP Firmware & Drivers',
@@ -253,6 +259,7 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
       'hpia.hpcloud.hp.com',
     ],
     priority: 90,
+    syncSchedule: '0 */12 * * *',
   },
   {
     name: 'Lenovo Firmware & Drivers',
@@ -265,6 +272,7 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
       'filedownload.lenovo.com',
     ],
     priority: 90,
+    syncSchedule: '0 */12 * * *',
   },
   {
     name: 'NVIDIA Drivers',
@@ -348,6 +356,7 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
       'msedge.sf.dl.delivery.mp.microsoft.com',
     ],
     priority: 95,
+    syncSchedule: '0 */8 * * *',
     metadata: { products: ['Office', 'Teams', 'Edge'] },
   },
   {
@@ -588,6 +597,7 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
       'go.microsoft.com',
     ],
     priority: 100,
+    syncSchedule: '0 */6 * * *',
     metadata: { product: 'Windows Defender' },
   },
   {
@@ -640,6 +650,7 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
     baseUrl: 'https://dl.google.com',
     urlPatterns: ['dl.google.com'],
     priority: 90,
+    syncSchedule: '0 */12 * * *',
   },
   {
     name: 'Mozilla Firefox',
@@ -649,6 +660,7 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
     baseUrl: 'https://download.cdn.mozilla.net',
     urlPatterns: ['download.cdn.mozilla.net'],
     priority: 90,
+    syncSchedule: '0 */12 * * *',
   },
   {
     name: 'Brave Browser',
@@ -687,6 +699,7 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
     baseUrl: 'https://statics.teams.cdn.office.net',
     urlPatterns: ['statics.teams.cdn.office.net'],
     priority: 90,
+    syncSchedule: '0 */12 * * *',
   },
   {
     name: 'Cisco Webex',

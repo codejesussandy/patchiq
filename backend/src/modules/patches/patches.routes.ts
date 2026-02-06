@@ -228,6 +228,41 @@ deploymentsRouter.post(
   controller.createPatchDeploymentFromUI
 );
 
+// GET /v1/deployments/patch - List patch deployments (via deployment executor)
+deploymentsRouter.get(
+  '/patch',
+  authenticate,
+  deploymentController.listPatchDeployments.bind(deploymentController)
+);
+
+// GET /v1/deployments/patch/:deploymentId - Get patch deployment status
+deploymentsRouter.get(
+  '/patch/:deploymentId',
+  authenticate,
+  deploymentController.getPatchDeploymentStatus.bind(deploymentController)
+);
+
+// POST /v1/deployments/patch/:deploymentId/cancel - Cancel patch deployment
+deploymentsRouter.post(
+  '/patch/:deploymentId/cancel',
+  authenticate,
+  deploymentController.cancelPatchDeployment.bind(deploymentController)
+);
+
+// POST /v1/deployments/config - Create config deployment
+deploymentsRouter.post(
+  '/config',
+  authenticate,
+  deploymentController.createConfigDeployment.bind(deploymentController)
+);
+
+// GET /v1/deployments/config/:deploymentId - Get config deployment status
+deploymentsRouter.get(
+  '/config/:deploymentId',
+  authenticate,
+  deploymentController.getConfigDeploymentStatus.bind(deploymentController)
+);
+
 // GET /v1/deployments - List deployments
 deploymentsRouter.get(
   '/',

@@ -48,6 +48,18 @@ export interface CreateSoftwareDeploymentOptions {
   createdBy?: string;
 }
 
+// Options for creating a config deployment
+export interface CreateConfigDeploymentOptions {
+  name: string;
+  description?: string;
+  targetAgentIds: string[];
+  configurationIds?: string[];    // Individual config catalog IDs
+  bundleIds?: string[];           // Config bundle IDs (resolved to individual configs)
+  selectionType?: 'configuration' | 'bundle';
+  retryCount?: number;
+  createdBy?: string;
+}
+
 // Options for creating a patch deployment
 export interface CreatePatchDeploymentOptions {
   name: string;
@@ -55,6 +67,8 @@ export interface CreatePatchDeploymentOptions {
   targetAgentIds: string[];
   patches: PatchInstallPayload[];
   retryCount?: number;
+  autoRollback?: boolean;
+  triggerType?: string;
   createdBy?: string;
 }
 

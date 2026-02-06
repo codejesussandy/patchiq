@@ -5,7 +5,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { deploymentExecutorService } from './deployment-executor.service';
-import { CreateSoftwareDeploymentOptions, CreatePatchDeploymentOptions } from './deployment-executor.types';
+import { CreateSoftwareDeploymentOptions, CreatePatchDeploymentOptions, CreateConfigDeploymentOptions } from './deployment-executor.types';
 
 export class DeploymentController {
   /**
@@ -157,6 +157,118 @@ export class DeploymentController {
           createdAt: d.createdAt,
           updatedAt: d.updatedAt,
         })),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get patch deployment status
+   * GET /v1/deployments/patch/:deploymentId
+   */
+  async getPatchDeploymentStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { deploymentId } = req.params;
+
+      const status = await deploymentExecutorService.getPatchDeploymentStatus(deploymentId);
+
+      res.json({
+        success: true,
+        data: status,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * List all patch deployments
+   * GET /v1/deployments/patch
+   */
+  async listPatchDeployments(req: Request, res: Response, next: NextFunction) {
+    try {
+      const deployments = await deploymentExecutorService.listPatchDeployments();
+
+      res.json({
+        success: true,
+        data: deployments,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Cancel a patch deployment
+   * POST /v1/deployments/patch/:deploymentId/cancel
+   */
+  async cancelPatchDeployment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { deploymentId } = req.params;
+
+      await deploymentExecutorService.cancelPatchDeployment(deploymentId);
+
+      res.json({
+        success: true,
+        message: 'Patch deployment cancelled',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Create a new config deployment
+   * POST /v1/deployments/config
+   */
+  async createConfigDeployment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const {
+        name,
+        description,
+        targetAgentIds,
+        configurationIds,
+        bundleIds,
+        selectionType,
+        retryCount,
+      } = req.body;
+
+      const options: CreateConfigDeploymentOptions = {
+        name,
+        description,
+        targetAgentIds,
+        configurationIds,
+        bundleIds,
+        selectionType,
+        retryCount,
+        createdBy: req.user?.id,
+      };
+
+      const result = await deploymentExecutorService.createConfigDeployment(options);
+
+      res.status(201).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get config deployment status
+   * GET /v1/deployments/config/:deploymentId
+   */
+  async getConfigDeploymentStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { deploymentId } = req.params;
+
+      const status = await deploymentExecutorService.getConfigDeploymentStatus(deploymentId);
+
+      res.json({
+        success: true,
+        data: status,
       });
     } catch (error) {
       next(error);

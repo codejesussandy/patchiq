@@ -144,6 +144,7 @@ export class AgentsService {
       title: `New Agent: ${input.hostname || input.machineId}`,
       message: `A new agent has registered from ${input.ipAddress || 'unknown IP'}`,
       type: 'info',
+      category: 'agent',
       link: '/discovery/agents',
     }).catch(() => {});
 
@@ -194,6 +195,8 @@ export class AgentsService {
         title: `Agent Error: ${agent.hostname || agent.name || agentId}`,
         message: `Agent is reporting error status`,
         type: 'error',
+        category: 'agent',
+        dedupKey: `agent-error-${agentId}`,
         link: '/discovery/agents',
       }).catch(() => {});
     }
@@ -1049,6 +1052,14 @@ export class AgentsService {
       cveDatabase.checkAssetVulnerabilities(agent.assetId).catch((err) => {
         console.error(`[Vulnerability Check] Failed for asset ${agent.assetId}:`, err);
       });
+
+      // Trigger patch applicability check (non-blocking)
+      // Identifies which patches apply to this asset based on installed software
+      import('@modules/patches/patches.service').then(({ checkPatchApplicabilityForAsset }) => {
+        checkPatchApplicabilityForAsset(agent.assetId!).catch((err) => {
+          console.error(`[Patch Applicability] Failed for asset ${agent.assetId}:`, err);
+        });
+      }).catch(() => {});
     }
 
     // Store peripheral data if provided

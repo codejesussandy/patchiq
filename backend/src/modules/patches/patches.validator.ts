@@ -114,6 +114,9 @@ export const createDeploymentSchema = z.object({
   schedule: z.string().optional(),
   targetGroups: z.array(z.string()).optional().default([]),
   patches: z.array(z.string().uuid()).min(1, 'At least one patch is required'),
+  skipApprovalCheck: z.boolean().optional().default(false),
+  triggerType: z.enum(['manual', 'scheduled', 'zero-touch', 'policy']).optional().default('manual'),
+  autoRollback: z.boolean().optional().default(false),
 });
 
 export const deploymentIdParamSchema = z.object({
@@ -238,6 +241,8 @@ export const createPatchDeploymentFromUISchema = z.object({
     type: z.string().optional(),
   })).min(1, 'At least one patch is required'),
   retryCount: z.number().int().positive().optional().default(1),
+  skipApprovalCheck: z.boolean().optional().default(false),
+  autoRollback: z.boolean().optional().default(false),
 });
 
 // ============================================

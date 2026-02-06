@@ -1030,6 +1030,27 @@ export class SettingsController {
       next(error);
     }
   }
+  // ============================================
+  // Patch Management Settings
+  // ============================================
+
+  async getPatchManagementSettings(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.getPatchManagementSettings();
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updatePatchManagementSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.updatePatchManagementSettings(req.body);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const settingsController = new SettingsController();

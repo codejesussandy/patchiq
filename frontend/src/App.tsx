@@ -39,6 +39,10 @@ import { VulnerabilityJobs } from './pages/jobs/VulnerabilityJobs';
 // Hub
 import { Hub } from './pages/hub/Hub';
 
+// Notifications
+import { Notifications } from './pages/Notifications';
+import { NotificationPreferences } from './pages/settings/NotificationPreferences';
+
 // Settings
 import { Organization } from './pages/settings/Organization';
 import { UserLocation } from './pages/settings/UserLocation';
@@ -363,6 +367,28 @@ function AppRoutes() {
         }
       />
       <Route path="/hub" element={<Navigate to="/assets/hub" replace />} />
+
+      {/* Notifications */}
+      <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Notifications />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/notification-preferences"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <NotificationPreferences />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
 
       {/* Settings - User Management Sub-pages */}
       <Route

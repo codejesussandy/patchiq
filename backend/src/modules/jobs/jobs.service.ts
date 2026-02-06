@@ -308,10 +308,32 @@ export async function createVulnerabilityJob(data: CreateVulnerabilityJobInput, 
 }
 
 /**
+ * Calculate the next run date for recurring vulnerability jobs.
+ */
+export function calculateNextRun(recurrence: string | null, baseDate: Date = new Date()): Date | null {
+  if (!recurrence || recurrence === 'once') return null;
+
+  const next = new Date(baseDate);
+  switch (recurrence) {
+    case 'daily':
+      next.setDate(next.getDate() + 1);
+      return next;
+    case 'weekly':
+      next.setDate(next.getDate() + 7);
+      return next;
+    case 'monthly':
+      next.setMonth(next.getMonth() + 1);
+      return next;
+    default:
+      return null;
+  }
+}
+
+/**
  * Execute a vulnerability scan and update the VulnerabilityJob status when done.
  * Runs in the background (non-blocking).
  */
-async function executeAndTrackScan(
+export async function executeAndTrackScan(
   vulnerabilityJobId: string,
   scope: string,
   endpoints: string[] | undefined,
@@ -339,11 +361,15 @@ async function executeAndTrackScan(
       await new Promise((resolve) => setTimeout(resolve, 2000));
       const scanJob = await prisma.job.findUnique({ where: { id: scanJobId } });
       if (!scanJob || scanJob.status === 'completed') {
+        // Look up recurrence for next run calculation
+        const vulnJob = await prisma.vulnerabilityJob.findUnique({ where: { id: vulnerabilityJobId } });
+        const nextRun = vulnJob ? calculateNextRun(vulnJob.recurrence || null) : null;
         await prisma.vulnerabilityJob.update({
           where: { id: vulnerabilityJobId },
           data: {
-            status: 'COMPLETED',
+            status: nextRun ? 'SCHEDULED' : 'COMPLETED',
             lastRun: new Date(),
+            nextRun,
             ...(scanJob?.result != null ? { result: scanJob.result } : {}),
           },
         });
@@ -1256,6 +1282,38 @@ export async function listConfigDeployments(params: ConfigDeploymentListQuery) {
 }
 
 export async function createConfigDeployment(data: CreateConfigDeploymentInput, userId: string) {
+  // If targetAgentIds are provided, use the deployment executor for real agent execution
+  const targetAgentIds = data.endpoints || [];
+  if (targetAgentIds.length > 0 && (data.selectedItems?.length > 0)) {
+    try {
+      const { deploymentExecutorService } = await import('@modules/deployments/deployment-executor.service');
+      const result = await deploymentExecutorService.createConfigDeployment({
+        name: data.deploymentName,
+        description: data.description,
+        targetAgentIds,
+        configurationIds: data.selectionType === 'configuration' ? data.selectedItems : undefined,
+        bundleIds: data.selectionType === 'bundle' ? data.selectedItems : undefined,
+        selectionType: data.selectionType as 'configuration' | 'bundle',
+        retryCount: data.retryCount,
+        createdBy: userId,
+      });
+      return {
+        id: result.deploymentId,
+        deploymentId: result.deploymentId,
+        deploymentName: data.deploymentName,
+        stage: 'IN_PROGRESS',
+        pending: result.tasksCreated,
+        succeeded: 0,
+        failed: 0,
+        createdBy: userId,
+        createdOn: formatDate(new Date()),
+      };
+    } catch (err) {
+      console.error('[ConfigDeployment] Executor failed, falling back to record-only:', err);
+    }
+  }
+
+  // Fallback: create record without agent execution
   const deploymentId = await generatePolicyId('CDR', 'configDeployment');
 
   const dep = await prisma.configDeployment.create({

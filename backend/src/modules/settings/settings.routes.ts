@@ -232,4 +232,10 @@ router.get('/remote-desktop', settingsController.getRemoteDesktopSettings.bind(s
 router.put('/remote-desktop', validateBody(updateRemoteDesktopSchema), settingsController.updateRemoteDesktopSettings.bind(settingsController));
 router.post('/remote-desktop/reset', settingsController.resetRemoteDesktopSettings.bind(settingsController));
 
+// ============================================
+// Patch Management Settings (singleton)
+// ============================================
+router.get('/patch-management', settingsController.getPatchManagementSettings.bind(settingsController));
+router.put('/patch-management', settingsController.updatePatchManagementSettings.bind(settingsController));
+
 export { router as settingsRoutes };

@@ -21,7 +21,14 @@ router.post('/software/:deploymentId/cancel', deploymentController.cancelSoftwar
 // Rollback endpoints
 router.post('/software/:deploymentId/tasks/:taskId/rollback', deploymentController.triggerRollback.bind(deploymentController));
 
+// Config Deployments
+router.post('/config', deploymentController.createConfigDeployment.bind(deploymentController));
+router.get('/config/:deploymentId', deploymentController.getConfigDeploymentStatus.bind(deploymentController));
+
 // Patch Deployments
 router.post('/patch', deploymentController.createPatchDeployment.bind(deploymentController));
+router.get('/patch', deploymentController.listPatchDeployments.bind(deploymentController));
+router.get('/patch/:deploymentId', deploymentController.getPatchDeploymentStatus.bind(deploymentController));
+router.post('/patch/:deploymentId/cancel', deploymentController.cancelPatchDeployment.bind(deploymentController));
 
 export default router;

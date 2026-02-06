@@ -25,6 +25,7 @@ import {
   LogoutOutlined,
   CheckOutlined,
   BankOutlined,
+  BellOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Logo } from './Logo';
@@ -322,6 +323,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         { key: 'system-settings-server', label: 'Server Settings' },
       ],
     },
+    { key: 'notification-preferences', icon: <BellOutlined />, label: 'Notification Preferences' },
     { key: 'vulnerability-preference', icon: <FileTextOutlined />, label: 'Vulnerability Preference' },
     { key: 'market-place', icon: <FolderOutlined />, label: 'Market Place' },
     {
@@ -422,6 +424,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     // Settings top-level
     else if (key === 'user-management') navigate('/settings/user-management/organization');
     else if (key === 'system-settings') navigate('/settings/system-settings/branding');
+    else if (key === 'notification-preferences') navigate('/settings/notification-preferences');
     else if (key === 'vulnerability-preference') navigate('/settings/vulnerability-preference');
     else if (key === 'market-place') navigate('/settings/market-place');
     else if (key === 'discovery') navigate('/discovery/ip-discovery');
@@ -645,6 +648,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     if (location.pathname === '/settings/patch-management/patch-preferences') return ['patch-management-patch-preferences'];
     if (location.pathname === '/settings/patch-management/distribution-server') return ['patch-management-distribution-server'];
     if (location.pathname === '/settings/system-settings') return ['system-settings'];
+    if (location.pathname === '/settings/notification-preferences') return ['notification-preferences'];
     if (location.pathname === '/settings/vulnerability-preference') return ['vulnerability-preference'];
     if (location.pathname === '/settings/market-place') return ['market-place'];
     if (location.pathname === '/settings/jobs') return ['jobs'];
