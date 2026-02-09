@@ -1,0 +1,34 @@
+/**
+ * Asset Patch Recommendation Routes
+ *
+ * API routes for patch recommendations
+ */
+
+import { Router } from 'express';
+import * as controller from './asset-patch-recommendation.controller';
+import { authenticate } from '@middleware/auth';
+
+const router = Router();
+
+// All routes require authentication
+router.use(authenticate);
+
+// Dashboard statistics
+router.get('/dashboard', controller.getDashboardStats);
+
+// List all recommendations (with optional filters)
+router.get('/', controller.listRecommendations);
+
+// Get a single recommendation
+router.get('/:id', controller.getRecommendation);
+
+// Accept a recommendation
+router.post('/:id/accept', controller.acceptRecommendation);
+
+// Reject a recommendation
+router.post('/:id/reject', controller.rejectRecommendation);
+
+// Deploy a recommendation
+router.post('/:id/deploy', controller.deployRecommendation);
+
+export default router;

@@ -29,6 +29,7 @@ import {
   DeleteOutlined,
   UploadOutlined,
   RocketOutlined,
+  ScanOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { patchService, type Patch, type AffectedSoftware } from '../../services/patch.service';
@@ -52,6 +53,7 @@ export const AllPatches = () => {
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [discovering, setDiscovering] = useState(false);
 
   // Get OS filter from URL params
   const osFilter = searchParams.get('os');
@@ -803,6 +805,24 @@ export const AllPatches = () => {
           {osFilter ? `${osFilter} Patches` : 'All Patches'}
         </Title>
         <Space>
+          <Button
+            icon={<ScanOutlined />}
+            loading={discovering}
+            onClick={async () => {
+              setDiscovering(true);
+              try {
+                const result = await patchService.discoverPatches();
+                message.success(result.message);
+                if (result.patchesCreated > 0) fetchPatches();
+              } catch (err: any) {
+                message.error(err?.response?.data?.error || 'Discovery failed');
+              } finally {
+                setDiscovering(false);
+              }
+            }}
+          >
+            Discover Patches
+          </Button>
           <Button onClick={() => setBulkAddModalVisible(true)}>Bulk Add</Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => {
             setEditingPatch(null);

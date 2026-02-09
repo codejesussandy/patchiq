@@ -183,7 +183,7 @@ model Agent {
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
   assetId String? @unique @map("asset_id")
-  asset   Asset?  @relation(fields: [assetId], references: [id])
+  asset   Asset?  @relation(fields: [assetId], references: [id], onDelete: SetNull)
 
   commands    AgentCommand[]
   telemetry   AgentTelemetry[]
@@ -307,6 +307,9 @@ model Asset {
   assetTag       String?      @unique @map("asset_tag")
   os             String?
   osVersion      String?      @map("os_version")
+  osEdition      String?      @map("os_edition")      // Windows: Home, Pro, Enterprise | macOS: Standard | Linux: Distribution
+  architecture   String?                              // x86_64, aarch64, arm64, etc.
+  installedFeatures String[]  @default([]) @map("installed_features") // IIS, SQL Server, Active Directory, etc.
   ipAddress      String?      @map("ip_address")
   macAddress     String?      @map("mac_address")
   manufacturer   String?
@@ -369,6 +372,7 @@ model Asset {
   patchTasks        PatchDeploymentTask[]
   softwareTasks     SoftwareDeploymentTask[]
   alerts            AssetAlert[]
+  patchRecommendations AssetPatchRecommendation[]
 
   @@index([status])
   @@index([type])
@@ -575,6 +579,7 @@ model Vulnerability {
   exceptions            VulnerabilityException[]
   references            VulnerabilityReference[]
   affectedSoftware      VulnerabilitySoftware[]
+  assetPatchRecommendations AssetPatchRecommendation[]
 
   @@index([severity])
   @@index([isZeroDay])
@@ -754,8 +759,12 @@ model Patch {
   downloadStatus        String?   @default("None") @map("download_status")
   supersedes            String[]  @default([])
   supersededBy          String[]  @default([]) @map("superseded_by")
+  supersededAt          DateTime? @map("superseded_at")  // When this patch was superseded
   operationalStatusSince DateTime? @map("operational_status_since")
   endpoints             Int       @default(0)
+
+  // Applicability prerequisites (commercial patch manager feature)
+  prerequisites         Json?     // { minOsVersion, maxOsVersion, requiredFeatures, excludedFeatures, osEditions, architectures }
 
   // Test/Approval workflow fields
   testStatus            String    @default("Not Tested") @map("test_status")
@@ -782,6 +791,7 @@ model Patch {
   fileDetails       PatchFileDetail[]      // @deprecated - Use bundle instead. Kept for backwards compatibility.
   vulnerabilities   PatchVulnerability[]
   patchEndpoints    PatchEndpoint[]        // @deprecated - Use Agent/Asset relations instead. Kept for backwards compatibility.
+  assetPatchRecommendations AssetPatchRecommendation[]
 
   @@index([severity])
   @@index([approvalStatus])
@@ -897,7 +907,7 @@ model PatchDeploymentTask {
   // Target identification
   agentId      String?         @map("agent_id")           // NEW: Target agent ID
   assetId      String          @map("asset_id")           // Linked asset (for reporting)
-  asset        Asset           @relation(fields: [assetId], references: [id])
+  asset        Asset           @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
   // Status: pending, in_progress, completed, failed, rolled_back
   status       String          @default("pending")
@@ -927,11 +937,71 @@ model PatchDeploymentTask {
   createdAt    DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @updatedAt @map("updated_at")
 
+  // Relations
+  patchRecommendation AssetPatchRecommendation?
+
   @@index([deploymentId, status])
   @@index([commandId])
   @@index([agentId])
   @@index([assetId])
   @@map("patch_deployment_tasks")
+}
+
+// ============================================
+// Asset Patch Recommendations
+// ============================================
+
+model AssetPatchRecommendation {
+  id                String    @id @default(uuid())
+
+  // Core relationships
+  assetId           String    @map("asset_id")
+  asset             Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  vulnerabilityId   String    @map("vulnerability_id")
+  vulnerability     Vulnerability @relation(fields: [vulnerabilityId], references: [id], onDelete: Cascade)
+
+  patchId           String    @map("patch_id")
+  patch             Patch     @relation(fields: [patchId], references: [id], onDelete: Cascade)
+
+  // Lifecycle
+  status            String    @default("recommended")  // recommended | accepted | rejected | deployed | verified | failed
+
+  // Scoring (computed during creation)
+  severity          String                             // CRITICAL, HIGH, MEDIUM, LOW
+  cvssScore         Float?    @map("cvss_score")
+  epssScore         Float?    @map("epss_score")
+  riskScore         Float?    @map("risk_score")       // Combined metric for sorting
+
+  // Metadata
+  reason            String?                            // "Fixes CVE-2024-1234: RCE in OpenSSL"
+  affectedSoftware  String?   @map("affected_software") // "openssl 3.0.5"
+
+  // Deployment link
+  deploymentTaskId  String?   @unique @map("deployment_task_id")
+  deploymentTask    PatchDeploymentTask? @relation(fields: [deploymentTaskId], references: [id])
+
+  // Lifecycle timestamps
+  recommendedAt     DateTime  @default(now()) @map("recommended_at")
+  acceptedAt        DateTime? @map("accepted_at")
+  rejectedAt        DateTime? @map("rejected_at")
+  rejectionReason   String?   @map("rejection_reason")
+  deployedAt        DateTime? @map("deployed_at")
+  verifiedAt        DateTime? @map("verified_at")
+  failedAt          DateTime? @map("failed_at")
+  failureReason     String?   @map("failure_reason")
+
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@unique([assetId, vulnerabilityId, patchId])
+  @@index([assetId, status])
+  @@index([vulnerabilityId])
+  @@index([patchId])
+  @@index([status])
+  @@index([severity])
+  @@index([riskScore(sort: Desc)])
+  @@map("asset_patch_recommendations")
 }
 
 model PatchAffectedProduct {
@@ -1661,7 +1731,7 @@ model SoftwareDeploymentTask {
   deployment   SoftwareDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
   endpointId   String?            @map("endpoint_id")   // Agent ID
   assetId      String?            @map("asset_id")      // Asset ID for tracking
-  asset        Asset?             @relation(fields: [assetId], references: [id])
+  asset        Asset?             @relation(fields: [assetId], references: [id], onDelete: SetNull)
   endpointName String             @map("endpoint_name")
   endpointOs   String             @map("endpoint_os")
   itemName     String             @map("item_name")

@@ -47,6 +47,13 @@ router.get(
   controller.getPatchesPendingTestApproval
 );
 
+// POST /v1/patches/discover - Run Hub-scoped patch discovery
+router.post(
+  '/discover',
+  authenticate,
+  controller.discoverPatches
+);
+
 // POST /v1/patches - Create a new patch
 router.post(
   '/',
@@ -108,6 +115,14 @@ router.delete(
   controller.removeAffectedProduct
 );
 
+// GET /v1/patches/:id/bundle/stream - Stream patch bundle (installer) from MinIO
+router.get(
+  '/:id/bundle/stream',
+  authenticate,
+  validateParams(patchIdParamSchema),
+  controller.streamPatchBundle
+);
+
 // GET /v1/patches/:id/file-details - Get file details
 router.get(
   '/:id/file-details',
@@ -122,6 +137,17 @@ router.get(
   authenticate,
   validateParams(patchIdParamSchema),
   controller.getVulnerabilities
+);
+
+// GET /v1/patches/:id/recommendations - Get asset recommendations for this patch
+router.get(
+  '/:id/recommendations',
+  authenticate,
+  validateParams(patchIdParamSchema),
+  async (req, res) => {
+    const { listPatchRecommendations } = await import('./asset-patch-recommendation.controller');
+    return listPatchRecommendations(req, res);
+  }
 );
 
 // GET /v1/patches/:id/endpoints - Get affected endpoints
@@ -139,6 +165,42 @@ router.post(
   validateParams(patchIdParamSchema),
   validateBody(scanEndpointsSchema),
   controller.scanEndpoints
+);
+
+// ============================================
+// Supersedence Management
+// ============================================
+
+// GET /v1/patches/:id/superseded - Get patches superseded by this patch
+router.get(
+  '/:id/superseded',
+  authenticate,
+  validateParams(patchIdParamSchema),
+  controller.getSupersededPatches
+);
+
+// GET /v1/patches/:id/superseding - Get patches that supersede this patch
+router.get(
+  '/:id/superseding',
+  authenticate,
+  validateParams(patchIdParamSchema),
+  controller.getSupersedingPatches
+);
+
+// POST /v1/patches/:id/supersede/:targetId - Mark targetId as superseded by this patch
+router.post(
+  '/:id/supersede/:targetId',
+  authenticate,
+  validateParams(patchIdParamSchema),
+  controller.supersedePatch
+);
+
+// DELETE /v1/patches/:id/supersede/:targetId - Remove supersedence relationship
+router.delete(
+  '/:id/supersede/:targetId',
+  authenticate,
+  validateParams(patchIdParamSchema),
+  controller.removeSupersedence
 );
 
 // ============================================

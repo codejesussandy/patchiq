@@ -57,6 +57,31 @@ class CpeMappingService {
   private lastCacheClear = Date.now();
 
   /**
+   * Generic single-word app names that are OS built-ins (macOS, Windows, Linux).
+   * These must NOT be auto-matched via Stages 2-3 because they collide
+   * with unrelated CPE products (e.g., Chess -> gnu:chess, Notes -> hcltech:notes).
+   * To match these, create explicit CpeMapping entries (Stage 1).
+   */
+  private static readonly AMBIGUOUS_NAMES = new Set([
+    // macOS built-ins
+    'chess', 'notes', 'home', 'contacts', 'calendar', 'photos', 'phone',
+    'games', 'tips', 'finder', 'maps', 'console', 'freeform',
+    'journal', 'network', 'spotlight', 'weather', 'preview', 'shortcuts',
+    'installer', 'install', 'terminal', 'airdrop', 'setup', 'siri',
+    'news', 'stocks', 'books', 'podcasts',
+    'reminders', 'clock', 'messages', 'facetime',
+    // Windows built-ins
+    'calculator', 'camera', 'feedback', 'groove', 'paint', 'snip',
+    'voice', 'whiteboard', 'alarms',
+    // Generic single-word names too ambiguous for automated matching
+    'bolt', 'screen', 'print', 'scan', 'display', 'sound', 'archive',
+    'disk', 'monitor', 'font', 'color', 'image', 'text', 'media',
+    'sync', 'backup', 'update', 'store', 'help', 'scim', 'bunch',
+    // Short names that become false matches after lib-prefix stripping
+    'heif', 'bsd',
+  ]);
+
+  /**
    * Resolve agent software to CPE vendor/product
    *
    * Resolution order:
@@ -87,6 +112,17 @@ class CpeMappingService {
     if (result) {
       this.cache.set(cacheKey, result);
       return result;
+    }
+
+    // Block ambiguous single-word names from Stages 2-3.
+    // These are OS built-in app names that collide with unrelated CPE products.
+    // They can still match via Stage 1 (explicit CpeMapping entries).
+    const lowerName = software.name.toLowerCase().trim();
+    const normalizedForCheck = this.normalizeSoftwareName(software.name);
+    if (CpeMappingService.AMBIGUOUS_NAMES.has(lowerName) ||
+        CpeMappingService.AMBIGUOUS_NAMES.has(normalizedForCheck)) {
+      this.cache.set(cacheKey, null);
+      return null;
     }
 
     // 2. Try normalized name match in mapping table
@@ -222,19 +258,38 @@ class CpeMappingService {
    * Find direct match in VulnerabilitySoftware table
    */
   private async findDirectMatch(software: AgentSoftware): Promise<CpeResolution | null> {
+    const rawName = software.name.toLowerCase().trim();
     const normalizedName = this.normalizeSoftwareName(software.name);
 
     // Names shorter than 3 chars are too ambiguous to match reliably
-    if (normalizedName.length < 3) {
+    if (normalizedName.length < 3 && rawName.length < 3) {
+      return null;
+    }
+
+    // Build OR conditions: try raw name first, then normalized
+    const orConditions: { cpeProduct?: object; name?: object }[] = [];
+
+    if (rawName.length >= 3) {
+      orConditions.push(
+        { cpeProduct: { equals: rawName, mode: 'insensitive' } },
+        { name: { equals: rawName, mode: 'insensitive' } },
+      );
+    }
+
+    if (normalizedName !== rawName && normalizedName.length >= 3) {
+      orConditions.push(
+        { cpeProduct: { equals: normalizedName, mode: 'insensitive' } },
+        { name: { equals: normalizedName, mode: 'insensitive' } },
+      );
+    }
+
+    if (orConditions.length === 0) {
       return null;
     }
 
     const vulnSoftware = await prisma.vulnerabilitySoftware.findFirst({
       where: {
-        OR: [
-          { cpeProduct: { equals: normalizedName, mode: 'insensitive' } },
-          { name: { equals: normalizedName, mode: 'insensitive' } },
-        ],
+        OR: orConditions,
         cpeVendor: { not: null },
         cpeProduct: { not: null },
       },
@@ -273,37 +328,20 @@ class CpeMappingService {
    *
    * Transformations:
    * - Lowercase
-   * - Remove common prefixes (lib, python3-, node-, etc.)
+   * - Remove common prefixes (lib)
    * - Remove version suffixes
    * - Remove separators
    */
   normalizeSoftwareName(name: string): string {
     let normalized = name.toLowerCase().trim();
 
-    // Step 1: Remove language-specific prefixes (NOT 'lib' — handled last)
-    const prefixes = [
-      'python3-',
-      'python-',
-      'node-',
-      'ruby-',
-      'perl-',
-      'php-',
-      'golang-',
-      'rust-',
-      'dotnet-',
-    ];
-
-    for (const prefix of prefixes) {
-      if (normalized.startsWith(prefix) && normalized.length > prefix.length + 2) {
-        normalized = normalized.substring(prefix.length);
-        break;
-      }
-    }
-
-    // Step 2: Remove trailing version numbers (e.g., libssl3 -> libssl, libjpeg8 -> libjpeg)
+    // Step 1: Remove trailing version numbers (e.g., libssl3 -> libssl, libjpeg8 -> libjpeg)
+    // Note: Language prefixes (python3-, node-, etc.) are NOT stripped.
+    // python3-openssl is a Python binding, not OpenSSL itself.
+    // python3 -> python still works via trailing version number stripping.
     normalized = normalized.replace(/[-._]*[0-9]+(\.[0-9]+)*$/, '');
 
-    // Step 3: Remove common suffixes
+    // Step 2: Remove common suffixes
     const suffixes = ['-dev', '-bin', '-common', '-data', '-doc', '-utils'];
     for (const suffix of suffixes) {
       if (normalized.endsWith(suffix)) {
@@ -312,11 +350,11 @@ class CpeMappingService {
       }
     }
 
-    // Step 4: Conditionally strip 'lib' prefix — only if the remainder is >= 3 chars
-    // This prevents libmd0 -> "md" (2 chars) or libc-bin -> "c" (1 char)
+    // Step 3: Conditionally strip 'lib' prefix — only if the remainder is >= 4 chars
+    // This prevents libbsd0 -> "bsd" (3 chars) -> false match to bsd:bsd
     if (normalized.startsWith('lib') && normalized.length > 3) {
       const withoutLib = normalized.substring(3);
-      if (withoutLib.length >= 3) {
+      if (withoutLib.length >= 4) {
         normalized = withoutLib;
       }
     }
@@ -493,6 +531,41 @@ class CpeMappingService {
       data: { isActive: false },
     });
     this.clearCache();
+  }
+
+  /**
+   * Re-resolve asset_software records that have null CPE.
+   * Useful after adding new CpeMapping seed entries.
+   * Returns the number of records updated.
+   */
+  async reResolveNullCpe(): Promise<number> {
+    const nullCpes = await prisma.assetSoftware.findMany({
+      where: { cpeVendor: null },
+      select: { id: true, name: true, version: true, vendor: true },
+      take: 200,
+    });
+
+    if (nullCpes.length === 0) return 0;
+
+    this.clearCache();
+    let resolved = 0;
+
+    for (const sw of nullCpes) {
+      try {
+        const resolution = await this.resolveCpe({
+          name: sw.name,
+          version: sw.version || undefined,
+          vendor: sw.vendor || undefined,
+        });
+
+        if (resolution && resolution.confidence >= 0.6) {
+          await this.updateAssetSoftwareCpe(sw.id, resolution, sw.version);
+          resolved++;
+        }
+      } catch { /* skip individual failures */ }
+    }
+
+    return resolved;
   }
 }
 

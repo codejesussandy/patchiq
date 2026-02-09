@@ -137,7 +137,7 @@ export class VulnerabilitiesService {
 
     // Affects assets filter - only show CVEs that affect your assets
     if (params.affectsAssets === true) {
-      where.affectedAssets = { some: {} };
+      where.affectedAssets = { some: { status: 'Open' } };
     }
 
     const paginationParams = { page: params.page, limit: params.limit };
@@ -152,7 +152,7 @@ export class VulnerabilitiesService {
       prisma.vulnerability.findMany({
         where,
         include: {
-          affectedAssets: { select: { id: true } },
+          affectedAssets: { select: { id: true }, where: { status: 'Open' } },
           affectedSoftware: { select: { id: true } },
         },
         orderBy,
@@ -201,7 +201,7 @@ export class VulnerabilitiesService {
       prisma.vulnerability.findMany({
         where,
         include: {
-          affectedAssets: { select: { id: true } },
+          affectedAssets: { select: { id: true }, where: { status: 'Open' } },
           affectedSoftware: { select: { id: true } },
         },
         orderBy: { publishedDate: 'desc' },
@@ -221,6 +221,7 @@ export class VulnerabilitiesService {
       where: { id },
       include: {
         affectedAssets: {
+          where: { status: 'Open' },
           include: { asset: true },
         },
         affectedSoftware: true,
@@ -259,6 +260,7 @@ export class VulnerabilitiesService {
 
     const where: Prisma.AssetVulnerabilityWhereInput = {
       vulnerabilityId: vulnerability.id,
+      status: 'Open',
     };
 
     if (params.search) {
@@ -356,7 +358,7 @@ export class VulnerabilitiesService {
 
     // Only count CVEs that affect your assets when filter is enabled
     if (affectsAssets === true) {
-      (baseWhere.AND as Prisma.VulnerabilityWhereInput[]).push({ affectedAssets: { some: {} } });
+      (baseWhere.AND as Prisma.VulnerabilityWhereInput[]).push({ affectedAssets: { some: { status: 'Open' } } });
     }
 
     // Use dynamic zero-day classification for count
@@ -397,7 +399,7 @@ export class VulnerabilitiesService {
 
         // Apply affectsAssets filter to published stats too
         if (affectsAssets === true) {
-          (where.AND as Prisma.VulnerabilityWhereInput[]).push({ affectedAssets: { some: {} } });
+          (where.AND as Prisma.VulnerabilityWhereInput[]).push({ affectedAssets: { some: { status: 'Open' } } });
         }
 
         // Add date range filter to the AND array
@@ -485,10 +487,10 @@ export class VulnerabilitiesService {
   async getEndpointVulnerabilities() {
     const vulnerabilities = await prisma.vulnerability.findMany({
       where: {
-        affectedAssets: { some: {} },
+        affectedAssets: { some: { status: 'Open' } },
       },
       include: {
-        affectedAssets: { select: { id: true } },
+        affectedAssets: { select: { id: true }, where: { status: 'Open' } },
         affectedSoftware: { select: { id: true } },
       },
       orderBy: { riskScore: 'desc' },

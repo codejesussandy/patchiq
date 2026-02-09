@@ -209,57 +209,52 @@ func (c *UnixTelemetryCollector) collectMemoryTelemetry() models.MemoryTelemetry
 
 	switch runtime.GOOS {
 	case "darwin":
+		// Get total physical memory
 		if out, err := exec.Command("sysctl", "-n", "hw.memsize").Output(); err == nil {
 			if total, err := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64); err == nil {
 				mem.TotalBytes = total
 			}
 		}
 
-		if out, err := exec.Command("vm_stat").Output(); err == nil {
-			lines := strings.Split(string(out), "\n")
-			pageSize := int64(4096)
+		// Get page size (16384 on Apple Silicon, 4096 on Intel)
+		var pageSize int64 = 4096
+		if out, err := exec.Command("sysctl", "-n", "hw.pagesize").Output(); err == nil {
+			if ps, err := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64); err == nil && ps > 0 {
+				pageSize = ps
+			}
+		}
 
-			var freePages, activePages, inactivePages, wiredPages, compressedPages, speculativePages int64
-
-			for _, line := range lines {
-				if strings.HasPrefix(line, "Mach Virtual Memory Statistics") {
-					continue
-				}
-
-				parts := strings.Split(line, ":")
-				if len(parts) != 2 {
-					continue
-				}
-
-				key := strings.TrimSpace(parts[0])
-				valueStr := strings.TrimSpace(strings.TrimSuffix(parts[1], "."))
-				value, _ := strconv.ParseInt(valueStr, 10, 64)
-
-				switch key {
-				case "Pages free":
-					freePages = value
-				case "Pages active":
-					activePages = value
-				case "Pages inactive":
-					inactivePages = value
-				case "Pages speculative":
-					speculativePages = value
-				case "Pages wired down":
-					wiredPages = value
-				case "Pages occupied by compressor":
-					compressedPages = value
+		// Use sysctl vm page counts to match Activity Monitor's exact formula:
+		//   Memory Used = App Memory + Wired + Compressed
+		//   App Memory  = (pageable_internal - purgeable) * pageSize
+		//   Wired       = wire_count * pageSize
+		//   Compressed  = compressor_page_count * pageSize
+		sysctlInt := func(key string) int64 {
+			if out, err := exec.Command("sysctl", "-n", key).Output(); err == nil {
+				if v, err := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64); err == nil {
+					return v
 				}
 			}
+			return 0
+		}
 
-			mem.FreeBytes = freePages * pageSize
-			mem.UsedBytes = mem.TotalBytes - mem.FreeBytes
-			mem.AvailableBytes = (freePages + inactivePages + speculativePages) * pageSize
-			mem.ApplicationUsedBytes = (activePages + wiredPages + compressedPages) * pageSize
-			mem.CachedBytes = inactivePages * pageSize
+		pageableInternal := sysctlInt("vm.page_pageable_internal_count")
+		purgeable := sysctlInt("vm.page_purgeable_count")
+		wired := sysctlInt("vm.page_wire_count")
+		compressor := sysctlInt("vm.compressor_page_count")
+		freePages := sysctlInt("vm.page_free_count")
 
-			if mem.TotalBytes > 0 {
-				mem.UsagePercent = float64(mem.UsedBytes) / float64(mem.TotalBytes) * 100
-			}
+		appMemory := (pageableInternal - purgeable) * pageSize
+		wiredBytes := wired * pageSize
+		compressedBytes := compressor * pageSize
+
+		mem.UsedBytes = appMemory + wiredBytes + compressedBytes
+		mem.FreeBytes = freePages * pageSize
+		mem.AvailableBytes = mem.TotalBytes - mem.UsedBytes
+		mem.ApplicationUsedBytes = appMemory
+
+		if mem.TotalBytes > 0 {
+			mem.UsagePercent = float64(mem.UsedBytes) / float64(mem.TotalBytes) * 100
 		}
 
 		if out, err := exec.Command("sysctl", "-n", "vm.swapusage").Output(); err == nil {
@@ -720,7 +715,7 @@ func (c *UnixTelemetryCollector) collectAgentUtilization() *models.AgentUtilizat
 	util := &models.AgentUtilization{
 		PID:        os.Getpid(),
 		Goroutines: runtime.NumGoroutine(),
-		Version:    "1.0.0",
+		Version:    "1.0.4",
 	}
 
 	if agentStartTime.IsZero() {

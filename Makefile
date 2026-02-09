@@ -21,15 +21,15 @@ export
 # Derived public URL
 PUBLIC_SCHEME ?= http
 PUBLIC_HOST ?= localhost
-PUBLIC_PORT ?= 6001
+PUBLIC_PORT ?= 3500
 PUBLIC_URL := $(PUBLIC_SCHEME)://$(PUBLIC_HOST):$(PUBLIC_PORT)
 
-# Service ports (staging defaults)
-POSTGRES_EXTERNAL_PORT ?= 6003
-REDIS_EXTERNAL_PORT ?= 6004
-PGADMIN_PORT ?= 6005
-PRISMA_STUDIO_PORT ?= 6006
-AGENT_WEBUI_PORT ?= 6007
+# Service ports (must be in 3000-5173 range for firewall forwarding)
+POSTGRES_EXTERNAL_PORT ?= 4500
+REDIS_EXTERNAL_PORT ?= 4501
+PGADMIN_PORT ?= 4502
+PRISMA_STUDIO_PORT ?= 4503
+AGENT_WEBUI_PORT ?= 4504
 
 # Agent build configuration (embedded at compile time)
 PATCHIQ_SERVER_URL ?= $(PUBLIC_URL)/api

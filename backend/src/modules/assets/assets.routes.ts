@@ -94,6 +94,10 @@ router.get('/assets/:id/errors', validateParams(assetIdParamSchema), controller.
 router.get('/assets/:id/audit-log', validateParams(assetIdParamSchema), controller.getAssetAuditLog);
 router.get('/assets/:id/alerts', validateParams(assetIdParamSchema), controller.getAssetAlerts);
 router.get('/assets/:id/patches', validateParams(assetIdParamSchema), controller.getAssetPatches);
+router.get('/assets/:id/patch-recommendations', validateParams(assetIdParamSchema), async (req, res) => {
+  const { listAssetRecommendations } = await import('@modules/patches/asset-patch-recommendation.controller');
+  return listAssetRecommendations(req, res);
+});
 router.get('/assets/:id/vulnerabilities', validateParams(assetIdParamSchema), controller.getAssetVulnerabilities);
 router.get('/assets/:id/deployments', validateParams(assetIdParamSchema), controller.getAssetDeployments);
 router.post('/assets/:id/attachments', validateParams(assetIdParamSchema), controller.uploadAssetAttachment);

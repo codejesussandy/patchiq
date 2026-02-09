@@ -33,6 +33,13 @@ export async function listPatches(params: PatchListQuery) {
   if (params.category) where.category = params.category;
   if (params.testStatus) where.testStatus = params.testStatus;
   if (params.approvalStatus) where.approvalStatus = params.approvalStatus;
+
+  // Filter out superseded patches by default (commercial patch manager behavior)
+  // Show superseded patches only if explicitly requested
+  if (!params.includeSuperseded) {
+    where.supersededAt = null; // Only show non-superseded patches
+  }
+
   if (params.search) {
     where.OR = [
       { patchId: { contains: params.search, mode: 'insensitive' } },
@@ -75,6 +82,10 @@ export async function getPatchById(id: string) {
   }
 
   return transformPatch(patch);
+}
+
+export async function getPatchBundleByPatchId(patchId: string) {
+  return prisma.patchBundle.findUnique({ where: { patchId } });
 }
 
 export async function createPatch(data: CreatePatchInput) {
@@ -221,6 +232,160 @@ export async function deletePatch(id: string) {
   await revertVulnerabilityPatchStatus(id, existing.cveNumbers || []);
 
   return { success: true };
+}
+
+/**
+ * Mark a patch as superseded by a newer patch
+ * This prevents deploying obsolete patches (commercial patch manager behavior)
+ *
+ * @param oldPatchId - The patch being superseded
+ * @param newPatchId - The patch that supersedes it
+ */
+export async function supersedePatch(oldPatchId: string, newPatchId: string) {
+  const [oldPatch, newPatch] = await Promise.all([
+    prisma.patch.findUnique({ where: { id: oldPatchId } }),
+    prisma.patch.findUnique({ where: { id: newPatchId } }),
+  ]);
+
+  if (!oldPatch) {
+    throw new NotFoundError(`Patch ${oldPatchId} not found`);
+  }
+
+  if (!newPatch) {
+    throw new NotFoundError(`Patch ${newPatchId} not found`);
+  }
+
+  // Prevent circular supersedence
+  if (newPatch.supersededBy && newPatch.supersededBy.length > 0) {
+    throw new BadRequestError('Cannot supersede with a patch that is already superseded');
+  }
+
+  // Update both patches
+  await prisma.$transaction([
+    // Mark old patch as superseded
+    prisma.patch.update({
+      where: { id: oldPatchId },
+      data: {
+        supersededBy: [...(oldPatch.supersededBy || []), newPatchId],
+        supersededAt: new Date(),
+      },
+    }),
+    // Mark new patch as superseding
+    prisma.patch.update({
+      where: { id: newPatchId },
+      data: {
+        supersedes: [...(newPatch.supersedes || []), oldPatchId],
+      },
+    }),
+  ]);
+
+  console.log(`[Supersedence] Patch ${oldPatch.patchId} superseded by ${newPatch.patchId}`);
+
+  return {
+    success: true,
+    message: `Patch ${oldPatch.patchId} marked as superseded by ${newPatch.patchId}`,
+  };
+}
+
+/**
+ * Remove supersedence relationship (undo supersedence)
+ *
+ * @param oldPatchId - The patch being un-superseded
+ * @param newPatchId - The patch that supersedes it
+ */
+export async function removeSupersedence(oldPatchId: string, newPatchId: string) {
+  const [oldPatch, newPatch] = await Promise.all([
+    prisma.patch.findUnique({ where: { id: oldPatchId } }),
+    prisma.patch.findUnique({ where: { id: newPatchId } }),
+  ]);
+
+  if (!oldPatch || !newPatch) {
+    throw new NotFoundError('One or both patches not found');
+  }
+
+  // Update both patches
+  await prisma.$transaction([
+    // Remove from old patch's supersededBy list
+    prisma.patch.update({
+      where: { id: oldPatchId },
+      data: {
+        supersededBy: (oldPatch.supersededBy || []).filter(id => id !== newPatchId),
+        supersededAt: (oldPatch.supersededBy || []).filter(id => id !== newPatchId).length > 0
+          ? oldPatch.supersededAt
+          : null, // Clear if no more superseding patches
+      },
+    }),
+    // Remove from new patch's supersedes list
+    prisma.patch.update({
+      where: { id: newPatchId },
+      data: {
+        supersedes: (newPatch.supersedes || []).filter(id => id !== oldPatchId),
+      },
+    }),
+  ]);
+
+  return {
+    success: true,
+    message: 'Supersedence relationship removed',
+  };
+}
+
+/**
+ * Get all patches superseded by this patch
+ */
+export async function getSupersededPatches(patchId: string) {
+  const patch = await prisma.patch.findUnique({
+    where: { id: patchId },
+    select: { supersedes: true },
+  });
+
+  if (!patch) {
+    throw new NotFoundError('Patch not found');
+  }
+
+  if (!patch.supersedes || patch.supersedes.length === 0) {
+    return [];
+  }
+
+  return prisma.patch.findMany({
+    where: { id: { in: patch.supersedes } },
+    select: {
+      id: true,
+      patchId: true,
+      title: true,
+      severity: true,
+      supersededAt: true,
+    },
+  });
+}
+
+/**
+ * Get patches that supersede this patch
+ */
+export async function getSupersedingPatches(patchId: string) {
+  const patch = await prisma.patch.findUnique({
+    where: { id: patchId },
+    select: { supersededBy: true },
+  });
+
+  if (!patch) {
+    throw new NotFoundError('Patch not found');
+  }
+
+  if (!patch.supersededBy || patch.supersededBy.length === 0) {
+    return [];
+  }
+
+  return prisma.patch.findMany({
+    where: { id: { in: patch.supersededBy } },
+    select: {
+      id: true,
+      patchId: true,
+      title: true,
+      severity: true,
+      createdAt: true,
+    },
+  });
 }
 
 // ============================================
@@ -1713,8 +1878,39 @@ export async function checkPatchApplicabilityForAsset(assetId: string): Promise<
       take: 500,
     });
 
+    // Import prerequisite service
+    const { patchPrerequisiteService } = await import('@shared/services/patch-prerequisite.service');
+
     let updated = 0;
     for (const patch of patches) {
+      // Check prerequisites first (commercial patch manager behavior)
+      const prerequisites = patch.prerequisites as any;
+      const prerequisiteCheck = await patchPrerequisiteService.checkPrerequisites(
+        assetId,
+        prerequisites
+      );
+
+      // If prerequisites not met, mark as "not_applicable" instead of "missing"
+      if (!prerequisiteCheck.applicable) {
+        const existing = await prisma.patchEndpoint.findFirst({
+          where: { patchId: patch.id, assetId },
+        });
+
+        if (existing && existing.status === 'missing') {
+          // Update from missing to not_applicable with reason
+          await prisma.patchEndpoint.update({
+            where: { id: existing.id },
+            data: {
+              status: 'not_applicable',
+              lastSeen: new Date(),
+            },
+          });
+        }
+
+        // Skip to next patch - don't mark as missing if prerequisites not met
+        continue;
+      }
+
       const applicability = determineApplicability(
         patch,
         { ...asset, vulnerabilities: asset.vulnerabilities || [] },
@@ -1810,7 +2006,7 @@ async function autoQueueDownload(patchId: string, downloadUrl: string, fileName:
  * Does NOT upload anything to MinIO — just creates inline scripts for
  * the agent to execute via the hub_patch_install command type.
  */
-export async function autoGeneratePatchBundle(patchId: string): Promise<void> {
+export async function autoGeneratePatchBundle(patchId: string, minioObjectKey?: string | null): Promise<void> {
   const patch = await prisma.patch.findUnique({
     where: { id: patchId },
     include: { bundle: true },
@@ -1818,8 +2014,8 @@ export async function autoGeneratePatchBundle(patchId: string): Promise<void> {
 
   if (!patch) return;
 
-  // Skip if bundle already has a tar.gz upload (manually uploaded)
-  if (patch.bundle?.bundleObjectKey) return;
+  // Skip if bundle already has a tar.gz upload (manually uploaded) — unless we're updating with a Hub MinIO key
+  if (patch.bundle?.bundleObjectKey && !minioObjectKey) return;
 
   // Need at least OS + (kbNumber or software) to generate scripts
   const os = (patch.os || '').toLowerCase();
@@ -1833,7 +2029,173 @@ export async function autoGeneratePatchBundle(patchId: string): Promise<void> {
   let scriptRollback: string | null = null;
   let scriptVerify: string | null = null;
 
-  if (os.includes('windows') || os === 'w') {
+  // ── Installer-aware scripts when we have a Hub MinIO file ──
+  if (minioObjectKey) {
+    const filename = minioObjectKey.split('/').pop() || minioObjectKey;
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+
+    if (os.includes('windows') || os === 'w') {
+      if (ext === 'msi') {
+        scriptInstall = [
+          '#!/usr/bin/env powershell',
+          `# Installer-aware script for ${filename}`,
+          `$Installer = "$env:PATCHIQ_DOWNLOAD_PATH"`,
+          'if (-not (Test-Path $Installer)) { Write-Error "Installer not found at $Installer"; exit 1 }',
+          'Start-Process msiexec -ArgumentList "/i `"$Installer`" /quiet /norestart" -Wait -NoNewWindow',
+          'if ($LASTEXITCODE -eq 3010) { Write-Host "Reboot required"; exit 0 }',
+          'if ($LASTEXITCODE -ne 0) { Write-Error "Install failed ($LASTEXITCODE)"; exit 1 }',
+          `Write-Host "${filename} installed successfully"`,
+        ].join('\n');
+      } else {
+        // .exe installer — assume /S for silent
+        scriptInstall = [
+          '#!/usr/bin/env powershell',
+          `# Installer-aware script for ${filename}`,
+          `$Installer = "$env:PATCHIQ_DOWNLOAD_PATH"`,
+          'if (-not (Test-Path $Installer)) { Write-Error "Installer not found at $Installer"; exit 1 }',
+          'Start-Process -FilePath $Installer -ArgumentList "/S","/silent","/quiet" -Wait -NoNewWindow',
+          'if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) { Write-Error "Install failed ($LASTEXITCODE)"; exit 1 }',
+          `Write-Host "${filename} installed successfully"`,
+        ].join('\n');
+      }
+
+      scriptRollback = [
+        '#!/usr/bin/env powershell',
+        `# Rollback requires uninstalling ${packageName || filename}`,
+        'Write-Host "Use Add/Remove Programs or the vendor uninstaller to rollback"',
+        'exit 1',
+      ].join('\n');
+
+      scriptVerify = [
+        '#!/usr/bin/env powershell',
+        `# Verify ${packageName || filename} is installed`,
+        `$Name = "${packageName || filename}"`,
+        '$found = Get-WmiObject Win32_Product | Where-Object { $_.Name -like "*$Name*" }',
+        'if ($found) { Write-Host "VERIFIED: $($found.Name) $($found.Version)"; exit 0 }',
+        'Write-Error "NOT FOUND: $Name"; exit 1',
+      ].join('\n');
+
+    } else if (os.includes('linux') || os === 'l') {
+      if (ext === 'deb') {
+        scriptInstall = [
+          '#!/bin/bash',
+          'set -e',
+          `# Installer-aware script for ${filename}`,
+          'export DEBIAN_FRONTEND=noninteractive',
+          `INSTALLER="$PATCHIQ_DOWNLOAD_PATH"`,
+          '[ -f "$INSTALLER" ] || { echo "Installer not found at $INSTALLER"; exit 1; }',
+          'dpkg -i "$INSTALLER" || apt-get install -f -y',
+          `echo "${filename} installed successfully"`,
+        ].join('\n');
+      } else if (ext === 'rpm') {
+        scriptInstall = [
+          '#!/bin/bash',
+          'set -e',
+          `# Installer-aware script for ${filename}`,
+          `INSTALLER="$PATCHIQ_DOWNLOAD_PATH"`,
+          '[ -f "$INSTALLER" ] || { echo "Installer not found at $INSTALLER"; exit 1; }',
+          'rpm -Uvh "$INSTALLER"',
+          `echo "${filename} installed successfully"`,
+        ].join('\n');
+      } else {
+        // Generic tarball or binary
+        scriptInstall = [
+          '#!/bin/bash',
+          'set -e',
+          `# Installer-aware script for ${filename}`,
+          `INSTALLER="$PATCHIQ_DOWNLOAD_PATH"`,
+          '[ -f "$INSTALLER" ] || { echo "Installer not found at $INSTALLER"; exit 1; }',
+          'chmod +x "$INSTALLER" && "$INSTALLER"',
+          `echo "${filename} installed successfully"`,
+        ].join('\n');
+      }
+
+      scriptRollback = [
+        '#!/bin/bash',
+        `# Rollback for ${packageName || filename}`,
+        ext === 'deb'
+          ? `dpkg -r "${packageName || filename.replace(`.${ext}`, '')}"`
+          : `rpm -e "${packageName || filename.replace(`.${ext}`, '')}"`,
+        'echo "Rollback completed"',
+      ].join('\n');
+
+      scriptVerify = [
+        '#!/bin/bash',
+        `# Verify ${packageName || filename} is installed`,
+        ext === 'deb'
+          ? `dpkg -s "${packageName || filename.replace(`.${ext}`, '')}" 2>/dev/null | grep -q "Status: install ok installed"`
+          : `rpm -q "${packageName || filename.replace(`.${ext}`, '')}" >/dev/null 2>&1`,
+        'if [ $? -eq 0 ]; then echo "VERIFIED"; exit 0; fi',
+        'echo "NOT FOUND"; exit 1',
+      ].join('\n');
+
+    } else if (os.includes('mac') || os.includes('darwin') || os === 'm') {
+      if (ext === 'dmg') {
+        scriptInstall = [
+          '#!/bin/bash',
+          'set -e',
+          `# Installer-aware script for ${filename}`,
+          `DMG="$PATCHIQ_DOWNLOAD_PATH"`,
+          '[ -f "$DMG" ] || { echo "DMG not found at $DMG"; exit 1; }',
+          'MOUNT_DIR=$(hdiutil attach "$DMG" -nobrowse | tail -1 | awk \'{print $3}\')',
+          'APP=$(find "$MOUNT_DIR" -name "*.app" -maxdepth 1 | head -1)',
+          '[ -n "$APP" ] || { hdiutil detach "$MOUNT_DIR"; echo "No .app found in DMG"; exit 1; }',
+          'cp -R "$APP" /Applications/',
+          'hdiutil detach "$MOUNT_DIR"',
+          `echo "${filename} installed to /Applications"`,
+        ].join('\n');
+      } else if (ext === 'zip') {
+        scriptInstall = [
+          '#!/bin/bash',
+          'set -e',
+          `# Installer-aware script for ${filename}`,
+          `ZIP="$PATCHIQ_DOWNLOAD_PATH"`,
+          '[ -f "$ZIP" ] || { echo "ZIP not found at $ZIP"; exit 1; }',
+          'unzip -o "$ZIP" -d /Applications/',
+          `echo "${filename} installed to /Applications"`,
+        ].join('\n');
+      } else if (ext === 'pkg') {
+        scriptInstall = [
+          '#!/bin/bash',
+          'set -e',
+          `# Installer-aware script for ${filename}`,
+          `PKG="$PATCHIQ_DOWNLOAD_PATH"`,
+          '[ -f "$PKG" ] || { echo "PKG not found at $PKG"; exit 1; }',
+          'sudo installer -pkg "$PKG" -target /',
+          `echo "${filename} installed successfully"`,
+        ].join('\n');
+      } else {
+        scriptInstall = [
+          '#!/bin/bash',
+          'set -e',
+          `# Installer-aware script for ${filename}`,
+          `INSTALLER="$PATCHIQ_DOWNLOAD_PATH"`,
+          '[ -f "$INSTALLER" ] || { echo "Installer not found at $INSTALLER"; exit 1; }',
+          'chmod +x "$INSTALLER" && "$INSTALLER"',
+          `echo "${filename} installed successfully"`,
+        ].join('\n');
+      }
+
+      scriptRollback = [
+        '#!/bin/bash',
+        `# Rollback for ${packageName || filename}`,
+        `APP_NAME="${packageName || filename.replace(`.${ext}`, '')}"`,
+        'rm -rf "/Applications/${APP_NAME}.app" 2>/dev/null',
+        'echo "Removed $APP_NAME from /Applications"',
+      ].join('\n');
+
+      scriptVerify = [
+        '#!/bin/bash',
+        `# Verify ${packageName || filename} is installed`,
+        `APP_NAME="${packageName || filename.replace(`.${ext}`, '')}"`,
+        'if [ -d "/Applications/${APP_NAME}.app" ]; then echo "VERIFIED"; exit 0; fi',
+        'echo "NOT FOUND"; exit 1',
+      ].join('\n');
+    }
+  }
+
+  // ── Fallback: package-manager scripts when no MinIO file ──
+  if (!scriptInstall && (os.includes('windows') || os === 'w')) {
     // Windows patches
     if (kbNumber) {
       const msuUrl = downloadUrl || '';
@@ -1871,9 +2233,55 @@ export async function autoGeneratePatchBundle(patchId: string): Promise<void> {
         'if ($installed) { Write-Host "VERIFIED: $KB installed"; exit 0 }',
         'else { Write-Error "NOT FOUND: $KB"; exit 1 }',
       ].join('\n');
+    } else if (packageName) {
+      // Third-party Windows software (non-KB) — use winget/choco
+      const cleanName = packageName.replace(/[^a-zA-Z0-9._+ -]/g, '');
+
+      scriptInstall = [
+        '#!/usr/bin/env powershell',
+        `# Auto-generated upgrade script for ${cleanName}`,
+        `$Package = "${cleanName}"`,
+        '',
+        '# Try winget first',
+        'if (Get-Command winget -ErrorAction SilentlyContinue) {',
+        '    winget upgrade --name $Package --silent --accept-package-agreements --accept-source-agreements',
+        '    if ($LASTEXITCODE -eq 0) { Write-Host "Upgraded $Package via winget"; exit 0 }',
+        '}',
+        '',
+        '# Fallback to chocolatey',
+        'if (Get-Command choco -ErrorAction SilentlyContinue) {',
+        '    choco upgrade $Package -y --no-progress',
+        '    if ($LASTEXITCODE -eq 0) { Write-Host "Upgraded $Package via chocolatey"; exit 0 }',
+        '}',
+        '',
+        'Write-Error "No package manager available to upgrade $Package"',
+        'exit 1',
+      ].join('\n');
+
+      scriptRollback = [
+        '#!/usr/bin/env powershell',
+        `# Auto-generated rollback script for ${cleanName}`,
+        `$Package = "${cleanName}"`,
+        'Write-Host "Rollback for third-party packages requires previous version info"',
+        'Write-Host "Use: winget install --name $Package --version <previous> or choco install $Package --version <previous>"',
+        'exit 1',
+      ].join('\n');
+
+      scriptVerify = [
+        '#!/usr/bin/env powershell',
+        `# Auto-generated verify script for ${cleanName}`,
+        `$Package = "${cleanName}"`,
+        'if (Get-Command winget -ErrorAction SilentlyContinue) {',
+        '    $list = winget list --name $Package 2>$null',
+        '    if ($LASTEXITCODE -eq 0) { Write-Host "VERIFIED: $Package installed"; exit 0 }',
+        '}',
+        'Write-Error "NOT FOUND: $Package"',
+        'exit 1',
+      ].join('\n');
     }
-  } else if (os.includes('linux') || os.includes('ubuntu') || os.includes('debian') || os.includes('rhel') || os.includes('centos') || os.includes('fedora') || os === 'l') {
-    // Linux patches
+  }
+  if (!scriptInstall && (os.includes('linux') || os.includes('ubuntu') || os.includes('debian') || os.includes('rhel') || os.includes('centos') || os.includes('fedora') || os === 'l')) {
+    // Linux patches (fallback — package manager)
     if (packageName) {
       const isDebian = os.includes('ubuntu') || os.includes('debian') || os === 'l' || os === 'linux';
       const isRhel = os.includes('rhel') || os.includes('centos') || os.includes('fedora') || os.includes('rocky') || os.includes('alma');
@@ -1883,12 +2291,14 @@ export async function autoGeneratePatchBundle(patchId: string): Promise<void> {
       scriptInstall = [
         '#!/bin/bash',
         'set -e',
-        `# Auto-generated install script for ${cleanName}`,
+        `# Auto-generated upgrade script for ${cleanName}`,
         '',
         isDebian ? 'export DEBIAN_FRONTEND=noninteractive' : '',
         isDebian ? `apt-get update -qq` : '',
-        `${pkgManager} install -y ${cleanName}`,
-        `echo "Package ${cleanName} installed successfully"`,
+        isDebian
+          ? `apt-get install --only-upgrade -y ${cleanName}`
+          : `${pkgManager} upgrade -y ${cleanName}`,
+        `echo "Package ${cleanName} upgraded successfully"`,
       ].filter(Boolean).join('\n');
 
       scriptRollback = [
@@ -1909,8 +2319,9 @@ export async function autoGeneratePatchBundle(patchId: string): Promise<void> {
         'echo "NOT FOUND: ' + cleanName + '"; exit 1',
       ].join('\n');
     }
-  } else if (os.includes('mac') || os.includes('darwin') || os === 'm') {
-    // macOS patches
+  }
+  if (!scriptInstall && (os.includes('mac') || os.includes('darwin') || os === 'm')) {
+    // macOS patches (fallback — brew/softwareupdate)
     if (packageName) {
       const cleanName = packageName.replace(/[^a-zA-Z0-9._-]/g, '');
 
@@ -1950,34 +2361,40 @@ export async function autoGeneratePatchBundle(patchId: string): Promise<void> {
   // If we couldn't generate scripts, skip
   if (!scriptInstall) return;
 
+  // Bundle data shared between create and update
+  const bundleData: Record<string, any> = {
+    scriptInstall,
+    scriptRollback,
+    scriptVerify,
+    scriptsIncluded: true,
+  };
+
+  // When we have a Hub MinIO file, set the bundleObjectKey so the deployment executor
+  // can stream the installer via /v1/patches/:id/bundle/stream
+  if (minioObjectKey) {
+    bundleData.bundleObjectKey = minioObjectKey;
+    bundleData.sourceUrl = minioObjectKey;
+    bundleData.downloadStatus = 'completed';
+  }
+
   if (patch.bundle) {
-    // Update existing bundle with inline scripts
     await prisma.patchBundle.update({
       where: { id: patch.bundle.id },
-      data: {
-        scriptInstall,
-        scriptRollback,
-        scriptVerify,
-        scriptsIncluded: true,
-      },
+      data: bundleData,
     });
   } else {
-    // Create new bundle with inline scripts
     await prisma.patchBundle.create({
       data: {
         patchId,
-        scriptInstall,
-        scriptRollback,
-        scriptVerify,
-        scriptsIncluded: true,
-        sourceUrl: patch.downloadUrl,
-        downloadStatus: patch.downloadUrl ? 'pending' : 'completed',
+        ...bundleData,
+        sourceUrl: bundleData.sourceUrl || patch.downloadUrl,
+        downloadStatus: bundleData.downloadStatus || (patch.downloadUrl ? 'pending' : 'completed'),
         requiresRoot: true,
       },
     });
   }
 
-  console.log(`[PatchBundle] Auto-generated inline scripts for patch ${patch.patchId || patch.id} (${os})`);
+  console.log(`[PatchBundle] Auto-generated ${minioObjectKey ? 'installer-aware' : 'inline'} scripts for patch ${patch.patchId || patch.id} (${os})`);
 }
 
 // ============================================
@@ -2031,6 +2448,8 @@ function transformPatch(patch: any) {
     downloadStatus: patch.downloadStatus,
     supersedes: patch.supersedes || [],
     supersededBy: patch.supersededBy || [],
+    supersededAt: patch.supersededAt?.toISOString() || null,
+    isSuperseded: !!patch.supersededAt, // Helper flag for UI
     operationalStatusSince: patch.operationalStatusSince?.toISOString() || null,
     endpoints: patch.endpoints,
     testStatus: patch.testStatus,

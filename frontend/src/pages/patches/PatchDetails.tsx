@@ -9,6 +9,7 @@ import {
   Row,
   Col,
   Tag,
+  Badge,
   Table,
   Divider,
   Space,
@@ -38,6 +39,8 @@ import {
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { patchService, type Patch, type AffectedSoftware, type FileDetail, type Vulnerability, type Endpoint } from '../../services/patch.service';
+import { patchRecommendationService } from '../../services/patch-recommendation.service';
+import type { PatchRecommendation } from '../../types/patch-recommendation.types';
 import { settingsService } from '../../services/settings.service';
 import { assetService } from '../../services/asset.service';
 import { tagService } from '../../services/tag.service';
@@ -59,6 +62,7 @@ export const PatchDetails = () => {
   const [fileDetails, setFileDetails] = useState<FileDetail[]>([]);
   const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
+  const [recommendations, setRecommendations] = useState<PatchRecommendation[]>([]);
   const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(null);
   const [endpointDrawerOpen, setEndpointDrawerOpen] = useState(false);
   
@@ -125,16 +129,18 @@ export const PatchDetails = () => {
       setPatch(patchData);
 
       // Fetch related data
-      const [softwares, files, vulns, eps] = await Promise.all([
+      const [softwares, files, vulns, eps, recs] = await Promise.all([
         patchService.getAffectedSoftwares(patchId),
         patchService.getFileDetails(patchId),
         patchService.getVulnerabilities(patchId),
         patchService.getEndpoints(patchId),
+        patchRecommendationService.getPatchRecommendations(patchId).catch(() => ({ data: [] })),
       ]);
       setAffectedSoftwares(softwares);
       setFileDetails(files);
       setVulnerabilities(vulns);
       setEndpoints(eps);
+      setRecommendations(recs.data || []);
     } catch (error) {
       message.error('Failed to fetch patch details');
     } finally {
@@ -951,6 +957,99 @@ export const PatchDetails = () => {
                     ),
                   },
                 ]}
+              />
+            ),
+          },
+          {
+            key: 'recommendations',
+            label: `Recommendations (${recommendations.length})`,
+            children: (
+              <Table
+                dataSource={recommendations}
+                rowKey="id"
+                columns={[
+                  {
+                    title: 'Asset',
+                    dataIndex: ['asset', 'name'],
+                    key: 'assetName',
+                    render: (name: string, record: PatchRecommendation) => (
+                      <Button
+                        type="link"
+                        style={{ padding: 0 }}
+                        onClick={() => navigate(`/assets/${record.asset.id}`)}
+                      >
+                        {name}
+                      </Button>
+                    ),
+                  },
+                  {
+                    title: 'OS',
+                    dataIndex: ['asset', 'os'],
+                    key: 'os',
+                    render: (os: string) => <Text>{os}</Text>,
+                  },
+                  {
+                    title: 'CVE',
+                    dataIndex: ['vulnerability', 'cveId'],
+                    key: 'cveId',
+                    render: (cveId: string) => <Text strong>{cveId}</Text>,
+                  },
+                  {
+                    title: 'Severity',
+                    dataIndex: 'severity',
+                    key: 'severity',
+                    render: (severity: string) => {
+                      const colorMap: Record<string, string> = {
+                        CRITICAL: '#ff4d4f',
+                        HIGH: '#fa8c16',
+                        MEDIUM: '#faad14',
+                        LOW: '#52c41a',
+                      };
+                      return <Tag color={colorMap[severity] || '#d9d9d9'}>{severity}</Tag>;
+                    },
+                  },
+                  {
+                    title: 'Risk Score',
+                    dataIndex: 'riskScore',
+                    key: 'riskScore',
+                    render: (score: number | null) => <Text>{score?.toFixed(0) || '-'}</Text>,
+                    sorter: (a: PatchRecommendation, b: PatchRecommendation) =>
+                      (a.riskScore || 0) - (b.riskScore || 0),
+                    defaultSortOrder: 'descend' as const,
+                  },
+                  {
+                    title: 'Status',
+                    dataIndex: 'status',
+                    key: 'status',
+                    render: (status: string) => {
+                      const statusMap: Record<string, 'success' | 'processing' | 'error' | 'warning' | 'default'> = {
+                        verified: 'success',
+                        deployed: 'processing',
+                        accepted: 'processing',
+                        failed: 'error',
+                        rejected: 'error',
+                        recommended: 'warning',
+                      };
+                      return (
+                        <Badge
+                          status={statusMap[status] || 'default'}
+                          text={status.charAt(0).toUpperCase() + status.slice(1)}
+                        />
+                      );
+                    },
+                  },
+                  {
+                    title: 'Affected Software',
+                    dataIndex: 'affectedSoftware',
+                    key: 'affectedSoftware',
+                    render: (text: string) => <Text type="secondary">{text || '-'}</Text>,
+                  },
+                ]}
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showTotal: (total) => `Total ${total} recommendations`,
+                }}
               />
             ),
           },

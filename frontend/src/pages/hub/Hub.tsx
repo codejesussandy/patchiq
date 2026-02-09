@@ -78,6 +78,16 @@ interface Agent {
 const { Text, Title } = Typography;
 const { TextArea } = Input;
 
+// Utility function to format bytes with appropriate unit
+const formatBytes = (bytes: number | string): string => {
+  const numBytes = typeof bytes === 'string' ? parseInt(bytes, 10) : bytes;
+  if (!numBytes || numBytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(numBytes) / Math.log(k));
+  return `${parseFloat((numBytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+};
+
 export const Hub = () => {
   const { message } = App.useApp();
   const [groupedPackages, setGroupedPackages] = useState<GroupedPackageResponse[]>([]);
@@ -605,7 +615,7 @@ export const Hub = () => {
 
       {/* Stats Cards */}
       <Row gutter={16} style={{ marginTop: 24, marginBottom: 24 }}>
-        <Col span={6}>
+        <Col span={12}>
           <Card>
             <Statistic
               title="Total Packages"
@@ -614,30 +624,11 @@ export const Hub = () => {
             />
           </Card>
         </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Active Packages"
-              value={stats?.activePackages || 0}
-              styles={{ content: { color: '#52c41a' } }}
-              prefix={<CheckCircleOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Total Bundles"
-              value={stats?.totalBundles || 0}
-              prefix={<AppstoreOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
+        <Col span={12}>
           <Card>
             <Statistic
               title="Total Size"
-              value={stats?.totalSize || '0 B'}
+              value={formatBytes(stats?.totalSize || 0)}
               prefix={<CloudOutlined />}
             />
           </Card>

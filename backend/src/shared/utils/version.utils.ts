@@ -182,6 +182,10 @@ export function isVersionInRange(
   const normalizedVersion = normalizeVersion(version);
   if (!normalizedVersion) return false;
 
+  // If neither boundary is set, we have no version constraint data —
+  // cannot determine vulnerability, so default to not vulnerable (defense-in-depth)
+  if (!versionStart && !versionEnd) return false;
+
   // Check start boundary
   if (versionStart) {
     const cmp = compareVersions(normalizedVersion, versionStart);

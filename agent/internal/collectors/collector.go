@@ -28,7 +28,7 @@ func (cm *CollectorManager) CollectAll() *models.FullInventory {
 	startTime := time.Now()
 	inventory := &models.FullInventory{
 		CollectedAt:  time.Now().UTC().Format(time.RFC3339),
-		AgentVersion: "1.0.0",
+		AgentVersion: "1.0.4",
 	}
 
 	// Collect hardware

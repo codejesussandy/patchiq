@@ -256,7 +256,7 @@ export class AgentsController {
       // Create config file content
       const config = {
         serverUrl,
-        webUiPort: 8080,
+        webUiPort: 4504,
         enableWebUi: true,
         heartbeatIntervalSeconds: 60,
         inventoryIntervalSeconds: 21600,
@@ -282,7 +282,7 @@ Quick Start:
 The agent will automatically:
 - Register with the PatchIQ server
 - Collect system inventory and telemetry
-- Start a local dashboard at http://localhost:8080
+- Start a local dashboard at http://localhost:4504
 
 Server: ${serverUrl}
 
@@ -298,7 +298,7 @@ Quick Start:
 The agent will automatically:
 - Register with the PatchIQ server
 - Collect system inventory and telemetry
-- Start a local dashboard at http://localhost:8080
+- Start a local dashboard at http://localhost:4504
 
 Server: ${serverUrl}
 

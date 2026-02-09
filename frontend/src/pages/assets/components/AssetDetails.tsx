@@ -52,7 +52,7 @@ import { tagService } from '../../../services/tag.service';
 import { AddAssetModal } from './AddAssetModal';
 import TagSelector from './TagSelector';
 import TagDisplay from './TagDisplay';
-import { PatchesTab } from './tabs/PatchesTab';
+import { UnifiedPatchesTab } from './tabs';
 import type { MenuProps } from 'antd';
 
 const { Title, Text } = Typography;
@@ -147,6 +147,8 @@ export const AssetDetails = () => {
         if (!loadingTelemetry) {
           fetchTelemetryData();
         }
+        // Also refresh asset details silently (updates agent status without spinner)
+        refreshAgentStatus();
       }, TELEMETRY_POLL_INTERVAL);
     }
 
@@ -170,6 +172,17 @@ export const AssetDetails = () => {
       navigate('/assets');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Silently refresh asset data (no loading spinner) - updates agent status
+  const refreshAgentStatus = async () => {
+    if (!id) return;
+    try {
+      const data = await assetService.getAsset(id);
+      setAsset(data);
+    } catch {
+      // Silent failure - don't interrupt user
     }
   };
 
@@ -2369,6 +2382,11 @@ export const AssetDetails = () => {
                   <Tag color={asset.agent.status === 'Connected' ? 'green' : 'red'}>
                     {asset.agent.status}
                   </Tag>
+                  {asset.agent.status !== 'Connected' && asset.agent.lastHeartbeatRelative && (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Last seen: {asset.agent.lastHeartbeatRelative}
+                    </Text>
+                  )}
                 </Space>
               }
               extra={
@@ -2985,7 +3003,7 @@ export const AssetDetails = () => {
     {
       key: 'patches',
       label: 'Patches',
-      children: asset ? <PatchesTab assetId={asset.id} agentId={asset?.agent?.id} /> : <Spin />,
+      children: asset ? <UnifiedPatchesTab assetId={asset.id} agentId={asset?.agent?.id} /> : <Spin />,
     },
     {
       key: 'alerts',

@@ -32,12 +32,15 @@ type RegisterResponse struct {
 
 // AgentConfig represents configuration sent from the backend
 type AgentConfig struct {
-	HeartbeatIntervalSeconds int    `json:"heartbeatIntervalSeconds"`
-	InventoryScheduleCron    string `json:"inventoryScheduleCron"`
-	TelemetryIntervalSeconds int    `json:"telemetryIntervalSeconds"`
-	TelemetryEnabled         bool   `json:"telemetryEnabled"`
-	PatchScanScheduleCron    string `json:"patchScanScheduleCron"`
-	LogLevel                 string `json:"logLevel"`
+	HeartbeatIntervalSeconds  int    `json:"heartbeatIntervalSeconds"`
+	InventoryIntervalSeconds  int    `json:"inventoryIntervalSeconds"`
+	InventoryScheduleCron     string `json:"inventoryScheduleCron"`
+	TelemetryIntervalSeconds  int    `json:"telemetryIntervalSeconds"`
+	TelemetryEnabled          bool   `json:"telemetryEnabled"`
+	PatchScanScheduleCron     string `json:"patchScanScheduleCron"`
+	LogLevel                  string `json:"logLevel"`
+	LatestAgentVersion        string `json:"latestAgentVersion,omitempty"`
+	AgentDownloadURL          string `json:"agentDownloadUrl,omitempty"`
 }
 
 // HeartbeatRequest represents the heartbeat payload sent to the backend

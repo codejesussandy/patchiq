@@ -12,7 +12,7 @@ import { agentsRoutes, agentApiRoutes, agentVersionsRoutes } from '@modules/agen
 import { vulnerabilityRoutes } from '@modules/vulnerabilities';
 import cveSyncRoutes from '@modules/vulnerabilities/cve-sync.routes';
 import { assetsRoutes } from '@modules/assets';
-import { patchRoutes, deploymentRoutes, patchTestRoutes, zeroTouchConfigRoutes } from '@modules/patches';
+import { patchRoutes, deploymentRoutes, patchTestRoutes, zeroTouchConfigRoutes, assetPatchRecommendationRoutes } from '@modules/patches';
 import { discoveryRoutes } from '@modules/discovery';
 import { jobsRoutes, deploymentPoliciesRoutes } from '@modules/jobs';
 import { dashboardRoutes } from '@modules/dashboard';
@@ -160,6 +160,9 @@ export function createApp(): Application {
 
   // Deployments routes
   app.use(`/${config.apiVersion}/deployments`, deploymentRoutes);
+
+  // Patch recommendations routes
+  app.use(`/${config.apiVersion}/patch-recommendations`, assetPatchRecommendationRoutes);
 
   // Patch tests routes
   app.use(`/${config.apiVersion}/patch-tests`, patchTestRoutes);

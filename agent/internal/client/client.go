@@ -8,9 +8,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
+
+	"github.com/patchify/agent/internal/download"
 )
 
 // ErrAuth indicates an authentication failure (401/403) requiring re-registration
@@ -23,6 +27,16 @@ func (e *ErrAuth) Error() string {
 	return fmt.Sprintf("auth failed (status %d): %s", e.StatusCode, e.Message)
 }
 
+// ProxyConfig holds proxy and download settings for HTTP communication
+type ProxyConfig struct {
+	ProxyURL             string
+	Username             string
+	Password             string
+	NoProxy              string
+	MaxDownloadSpeedMBps int  // Max download speed in MB/s (0 = unlimited)
+	EnableDownloadResume bool // Support HTTP Range-based resume
+}
+
 // Client handles communication with the PatchIQ backend
 type Client struct {
 	baseURL      string
@@ -31,17 +45,46 @@ type Client struct {
 	accessToken  string
 	refreshToken string
 	agentVersion string
+	proxyConfig  *ProxyConfig
 }
 
-// New creates a new backend client
-func New(baseURL string, agentVersion string) *Client {
+// New creates a new backend client. If proxyConfig is non-nil and has a ProxyURL,
+// all HTTP requests will be routed through that proxy.
+func New(baseURL string, agentVersion string, proxyConfig *ProxyConfig) *Client {
+	transport := buildTransport(proxyConfig)
+
 	return &Client{
 		baseURL:      baseURL,
 		agentVersion: agentVersion,
+		proxyConfig:  proxyConfig,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout:   30 * time.Second,
+			Transport: transport,
 		},
 	}
+}
+
+// buildTransport creates an http.Transport with proxy settings if configured.
+func buildTransport(pc *ProxyConfig) *http.Transport {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+
+	if pc == nil || pc.ProxyURL == "" {
+		return transport
+	}
+
+	proxyURL, err := url.Parse(pc.ProxyURL)
+	if err != nil {
+		// If the proxy URL is invalid, fall back to no proxy
+		return transport
+	}
+
+	// Embed credentials into the proxy URL if provided
+	if pc.Username != "" {
+		proxyURL.User = url.UserPassword(pc.Username, pc.Password)
+	}
+
+	transport.Proxy = http.ProxyURL(proxyURL)
+	return transport
 }
 
 // agentAPIURL constructs the URL for agent API endpoints
@@ -460,18 +503,24 @@ func (c *Client) GetPatchDownloadURLs(patchIDs []string) ([]PatchDownloadInfo, e
 	return result.Data, nil
 }
 
-// DownloadPatchFile downloads a patch file from a presigned URL and returns the local file path
+// DownloadPatchFile downloads a patch file from a presigned URL and returns the local file path.
+// Supports rate limiting, progress tracking, and checksum verification.
 func (c *Client) DownloadPatchFile(info PatchDownloadInfo, destDir string) (string, error) {
-	// Create the HTTP request with extended timeout for large files
+	// Ensure destination directory exists
+	if err := ensureDir(destDir); err != nil {
+		return "", fmt.Errorf("failed to create destination directory: %w", err)
+	}
+	destPath := destDir + "/" + info.FileName
+
 	downloadClient := &http.Client{
-		Timeout: 30 * time.Minute, // Allow up to 30 minutes for large patches
+		Timeout:   30 * time.Minute,
+		Transport: buildTransport(c.proxyConfig),
 	}
 
 	httpReq, err := http.NewRequest("GET", info.DownloadURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create download request: %w", err)
 	}
-
 	httpReq.Header.Set("User-Agent", "PatchIQ-Agent/"+c.agentVersion)
 
 	resp, err := downloadClient.Do(httpReq)
@@ -484,29 +533,61 @@ func (c *Client) DownloadPatchFile(info PatchDownloadInfo, destDir string) (stri
 		return "", fmt.Errorf("download failed with status %d", resp.StatusCode)
 	}
 
-	// Read response body
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read download response: %w", err)
+	totalSize := resp.ContentLength
+
+	// Wrap reader with rate limiter if configured
+	var reader io.Reader = resp.Body
+	if c.proxyConfig != nil && c.proxyConfig.MaxDownloadSpeedMBps > 0 {
+		bytesPerSec := c.proxyConfig.MaxDownloadSpeedMBps * 1024 * 1024
+		reader = download.NewRateLimitedReader(reader, bytesPerSec)
 	}
+
+	// Wrap with progress tracking
+	reader = download.NewProgressReader(reader, totalSize, func(downloaded, total int64, bytesPerSec float64) {
+		if total > 0 {
+			pct := float64(downloaded) / float64(total) * 100
+			log.Printf("Patch download %s: %.1f%% @ %.2f MB/s", info.FileName, pct, bytesPerSec/(1024*1024))
+		} else {
+			log.Printf("Patch download %s: %d bytes @ %.2f MB/s", info.FileName, downloaded, bytesPerSec/(1024*1024))
+		}
+	})
+
+	// Stream to file with checksum calculation
+	outFile, err := os.Create(destPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create output file: %w", err)
+	}
+
+	hasher := sha256.New()
+	writer := io.MultiWriter(outFile, hasher)
+
+	if _, err := io.Copy(writer, reader); err != nil {
+		outFile.Close()
+		os.Remove(destPath)
+		return "", fmt.Errorf("failed to download patch: %w", err)
+	}
+	outFile.Close()
 
 	// Verify checksum if provided
 	if info.Checksum != "" {
-		checksum := calculateChecksum(data, info.ChecksumType)
-		if checksum != info.Checksum {
-			return "", fmt.Errorf("checksum mismatch: expected %s, got %s", info.Checksum, checksum)
+		actualChecksum := hex.EncodeToString(hasher.Sum(nil))
+		expectedChecksum := info.Checksum
+
+		// Try SHA256 first (computed during download), fall back to other algorithms
+		if info.ChecksumType == "md5" {
+			// Need to re-read file for MD5
+			data, err := os.ReadFile(destPath)
+			if err != nil {
+				os.Remove(destPath)
+				return "", fmt.Errorf("failed to read file for checksum: %w", err)
+			}
+			actualChecksum = calculateChecksum(data, "md5")
 		}
-	}
 
-	// Ensure destination directory exists
-	if err := ensureDir(destDir); err != nil {
-		return "", fmt.Errorf("failed to create destination directory: %w", err)
-	}
-
-	// Write to file
-	destPath := destDir + "/" + info.FileName
-	if err := writeFile(destPath, data); err != nil {
-		return "", fmt.Errorf("failed to write file: %w", err)
+		if actualChecksum != expectedChecksum {
+			os.Remove(destPath)
+			return "", fmt.Errorf("checksum mismatch: expected %s, got %s", expectedChecksum, actualChecksum)
+		}
 	}
 
 	return destPath, nil

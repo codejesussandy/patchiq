@@ -14,6 +14,7 @@ import { AllPatches } from './pages/patches/AllPatches';
 import { PatchDetails } from './pages/patches/PatchDetails';
 import { PatchTestApprove } from './pages/patches/PatchTestApprove';
 import { ZeroTouchDeployment } from './pages/patches/ZeroTouchDeployment';
+import PatchRecommendations from './pages/patches/PatchRecommendations';
 
 // Assets
 import { AllAssets } from './pages/assets/AllAssets';
@@ -165,6 +166,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <MainLayout>
               <AllPatches />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patch-recommendations"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PatchRecommendations />
             </MainLayout>
           </ProtectedRoute>
         }

@@ -13,7 +13,7 @@ variables:
   STAGING_HOST: "192.168.1.13"
   STAGING_USER: "patchiq"
   # Agent build configuration (embedded at compile time)
-  PATCHIQ_SERVER_URL: "http://dev.skenzeriq.com:6001/api"
+  PATCHIQ_SERVER_URL: "http://dev.skenzeriq.com:5173/api"
 
 # Cache node_modules between jobs
 .node_cache: &node_cache

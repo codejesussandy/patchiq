@@ -57,14 +57,25 @@ type Manager struct {
 	stopCh           chan struct{}
 	resetHeartbeat   chan struct{}
 	resetTelemetry   chan struct{}
+	resetInventory   chan struct{}
 	wg               sync.WaitGroup
 }
 
 // New creates a new backend manager
 func New(cfg *config.Config, cm *collectors.CollectorManager, em *executors.ExecutorManager, agentVersion string) *Manager {
+	// Build proxy and download config from agent config
+	proxyConfig := &client.ProxyConfig{
+		ProxyURL:             cfg.ProxyURL,
+		Username:             cfg.ProxyUser,
+		Password:             cfg.ProxyPassword,
+		NoProxy:              cfg.NoProxy,
+		MaxDownloadSpeedMBps: cfg.MaxDownloadSpeedMBps,
+		EnableDownloadResume: cfg.EnableDownloadResume,
+	}
+
 	return &Manager{
 		config:        cfg,
-		client:        client.New(cfg.ServerURL, agentVersion),
+		client:        client.New(cfg.ServerURL, agentVersion, proxyConfig),
 		agentVersion:  agentVersion,
 		collectors:    cm,
 		executors:     em,
@@ -72,6 +83,7 @@ func New(cfg *config.Config, cm *collectors.CollectorManager, em *executors.Exec
 		stopCh:         make(chan struct{}),
 		resetHeartbeat: make(chan struct{}, 1),
 		resetTelemetry: make(chan struct{}, 1),
+		resetInventory: make(chan struct{}, 1),
 		jobHistory:    make([]JobHistoryEntry, 0),
 		activeJobs:    make(map[string]*JobHistoryEntry),
 		maxJobHistory: 100, // Keep last 100 jobs
@@ -209,6 +221,21 @@ func (m *Manager) register() error {
 		select {
 		case m.resetTelemetry <- struct{}{}:
 		default:
+		}
+	}
+	if resp.Config.InventoryIntervalSeconds > 0 && resp.Config.InventoryIntervalSeconds != m.config.InventoryInterval {
+		m.config.InventoryInterval = resp.Config.InventoryIntervalSeconds
+		select {
+		case m.resetInventory <- struct{}{}:
+		default:
+		}
+	}
+
+	// Check for newer agent version
+	if resp.Config.LatestAgentVersion != "" && resp.Config.LatestAgentVersion != m.agentVersion {
+		log.Printf("New agent version available: %s (current: %s)", resp.Config.LatestAgentVersion, m.agentVersion)
+		if resp.Config.AgentDownloadURL != "" {
+			log.Printf("Download: %s", resp.Config.AgentDownloadURL)
 		}
 	}
 
@@ -402,6 +429,9 @@ func (m *Manager) inventoryLoop() {
 		select {
 		case <-ticker.C:
 			m.submitInventoryNow()
+		case <-m.resetInventory:
+			ticker.Reset(time.Duration(m.config.InventoryInterval) * time.Second)
+			log.Printf("Inventory interval updated to %ds", m.config.InventoryInterval)
 		case <-m.stopCh:
 			return
 		}

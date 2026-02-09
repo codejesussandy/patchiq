@@ -5,41 +5,99 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/patchify/agent/internal/backend"
 	"github.com/patchify/agent/internal/collectors"
+	agentsvc "github.com/patchify/agent/internal/service"
 	"github.com/patchify/agent/internal/config"
 	"github.com/patchify/agent/internal/executors"
 	"github.com/patchify/agent/internal/server"
 )
 
 var (
-	version   = "1.0.0"
+	version   = "1.0.4"
 	buildDate = "unknown"
 )
 
 func main() {
+	// Detect if running as Windows Service (before flag parsing)
+	if isService, svcErr := agentsvc.IsWindowsService(); svcErr != nil {
+		log.Fatalf("Failed to detect service mode: %v", svcErr)
+	} else if isService {
+		runAsWindowsService()
+		return
+	}
+
 	// Parse command line flags
 	configPath := flag.String("config", "", "Path to config file")
-	port := flag.Int("port", 5003, "Web UI port")
+	port := flag.Int("port", 4504, "Web UI port")
 	// Default server URL from environment variable or use localhost
 	defaultServerURL := os.Getenv("PATCHIQ_SERVER_URL")
 	if defaultServerURL == "" {
-		defaultServerURL = "http://localhost:6001/api"
+		defaultServerURL = "http://dev.skenzeriq.com:5173/api"
 	}
-	serverURL := flag.String("server", defaultServerURL, "Backend server URL (e.g., http://your-server:5001/api)")
+	serverURL := flag.String("server", defaultServerURL, "Backend server URL (e.g., http://your-server:5173/api)")
+	proxyURL := flag.String("proxy", "", "HTTP/HTTPS proxy URL (e.g., http://proxy:8080)")
+	proxyUser := flag.String("proxy-user", "", "Proxy authentication username")
+	proxyPassword := flag.String("proxy-password", "", "Proxy authentication password")
+	noProxy := flag.String("no-proxy", "", "Comma-separated list of hosts to bypass proxy")
+	testProxy := flag.Bool("test-proxy", false, "Test proxy connectivity and exit")
 	showVersion := flag.Bool("version", false, "Show version")
 	noBackend := flag.Bool("no-backend", false, "Disable backend communication (local mode)")
 	setup := flag.Bool("setup", false, "Run interactive setup wizard")
 	showStatus := flag.Bool("status", false, "Show agent connection status")
+	installService := flag.Bool("install-service", false, "Install as Windows Service (requires admin)")
+	uninstallService := flag.Bool("uninstall-service", false, "Uninstall Windows Service (requires admin)")
+	startService := flag.Bool("start-service", false, "Start Windows Service")
+	stopService := flag.Bool("stop-service", false, "Stop Windows Service")
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Printf("Patchify Agent v%s (built %s)\n", version, buildDate)
+		os.Exit(0)
+	}
+
+	// Handle service management commands (Windows only, no-ops on other platforms)
+	if *installService {
+		if err := agentsvc.InstallService(); err != nil {
+			log.Fatalf("Failed to install service: %v", err)
+		}
+		fmt.Println("Service installed successfully.")
+		fmt.Println("Start with: patchiq-agent --start-service  (or: sc start PatchIQAgent)")
+		os.Exit(0)
+	}
+	if *uninstallService {
+		if err := agentsvc.UninstallService(); err != nil {
+			log.Fatalf("Failed to uninstall service: %v", err)
+		}
+		fmt.Println("Service uninstalled successfully.")
+		os.Exit(0)
+	}
+	if *startService {
+		if err := agentsvc.StartService(); err != nil {
+			log.Fatalf("Failed to start service: %v", err)
+		}
+		fmt.Println("Service started.")
+		os.Exit(0)
+	}
+	if *stopService {
+		if err := agentsvc.StopService(); err != nil {
+			log.Fatalf("Failed to stop service: %v", err)
+		}
+		fmt.Println("Service stopped.")
+		os.Exit(0)
+	}
+
+	// Handle test-proxy command
+	if *testProxy {
+		runTestProxy(*proxyURL, *proxyUser, *proxyPassword)
 		os.Exit(0)
 	}
 
@@ -128,6 +186,20 @@ func main() {
 		cfg.ServerURL = *serverURL
 	}
 
+	// Override proxy settings from CLI flags (only if explicitly passed)
+	if explicitFlags["proxy"] {
+		cfg.ProxyURL = *proxyURL
+	}
+	if explicitFlags["proxy-user"] {
+		cfg.ProxyUser = *proxyUser
+	}
+	if explicitFlags["proxy-password"] {
+		cfg.ProxyPassword = *proxyPassword
+	}
+	if explicitFlags["no-proxy"] {
+		cfg.NoProxy = *noProxy
+	}
+
 	// Ensure data directory exists
 	if err := os.MkdirAll(cfg.DataDir, 0755); err != nil {
 		log.Printf("Warning: Could not create data directory: %v", err)
@@ -136,8 +208,15 @@ func main() {
 	// Create shared collector manager
 	cm := collectors.NewCollectorManager()
 
-	// Create shared executor manager
-	em := executors.NewExecutorManager()
+	// Create shared executor manager with download config
+	dlCfg := &executors.DownloadConfig{
+		MaxDownloadSpeedMBps: cfg.MaxDownloadSpeedMBps,
+		EnableDownloadResume: cfg.EnableDownloadResume,
+		ProxyURL:             cfg.ProxyURL,
+		ProxyUser:            cfg.ProxyUser,
+		ProxyPassword:        cfg.ProxyPassword,
+	}
+	em := executors.NewExecutorManager(dlCfg)
 
 	// Create local web server
 	srv, err := server.New(cfg)
@@ -180,6 +259,9 @@ func main() {
 	log.Printf("Agent ID: %s", getAgentID(backendMgr))
 	log.Printf("Web UI: http://localhost:%d", cfg.WebUIPort)
 	log.Printf("Backend: %s", getBackendStatus(backendMgr, cfg))
+	if cfg.ProxyURL != "" {
+		log.Printf("Proxy: %s", cfg.ProxyURL)
+	}
 	log.Printf("API Endpoints:")
 	log.Printf("  GET  /api/agent       - Agent info")
 	log.Printf("  GET  /api/inventory   - Full inventory")
@@ -245,11 +327,48 @@ func runSetupWizard() {
 		}
 	}
 
+	// Prompt for proxy settings
+	defaultProxy := cfg.ProxyURL
+	if defaultProxy == "" {
+		defaultProxy = "none"
+	}
+	fmt.Printf("\nHTTP Proxy URL [%s]: ", defaultProxy)
+	var proxyInput string
+	fmt.Scanln(&proxyInput)
+	if proxyInput != "" && proxyInput != "none" {
+		cfg.ProxyURL = proxyInput
+		// Ask for proxy auth
+		fmt.Printf("Proxy Username (leave blank for none) [%s]: ", cfg.ProxyUser)
+		var proxyUserInput string
+		fmt.Scanln(&proxyUserInput)
+		if proxyUserInput != "" {
+			cfg.ProxyUser = proxyUserInput
+			fmt.Print("Proxy Password: ")
+			var proxyPassInput string
+			fmt.Scanln(&proxyPassInput)
+			if proxyPassInput != "" {
+				cfg.ProxyPassword = proxyPassInput
+			}
+		}
+	} else if proxyInput == "none" {
+		cfg.ProxyURL = ""
+		cfg.ProxyUser = ""
+		cfg.ProxyPassword = ""
+	}
+
 	// Show summary
 	fmt.Println("\n─────────────────────────────────────────────────────")
 	fmt.Println("Configuration Summary:")
 	fmt.Printf("  Server URL:  %s\n", cfg.ServerURL)
 	fmt.Printf("  Web UI Port: %d\n", cfg.WebUIPort)
+	if cfg.ProxyURL != "" {
+		fmt.Printf("  Proxy:       %s\n", cfg.ProxyURL)
+		if cfg.ProxyUser != "" {
+			fmt.Printf("  Proxy Auth:  %s:****\n", cfg.ProxyUser)
+		}
+	} else {
+		fmt.Printf("  Proxy:       none\n")
+	}
 	fmt.Printf("  Config File: %s\n", configPath)
 	fmt.Println("─────────────────────────────────────────────────────")
 
@@ -328,6 +447,139 @@ func showAgentStatus() {
 
 func parseJSON(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)
+}
+
+func runAsWindowsService() {
+	// Load config from standard service locations
+	var cfg *config.Config
+	homeDir, _ := os.UserHomeDir()
+	servicePaths := []string{
+		filepath.Join(homeDir, ".patchify-agent", "config.json"),
+	}
+
+	for _, path := range servicePaths {
+		if _, err := os.Stat(path); err == nil {
+			if loadedCfg, err := config.Load(path); err == nil {
+				cfg = loadedCfg
+				log.Printf("Service: loaded config from %s", path)
+				break
+			}
+		}
+	}
+	if cfg == nil {
+		cfg = config.DefaultConfig()
+		log.Println("Service: using default configuration")
+	}
+
+	if err := os.MkdirAll(cfg.DataDir, 0755); err != nil {
+		log.Printf("Warning: could not create data directory: %v", err)
+	}
+
+	var backendMgr *backend.Manager
+
+	err := agentsvc.RunAsService(
+		func() error {
+			cm := collectors.NewCollectorManager()
+			dlCfg := &executors.DownloadConfig{
+				MaxDownloadSpeedMBps: cfg.MaxDownloadSpeedMBps,
+				EnableDownloadResume: cfg.EnableDownloadResume,
+				ProxyURL:             cfg.ProxyURL,
+				ProxyUser:            cfg.ProxyUser,
+				ProxyPassword:        cfg.ProxyPassword,
+			}
+			em := executors.NewExecutorManager(dlCfg)
+
+			backendMgr = backend.New(cfg, cm, em, version)
+			return backendMgr.Start()
+		},
+		func() {
+			if backendMgr != nil {
+				backendMgr.Stop()
+			}
+		},
+	)
+	if err != nil {
+		log.Fatalf("Service failed: %v", err)
+	}
+}
+
+func runTestProxy(proxyURLStr, proxyUser, proxyPassword string) {
+	fmt.Print(`
+╔═══════════════════════════════════════════════════╗
+║         Patchify Agent Proxy Test                 ║
+╚═══════════════════════════════════════════════════╝
+`)
+
+	if proxyURLStr == "" {
+		// Check environment
+		if v := os.Getenv("PATCHIQ_PROXY_URL"); v != "" {
+			proxyURLStr = v
+		} else if v := os.Getenv("HTTPS_PROXY"); v != "" {
+			proxyURLStr = v
+		} else if v := os.Getenv("HTTP_PROXY"); v != "" {
+			proxyURLStr = v
+		}
+	}
+
+	if proxyURLStr == "" {
+		fmt.Println("  No proxy configured.")
+		fmt.Println("  Use --proxy <url> or set HTTPS_PROXY / HTTP_PROXY environment variable.")
+		os.Exit(1)
+	}
+
+	fmt.Printf("  Proxy URL: %s\n", proxyURLStr)
+	if proxyUser != "" {
+		fmt.Printf("  Proxy Auth: %s:****\n", proxyUser)
+	}
+
+	proxyURL, err := url.Parse(proxyURLStr)
+	if err != nil {
+		fmt.Printf("\n  FAIL: Invalid proxy URL: %v\n", err)
+		os.Exit(1)
+	}
+	if proxyUser != "" {
+		proxyURL.User = url.UserPassword(proxyUser, proxyPassword)
+	}
+
+	transport := &http.Transport{
+		Proxy: http.ProxyURL(proxyURL),
+	}
+	testClient := &http.Client{
+		Timeout:   15 * time.Second,
+		Transport: transport,
+	}
+
+	fmt.Println("\n  Testing connectivity through proxy...")
+
+	// Test 1: reach an external host
+	resp, err := testClient.Get("https://httpbin.org/ip")
+	if err != nil {
+		fmt.Printf("  FAIL: Could not connect through proxy: %v\n", err)
+		os.Exit(1)
+	}
+	resp.Body.Close()
+	fmt.Printf("  OK: External connectivity via proxy (status %d)\n", resp.StatusCode)
+
+	// Load config to test server URL
+	homeDir, _ := os.UserHomeDir()
+	configPath := filepath.Join(homeDir, ".patchify-agent", "config.json")
+	cfg := config.DefaultConfig()
+	if existingCfg, err := config.Load(configPath); err == nil && existingCfg != nil {
+		cfg = existingCfg
+	}
+
+	if cfg.ServerURL != "" {
+		fmt.Printf("\n  Testing proxy connection to PatchIQ server (%s)...\n", cfg.ServerURL)
+		resp2, err := testClient.Get(cfg.ServerURL)
+		if err != nil {
+			fmt.Printf("  WARN: Could not reach server through proxy: %v\n", err)
+		} else {
+			resp2.Body.Close()
+			fmt.Printf("  OK: Server reachable via proxy (status %d)\n", resp2.StatusCode)
+		}
+	}
+
+	fmt.Println("\n  Proxy test completed.")
 }
 
 // BackendAdapter adapts backend.Manager to server.BackendStatus interface

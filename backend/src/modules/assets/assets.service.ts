@@ -1,6 +1,7 @@
 import { prisma } from '@/db/client';
 import { NotFoundError, ConflictError, BadRequestError } from '@shared/errors';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
+import { calculateAgentStatus } from '@shared/utils/agent-status';
 import { PaginationParams } from '@shared/types';
 import {
   createAuditLog,
@@ -1137,13 +1138,13 @@ function transformAsset(asset: any): AssetResponse {
     subCategoryId: asset.subCategoryId,
     subCategoryName: asset.subCategory?.name,
     status: asset.status,
-    operationalStatus: asset.agent?.status === 'Connected' ? 'Connected' : 'Disconnected',
+    operationalStatus: calculateAgentStatus(asset.agent) === 'Connected' ? 'Connected' : 'Disconnected',
     operationalStatusSince: asset.agent?.lastHeartbeat?.toISOString(),
     agentId: asset.agent?.id,
     // Agent status details
     agent: asset.agent ? {
       id: asset.agent.id,
-      status: asset.agent.status || 'Unknown',
+      status: calculateAgentStatus(asset.agent),
       version: asset.agent.agentVersion || 'Unknown',
       lastHeartbeat: asset.agent.lastHeartbeat?.toISOString(),
       lastHeartbeatRelative,

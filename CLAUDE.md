@@ -63,20 +63,20 @@ make agent-run                                        # Run without hot reload
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  Frontend   │────▶│   Backend   │────▶│ PostgreSQL  │
 │  (React)    │     │  (Express)  │     │   (Prisma)  │
-│   :6001     │     │    :3000    │     │    :6003    │
+│   :5173     │     │    :3000    │     │    :4500    │
 └─────────────┘     └──────┬──────┘     └─────────────┘
       (via nginx)          │
                     ┌──────┴──────┐
                     │             │
               ┌─────▼─────┐ ┌─────▼─────┐
               │   Redis   │ │   MinIO   │
-              │   :6004   │ │   :9000   │
+              │   :4501   │ │   :9000   │
               └───────────┘ └───────────┘
                     ▲
               ┌─────┴─────┐
               │   Agent   │
               │   (Go)    │
-              │   :6007   │
+              │   :4504   │
               └───────────┘
 ```
 
@@ -124,19 +124,19 @@ import { config } from '@config/index';         // src/config/
 
 ## Service Ports
 
-### Staging Configuration (default)
+### Current Configuration (from .env)
 
-| Service           | Port  | Notes                    |
-|-------------------|-------|--------------------------|
-| Nginx/Frontend    | 6001  | Main entry point         |
-| Backend API       | 3000  | Internal via nginx       |
-| PostgreSQL        | 6003  | External mapping         |
-| Redis             | 6004  | External mapping         |
-| pgAdmin           | 6005  | Admin tool               |
-| Prisma Studio     | 6006  | DB GUI                   |
-| Agent WebUI       | 6007  | With port fallback       |
-| MinIO API         | 9000  | Internal via nginx /s3/  |
-| MinIO Console     | 9001  | Internal via nginx /minio/ |
+| Service           | Port  | Notes                       |
+|-------------------|-------|-----------------------------|
+| Nginx/Frontend    | 5173  | Main entry point (PUBLIC_PORT) |
+| Backend API       | 3000  | Internal via nginx           |
+| PostgreSQL        | 4500  | External mapping             |
+| Redis             | 4501  | External mapping             |
+| pgAdmin           | 4502  | Admin tool                   |
+| Prisma Studio     | 4503  | DB GUI                       |
+| Agent WebUI       | 4504  | Native Go binary             |
+| MinIO API         | 9000  | Internal via nginx /s3/      |
+| MinIO Console     | 9001  | Internal via nginx /minio/   |
 
 Port configuration is centralized in `.env` file. Copy `.env.example` to `.env` and adjust as needed.
 

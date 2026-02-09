@@ -398,7 +398,7 @@ class DeploymentExecutorService {
         });
 
         // Create the task linked to the command
-        await tx.patchDeploymentTask.create({
+        const task = await tx.patchDeploymentTask.create({
           data: {
             deploymentId: deployment.id,
             assetId: agent.assetId!,
@@ -406,6 +406,22 @@ class DeploymentExecutorService {
             commandId: command.id,
           },
         });
+
+        // Link any existing patch recommendations to this deployment task
+        for (const patch of patchesWithBundles) {
+          await tx.assetPatchRecommendation.updateMany({
+            where: {
+              assetId: agent.assetId!,
+              patchId: patch.id,
+              status: { in: ['recommended', 'accepted'] },
+            },
+            data: {
+              status: 'deployed',
+              deployedAt: new Date(),
+              deploymentTaskId: task.id,
+            },
+          });
+        }
 
         commandsCreated++;
       }
@@ -610,6 +626,26 @@ class DeploymentExecutorService {
           completedAt: ['completed', 'failed'].includes(status) ? new Date() : null,
         },
       });
+
+      // Update associated patch recommendations
+      if (status === 'completed') {
+        await tx.assetPatchRecommendation.updateMany({
+          where: { deploymentTaskId: taskId },
+          data: {
+            status: 'verified',
+            verifiedAt: new Date(),
+          },
+        });
+      } else if (status === 'failed') {
+        await tx.assetPatchRecommendation.updateMany({
+          where: { deploymentTaskId: taskId },
+          data: {
+            status: 'failed',
+            failedAt: new Date(),
+            failureReason: errorMessage || 'Deployment failed',
+          },
+        });
+      }
 
       // If patch deployment completed successfully, resolve asset vulnerabilities
       if (status === 'completed' && task.assetId && task.deployment.patches) {

@@ -68,6 +68,11 @@ export const patchService = {
     await api.delete(`/patches/${id}`);
   },
 
+  async discoverPatches(): Promise<{ success: boolean; patchesCreated: number; cpeResolved?: number; message: string }> {
+    const response = await api.post(`/patches/discover`);
+    return response.data;
+  },
+
   async getAffectedSoftwares(patchId: string): Promise<AffectedSoftware[]> {
     const response = await api.get(`/patches/${patchId}/affected-softwares`);
     return response.data;

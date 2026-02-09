@@ -39,6 +39,62 @@ export async function getPatch(req: Request, res: Response, next: NextFunction) 
   }
 }
 
+export async function streamPatchBundle(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const bundle = await patchesService.getPatchBundleByPatchId(id);
+    if (!bundle?.bundleObjectKey) {
+      res.status(404).json({ error: 'No downloadable bundle for this patch' });
+      return;
+    }
+
+    const { minioStorage } = await import('@shared/services/minio.service');
+    const stream = await minioStorage.downloadStream(bundle.bundleObjectKey);
+
+    const filename = bundle.bundleObjectKey.split('/').pop() || 'patch-bundle';
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    const contentTypes: Record<string, string> = {
+      exe: 'application/x-msdownload',
+      msi: 'application/x-msi',
+      deb: 'application/x-debian-package',
+      rpm: 'application/x-rpm',
+      dmg: 'application/x-apple-diskimage',
+      pkg: 'application/x-newton-compatible-pkg',
+      zip: 'application/zip',
+      gz: 'application/gzip',
+    };
+
+    res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    stream.pipe(res);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function discoverPatches(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { cveDatabase } = await import('@shared/services/cve-database.service');
+    const patchesCreated = await cveDatabase.generatePatchSuggestions();
+
+    // Re-resolve asset_software with null CPE in background (picks up new seed mappings)
+    const { cpeMappingService } = await import('@shared/services/cpe-mapping.service');
+    cpeMappingService.reResolveNullCpe().then(n => {
+      if (n > 0) console.log(`[Discover] Background CPE re-resolution: ${n} records updated`);
+    }).catch(() => { /* background task, ignore errors */ });
+
+    res.json({
+      success: true,
+      patchesCreated,
+      message: patchesCreated > 0
+        ? `Created ${patchesCreated} new patches from Hub software`
+        : 'No new patches needed — all Hub software already has patches or no matching CVEs found',
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function createPatch(req: Request, res: Response, next: NextFunction) {
   try {
     const data = req.body as CreatePatchInput;
@@ -65,6 +121,50 @@ export async function deletePatch(req: Request, res: Response, next: NextFunctio
     const { id } = req.params;
     await patchesService.deletePatch(id);
     res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ============================================
+// Supersedence Management
+// ============================================
+
+export async function getSupersededPatches(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const result = await patchesService.getSupersededPatches(id);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getSupersedingPatches(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const result = await patchesService.getSupersedingPatches(id);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function supersedePatch(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id, targetId } = req.params;
+    const result = await patchesService.supersedePatch(targetId, id);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function removeSupersedence(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id, targetId } = req.params;
+    const result = await patchesService.removeSupersedence(targetId, id);
+    res.json(result);
   } catch (error) {
     next(error);
   }

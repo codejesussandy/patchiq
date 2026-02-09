@@ -351,59 +351,45 @@ export class DashboardService {
   async getVulnerabilityByDiscoveredDate(): Promise<VulnerabilityByDate[]> {
     const now = new Date();
     const ranges = [
-      { label: '< 30 days', maxDays: 30 },
+      { label: '< 30 days', maxDays: 30, minDays: 0 },
       { label: '30-60 days', minDays: 30, maxDays: 60 },
       { label: '60-90 days', minDays: 60, maxDays: 90 },
-      { label: '> 90 days', minDays: 90 },
+      { label: '> 90 days', minDays: 90, maxDays: 99999 },
     ];
 
-    const results = await Promise.all(
-      ranges.map(async (range) => {
-        const where: Prisma.AssetVulnerabilityWhereInput = {};
+    const rows = await prisma.$queryRaw<Array<{
+      range_label: string;
+      critical: bigint;
+      high: bigint;
+      medium: bigint;
+      low: bigint;
+    }>>`
+      SELECT
+        CASE
+          WHEN av.detected_at >= ${new Date(now.getTime() - 30 * 86400000)} THEN '< 30 days'
+          WHEN av.detected_at >= ${new Date(now.getTime() - 60 * 86400000)} THEN '30-60 days'
+          WHEN av.detected_at >= ${new Date(now.getTime() - 90 * 86400000)} THEN '60-90 days'
+          ELSE '> 90 days'
+        END as range_label,
+        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'critical') as critical,
+        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'high') as high,
+        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'medium') as medium,
+        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'low') as low
+      FROM asset_vulnerabilities av
+      JOIN vulnerabilities v ON v.id = av.vulnerability_id
+      GROUP BY range_label
+    `;
 
-        if (range.maxDays && !range.minDays) {
-          where.detectedAt = {
-            gte: new Date(now.getTime() - range.maxDays * 24 * 60 * 60 * 1000),
-          };
-        } else if (range.minDays && !range.maxDays) {
-          where.detectedAt = {
-            lt: new Date(now.getTime() - range.minDays * 24 * 60 * 60 * 1000),
-          };
-        } else if (range.minDays && range.maxDays) {
-          where.detectedAt = {
-            gte: new Date(now.getTime() - range.maxDays * 24 * 60 * 60 * 1000),
-            lt: new Date(now.getTime() - range.minDays * 24 * 60 * 60 * 1000),
-          };
-        }
-
-        // Get vulnerabilities with their severity
-        const assetVulns = await prisma.assetVulnerability.findMany({
-          where,
-          include: {
-            vulnerability: { select: { severity: true } },
-          },
-        });
-
-        const severityMap = assetVulns.reduce(
-          (acc, av) => {
-            const severity = av.vulnerability.severity.toLowerCase();
-            acc[severity] = (acc[severity] || 0) + 1;
-            return acc;
-          },
-          { critical: 0, high: 0, medium: 0, low: 0 } as Record<string, number>
-        );
-
-        return {
-          date: range.label,
-          critical: severityMap.critical,
-          high: severityMap.high,
-          medium: severityMap.medium,
-          low: severityMap.low,
-        };
-      })
-    );
-
-    return results;
+    return ranges.map(range => {
+      const row = rows.find(r => r.range_label === range.label);
+      return {
+        date: range.label,
+        critical: Number(row?.critical ?? 0),
+        high: Number(row?.high ?? 0),
+        medium: Number(row?.medium ?? 0),
+        low: Number(row?.low ?? 0),
+      };
+    });
   }
 
   /**
@@ -432,7 +418,7 @@ export class DashboardService {
         orderBy: { cvss3BaseScore: 'desc' },
         take: limit,
         include: {
-          affectedAssets: { select: { id: true } },
+          _count: { select: { affectedAssets: true } },
         },
       }),
       // Top by EPSS score
@@ -441,7 +427,7 @@ export class DashboardService {
         orderBy: { epss: 'desc' },
         take: limit,
         include: {
-          affectedAssets: { select: { id: true } },
+          _count: { select: { affectedAssets: true } },
         },
       }),
     ]);
@@ -452,11 +438,11 @@ export class DashboardService {
       epss: number | null;
       severity: string;
       title: string;
-      affectedAssets: { id: string }[];
+      _count: { affectedAssets: number };
     }): TopVulnerability => ({
       cve: v.cveId,
       score: v.cvss3BaseScore ?? v.epss ?? 0,
-      affectedEndpoints: v.affectedAssets.length,
+      affectedEndpoints: v._count.affectedAssets,
       severity: v.severity.toLowerCase() as 'critical' | 'high' | 'medium' | 'low',
       description: v.title,
     });
@@ -580,27 +566,14 @@ export class DashboardService {
    * Get total software count by platform
    */
   async getTotalSoftwareByPlatform(): Promise<DistributionItem[]> {
-    const result = await prisma.asset.findMany({
-      where: { os: { not: null } },
-      select: {
-        os: true,
-        software: { select: { id: true } },
-      },
-    });
-
-    const platformCounts = result.reduce(
-      (acc, asset) => {
-        const os = this.normalizeOS(asset.os || '');
-        acc[os] = (acc[os] || 0) + asset.software.length;
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-
-    return Object.entries(platformCounts).map(([name, value]) => ({
-      name,
-      value,
-    }));
+    const rows = await prisma.$queryRaw<Array<{ name: string; value: bigint }>>`
+      SELECT COALESCE(a.os, 'Unknown') as name, COUNT(asw.id) as value
+      FROM assets a
+      JOIN asset_software asw ON asw.asset_id = a.id
+      WHERE a.os IS NOT NULL
+      GROUP BY a.os
+    `;
+    return rows.map(r => ({ name: this.normalizeOS(r.name), value: Number(r.value) }));
   }
 
   /**
@@ -660,36 +633,26 @@ export class DashboardService {
    * Get alert severity count by platform
    */
   async getAlertSeverityCountByPlatform(): Promise<AlertSeverityByPlatform[]> {
-    const assets = await prisma.asset.findMany({
-      where: { os: { not: null } },
-      select: {
-        os: true,
-        vulnerabilities: {
-          include: {
-            vulnerability: { select: { severity: true } },
-          },
-        },
-      },
-    });
-
-    const platformStats: Record<string, AlertSeverityByPlatform> = {};
-
-    assets.forEach((asset) => {
-      const platform = asset.os || 'Unknown';
-      if (!platformStats[platform]) {
-        platformStats[platform] = { platform, critical: 0, high: 0, medium: 0, low: 0 };
-      }
-
-      asset.vulnerabilities.forEach((av) => {
-        const severity = av.vulnerability.severity.toLowerCase();
-        if (severity === 'critical') platformStats[platform].critical++;
-        else if (severity === 'high') platformStats[platform].high++;
-        else if (severity === 'medium') platformStats[platform].medium++;
-        else if (severity === 'low') platformStats[platform].low++;
-      });
-    });
-
-    return Object.values(platformStats);
+    const rows = await prisma.$queryRaw<Array<{ platform: string; critical: bigint; high: bigint; medium: bigint; low: bigint }>>`
+      SELECT
+        COALESCE(a.os, 'Unknown') as platform,
+        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'critical') as critical,
+        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'high') as high,
+        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'medium') as medium,
+        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'low') as low
+      FROM asset_vulnerabilities av
+      JOIN assets a ON a.id = av.asset_id
+      JOIN vulnerabilities v ON v.id = av.vulnerability_id
+      WHERE a.os IS NOT NULL
+      GROUP BY a.os
+    `;
+    return rows.map(r => ({
+      platform: r.platform,
+      critical: Number(r.critical),
+      high: Number(r.high),
+      medium: Number(r.medium),
+      low: Number(r.low),
+    }));
   }
 
   /**
@@ -732,33 +695,25 @@ export class DashboardService {
    * Get alert severity count by module
    */
   async getAlertSeverityCountByModule(): Promise<AlertSeverityByModule[]> {
-    // Group by software/product
-    const vulns = await prisma.vulnerability.findMany({
-      include: {
-        affectedSoftware: { select: { name: true } },
-      },
-    });
-
-    const moduleStats: Record<string, AlertSeverityByModule> = {};
-
-    vulns.forEach((vuln) => {
-      vuln.affectedSoftware.forEach((sw) => {
-        const module = sw.name;
-        if (!moduleStats[module]) {
-          moduleStats[module] = { module, critical: 0, high: 0, medium: 0 };
-        }
-
-        const severity = vuln.severity.toLowerCase();
-        if (severity === 'critical') moduleStats[module].critical++;
-        else if (severity === 'high') moduleStats[module].high++;
-        else if (severity === 'medium') moduleStats[module].medium++;
-      });
-    });
-
-    // Return top 10 by total count
-    return Object.values(moduleStats)
-      .sort((a, b) => b.critical + b.high + b.medium - (a.critical + a.high + a.medium))
-      .slice(0, 10);
+    const rows = await prisma.$queryRaw<Array<{ module: string; critical: bigint; high: bigint; medium: bigint }>>`
+      SELECT
+        vs.name as module,
+        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'critical') as critical,
+        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'high') as high,
+        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'medium') as medium
+      FROM vulnerability_software vs
+      JOIN vulnerabilities v ON v.id = vs.vulnerability_id
+      WHERE vs.name IS NOT NULL
+      GROUP BY vs.name
+      ORDER BY COUNT(*) DESC
+      LIMIT 10
+    `;
+    return rows.map(r => ({
+      module: r.module,
+      critical: Number(r.critical),
+      high: Number(r.high),
+      medium: Number(r.medium),
+    }));
   }
 
   /**

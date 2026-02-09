@@ -266,7 +266,7 @@ func (s *Server) getAgentInfo() *models.AgentInfo {
 		Hostname:  hostname,
 		OS:        osName,
 		OSVersion: osVersion,
-		Version:   "1.0.0",
+		Version:   "1.0.4",
 		Status:    "Running",
 		StartedAt: s.startTime.Format(time.RFC3339),
 	}

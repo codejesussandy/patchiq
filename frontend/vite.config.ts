@@ -16,8 +16,9 @@ export default defineConfig({
     host: '0.0.0.0',  // Allow connections from any host
     allowedHosts: ['dev.skenzeriq.com', 'localhost'],
     hmr: {
-      // Auto-detect port from browser connection (works with nginx proxy)
-      clientPort: parseInt(process.env.VITE_HMR_PORT || process.env.VITE_PORT || '5173'),
+      host: 'localhost',
+      port: 5173,
+      protocol: 'ws',
     },
     strictPort: true,
     proxy: {

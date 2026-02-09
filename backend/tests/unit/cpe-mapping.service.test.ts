@@ -13,19 +13,19 @@ describe('CPE Mapping Service', () => {
       expect(cpeMappingService.normalizeSoftwareName('NGINX')).toBe('nginx');
     });
 
-    it('should remove lib prefix and trailing numbers', () => {
-      expect(cpeMappingService.normalizeSoftwareName('libssl3')).toBe('ssl');
-      expect(cpeMappingService.normalizeSoftwareName('libcurl4')).toBe('curl');
-      expect(cpeMappingService.normalizeSoftwareName('libxml2')).toBe('xml');
+    it('should remove lib prefix when remainder >= 4 chars, and trailing numbers', () => {
+      expect(cpeMappingService.normalizeSoftwareName('libssl3')).toBe('libssl');   // ssl=3 chars < 4, lib kept
+      expect(cpeMappingService.normalizeSoftwareName('libcurl4')).toBe('curl');    // curl=4 chars >= 4, lib stripped
+      expect(cpeMappingService.normalizeSoftwareName('libxml2')).toBe('libxml');   // xml=3 chars < 4, lib kept
     });
 
-    it('should remove python prefix', () => {
-      expect(cpeMappingService.normalizeSoftwareName('python3-requests')).toBe('requests');
-      expect(cpeMappingService.normalizeSoftwareName('python-pip')).toBe('pip');
+    it('should NOT remove language prefixes (python3-, node-, etc.)', () => {
+      expect(cpeMappingService.normalizeSoftwareName('python3-requests')).toBe('python3-requests');
+      expect(cpeMappingService.normalizeSoftwareName('python-pip')).toBe('python-pip');
     });
 
-    it('should remove node prefix', () => {
-      expect(cpeMappingService.normalizeSoftwareName('node-express')).toBe('express');
+    it('should NOT remove node prefix', () => {
+      expect(cpeMappingService.normalizeSoftwareName('node-express')).toBe('node-express');
     });
 
     it('should remove trailing version numbers', () => {
@@ -45,9 +45,10 @@ describe('CPE Mapping Service', () => {
     });
 
     it('should handle real-world examples', () => {
-      // libssl1.1 -> ssl1.1 (lib removed) -> ssl1 (trailing .1 removed)
-      expect(cpeMappingService.normalizeSoftwareName('libssl1.1')).toBe('ssl1');
-      expect(cpeMappingService.normalizeSoftwareName('python3-cryptography')).toBe('cryptography');
+      // libssl1.1 -> trailing version stripped -> libssl (lib kept, ssl=3 < 4)
+      expect(cpeMappingService.normalizeSoftwareName('libssl1.1')).toBe('libssl');
+      // Language prefixes no longer stripped
+      expect(cpeMappingService.normalizeSoftwareName('python3-cryptography')).toBe('python3-cryptography');
       expect(cpeMappingService.normalizeSoftwareName('libc6')).toBe('libc');
     });
   });
@@ -109,24 +110,26 @@ describe('CPE Mapping Service', () => {
 
 describe('CPE Mapping Service - Name Normalization Patterns', () => {
   // Test comprehensive name normalization for common software
-  // Note: Normalization removes lib prefix AND trailing numbers
+  // Note: Normalization removes lib prefix (if remainder >= 4 chars) AND trailing numbers.
+  // Language prefixes (python3-, node-, etc.) are NOT stripped.
 
   const testCases = [
-    // Linux package names (lib prefix removed, trailing numbers and dots removed)
-    { input: 'libssl3', expected: 'ssl' },
-    { input: 'libcurl4', expected: 'curl' },
-    { input: 'libxml2', expected: 'xml' },
-    { input: 'libc6', expected: 'libc' }, // 'lib' prefix not removed (too short after), number removed
-    { input: 'libssl1.1', expected: 'ssl1' }, // lib removed, then trailing .1 removed
+    // Linux package names (lib prefix removed only if remainder >= 4 chars)
+    { input: 'libssl3', expected: 'libssl' },     // ssl=3 < 4, lib kept
+    { input: 'libcurl4', expected: 'curl' },       // curl=4 >= 4, lib stripped
+    { input: 'libxml2', expected: 'libxml' },      // xml=3 < 4, lib kept
+    { input: 'libc6', expected: 'libc' },          // c=1 < 4, lib kept
+    { input: 'libssl1.1', expected: 'libssl' },    // trailing version stripped, ssl=3 < 4, lib kept
+    { input: 'libexpat1', expected: 'expat' },     // expat=5 >= 4, lib stripped
 
-    // Python packages
-    { input: 'python3-pip', expected: 'pip' },
-    { input: 'python3-requests', expected: 'requests' },
-    { input: 'python-cryptography', expected: 'cryptography' },
+    // Language-prefixed packages NOT stripped (python3-openssl != openssl)
+    { input: 'python3-pip', expected: 'python3-pip' },
+    { input: 'python3-requests', expected: 'python3-requests' },
+    { input: 'python-cryptography', expected: 'python-cryptography' },
 
-    // Node packages
-    { input: 'node-express', expected: 'express' },
-    { input: 'node-lodash', expected: 'lodash' },
+    // Node packages NOT stripped
+    { input: 'node-express', expected: 'node-express' },
+    { input: 'node-lodash', expected: 'node-lodash' },
 
     // Version suffixes (trailing numbers removed)
     { input: 'postgresql15', expected: 'postgresql' },

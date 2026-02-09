@@ -4,6 +4,7 @@ import { NotFoundError } from '@shared/errors';
 import { generateTokenPair } from '@shared/utils/jwt';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import { getRelativeTime } from '@shared/utils/date';
+import { calculateAgentStatus } from '@shared/utils/agent-status';
 import { cveDatabase } from '@shared/services/cve-database.service';
 import { evaluateAlertsForAsset, evaluateSecurityAlertsForAsset } from '@/modules/alerts/alert-evaluation.service';
 import { notificationsService } from '@/modules/notifications/notifications.service';
@@ -262,7 +263,7 @@ export class AgentsService {
       id: agent.id,
       machineId: agent.machineId,
       name: agent.name,
-      status: agent.status,
+      status: calculateAgentStatus(agent),
       os: agent.os,
       osVersion: agent.osVersion,
       agentVersion: agent.agentVersion,
@@ -308,7 +309,7 @@ export class AgentsService {
       id: agent.id,
       machineId: agent.machineId,
       name: agent.name,
-      status: agent.status,
+      status: calculateAgentStatus(agent),
       os: agent.os,
       osVersion: agent.osVersion,
       agentVersion: agent.agentVersion,
@@ -394,7 +395,7 @@ export class AgentsService {
       id: finalAgent!.id,
       machineId: finalAgent!.machineId,
       name: finalAgent!.name,
-      status: finalAgent!.status,
+      status: calculateAgentStatus(finalAgent!),
       os: finalAgent!.os,
       osVersion: finalAgent!.osVersion,
       agentVersion: finalAgent!.agentVersion,

@@ -375,6 +375,42 @@ export const CPE_MAPPINGS: CpeMappingSeed[] = [
   { agentName: 'qemu', cpeVendor: 'qemu', cpeProduct: 'qemu', platform: 'linux', confidence: 1.0 },
   { agentName: 'qemu-kvm', cpeVendor: 'qemu', cpeProduct: 'qemu', platform: 'linux', confidence: 0.95 },
   { agentName: 'qemu-system-x86', cpeVendor: 'qemu', cpeProduct: 'qemu', platform: 'linux', confidence: 0.95 },
+
+  // ============================================
+  // Hub Software (PatchIQ Software Packages)
+  // ============================================
+
+  // 7-Zip
+  { agentName: '7-Zip', agentVendor: 'Igor Pavlov', cpeVendor: '7-zip', cpeProduct: '7-zip', platform: 'windows', confidence: 1.0 },
+  { agentName: '7zip', cpeVendor: '7-zip', cpeProduct: '7-zip', platform: 'all', confidence: 0.95 },
+  { agentName: 'p7zip', cpeVendor: '7-zip', cpeProduct: '7-zip', platform: 'linux', confidence: 0.9 },
+  { agentName: 'p7zip-full', cpeVendor: '7-zip', cpeProduct: '7-zip', platform: 'linux', packageManager: 'dpkg', confidence: 0.9 },
+
+  // VLC Media Player
+  { agentName: 'VLC media player', agentVendor: 'VideoLAN', cpeVendor: 'videolan', cpeProduct: 'vlc_media_player', platform: 'all', confidence: 1.0 },
+  { agentName: 'VLC', cpeVendor: 'videolan', cpeProduct: 'vlc_media_player', platform: 'all', confidence: 0.95 },
+  { agentName: 'vlc', cpeVendor: 'videolan', cpeProduct: 'vlc_media_player', platform: 'linux', confidence: 0.95 },
+
+  // Visual Studio Code
+  { agentName: 'Microsoft Visual Studio Code', agentVendor: 'Microsoft Corporation', cpeVendor: 'microsoft', cpeProduct: 'visual_studio_code', platform: 'all', confidence: 1.0 },
+  { agentName: 'Visual Studio Code', agentVendor: 'Microsoft', cpeVendor: 'microsoft', cpeProduct: 'visual_studio_code', platform: 'all', confidence: 1.0 },
+  { agentName: 'code', cpeVendor: 'microsoft', cpeProduct: 'visual_studio_code', platform: 'linux', confidence: 0.9 },
+
+  // Google Chrome (linux package names)
+  { agentName: 'google-chrome-stable', cpeVendor: 'google', cpeProduct: 'chrome', platform: 'linux', packageManager: 'dpkg', confidence: 1.0 },
+
+  // TeamViewer
+  { agentName: 'TeamViewer', agentVendor: 'TeamViewer', cpeVendor: 'teamviewer', cpeProduct: 'teamviewer', platform: 'all', confidence: 1.0 },
+  { agentName: 'teamviewer', cpeVendor: 'teamviewer', cpeProduct: 'teamviewer', platform: 'linux', confidence: 0.95 },
+
+  // Slack
+  { agentName: 'Slack', agentVendor: 'Slack Technologies', cpeVendor: 'slack', cpeProduct: 'slack', platform: 'all', confidence: 0.8, notes: 'Electron app — few NVD CVEs' },
+  { agentName: 'slack-desktop', cpeVendor: 'slack', cpeProduct: 'slack', platform: 'linux', confidence: 0.8 },
+
+  // Notepad++
+  { agentName: 'Notepad++', agentVendor: 'Notepad++ Team', cpeVendor: 'notepad\\+\\+', cpeProduct: 'notepad\\+\\+', platform: 'windows', confidence: 1.0 },
+  { agentName: 'Notepad++ (64-bit x64)', agentVendor: 'Notepad++ Team', cpeVendor: 'notepad\\+\\+', cpeProduct: 'notepad\\+\\+', platform: 'windows', confidence: 1.0 },
+  { agentName: 'notepadpp', cpeVendor: 'notepad\\+\\+', cpeProduct: 'notepad\\+\\+', platform: 'windows', confidence: 0.95 },
 ];
 
 /**

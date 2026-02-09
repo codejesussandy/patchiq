@@ -454,7 +454,7 @@ func (c *WindowsTelemetryCollector) collectAgentUtilization() *models.AgentUtili
 	util := &models.AgentUtilization{
 		PID:        os.Getpid(),
 		Goroutines: runtime.NumGoroutine(),
-		Version:    "1.0.0",
+		Version:    "1.0.4",
 	}
 
 	if agentStartTime.IsZero() {

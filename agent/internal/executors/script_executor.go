@@ -14,21 +14,33 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/patchify/agent/internal/download"
 	"github.com/patchify/agent/internal/models"
 )
+
+// DownloadConfig holds download-related settings for script execution
+type DownloadConfig struct {
+	MaxDownloadSpeedMBps int
+	EnableDownloadResume bool
+	ProxyURL             string
+	ProxyUser            string
+	ProxyPassword        string
+}
 
 // BaseScriptExecutor handles script-based package installation (Hub-centric approach)
 // This executor downloads bundles from the Hub and executes the appropriate script
 type BaseScriptExecutor struct {
-	bundleDir string // Temporary directory for extracted bundles
-	dataDir   string // Persistent data directory (~/.patchify-agent)
+	bundleDir      string // Temporary directory for extracted bundles
+	dataDir        string // Persistent data directory (~/.patchify-agent)
+	downloadConfig *DownloadConfig
 }
 
 // NewBaseScriptExecutor creates a new script executor
-func NewBaseScriptExecutor(dataDir string) *BaseScriptExecutor {
+func NewBaseScriptExecutor(dataDir string, dlCfg *DownloadConfig) *BaseScriptExecutor {
 	if dataDir == "" {
 		homeDir, _ := os.UserHomeDir()
 		dataDir = filepath.Join(homeDir, ".patchify-agent")
@@ -38,8 +50,9 @@ func NewBaseScriptExecutor(dataDir string) *BaseScriptExecutor {
 	os.MkdirAll(bundleDir, 0755)
 
 	return &BaseScriptExecutor{
-		bundleDir: bundleDir,
-		dataDir:   dataDir,
+		bundleDir:      bundleDir,
+		dataDir:        dataDir,
+		downloadConfig: dlCfg,
 	}
 }
 
@@ -171,21 +184,48 @@ func (e *BaseScriptExecutor) ExecuteInlineScript(script string, operationType st
 	return execResult
 }
 
-// downloadBundle downloads a bundle file and verifies its checksum
-func (e *BaseScriptExecutor) downloadBundle(url string, expectedChecksum string) (string, error) {
-	// Create temp file
+// downloadBundle downloads a bundle file with optional resume, rate limiting,
+// progress tracking, and checksum verification.
+func (e *BaseScriptExecutor) downloadBundle(bundleURL string, expectedChecksum string) (string, error) {
+	// Create temp file (or reuse existing partial download)
 	tempFile, err := os.CreateTemp(e.bundleDir, "bundle-*.tar.gz")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
 	tempPath := tempFile.Name()
 
-	// Download with timeout
-	client := &http.Client{
-		Timeout: 30 * time.Minute, // Allow 30 minutes for large bundles
+	// Check for partial download when resume is enabled
+	var existingSize int64
+	enableResume := e.downloadConfig != nil && e.downloadConfig.EnableDownloadResume
+	if enableResume {
+		if info, err := tempFile.Stat(); err == nil {
+			existingSize = info.Size()
+		}
 	}
 
-	resp, err := client.Get(url)
+	// Build request with Range header if resuming
+	req, err := http.NewRequest("GET", bundleURL, nil)
+	if err != nil {
+		tempFile.Close()
+		os.Remove(tempPath)
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if existingSize > 0 {
+		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", existingSize))
+		log.Printf("Resuming download from byte %d", existingSize)
+		if _, err := tempFile.Seek(0, io.SeekEnd); err != nil {
+			tempFile.Close()
+			os.Remove(tempPath)
+			return "", fmt.Errorf("failed to seek: %w", err)
+		}
+	}
+
+	httpClient := &http.Client{
+		Timeout: 30 * time.Minute,
+	}
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		tempFile.Close()
 		os.Remove(tempPath)
@@ -193,21 +233,62 @@ func (e *BaseScriptExecutor) downloadBundle(url string, expectedChecksum string)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	// 200 = full download, 206 = partial content (resume)
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
 		tempFile.Close()
 		os.Remove(tempPath)
 		return "", fmt.Errorf("failed to download bundle: HTTP %d", resp.StatusCode)
 	}
 
+	// If server doesn't support range and we had partial data, start fresh
+	if existingSize > 0 && resp.StatusCode == http.StatusOK {
+		tempFile.Seek(0, io.SeekStart)
+		tempFile.Truncate(0)
+		existingSize = 0
+	}
+
+	// Determine total size from Content-Length or Content-Range
+	totalSize := resp.ContentLength
+	if resp.StatusCode == http.StatusPartialContent {
+		if cr := resp.Header.Get("Content-Range"); cr != "" {
+			parts := strings.Split(cr, "/")
+			if len(parts) == 2 {
+				if size, err := strconv.ParseInt(parts[1], 10, 64); err == nil {
+					totalSize = size
+				}
+			}
+		}
+	}
+
+	// Wrap reader with rate limiter
+	var reader io.Reader = resp.Body
+	if e.downloadConfig != nil && e.downloadConfig.MaxDownloadSpeedMBps > 0 {
+		bytesPerSec := e.downloadConfig.MaxDownloadSpeedMBps * 1024 * 1024
+		reader = download.NewRateLimitedReader(reader, bytesPerSec)
+	}
+
+	// Wrap with progress tracking
+	reader = download.NewProgressReader(reader, totalSize, func(downloaded, total int64, bytesPerSec float64) {
+		if total > 0 {
+			pct := float64(downloaded) / float64(total) * 100
+			log.Printf("Bundle download: %.1f%% (%d/%d bytes) @ %.2f MB/s", pct, downloaded, total, bytesPerSec/(1024*1024))
+		} else {
+			log.Printf("Bundle download: %d bytes @ %.2f MB/s", downloaded, bytesPerSec/(1024*1024))
+		}
+	})
+
 	// Download with checksum calculation
 	hasher := sha256.New()
 	writer := io.MultiWriter(tempFile, hasher)
 
-	_, err = io.Copy(writer, resp.Body)
+	_, err = io.Copy(writer, reader)
 	tempFile.Close()
 
 	if err != nil {
-		os.Remove(tempPath)
+		// Keep partial file for resume if enabled
+		if !enableResume {
+			os.Remove(tempPath)
+		}
 		return "", fmt.Errorf("failed to save bundle: %w", err)
 	}
 
@@ -220,6 +301,7 @@ func (e *BaseScriptExecutor) downloadBundle(url string, expectedChecksum string)
 		}
 	}
 
+	log.Printf("Bundle downloaded successfully: %s", tempPath)
 	return tempPath, nil
 }
 

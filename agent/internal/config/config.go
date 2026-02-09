@@ -31,6 +31,16 @@ type Config struct {
 	CollectPeripherals bool `json:"collectPeripherals"`
 	CollectTelemetry   bool `json:"collectTelemetry"`
 
+	// Proxy configuration
+	ProxyURL      string `json:"proxyUrl,omitempty"`
+	ProxyUser     string `json:"proxyUser,omitempty"`
+	ProxyPassword string `json:"proxyPassword,omitempty"`
+	NoProxy       string `json:"noProxy,omitempty"`
+
+	// Download configuration
+	MaxDownloadSpeedMBps int  `json:"maxDownloadSpeedMbps"`
+	EnableDownloadResume bool `json:"enableDownloadResume"`
+
 	// Logging
 	LogLevel string `json:"logLevel"`
 	LogFile  string `json:"logFile,omitempty"`
@@ -46,7 +56,7 @@ func DefaultConfig() *Config {
 
 	cfg := &Config{
 		ServerURL:           "",
-		WebUIPort:           5003,
+		WebUIPort:           4504,
 		EnableWebUI:         true,
 		HeartbeatInterval:   60,
 		InventoryInterval:   21600, // 6 hours
@@ -57,6 +67,7 @@ func DefaultConfig() *Config {
 		CollectSecurity:     true,
 		CollectPeripherals:  true,
 		CollectTelemetry:    true,
+		EnableDownloadResume: true, // Enable resume by default
 		LogLevel:            "info",
 		DataDir:             dataDir,
 	}
@@ -75,6 +86,25 @@ func DefaultConfig() *Config {
 	}
 	if v := os.Getenv("PATCHIQ_DATA_DIR"); v != "" {
 		cfg.DataDir = v
+	}
+
+	// Proxy settings from environment (standard HTTP_PROXY / HTTPS_PROXY / NO_PROXY,
+	// plus PatchIQ-specific PATCHIQ_PROXY_URL which takes precedence)
+	if v := os.Getenv("PATCHIQ_PROXY_URL"); v != "" {
+		cfg.ProxyURL = v
+	} else if v := os.Getenv("HTTPS_PROXY"); v != "" {
+		cfg.ProxyURL = v
+	} else if v := os.Getenv("HTTP_PROXY"); v != "" {
+		cfg.ProxyURL = v
+	}
+	if v := os.Getenv("PATCHIQ_PROXY_USER"); v != "" {
+		cfg.ProxyUser = v
+	}
+	if v := os.Getenv("PATCHIQ_PROXY_PASSWORD"); v != "" {
+		cfg.ProxyPassword = v
+	}
+	if v := os.Getenv("NO_PROXY"); v != "" {
+		cfg.NoProxy = v
 	}
 
 	return cfg

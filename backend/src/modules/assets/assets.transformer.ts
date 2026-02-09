@@ -15,6 +15,7 @@
  */
 
 import type { Prisma } from '@prisma/client';
+import { calculateAgentStatus } from '@shared/utils/agent-status';
 
 // ============================================
 // Type Definitions
@@ -252,8 +253,9 @@ export function transformAssetForAPI(
   const assetId =
     dbRecord.assetTag || `ASSET-${dbRecord.id.slice(0, 8).toUpperCase()}`;
 
-  // Determine operational status from agent
-  const isConnected = dbRecord.agent?.status === 'Connected';
+  // Determine operational status from agent (calculated from lastHeartbeat age)
+  const computedStatus = calculateAgentStatus(dbRecord.agent);
+  const isConnected = computedStatus === 'Connected';
   const operationalStatus = isConnected ? 'Connected' : 'Disconnected';
   const operationalStatusSince = dbRecord.agent?.lastHeartbeat?.toISOString() || null;
 

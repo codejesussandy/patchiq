@@ -143,13 +143,13 @@ services:
       - MINIO_USE_SSL=false
       # MinIO public access goes through nginx reverse proxy
       - MINIO_PUBLIC_ENDPOINT=${PUBLIC_HOST:-localhost}
-      - MINIO_PUBLIC_PORT=${PUBLIC_PORT:-6001}
+      - MINIO_PUBLIC_PORT=${PUBLIC_PORT:-5173}
       - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-change-in-production}
       - JWT_ACCESS_TOKEN_EXPIRY=1h
       - JWT_REFRESH_TOKEN_EXPIRY=7d
-      - CORS_ORIGIN=${PUBLIC_SCHEME:-http}://${PUBLIC_HOST:-localhost}:${PUBLIC_PORT:-6001}
+      - CORS_ORIGIN=${PUBLIC_SCHEME:-http}://${PUBLIC_HOST:-localhost}:${PUBLIC_PORT:-5173}
       # Backend public URL - agents use this to reach the backend via nginx
-      - BACKEND_PUBLIC_URL=${PUBLIC_SCHEME:-http}://${PUBLIC_HOST:-localhost}:${PUBLIC_PORT:-6001}
+      - BACKEND_PUBLIC_URL=${PUBLIC_SCHEME:-http}://${PUBLIC_HOST:-localhost}:${PUBLIC_PORT:-5173}
       # Mock services for local development
       - MOCK_NVD=true
       - MOCK_EMAIL=true

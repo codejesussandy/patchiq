@@ -24,3 +24,46 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Always show horizontal scrollbar on tables */
+.ant-table-wrapper .ant-table .ant-table-container .ant-table-content,
+.ant-table-wrapper .ant-table .ant-table-container .ant-table-body,
+div[class*="ant-table-content"],
+div[class*="ant-table-body"] {
+  overflow-x: scroll !important;
+  scrollbar-width: auto !important;
+  scrollbar-color: #bfbfbf #f0f0f0 !important;
+}
+
+.ant-table-wrapper .ant-table .ant-table-container .ant-table-content::-webkit-scrollbar,
+.ant-table-wrapper .ant-table .ant-table-container .ant-table-body::-webkit-scrollbar,
+div[class*="ant-table-content"]::-webkit-scrollbar,
+div[class*="ant-table-body"]::-webkit-scrollbar {
+  height: 10px !important;
+  -webkit-appearance: none !important;
+  display: block !important;
+}
+
+.ant-table-wrapper .ant-table .ant-table-container .ant-table-content::-webkit-scrollbar-track,
+.ant-table-wrapper .ant-table .ant-table-container .ant-table-body::-webkit-scrollbar-track,
+div[class*="ant-table-content"]::-webkit-scrollbar-track,
+div[class*="ant-table-body"]::-webkit-scrollbar-track {
+  background: #f0f0f0 !important;
+  border-radius: 5px !important;
+}
+
+.ant-table-wrapper .ant-table .ant-table-container .ant-table-content::-webkit-scrollbar-thumb,
+.ant-table-wrapper .ant-table .ant-table-container .ant-table-body::-webkit-scrollbar-thumb,
+div[class*="ant-table-content"]::-webkit-scrollbar-thumb,
+div[class*="ant-table-body"]::-webkit-scrollbar-thumb {
+  background: #bfbfbf !important;
+  border-radius: 5px !important;
+  border: 2px solid #f0f0f0 !important;
+}
+
+.ant-table-wrapper .ant-table .ant-table-container .ant-table-content::-webkit-scrollbar-thumb:hover,
+.ant-table-wrapper .ant-table .ant-table-container .ant-table-body::-webkit-scrollbar-thumb:hover,
+div[class*="ant-table-content"]::-webkit-scrollbar-thumb:hover,
+div[class*="ant-table-body"]::-webkit-scrollbar-thumb:hover {
+  background: #999 !important;
+}

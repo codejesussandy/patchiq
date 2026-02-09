@@ -15,6 +15,20 @@ const applicationTypeSchema = z.enum(['ALL', 'INCLUDE', 'EXCLUDE']);
 const scopeTypeSchema = z.enum(['ALL_COMPUTERS', 'SCOPE', 'SPECIFIC_GROUPS']);
 
 // ============================================
+// Patch Prerequisites Schema
+// ============================================
+
+const prerequisitesSchema = z.object({
+  minOsVersion: z.string().optional(),
+  maxOsVersion: z.string().optional(),
+  osEditions: z.array(z.string()).optional(),
+  architectures: z.array(z.string()).optional(),
+  requiredFeatures: z.array(z.string()).optional(),
+  excludedFeatures: z.array(z.string()).optional(),
+  description: z.string().optional(),
+}).optional();
+
+// ============================================
 // Patch Schemas
 // ============================================
 
@@ -39,6 +53,7 @@ export const createPatchSchema = z.object({
   languagesSupported: z.array(z.string()).optional().default([]),
   tags: z.array(z.string()).optional().default([]),
   cveNumbers: z.array(z.string()).optional().default([]),
+  prerequisites: prerequisitesSchema,
 });
 
 export const updatePatchSchema = z.object({
@@ -52,6 +67,7 @@ export const updatePatchSchema = z.object({
   approvalStatus: approvalStatusSchema.optional(),
   tags: z.array(z.string()).optional(),
   cveNumbers: z.array(z.string()).optional(),
+  prerequisites: prerequisitesSchema,
 });
 
 export const patchListQuerySchema = z.object({
@@ -65,6 +81,7 @@ export const patchListQuerySchema = z.object({
   testStatus: z.string().optional(),
   approvalStatus: z.string().optional(),
   search: z.string().optional(),
+  includeSuperseded: z.coerce.boolean().optional().default(false), // Filter out superseded patches by default
 });
 
 export const patchIdParamSchema = z.object({
