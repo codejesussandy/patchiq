@@ -411,6 +411,70 @@ export const CPE_MAPPINGS: CpeMappingSeed[] = [
   { agentName: 'Notepad++', agentVendor: 'Notepad++ Team', cpeVendor: 'notepad\\+\\+', cpeProduct: 'notepad\\+\\+', platform: 'windows', confidence: 1.0 },
   { agentName: 'Notepad++ (64-bit x64)', agentVendor: 'Notepad++ Team', cpeVendor: 'notepad\\+\\+', cpeProduct: 'notepad\\+\\+', platform: 'windows', confidence: 1.0 },
   { agentName: 'notepadpp', cpeVendor: 'notepad\\+\\+', cpeProduct: 'notepad\\+\\+', platform: 'windows', confidence: 0.95 },
+
+  // ============================================
+  // Desktop Applications (from unmatched reports)
+  // ============================================
+
+  // Docker Desktop (Windows/macOS installer, distinct from docker-ce)
+  { agentName: 'Docker Desktop', agentVendor: 'Docker Inc.', cpeVendor: 'docker', cpeProduct: 'docker_desktop', platform: 'all', confidence: 1.0 },
+  { agentName: 'Docker Desktop', agentVendor: 'Docker, Inc.', cpeVendor: 'docker', cpeProduct: 'docker_desktop', platform: 'all', confidence: 1.0 },
+
+  // Microsoft Edge WebView2 Runtime
+  { agentName: 'Microsoft Edge WebView2 Runtime', agentVendor: 'Microsoft Corporation', cpeVendor: 'microsoft', cpeProduct: 'edge', platform: 'windows', confidence: 0.85, notes: 'WebView2 shares Edge Chromium engine and CVEs' },
+
+  // Go Programming Language (agent reports long display name)
+  { agentName: 'Go Programming Language', agentVendor: 'https://go.dev', cpeVendor: 'golang', cpeProduct: 'go', platform: 'all', confidence: 1.0 },
+  { agentName: 'Go Programming Language amd64', agentVendor: 'https://go.dev', cpeVendor: 'golang', cpeProduct: 'go', platform: 'all', confidence: 1.0 },
+
+  // UltraViewer
+  { agentName: 'UltraViewer', agentVendor: 'DucFabulous', cpeVendor: 'ultraviewer', cpeProduct: 'ultraviewer', platform: 'windows', confidence: 1.0 },
+
+  // Zoom
+  { agentName: 'Zoom', agentVendor: 'Zoom Video Communications, Inc.', cpeVendor: 'zoom', cpeProduct: 'zoom', platform: 'all', confidence: 1.0 },
+  { agentName: 'Zoom Workplace', agentVendor: 'Zoom Video Communications, Inc.', cpeVendor: 'zoom', cpeProduct: 'zoom', platform: 'all', confidence: 1.0 },
+  { agentName: 'zoom', cpeVendor: 'zoom', cpeProduct: 'zoom', platform: 'linux', confidence: 0.95 },
+
+  // AnyDesk
+  { agentName: 'AnyDesk', agentVendor: 'AnyDesk Software GmbH', cpeVendor: 'anydesk', cpeProduct: 'anydesk', platform: 'all', confidence: 1.0 },
+  { agentName: 'anydesk', cpeVendor: 'anydesk', cpeProduct: 'anydesk', platform: 'linux', confidence: 0.95 },
+
+  // Discord
+  { agentName: 'Discord', agentVendor: 'Discord Inc.', cpeVendor: 'discord', cpeProduct: 'discord', platform: 'all', confidence: 0.8, notes: 'Electron app — few NVD CVEs' },
+
+  // Postman
+  { agentName: 'Postman', agentVendor: 'Postman', cpeVendor: 'postman', cpeProduct: 'postman', platform: 'all', confidence: 0.8, notes: 'Electron app — few NVD CVEs' },
+
+  // FileZilla
+  { agentName: 'FileZilla Client', agentVendor: 'Tim Kosse', cpeVendor: 'filezilla-project', cpeProduct: 'filezilla_client', platform: 'all', confidence: 1.0 },
+  { agentName: 'FileZilla', cpeVendor: 'filezilla-project', cpeProduct: 'filezilla_client', platform: 'all', confidence: 0.95 },
+  { agentName: 'filezilla', cpeVendor: 'filezilla-project', cpeProduct: 'filezilla_client', platform: 'linux', confidence: 0.95 },
+
+  // WinSCP
+  { agentName: 'WinSCP', agentVendor: 'Martin Prikryl', cpeVendor: 'winscp', cpeProduct: 'winscp', platform: 'windows', confidence: 1.0 },
+
+  // PuTTY
+  { agentName: 'PuTTY', agentVendor: 'Simon Tatham', cpeVendor: 'putty', cpeProduct: 'putty', platform: 'windows', confidence: 1.0 },
+  { agentName: 'PuTTY release', cpeVendor: 'putty', cpeProduct: 'putty', platform: 'windows', confidence: 0.95 },
+
+  // KeePass
+  { agentName: 'KeePass', agentVendor: 'Dominik Reichl', cpeVendor: 'keepass', cpeProduct: 'keepass', platform: 'windows', confidence: 1.0 },
+  { agentName: 'KeePassXC', cpeVendor: 'keepassxc', cpeProduct: 'keepassxc', platform: 'all', confidence: 1.0 },
+
+  // Terraform
+  { agentName: 'Terraform', agentVendor: 'HashiCorp', cpeVendor: 'hashicorp', cpeProduct: 'terraform', platform: 'all', confidence: 1.0 },
+  { agentName: 'terraform', cpeVendor: 'hashicorp', cpeProduct: 'terraform', platform: 'all', confidence: 0.95 },
+
+  // Ansible
+  { agentName: 'ansible', cpeVendor: 'redhat', cpeProduct: 'ansible', platform: 'all', confidence: 1.0 },
+  { agentName: 'ansible-core', cpeVendor: 'redhat', cpeProduct: 'ansible', platform: 'linux', confidence: 0.95 },
+
+  // Jenkins
+  { agentName: 'jenkins', cpeVendor: 'jenkins', cpeProduct: 'jenkins', platform: 'all', confidence: 1.0 },
+  { agentName: 'Jenkins', cpeVendor: 'jenkins', cpeProduct: 'jenkins', platform: 'all', confidence: 1.0 },
+
+  // 7-Zip (additional Windows installer variant)
+  { agentName: '7-Zip 24.09 (x64)', agentVendor: 'Igor Pavlov', cpeVendor: '7-zip', cpeProduct: '7-zip', platform: 'windows', confidence: 1.0 },
 ];
 
 /**

@@ -45,6 +45,336 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
+// ============================================
+// Patch Form Component (shared by Create & Edit)
+// ============================================
+
+interface PatchFormProps {
+  form: ReturnType<typeof Form.useForm>[0];
+  tags: Array<{ id: string; name: string }>;
+  cveSuggestions: Array<{ cveId: string; severity: string; description: string }>;
+  onCveFocus: (software?: string, vendor?: string) => void;
+}
+
+const SectionTitle = ({ children }: { children: React.ReactNode }) => (
+  <Divider orientation="left" orientationMargin={0} style={{ marginTop: 4, marginBottom: 16 }}>
+    <Text strong style={{ fontSize: 13 }}>{children}</Text>
+  </Divider>
+);
+
+const PatchFormFields = ({ form, tags, cveSuggestions, onCveFocus }: PatchFormProps) => (
+  <Form form={form} layout="vertical">
+    {/* --- Identity --- */}
+    <SectionTitle>Identity</SectionTitle>
+    <Row gutter={16}>
+      <Col span={12}>
+        <Form.Item
+          name="software"
+          label="Software Name"
+          rules={[{ required: true, message: 'Please enter software name' }]}
+        >
+          <Input placeholder="e.g., 7-Zip 24.01" />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item
+          name="platform"
+          label="Platform"
+          rules={[{ required: true, message: 'Please select platform' }]}
+        >
+          <Select placeholder="Select platform">
+            <Option value="Windows">Windows</Option>
+            <Option value="MacOS">MacOS</Option>
+            <Option value="Linux">Linux</Option>
+            <Option value="Ubuntu">Ubuntu</Option>
+          </Select>
+        </Form.Item>
+      </Col>
+    </Row>
+    <Row gutter={16}>
+      <Col span={12}>
+        <Form.Item name="vendor" label="Vendor">
+          <Input placeholder="e.g., Microsoft, Igor Pavlov" />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="product" label="Product">
+          <Input placeholder="e.g., 7-Zip, Visual Studio Code" />
+        </Form.Item>
+      </Col>
+    </Row>
+    <Form.Item name="description" label="Description">
+      <TextArea rows={2} placeholder="Brief description of the patch" />
+    </Form.Item>
+
+    {/* --- Classification --- */}
+    <SectionTitle>Classification</SectionTitle>
+    <Row gutter={16}>
+      <Col span={12}>
+        <Form.Item
+          name="severity"
+          label="Severity"
+          rules={[{ required: true, message: 'Please select severity' }]}
+        >
+          <Select placeholder="Select severity">
+            <Option value="CRITICAL">Critical</Option>
+            <Option value="High">High</Option>
+            <Option value="Medium">Medium</Option>
+            <Option value="Low">Low</Option>
+            <Option value="UNSPECIFIED">Unspecified</Option>
+          </Select>
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item
+          name="category"
+          label="Category"
+          rules={[{ required: true, message: 'Please select category' }]}
+        >
+          <Select placeholder="Select category">
+            <Option value="Security Updates">Security Updates</Option>
+            <Option value="Application Updates">Application Updates</Option>
+            <Option value="Critical Updates">Critical Updates</Option>
+            <Option value="Feature Packs">Feature Packs</Option>
+            <Option value="Driver Updates">Driver Updates</Option>
+          </Select>
+        </Form.Item>
+      </Col>
+    </Row>
+    <Row gutter={16}>
+      <Col span={12}>
+        <Form.Item name="tags" label="Tags">
+          <Select mode="tags" placeholder="Add tags">
+            {tags.map((t) => (
+              <Option key={t.id} value={t.name}>{t.name}</Option>
+            ))}
+          </Select>
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="cveNumbers" label="CVE Numbers">
+          <Select
+            mode="tags"
+            placeholder="e.g., CVE-2024-12345"
+            tokenSeparators={[',', ' ']}
+            onFocus={() => {
+              const software = form.getFieldValue('software');
+              const vendor = form.getFieldValue('vendor');
+              if (software) onCveFocus(software, vendor);
+            }}
+          >
+            {cveSuggestions.map((s) => (
+              <Option key={s.cveId} value={s.cveId}>
+                {s.cveId} ({s.severity}) — {s.description.slice(0, 80)}...
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+      </Col>
+    </Row>
+
+    {/* --- Technical Details --- */}
+    <SectionTitle>Technical Details</SectionTitle>
+    <Row gutter={16}>
+      <Col span={8}>
+        <Form.Item name="bulletinId" label="Bulletin ID">
+          <Input placeholder="e.g., MS24-001" />
+        </Form.Item>
+      </Col>
+      <Col span={8}>
+        <Form.Item name="kbNumber" label="KB Number">
+          <Input placeholder="e.g., KB5034441" />
+        </Form.Item>
+      </Col>
+      <Col span={8}>
+        <Form.Item name="releaseDate" label="Release Date">
+          <DatePicker style={{ width: '100%' }} />
+        </Form.Item>
+      </Col>
+    </Row>
+    <Row gutter={16}>
+      <Col span={8}>
+        <Form.Item name="architecture" label="Architecture">
+          <Select placeholder="Select" allowClear>
+            <Option value="64 BIT">64-bit</Option>
+            <Option value="32 BIT">32-bit</Option>
+            <Option value="Universal">Universal</Option>
+          </Select>
+        </Form.Item>
+      </Col>
+      <Col span={8}>
+        <Form.Item
+          name="rebootRequired"
+          label="Reboot Required"
+          valuePropName="checked"
+          initialValue={false}
+        >
+          <Switch />
+        </Form.Item>
+      </Col>
+      <Col span={8}>
+        <Form.Item
+          name="supportUninstallation"
+          label="Supports Uninstall"
+          valuePropName="checked"
+          initialValue={false}
+        >
+          <Switch />
+        </Form.Item>
+      </Col>
+    </Row>
+
+    {/* --- References --- */}
+    <SectionTitle>References</SectionTitle>
+    <Row gutter={16}>
+      <Col span={12}>
+        <Form.Item name="referenceUrl" label="Reference URL">
+          <Input placeholder="https://..." />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="languagesSupported" label="Languages Supported">
+          <Select mode="multiple" placeholder="Select languages" allowClear>
+            <Option value="English">English</Option>
+            <Option value="Spanish">Spanish</Option>
+            <Option value="French">French</Option>
+            <Option value="German">German</Option>
+            <Option value="Chinese">Chinese</Option>
+            <Option value="Japanese">Japanese</Option>
+            <Option value="Korean">Korean</Option>
+            <Option value="Portuguese">Portuguese</Option>
+          </Select>
+        </Form.Item>
+      </Col>
+    </Row>
+  </Form>
+);
+
+// ============================================
+// Affected Products Step
+// ============================================
+
+interface AffectedProductsStepProps {
+  patchId: string | null;
+  affectedProducts: AffectedSoftware[];
+  setAffectedProducts: React.Dispatch<React.SetStateAction<AffectedSoftware[]>>;
+}
+
+const AffectedProductsStep = ({ patchId, affectedProducts, setAffectedProducts }: AffectedProductsStepProps) => {
+  const { message } = App.useApp();
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [addForm] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+
+  const handleAdd = async () => {
+    try {
+      const values = await addForm.validateFields();
+      if (!patchId) return;
+      setLoading(true);
+      const product = await patchService.addAffectedProduct(patchId, {
+        softwareName: values.softwareName,
+        version: values.version,
+        vendor: values.vendor,
+        platform: values.platform,
+      });
+      setAffectedProducts((prev) => [...prev, product]);
+      setAddModalVisible(false);
+      addForm.resetFields();
+      message.success('Affected product added');
+    } catch (error) {
+      if (!(error as { errorFields?: unknown }).errorFields) {
+        message.error('Failed to add affected product');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemove = async (productId: string) => {
+    if (!patchId) return;
+    try {
+      await patchService.removeAffectedProduct(patchId, productId);
+      setAffectedProducts((prev) => prev.filter((p) => p.id !== productId));
+      message.success('Affected product removed');
+    } catch {
+      message.error('Failed to remove affected product');
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Title level={5} style={{ margin: 0 }}>Affected Products</Title>
+        <Button type="link" onClick={() => { addForm.resetFields(); setAddModalVisible(true); }}>
+          + Add Affected Product
+        </Button>
+      </div>
+
+      <Table
+        dataSource={affectedProducts}
+        rowKey="id"
+        pagination={false}
+        size="small"
+        locale={{ emptyText: 'No affected products added yet. Click "+ Add Affected Product" above.' }}
+        columns={[
+          { title: 'Software Name', dataIndex: 'softwareName', key: 'softwareName' },
+          { title: 'Version', dataIndex: 'version', key: 'version', render: (v: string) => v || '-' },
+          { title: 'Vendor', dataIndex: 'vendor', key: 'vendor', render: (v: string) => v || '-' },
+          { title: 'Platform', dataIndex: 'platform', key: 'platform', render: (v: string) => v || '-' },
+          { title: 'Installed On', dataIndex: 'installedOn', key: 'installedOn', render: (v: number) => `${v ?? 0} endpoint${v !== 1 ? 's' : ''}` },
+          {
+            title: '',
+            key: 'action',
+            width: 50,
+            render: (_: unknown, record: AffectedSoftware) => (
+              <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemove(record.id)} />
+            ),
+          },
+        ]}
+      />
+
+      <Modal
+        title="Add Affected Product"
+        open={addModalVisible}
+        onCancel={() => setAddModalVisible(false)}
+        onOk={handleAdd}
+        confirmLoading={loading}
+        okText="Add"
+      >
+        <Form form={addForm} layout="vertical">
+          <Form.Item name="softwareName" label="Software Name" rules={[{ required: true, message: 'Required' }]}>
+            <Input placeholder="e.g., Microsoft Office" />
+          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="version" label="Version">
+                <Input placeholder="e.g., 2021" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="vendor" label="Vendor">
+                <Input placeholder="e.g., Microsoft" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="platform" label="Platform">
+            <Select placeholder="Select platform" allowClear>
+              <Option value="Windows">Windows</Option>
+              <Option value="MacOS">MacOS</Option>
+              <Option value="Linux">Linux</Option>
+              <Option value="Cross-platform">Cross-platform</Option>
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+};
+
+// ============================================
+// Main Page
+// ============================================
+
 export const AllPatches = () => {
   const { message } = App.useApp();
   const navigate = useNavigate();
@@ -55,24 +385,17 @@ export const AllPatches = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [discovering, setDiscovering] = useState(false);
 
-  // Get OS filter from URL params
   const osFilter = searchParams.get('os');
 
-  // Create Patch Modal
-  const [createModalVisible, setCreateModalVisible] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [form] = Form.useForm();
-
-  // Edit Patch Modal
-  const [editModalVisible, setEditModalVisible] = useState(false);
+  // Unified patch modal (create + edit)
+  const [patchModalVisible, setPatchModalVisible] = useState(false);
+  const [patchModalStep, setPatchModalStep] = useState(0);
   const [editingPatch, setEditingPatch] = useState<Patch | null>(null);
-  const [editForm] = Form.useForm();
+  const [form] = Form.useForm();
+  const [savingPatch, setSavingPatch] = useState(false);
 
-  // For Create Patch Step 2
+  // For step 2 (affected products)
   const [affectedProducts, setAffectedProducts] = useState<AffectedSoftware[]>([]);
-  const [addProductModalVisible, setAddProductModalVisible] = useState(false);
-  const [addProductForm] = Form.useForm();
-  const [addProductLoading, setAddProductLoading] = useState(false);
   const [createdPatchId, setCreatedPatchId] = useState<string | null>(null);
 
   // Bulk Add Modal
@@ -96,9 +419,8 @@ export const AllPatches = () => {
 
   // Dynamic option lists
   const [groups, setGroups] = useState<any[]>([]);
-  const [endpointsList, setEndpointsList] = useState<any[]>([]);
-  const [tags, setTags] = useState<any[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [tags, setTags] = useState<any[]>([]);
 
   // CVE auto-suggest
   const [cveSuggestions, setCveSuggestions] = useState<Array<{ cveId: string; severity: string; description: string }>>([]);
@@ -107,14 +429,13 @@ export const AllPatches = () => {
     fetchPatches();
     const fetchOptions = async () => {
       try {
-        const [groupsData, endpointsData, tagsData, agentsData] = await Promise.all([
+        const [groupsData, _endpointsData, tagsData, agentsData] = await Promise.all([
           settingsService.getComputerGroups(),
           assetService.getAssets(),
           tagService.getTags(),
           agentService.getAgents(),
         ]);
         setGroups(groupsData);
-        setEndpointsList(endpointsData);
         setTags(tagsData);
         setAgents(agentsData);
       } catch {
@@ -131,7 +452,7 @@ export const AllPatches = () => {
     const severity = searchParams.get('severity');
 
     if (createPatch === 'true') {
-      setCreateModalVisible(true);
+      openPatchModal(null);
       setTimeout(() => {
         const values: Record<string, unknown> = {};
         if (cve) values.cveNumbers = [cve];
@@ -146,58 +467,132 @@ export const AllPatches = () => {
     try {
       const data = await patchService.getPatches();
       setPatches(data);
-    } catch (error) {
+    } catch {
       message.error('Failed to fetch patches');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchCveSuggestions = async (software: string, vendor?: string) => {
+  const fetchCveSuggestions = async (software?: string, vendor?: string) => {
+    if (!software) return;
     try {
       const suggestions = await vulnerabilityService.suggestCvesForSoftware(software, vendor);
       setCveSuggestions(suggestions);
     } catch {
-      // Silently fail — user can still type CVEs manually
+      // Silently fail
     }
   };
 
-  const handleViewPatch = (patch: Patch) => {
-    navigate(`/patches/${patch.id}`);
+  // ============================================
+  // Unified Patch Modal (Create + Edit)
+  // ============================================
+
+  const openPatchModal = (patch: Patch | null) => {
+    setEditingPatch(patch);
+    setPatchModalStep(0);
+    setCreatedPatchId(patch?.id || null);
+    setAffectedProducts([]);
+    form.resetFields();
+
+    if (patch) {
+      // Pre-populate form with existing patch data
+      form.setFieldsValue({
+        software: patch.software,
+        platform: patch.platform || patch.os,
+        vendor: patch.vendor,
+        product: patch.product,
+        description: patch.description,
+        severity: patch.severity,
+        category: patch.category,
+        bulletinId: patch.bulletinId,
+        kbNumber: patch.kbNumber,
+        releaseDate: patch.releaseDate ? dayjs(patch.releaseDate) : undefined,
+        rebootRequired: patch.rebootRequired ?? false,
+        supportUninstallation: patch.supportUninstallation ?? false,
+        architecture: patch.architecture,
+        referenceUrl: patch.referenceUrl,
+        languagesSupported: patch.languagesSupported || [],
+        tags: patch.tags || [],
+        cveNumbers: patch.cveNumbers || [],
+      });
+    }
+
+    setPatchModalVisible(true);
   };
 
-  const handleEditPatchSubmit = async () => {
-    try {
-      const values = await editForm.validateFields();
-      if (editingPatch) {
-        await patchService.updatePatch(editingPatch.id, {
-          ...editingPatch,
-          software: values.name,
+  const closePatchModal = () => {
+    setPatchModalVisible(false);
+    setPatchModalStep(0);
+    form.resetFields();
+    setEditingPatch(null);
+    setCreatedPatchId(null);
+    setAffectedProducts([]);
+  };
+
+  const handlePatchModalNext = async () => {
+    if (patchModalStep === 0) {
+      // Validate and save/create the patch, then go to step 2
+      try {
+        await form.validateFields();
+        setSavingPatch(true);
+
+        const values = form.getFieldsValue();
+        const payload = {
+          software: values.software,
           platform: values.platform,
-          description: values.description,
-          category: values.category,
+          os: values.platform, // os mirrors platform
+          vendor: values.vendor || undefined,
+          product: values.product || undefined,
+          description: values.description || undefined,
           severity: values.severity,
-          bulletinId: values.bulletinId,
-          kbNumber: values.kbNumber,
-          releaseDate: values.releaseDate?.format('YYYY-MM-DD'),
-          rebootRequired: values.rebootRequired,
-          supportUninstallation: values.supportUninstallation,
-          architecture: values.architecture,
-          referenceUrl: values.referenceUrl,
-          languagesSupported: values.languagesSupported,
-          tags: values.tags,
+          category: values.category,
+          bulletinId: values.bulletinId || undefined,
+          kbNumber: values.kbNumber || undefined,
+          releaseDate: values.releaseDate?.format('YYYY-MM-DD') || undefined,
+          rebootRequired: values.rebootRequired ?? false,
+          supportUninstallation: values.supportUninstallation ?? false,
+          architecture: values.architecture || undefined,
+          referenceUrl: values.referenceUrl || undefined,
+          languagesSupported: values.languagesSupported || [],
+          tags: values.tags || [],
           cveNumbers: values.cveNumbers || [],
-        });
-        message.success('Patch updated successfully');
-        setEditModalVisible(false);
-        editForm.resetFields();
-        setEditingPatch(null);
-        fetchPatches();
+        };
+
+        if (editingPatch) {
+          await patchService.updatePatch(editingPatch.id, payload);
+          // Load existing affected products
+          const products = await patchService.getAffectedSoftwares(editingPatch.id);
+          setAffectedProducts(products);
+          setCreatedPatchId(editingPatch.id);
+        } else if (createdPatchId) {
+          // Already created on a previous attempt, just update
+          await patchService.updatePatch(createdPatchId, payload);
+          const products = await patchService.getAffectedSoftwares(createdPatchId);
+          setAffectedProducts(products);
+        } else {
+          const created = await patchService.createPatch(payload);
+          setCreatedPatchId(created.id);
+          message.success('Patch created. Now add affected products.');
+        }
+
+        setPatchModalStep(1);
+      } catch (error) {
+        if ((error as { errorFields?: unknown }).errorFields) return;
+        message.error('Failed to save patch');
+      } finally {
+        setSavingPatch(false);
       }
-    } catch (error) {
-      message.error('Failed to update patch');
+    } else {
+      // Step 2 done — close
+      closePatchModal();
+      fetchPatches();
     }
   };
+
+  // ============================================
+  // Bulk Add
+  // ============================================
 
   const handleBulkAddSubmit = async () => {
     if (fileList.length === 0) {
@@ -253,10 +648,14 @@ export const AllPatches = () => {
       setBulkAddModalVisible(false);
       setFileList([]);
       fetchPatches();
-    } catch (error) {
+    } catch {
       message.error('Failed to process bulk import');
     }
   };
+
+  // ============================================
+  // Filters
+  // ============================================
 
   const handleFilterSubmit = () => {
     const values = filterForm.getFieldsValue();
@@ -281,7 +680,10 @@ export const AllPatches = () => {
     activeFilters.dateRange,
   ].filter(Boolean).length;
 
-  // Get selected patches for deploy modal
+  // ============================================
+  // Deploy
+  // ============================================
+
   const getSelectedPatches = (): Patch[] => {
     return patches.filter((patch) => selectedRowKeys.includes(patch.id));
   };
@@ -308,7 +710,6 @@ export const AllPatches = () => {
         return;
       }
 
-      // Create deployment payload matching backend CreatePatchDeploymentOptions
       const deploymentPayload = {
         name: values.deploymentName || `Patch Deployment - ${selectedPatches.length} patches`,
         description: values.description,
@@ -321,15 +722,13 @@ export const AllPatches = () => {
         retryCount: values.retryCount || 1,
       };
 
-      // Call the deployment API
       await patchService.createDeployment(deploymentPayload);
 
-      message.success(`Deployment created successfully for ${selectedPatches.length} patch(es) to ${targetAgentIds.length} agent(s)`);
+      message.success(`Deployment created for ${selectedPatches.length} patch(es) to ${targetAgentIds.length} agent(s)`);
       setDeployModalVisible(false);
       deployForm.resetFields();
       setSelectedRowKeys([]);
 
-      // Ask user if they want to navigate to deployed page
       Modal.confirm({
         title: 'Deployment Created',
         content: 'Would you like to view the deployment status?',
@@ -348,6 +747,10 @@ export const AllPatches = () => {
     setDeployModalVisible(false);
     deployForm.resetFields();
   };
+
+  // ============================================
+  // Table
+  // ============================================
 
   const columns: ColumnsType<Patch> = [
     {
@@ -409,7 +812,6 @@ export const AllPatches = () => {
   ];
 
   const filteredPatches = patches.filter((patch) => {
-    // Text search filter
     const software = patch.software || '';
     const patchId = patch.patchId || '';
     const searchLower = searchText.toLowerCase();
@@ -417,7 +819,6 @@ export const AllPatches = () => {
       patchId.toLowerCase().includes(searchLower);
     if (!matchesSearch) return false;
 
-    // OS filter from URL params
     if (osFilter) {
       if (osFilter === 'Linux') {
         if (patch.os !== 'Linux' && patch.os !== 'Ubuntu') return false;
@@ -426,22 +827,13 @@ export const AllPatches = () => {
       }
     }
 
-    // Modal filters
-    if (activeFilters.severity && !activeFilters.severity.includes(patch.severity)) {
-      return false;
-    }
-    if (activeFilters.os && !activeFilters.os.includes(patch.os)) {
-      return false;
-    }
-    if (activeFilters.category && !activeFilters.category.includes(patch.category)) {
-      return false;
-    }
+    if (activeFilters.severity && !activeFilters.severity.includes(patch.severity)) return false;
+    if (activeFilters.os && !activeFilters.os.includes(patch.os)) return false;
+    if (activeFilters.category && !activeFilters.category.includes(patch.category)) return false;
     if (activeFilters.dateRange) {
       const [start, end] = activeFilters.dateRange;
       const releaseDate = patch.releaseDate ? dayjs(patch.releaseDate) : null;
-      if (!releaseDate || releaseDate.isBefore(start, 'day') || releaseDate.isAfter(end, 'day')) {
-        return false;
-      }
+      if (!releaseDate || releaseDate.isBefore(start, 'day') || releaseDate.isAfter(end, 'day')) return false;
     }
 
     return true;
@@ -454,349 +846,12 @@ export const AllPatches = () => {
     },
   };
 
-  const handleCreatePatch = async () => {
-    if (currentStep === 0) {
-      try {
-        await form.validateFields();
+  // ============================================
+  // Render
+  // ============================================
 
-        // If creating a new patch, save it now so we can add affected products
-        if (!editingPatch && !createdPatchId) {
-          const values = form.getFieldsValue();
-          const created = await patchService.createPatch(values);
-          setCreatedPatchId(created.id);
-          message.success('Patch created. Now add affected products.');
-        } else if (editingPatch) {
-          // Update step 1 fields
-          const values = form.getFieldsValue();
-          await patchService.updatePatch(editingPatch.id, {
-            ...editingPatch,
-            ...values,
-            releaseDate: values.releaseDate?.format('YYYY-MM-DD') || editingPatch.releaseDate,
-          });
-          // Load existing affected products
-          const products = await patchService.getAffectedSoftwares(editingPatch.id);
-          setAffectedProducts(products);
-        }
-
-        setCurrentStep(1);
-      } catch (error) {
-        if ((error as { errorFields?: unknown }).errorFields) return; // validation error
-        message.error('Failed to save patch');
-      }
-    } else {
-      // Step 2 complete — close modal
-      setCreateModalVisible(false);
-      setCurrentStep(0);
-      form.resetFields();
-      setEditingPatch(null);
-      setCreatedPatchId(null);
-      setAffectedProducts([]);
-      fetchPatches();
-    }
-  };
-
-  const handleAddAffectedProduct = async () => {
-    try {
-      const values = await addProductForm.validateFields();
-      const patchId = editingPatch?.id || createdPatchId;
-      if (!patchId) return;
-
-      setAddProductLoading(true);
-      const product = await patchService.addAffectedProduct(patchId, {
-        softwareName: values.softwareName,
-        version: values.version,
-        vendor: values.vendor,
-        platform: values.platform,
-      });
-      setAffectedProducts((prev) => [...prev, product]);
-      setAddProductModalVisible(false);
-      addProductForm.resetFields();
-      message.success('Affected product added');
-    } catch (error) {
-      if (!(error as { errorFields?: unknown }).errorFields) {
-        message.error('Failed to add affected product');
-      }
-    } finally {
-      setAddProductLoading(false);
-    }
-  };
-
-  const handleRemoveAffectedProduct = async (productId: string) => {
-    const patchId = editingPatch?.id || createdPatchId;
-    if (!patchId) return;
-
-    try {
-      await patchService.removeAffectedProduct(patchId, productId);
-      setAffectedProducts((prev) => prev.filter((p) => p.id !== productId));
-      message.success('Affected product removed');
-    } catch {
-      message.error('Failed to remove affected product');
-    }
-  };
-
-  const renderCreatePatchStep1 = () => (
-    <Form form={form} layout="vertical">
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            name="software"
-            label="Name"
-            rules={[{ required: true, message: 'Please enter name' }]}
-          >
-            <Input placeholder="Enter name" />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="platform"
-            label="Platform"
-            rules={[{ required: true, message: 'Please select platform' }]}
-          >
-            <Select placeholder="Select a platform">
-              <Option value="Windows">Windows</Option>
-              <Option value="MacOS">MacOS</Option>
-              <Option value="Linux">Linux</Option>
-              <Option value="Ubuntu">Ubuntu</Option>
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Form.Item name="description" label="Description">
-        <TextArea rows={3} placeholder="Textarea" />
-      </Form.Item>
-
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            name="category"
-            label="Category"
-            rules={[{ required: true, message: 'Please select category' }]}
-          >
-            <Select placeholder="Select">
-              <Option value="Security Updates">Security Updates</Option>
-              <Option value="Application Updates">Application Updates</Option>
-              <Option value="Critical Updates">Critical Updates</Option>
-            </Select>
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="severity"
-            label="Severity"
-            rules={[{ required: true, message: 'Please select severity' }]}
-          >
-            <Select placeholder="Select">
-              <Option value="CRITICAL">CRITICAL</Option>
-              <Option value="High">High</Option>
-              <Option value="Medium">Medium</Option>
-              <Option value="Low">Low</Option>
-              <Option value="UNSPECIFIED">UNSPECIFIED</Option>
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            name="bulletinId"
-            label="Bulletin ID"
-            rules={[{ required: true, message: 'Please enter bulletin ID' }]}
-          >
-            <Input placeholder="Enter ID" />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="kbNumber"
-            label="KB Number"
-            rules={[{ required: true, message: 'Please enter KB number' }]}
-          >
-            <Input placeholder="Enter KB number" />
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            name="releaseDate"
-            label="Release Date"
-            rules={[{ required: true, message: 'Please select release date' }]}
-          >
-            <DatePicker style={{ width: '100%' }} placeholder="Enter release date" />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="rebootRequired"
-            label="Reboot Required"
-            rules={[{ required: true, message: 'Please select' }]}
-          >
-            <Select placeholder="Select">
-              <Option value={true}>Yes</Option>
-              <Option value={false}>No</Option>
-              <Option value="maybe">May Be</Option>
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            name="supportUninstallation"
-            label="Support Uninstallation"
-            valuePropName="checked"
-            initialValue={false}
-          >
-            <Switch />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="architecture"
-            label="Architecture"
-            rules={[{ required: true, message: 'Please select architecture' }]}
-          >
-            <Select placeholder="Select">
-              <Option value="64 BIT">64 BIT</Option>
-              <Option value="32 BIT">32 BIT</Option>
-              <Option value="Universal">Universal</Option>
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Form.Item
-        name="referenceUrl"
-        label="Reference URL"
-        rules={[{ required: true, message: 'Please enter reference URL' }]}
-      >
-        <Input placeholder="Enter reference URL" />
-      </Form.Item>
-
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            name="languagesSupported"
-            label="Languages Supported"
-            rules={[{ required: true, message: 'Please select languages' }]}
-          >
-            <Select mode="multiple" placeholder="Select">
-              <Option value="English">English</Option>
-              <Option value="Spanish">Spanish</Option>
-              <Option value="French">French</Option>
-              <Option value="German">German</Option>
-              <Option value="Chinese">Chinese</Option>
-            </Select>
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="tags"
-            label="Tags"
-            rules={[{ required: true, message: 'Please select tags' }]}
-          >
-            <Select mode="tags" placeholder="Select">
-              {tags.map((t) => (
-                <Option key={t.id} value={t.name}>{t.name}</Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Form.Item name="cveNumbers" label="CVE Numbers">
-        <Select
-          mode="tags"
-          placeholder="Enter CVE numbers or select from suggestions"
-          tokenSeparators={[',', ' ']}
-          onFocus={() => {
-            const software = form.getFieldValue('software');
-            const vendor = form.getFieldValue('vendor');
-            if (software) fetchCveSuggestions(software, vendor);
-          }}
-        >
-          {cveSuggestions.map((s) => (
-            <Option key={s.cveId} value={s.cveId}>
-              {s.cveId} ({s.severity}) — {s.description.slice(0, 80)}...
-            </Option>
-          ))}
-        </Select>
-      </Form.Item>
-    </Form>
-  );
-
-  const renderCreatePatchStep2 = () => (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Title level={5} style={{ margin: 0 }}>Affected Products</Title>
-        <Button type="link" onClick={() => { addProductForm.resetFields(); setAddProductModalVisible(true); }}>
-          + Add Affected Product
-        </Button>
-      </div>
-
-      <Table
-        dataSource={affectedProducts}
-        rowKey="id"
-        pagination={false}
-        size="small"
-        locale={{ emptyText: 'No affected products added yet. Click "Add Affected Product" above.' }}
-        columns={[
-          { title: 'Software Name', dataIndex: 'softwareName', key: 'softwareName' },
-          { title: 'Version', dataIndex: 'version', key: 'version', render: (v: string) => v || '-' },
-          { title: 'Vendor', dataIndex: 'vendor', key: 'vendor', render: (v: string) => v || '-' },
-          { title: 'Platform', dataIndex: 'platform', key: 'platform', render: (v: string) => v || '-' },
-          { title: 'Installed On', dataIndex: 'installedOn', key: 'installedOn', render: (v: number) => `${v} endpoint${v !== 1 ? 's' : ''}` },
-          {
-            title: '',
-            key: 'action',
-            width: 50,
-            render: (_: unknown, record: AffectedSoftware) => (
-              <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveAffectedProduct(record.id)} />
-            ),
-          },
-        ]}
-      />
-
-      <Modal
-        title="Add Affected Product"
-        open={addProductModalVisible}
-        onCancel={() => setAddProductModalVisible(false)}
-        onOk={handleAddAffectedProduct}
-        confirmLoading={addProductLoading}
-        okText="Add"
-      >
-        <Form form={addProductForm} layout="vertical">
-          <Form.Item name="softwareName" label="Software Name" rules={[{ required: true, message: 'Please enter software name' }]}>
-            <Input placeholder="e.g., Microsoft Office" />
-          </Form.Item>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="version" label="Version">
-                <Input placeholder="e.g., 2021" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="vendor" label="Vendor">
-                <Input placeholder="e.g., Microsoft" />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item name="platform" label="Platform">
-            <Select placeholder="Select platform" allowClear>
-              <Option value="Windows">Windows</Option>
-              <Option value="MacOS">MacOS</Option>
-              <Option value="Linux">Linux</Option>
-              <Option value="Cross-platform">Cross-platform</Option>
-            </Select>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
-  );
+  const isEditing = !!editingPatch;
+  const activePatchId = editingPatch?.id || createdPatchId;
 
   return (
     <div>
@@ -824,12 +879,7 @@ export const AllPatches = () => {
             Discover Patches
           </Button>
           <Button onClick={() => setBulkAddModalVisible(true)}>Bulk Add</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => {
-            setEditingPatch(null);
-            setCurrentStep(0);
-            form.resetFields();
-            setCreateModalVisible(true);
-          }}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openPatchModal(null)}>
             Create Patch
           </Button>
         </Space>
@@ -855,9 +905,9 @@ export const AllPatches = () => {
         {selectedRowKeys.length > 0 && (
           <Space>
             <Text strong>{selectedRowKeys.length} Selected</Text>
-            <Button 
-              type="primary" 
-              icon={<RocketOutlined />} 
+            <Button
+              type="primary"
+              icon={<RocketOutlined />}
               onClick={handleOpenDeployModal}
             >
               Deploy
@@ -935,265 +985,64 @@ export const AllPatches = () => {
         rowKey="id"
         loading={loading}
         onRow={(record) => ({
-          onClick: () => handleViewPatch(record),
+          onClick: () => navigate(`/patches/${record.id}`),
           style: { cursor: 'pointer' },
         })}
         pagination={{
           pageSize: 10,
           showSizeChanger: false,
-          showTotal: (total) => `Total ${total} assets found`,
+          showTotal: (total) => `Total ${total} patches found`,
         }}
         scroll={{ x: 1200 }}
         style={{ marginBottom: '16px' }}
       />
 
-      {/* Create Patch Modal */}
+      {/* ============================================ */}
+      {/* Unified Create/Edit Patch Modal              */}
+      {/* ============================================ */}
       <Modal
-        title={editingPatch ? "Edit Patch" : "Add New Patch"}
-        open={createModalVisible}
-        onCancel={() => {
-          setCreateModalVisible(false);
-          setCurrentStep(0);
-          form.resetFields();
-          setEditingPatch(null);
-        }}
+        title={isEditing ? 'Edit Patch' : 'Create Patch'}
+        open={patchModalVisible}
+        onCancel={closePatchModal}
         width={800}
         footer={
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            {currentStep > 0 && (
-              <Button onClick={() => setCurrentStep(0)}>Back</Button>
+            {patchModalStep > 0 ? (
+              <Button onClick={() => setPatchModalStep(0)}>Back</Button>
+            ) : (
+              <div />
             )}
-            <div style={{ marginLeft: 'auto' }}>
-              <Button onClick={() => {
-                setCreateModalVisible(false);
-                setCurrentStep(0);
-                form.resetFields();
-                setEditingPatch(null);
-              }}>
-                Cancel
+            <Space>
+              <Button onClick={closePatchModal}>Cancel</Button>
+              <Button type="primary" loading={savingPatch} onClick={handlePatchModalNext}>
+                {patchModalStep === 0 ? 'Next' : 'Done'}
               </Button>
-              <Button type="primary" onClick={handleCreatePatch} style={{ marginLeft: 8 }}>
-                {currentStep === 0 ? 'Next' : (editingPatch ? 'Update Patch' : 'Submit Patch')}
-              </Button>
-            </div>
+            </Space>
           </div>
         }
       >
         <Steps
-          current={currentStep}
+          current={patchModalStep}
           style={{ marginBottom: 24 }}
           items={[
             { title: 'Define Patch' },
             { title: 'Affected Products' },
           ]}
         />
-        {currentStep === 0 ? renderCreatePatchStep1() : renderCreatePatchStep2()}
-      </Modal>
-
-      {/* Edit Patch Modal */}
-      <Modal
-        title="Edit Patch"
-        open={editModalVisible}
-        onCancel={() => {
-          setEditModalVisible(false);
-          editForm.resetFields();
-          setEditingPatch(null);
-        }}
-        onOk={handleEditPatchSubmit}
-        okText="Update Patch"
-        width={800}
-      >
-        <Form form={editForm} layout="vertical">
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="name"
-                label="Name"
-                rules={[{ required: true, message: 'Please enter name' }]}
-              >
-                <Input placeholder="Enter name" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="platform"
-                label="Platform"
-                rules={[{ required: true, message: 'Please select platform' }]}
-              >
-                <Select placeholder="Select a platform">
-                  <Option value="Windows">Windows</Option>
-                  <Option value="MacOS">MacOS</Option>
-                  <Option value="Linux">Linux</Option>
-                  <Option value="Ubuntu">Ubuntu</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item name="description" label="Description">
-            <TextArea rows={3} placeholder="Textarea" />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="category"
-                label="Category"
-                rules={[{ required: true, message: 'Please select category' }]}
-              >
-                <Select placeholder="Select">
-                  <Option value="Security Updates">Security Updates</Option>
-                  <Option value="Application Updates">Application Updates</Option>
-                  <Option value="Critical Updates">Critical Updates</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="severity"
-                label="Severity"
-                rules={[{ required: true, message: 'Please select severity' }]}
-              >
-                <Select placeholder="Select">
-                  <Option value="CRITICAL">CRITICAL</Option>
-                  <Option value="High">High</Option>
-                  <Option value="Medium">Medium</Option>
-                  <Option value="Low">Low</Option>
-                  <Option value="UNSPECIFIED">UNSPECIFIED</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="bulletinId"
-                label="Bulletin ID"
-                rules={[{ required: true, message: 'Please enter bulletin ID' }]}
-              >
-                <Input placeholder="Enter ID" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="kbNumber"
-                label="KB Number"
-                rules={[{ required: true, message: 'Please enter KB number' }]}
-              >
-                <Input placeholder="Enter KB number" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="releaseDate"
-                label="Release Date"
-                rules={[{ required: true, message: 'Please select release date' }]}
-              >
-                <DatePicker style={{ width: '100%' }} placeholder="Enter release date" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="rebootRequired"
-                label="Reboot Required"
-                rules={[{ required: true, message: 'Please select' }]}
-              >
-                <Select placeholder="Select">
-                  <Option value={true}>Yes</Option>
-                  <Option value={false}>No</Option>
-                  <Option value="maybe">May Be</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="supportUninstallation"
-                label="Support Uninstallation"
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="architecture"
-                label="Architecture"
-                rules={[{ required: true, message: 'Please select architecture' }]}
-              >
-                <Select placeholder="Select">
-                  <Option value="64 BIT">64 BIT</Option>
-                  <Option value="32 BIT">32 BIT</Option>
-                  <Option value="Universal">Universal</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item
-            name="referenceUrl"
-            label="Reference URL"
-            rules={[{ required: true, message: 'Please enter reference URL' }]}
-          >
-            <Input placeholder="Enter reference URL" />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="languagesSupported"
-                label="Languages Supported"
-                rules={[{ required: true, message: 'Please select languages' }]}
-              >
-                <Select mode="multiple" placeholder="Select">
-                  <Option value="English">English</Option>
-                  <Option value="Spanish">Spanish</Option>
-                  <Option value="French">French</Option>
-                  <Option value="German">German</Option>
-                  <Option value="Chinese">Chinese</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="tags"
-                label="Tags"
-                rules={[{ required: true, message: 'Please select tags' }]}
-              >
-                <Select mode="tags" placeholder="Select">
-                  {tags.map((t) => (
-                    <Option key={t.id} value={t.name}>{t.name}</Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item name="cveNumbers" label="CVE Numbers">
-            <Select
-              mode="tags"
-              placeholder="Enter CVE numbers or select from suggestions"
-              tokenSeparators={[',', ' ']}
-              onFocus={() => {
-                const software = editForm.getFieldValue('name');
-                const vendor = editForm.getFieldValue('vendor');
-                if (software) fetchCveSuggestions(software, vendor);
-              }}
-            >
-              {cveSuggestions.map((s) => (
-                <Option key={s.cveId} value={s.cveId}>
-                  {s.cveId} ({s.severity}) — {s.description.slice(0, 80)}...
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Form>
+        {patchModalStep === 0 ? (
+          <PatchFormFields
+            form={form}
+            tags={tags}
+            cveSuggestions={cveSuggestions}
+            onCveFocus={fetchCveSuggestions}
+          />
+        ) : (
+          <AffectedProductsStep
+            patchId={activePatchId}
+            affectedProducts={affectedProducts}
+            setAffectedProducts={setAffectedProducts}
+          />
+        )}
       </Modal>
 
       {/* Bulk Add Modal */}
@@ -1209,7 +1058,7 @@ export const AllPatches = () => {
         width={600}
       >
         <div style={{ marginBottom: 16 }}>
-          <Text type="secondary">Upload a CSV or Excel file with patch data</Text>
+          <Text type="secondary">Upload a CSV file with patch data</Text>
         </div>
         <Upload.Dragger
           fileList={fileList}
@@ -1277,8 +1126,8 @@ export const AllPatches = () => {
           </Form.Item>
 
           <Form.Item name="dateRange" label="Release Date Range">
-            <DatePicker.RangePicker 
-              style={{ width: '100%' }} 
+            <DatePicker.RangePicker
+              style={{ width: '100%' }}
               showTime={{ format: 'HH:mm' }}
               format="YYYY-MM-DD HH:mm"
             />
@@ -1313,7 +1162,6 @@ export const AllPatches = () => {
         ]}
       >
         <Form form={deployForm} layout="vertical">
-          {/* Deployment Name */}
           <Form.Item
             name="deploymentName"
             label="Deployment Name"
@@ -1322,14 +1170,10 @@ export const AllPatches = () => {
             <Input placeholder="Enter deployment name" />
           </Form.Item>
 
-          <Form.Item
-            name="description"
-            label="Description"
-          >
+          <Form.Item name="description" label="Description">
             <Input.TextArea rows={2} placeholder="Optional description" />
           </Form.Item>
 
-          {/* Selected Patches Summary */}
           <div style={{ marginBottom: 24 }}>
             <Text strong style={{ display: 'block', marginBottom: 8 }}>Selected Patches:</Text>
             <div style={{
@@ -1358,7 +1202,6 @@ export const AllPatches = () => {
 
           <Divider />
 
-          {/* Target Agents */}
           <Form.Item
             name="targetAgentIds"
             label="Target Agents"
@@ -1399,7 +1242,6 @@ export const AllPatches = () => {
             />
           </Form.Item>
 
-          {/* Retry Options */}
           <Form.Item
             name="retryCount"
             label="Retry Count"

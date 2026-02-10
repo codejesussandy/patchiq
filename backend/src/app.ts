@@ -148,6 +148,31 @@ export function createApp(): Application {
     }).catch(next);
   });
 
+  // Public patch bundle stream (for agents to download installers without auth)
+  app.get(`/${config.apiVersion}/patches/:id/bundle/stream`, (req, res, next) => {
+    console.log(`[PATCH-BUNDLE] Download request for patch: ${req.params.id}`);
+    import('@modules/patches/patches.service').then(({ getPatchBundleByPatchId }) => {
+      return getPatchBundleByPatchId(req.params.id).then(async (bundle) => {
+        if (!bundle?.bundleObjectKey) {
+          res.status(404).json({ error: 'No downloadable bundle for this patch' });
+          return;
+        }
+        const { minioStorage } = await import('@shared/services/minio.service');
+        const stream = await minioStorage.downloadStream(bundle.bundleObjectKey);
+        const filename = bundle.bundleObjectKey.split('/').pop() || 'patch-bundle';
+        const ext = filename.split('.').pop()?.toLowerCase() || '';
+        const contentTypes: Record<string, string> = {
+          exe: 'application/x-msdownload', msi: 'application/x-msi',
+          deb: 'application/x-debian-package', rpm: 'application/x-rpm',
+          dmg: 'application/x-apple-diskimage', pkg: 'application/x-newton-compatible-pkg',
+        };
+        res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        stream.pipe(res);
+      });
+    }).catch(next);
+  });
+
   // SSE stream — mounted before assets routes (which have global authenticate)
   // EventSource can't send headers, so SSE uses query-param token auth
   app.get(`/${config.apiVersion}/notifications/stream`, notificationsController.sseStream);

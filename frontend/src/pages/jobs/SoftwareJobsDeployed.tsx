@@ -16,6 +16,10 @@ import {
   Row,
   Col,
   Tooltip,
+  Progress,
+  Badge,
+  Descriptions,
+  Card,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
@@ -33,6 +37,11 @@ import {
   DesktopOutlined,
   CloseOutlined,
   RollbackOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  SyncOutlined,
+  CloseCircleOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
 import {
   softwareJobsService,
@@ -110,6 +119,24 @@ type TaskItem = {
   errorMessage?: string;
   lastUpdated: string;
   createdOn: string;
+  startedAt?: string;
+  completedAt?: string;
+  duration?: string;
+  output?: string;
+  commandResult?: string;
+};
+
+type DeploymentDetail = {
+  deploymentId: string;
+  name: string;
+  type: string;
+  stage: string;
+  progress: number;
+  pending: number;
+  succeeded: number;
+  failed: number;
+  total: number;
+  createdAt: string;
 };
 
 // Helper to convert API deployment to display type
@@ -161,6 +188,20 @@ const convertTask = (t: SoftwareDeploymentTask): TaskItem => {
     : normalizedStatus === 'in_progress' ? 'IN_PROGRESS'
     : 'PENDING';
 
+  // Calculate duration
+  const startedAt = t.startedAt || (t as any).command?.executedAt;
+  const completedAt = t.completedAt || (t as any).command?.completedAt;
+  let duration: string | undefined;
+  if (startedAt && completedAt) {
+    const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+    if (ms < 1000) duration = `${ms}ms`;
+    else if (ms < 60000) duration = `${(ms / 1000).toFixed(1)}s`;
+    else duration = `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`;
+  }
+
+  const output = t.executionOutput || (t as any).output || '';
+  const commandResult = (t as any).command?.result;
+
   return {
     id: t.id,
     endpointId: agentId,
@@ -171,6 +212,11 @@ const convertTask = (t: SoftwareDeploymentTask): TaskItem => {
     errorMessage: t.errorMessage,
     lastUpdated: t.updatedAt ? new Date(t.updatedAt).toLocaleString() : '-',
     createdOn: t.createdAt ? new Date(t.createdAt).toLocaleString() : '-',
+    startedAt: startedAt ? new Date(startedAt).toLocaleString() : undefined,
+    completedAt: completedAt ? new Date(completedAt).toLocaleString() : undefined,
+    duration,
+    output: typeof output === 'string' ? output : JSON.stringify(output),
+    commandResult: commandResult ? (typeof commandResult === 'string' ? commandResult : JSON.stringify(commandResult)) : undefined,
   };
 };
 
@@ -199,6 +245,7 @@ export const SoftwareJobsDeployed = () => {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [tasksSearchText, setTasksSearchText] = useState('');
   const [tasksFilter, setTasksFilter] = useState('All');
+  const [deploymentDetail, setDeploymentDetail] = useState<DeploymentDetail | null>(null);
 
   // API data state
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
@@ -310,6 +357,19 @@ export const SoftwareJobsDeployed = () => {
       if (data.tasks) {
         setTasks(data.tasks.map(convertTask));
       }
+      // Store deployment summary for progress display
+      setDeploymentDetail({
+        deploymentId: data.deploymentId,
+        name: data.name,
+        type: data.type || 'install',
+        stage: data.stage || 'PENDING',
+        progress: data.progress ?? 0,
+        pending: data.pending ?? 0,
+        succeeded: data.succeeded ?? 0,
+        failed: data.failed ?? 0,
+        total: data.total ?? (data.tasks?.length || 0),
+        createdAt: data.createdAt,
+      });
     } catch (error) {
       console.error('Failed to fetch tasks:', error);
       message.error('Failed to load tasks');
@@ -351,6 +411,18 @@ export const SoftwareJobsDeployed = () => {
       }
     }
   }, [applications, locationState, navigationHandled, form]);
+
+  // Auto-refresh tasks when modal is open and deployment is in progress
+  useEffect(() => {
+    if (!tasksModalVisible || !selectedDeployment) return;
+    if (deploymentDetail?.stage === 'COMPLETED' || deploymentDetail?.stage === 'FAILED') return;
+
+    const interval = setInterval(() => {
+      fetchTasks(selectedDeployment.deploymentId);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [tasksModalVisible, selectedDeployment, deploymentDetail?.stage, fetchTasks]);
 
   const handleView = async (record: DeployedItem) => {
     setSelectedDeployment(record);
@@ -810,21 +882,13 @@ export const SoftwareJobsDeployed = () => {
   // Task table columns
   const taskColumns: ColumnsType<TaskItem> = [
     {
-      title: 'Id',
-      dataIndex: 'id',
-      key: 'id',
-      width: 100,
-      render: (id: string) => <Text code>{id.slice(0, 8)}</Text>,
-    },
-    {
       title: 'Endpoint',
       key: 'endpoint',
       render: (_: any, record: TaskItem) => (
         <Space>
-          <DesktopOutlined style={{ color: record.status === 'SUCCESS' ? '#52c41a' : record.status === 'FAILED' ? '#ff4d4f' : '#faad14' }} />
-          {record.endpointOS === 'Windows' && <WindowsOutlined style={{ color: '#1890ff' }} />}
+          {record.endpointOS === 'Windows' && <WindowsOutlined style={{ color: '#0078d4' }} />}
           {record.endpointOS === 'Mac' && <AppleOutlined />}
-          {record.endpointOS === 'Linux' && <LinuxOutlined />}
+          {record.endpointOS === 'Linux' && <LinuxOutlined style={{ color: '#f9a825' }} />}
           <Text>{record.endpointName}</Text>
         </Space>
       ),
@@ -839,39 +903,59 @@ export const SoftwareJobsDeployed = () => {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
+      width: 140,
       render: (status: string, record: TaskItem) => {
-        const colors: Record<string, string> = {
-          SUCCESS: 'green',
-          FAILED: 'red',
-          PENDING: 'orange',
-          IN_PROGRESS: 'blue',
+        const config: Record<string, { color: string; icon: React.ReactNode }> = {
+          SUCCESS: { color: 'green', icon: <CheckCircleOutlined /> },
+          FAILED: { color: 'red', icon: <CloseCircleOutlined /> },
+          PENDING: { color: 'orange', icon: <ClockCircleOutlined /> },
+          IN_PROGRESS: { color: 'blue', icon: <SyncOutlined spin /> },
         };
+        const c = config[status] || { color: 'default', icon: null };
         return (
-          <Space orientation="vertical" size={0}>
-            <Tag color={colors[status] || 'default'}>{status}</Tag>
-            {record.errorMessage && <Text type="danger" style={{ fontSize: 11 }}>{record.errorMessage}</Text>}
-          </Space>
+          <div>
+            <Tag color={c.color} icon={c.icon}>{status}</Tag>
+            {record.errorMessage && (
+              <div style={{ marginTop: 4 }}>
+                <Text type="danger" style={{ fontSize: 11 }}>{record.errorMessage}</Text>
+              </div>
+            )}
+          </div>
         );
       },
     },
     {
-      title: 'Last Updated',
-      dataIndex: 'lastUpdated',
-      key: 'lastUpdated',
+      title: 'Duration',
+      dataIndex: 'duration',
+      key: 'duration',
+      width: 100,
+      render: (duration: string | undefined, record: TaskItem) => {
+        if (record.status === 'IN_PROGRESS') return <LoadingOutlined style={{ color: '#1890ff' }} />;
+        return duration || '-';
+      },
     },
     {
-      title: 'Created On',
-      dataIndex: 'createdOn',
-      key: 'createdOn',
+      title: 'Started',
+      dataIndex: 'startedAt',
+      key: 'startedAt',
+      width: 170,
+      render: (v: string) => v || '-',
+    },
+    {
+      title: 'Completed',
+      dataIndex: 'completedAt',
+      key: 'completedAt',
+      width: 170,
+      render: (v: string) => v || '-',
     },
     {
       title: 'Actions',
       key: 'actions',
-      width: 100,
+      width: 80,
       render: (_: any, record: TaskItem) => (
         <Space>
           {(record.status === 'FAILED' || record.status === 'SUCCESS') && (
-            <Tooltip title="Rollback installation">
+            <Tooltip title="Rollback">
               <Button
                 type="text"
                 size="small"
@@ -976,6 +1060,10 @@ export const SoftwareJobsDeployed = () => {
         dataSource={filteredItems}
         rowKey="id"
         loading={loading}
+        onRow={(record) => ({
+          onClick: () => handleView(record),
+          style: { cursor: 'pointer' },
+        })}
         pagination={{
           pageSize: 20,
           showSizeChanger: true,
@@ -1223,18 +1311,92 @@ export const SoftwareJobsDeployed = () => {
             <Button
               type="text"
               icon={<CloseOutlined />}
-              onClick={() => setTasksModalVisible(false)}
+              onClick={() => { setTasksModalVisible(false); setDeploymentDetail(null); }}
               style={{ marginLeft: -16, marginRight: -8 }}
             />
-            <Text strong style={{ fontSize: 16 }}>Tasks</Text>
+            <Text strong style={{ fontSize: 16 }}>
+              {deploymentDetail?.name || 'Deployment Tasks'}
+            </Text>
+            {deploymentDetail && (
+              <Tag color={
+                deploymentDetail.stage === 'COMPLETED' ? 'green'
+                  : deploymentDetail.stage === 'FAILED' ? 'red'
+                  : deploymentDetail.stage === 'IN_PROGRESS' ? 'blue'
+                  : 'orange'
+              }>
+                {deploymentDetail.stage}
+              </Tag>
+            )}
           </Space>
         }
         open={tasksModalVisible}
-        onCancel={() => setTasksModalVisible(false)}
+        onCancel={() => { setTasksModalVisible(false); setDeploymentDetail(null); }}
         width={1200}
         footer={null}
         closable={false}
       >
+        {/* Deployment Summary */}
+        {deploymentDetail && (
+          <Card size="small" style={{ marginBottom: 16 }}>
+            <Row gutter={24} align="middle">
+              <Col flex="1">
+                <Progress
+                  percent={deploymentDetail.progress}
+                  status={
+                    deploymentDetail.stage === 'FAILED' ? 'exception'
+                      : deploymentDetail.stage === 'COMPLETED' ? 'success'
+                      : 'active'
+                  }
+                  strokeWidth={10}
+                  format={(pct) => `${pct}%`}
+                />
+              </Col>
+            </Row>
+            <Row gutter={16} style={{ marginTop: 12 }}>
+              <Col>
+                <Space size={4}>
+                  <Badge status="default" />
+                  <Text type="secondary">Total:</Text>
+                  <Text strong>{deploymentDetail.total}</Text>
+                </Space>
+              </Col>
+              <Col>
+                <Space size={4}>
+                  <Badge status="warning" />
+                  <Text type="secondary">Pending:</Text>
+                  <Text strong>{deploymentDetail.pending}</Text>
+                </Space>
+              </Col>
+              <Col>
+                <Space size={4}>
+                  <Badge status="processing" />
+                  <Text type="secondary">In Progress:</Text>
+                  <Text strong>{deploymentDetail.total - deploymentDetail.pending - deploymentDetail.succeeded - deploymentDetail.failed}</Text>
+                </Space>
+              </Col>
+              <Col>
+                <Space size={4}>
+                  <Badge status="success" />
+                  <Text type="secondary">Succeeded:</Text>
+                  <Text strong style={{ color: '#52c41a' }}>{deploymentDetail.succeeded}</Text>
+                </Space>
+              </Col>
+              <Col>
+                <Space size={4}>
+                  <Badge status="error" />
+                  <Text type="secondary">Failed:</Text>
+                  <Text strong style={{ color: '#ff4d4f' }}>{deploymentDetail.failed}</Text>
+                </Space>
+              </Col>
+              <Col flex="auto" style={{ textAlign: 'right' }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Type: <Tag style={{ marginRight: 0 }}>{deploymentDetail.type.toUpperCase()}</Tag>
+                </Text>
+              </Col>
+            </Row>
+          </Card>
+        )}
+
         {/* Tasks Controls */}
         <div
           style={{
@@ -1276,7 +1438,7 @@ export const SoftwareJobsDeployed = () => {
             <Button icon={<ReloadOutlined />} onClick={async () => {
               if (selectedDeployment) {
                 await fetchTasks(selectedDeployment.deploymentId);
-                message.success('Tasks refreshed successfully');
+                message.success('Tasks refreshed');
               }
             }}>
               Refresh
@@ -1292,6 +1454,45 @@ export const SoftwareJobsDeployed = () => {
           columns={taskColumns}
           dataSource={filteredTasks}
           rowKey="id"
+          expandable={{
+            expandedRowRender: (record) => (
+              <div style={{ padding: '8px 0' }}>
+                {record.commandResult && (
+                  <div style={{ marginBottom: 8 }}>
+                    <Text strong style={{ fontSize: 12 }}>Result: </Text>
+                    <Text style={{ fontSize: 12 }}>{record.commandResult}</Text>
+                  </div>
+                )}
+                {record.output ? (
+                  <div>
+                    <Text strong style={{ fontSize: 12 }}>Execution Output:</Text>
+                    <pre style={{
+                      background: '#f5f5f5',
+                      padding: 12,
+                      borderRadius: 4,
+                      fontSize: 12,
+                      maxHeight: 300,
+                      overflow: 'auto',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all',
+                      marginTop: 4,
+                    }}>
+                      {record.output}
+                    </pre>
+                  </div>
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 12 }}>No execution output available</Text>
+                )}
+                {record.errorMessage && (
+                  <div style={{ marginTop: 8 }}>
+                    <Text strong type="danger" style={{ fontSize: 12 }}>Error: </Text>
+                    <Text type="danger" style={{ fontSize: 12 }}>{record.errorMessage}</Text>
+                  </div>
+                )}
+              </div>
+            ),
+            rowExpandable: () => true,
+          }}
           pagination={{
             pageSize: 20,
             showSizeChanger: true,

@@ -372,6 +372,48 @@ echo "Starting PatchIQ Agent..."
    * Upload agent binary for a specific version
    * Expects multipart/form-data with a 'file' field
    */
+  triggerAgentUpdate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { versionId } = req.body;
+
+      // Look up the agent to determine platform/architecture
+      const agent = await this.agentsService.getAgentById(id);
+
+      // Find the target version by versionId, or find latest for agent's platform
+      const targetVersion = versionId
+        ? await this.agentsService.getAgentVersionById(versionId)
+        : await this.agentsService.getLatestAgentVersion(agent.os || 'Windows');
+
+      if (!targetVersion || !targetVersion.filePath) {
+        res.status(404).json({ error: 'No agent binary available for this platform' });
+        return;
+      }
+
+      // Generate presigned download URL (valid for 1 hour)
+      await minioStorage.initialize();
+      const downloadUrl = await minioStorage.getPresignedUrl(
+        targetVersion.filePath,
+        { expirySeconds: 3600 },
+        AGENTS_BUCKET
+      );
+
+      const result = await this.agentsService.triggerAgentUpdate(id, {
+        downloadUrl,
+        checksum: targetVersion.checksum || '',
+        version: targetVersion.version,
+      });
+
+      res.json({
+        message: `Agent update to v${targetVersion.version} queued`,
+        ...result,
+        targetVersion: targetVersion.version,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   uploadAgentBinary = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;

@@ -50,6 +50,7 @@ import {
   InboxOutlined,
 } from '@ant-design/icons';
 import { hubService } from '../../services/hub.service';
+import { SoftwareJobsDeployed as HubDeployments } from '../jobs/SoftwareJobsDeployed';
 import { softwareJobsService } from '../../services/softwareJobs.service';
 import type {
   SoftwarePackage,
@@ -117,6 +118,7 @@ export const Hub = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
   const [deployLoading, setDeployLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('packages');
 
   // Bundle upload modal state
   const [bundleUploadVisible, setBundleUploadVisible] = useState(false);
@@ -277,8 +279,12 @@ export const Hub = () => {
     try {
       const data = await softwareJobsService.listAgents();
       setAgents(data);
+      if (data.length === 0) {
+        message.warning('No agents found. Make sure agents are registered and connected.');
+      }
     } catch (error) {
       console.error('Failed to fetch agents:', error);
+      message.error('Failed to load agents for deployment targeting');
     }
   }, []);
 
@@ -318,10 +324,7 @@ export const Hub = () => {
       deploymentType: 'install',
     });
 
-    if (agents.length === 0) {
-      await fetchAgents();
-    }
-
+    await fetchAgents();
     setDeployModalVisible(true);
   };
 
@@ -382,7 +385,7 @@ export const Hub = () => {
       message.success(
         <span>
           Deployment <strong>{result.deploymentId}</strong> created with {result.tasksCreated} task(s).{' '}
-          <a href="/patches/deployed/deployed">View status</a>
+          <a onClick={() => setActiveTab('deployments')}>View in Software Jobs tab</a>
         </span>
       );
 
@@ -613,6 +616,16 @@ export const Hub = () => {
         Manage software packages for deployment to agents
       </Text>
 
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        style={{ marginTop: 16 }}
+        items={[
+          {
+            key: 'packages',
+            label: 'Packages',
+            children: (
+              <div>
       {/* Stats Cards */}
       <Row gutter={16} style={{ marginTop: 24, marginBottom: 24 }}>
         <Col span={12}>
@@ -1141,6 +1154,16 @@ export const Hub = () => {
           </div>
         </div>
       </Modal>
+              </div>
+            ),
+          },
+          {
+            key: 'deployments',
+            label: 'Software Jobs',
+            children: <HubDeployments />,
+          },
+        ]}
+      />
     </div>
   );
 };

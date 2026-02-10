@@ -23,6 +23,7 @@ import {
   CloseCircleOutlined,
   RocketOutlined,
   SearchOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { patchRecommendationService } from '../../services/patch-recommendation.service';
@@ -229,16 +230,35 @@ export const PatchRecommendations = () => {
   };
 
   const handleDeploy = async (id: string) => {
-    setActionLoading(id);
-    try {
-      const result = await patchRecommendationService.deployRecommendation(id);
-      message.success('Deployment initiated successfully');
-      fetchData();
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || 'Failed to deploy recommendation');
-    } finally {
-      setActionLoading(null);
-    }
+    Modal.confirm({
+      title: 'Deploy Patch',
+      content: 'This will create a deployment to install the recommended patch on the target asset. Continue?',
+      okText: 'Deploy',
+      onOk: async () => {
+        setActionLoading(id);
+        try {
+          const result = await patchRecommendationService.deployRecommendation(id);
+          const deployId = result.deployment?.deploymentId;
+          Modal.success({
+            title: 'Deployment Created',
+            content: (
+              <div>
+                <p>Deployment <strong>{deployId || 'N/A'}</strong> has been created and is now in progress.</p>
+                <p>You can track its status on the Patch Deployments page.</p>
+              </div>
+            ),
+            okText: 'View Deployments',
+            onOk: () => navigate('/patches/deployed/deployed'),
+            cancelButtonProps: { style: { display: 'inline-block' } },
+          });
+          fetchData();
+        } catch (error: any) {
+          message.error(error?.response?.data?.message || 'Failed to deploy recommendation');
+        } finally {
+          setActionLoading(null);
+        }
+      },
+    });
   };
 
   // Table columns
@@ -350,8 +370,17 @@ export const PatchRecommendations = () => {
               Deploy
             </Button>
           )}
-          {!['recommended', 'accepted'].includes(record.status) && (
-            <Text type="secondary">-</Text>
+          {['deployed', 'verified', 'failed'].includes(record.status) && (
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => navigate('/patches/deployed/deployed')}
+            >
+              View Deployment
+            </Button>
+          )}
+          {record.status === 'rejected' && (
+            <Text type="secondary">Rejected</Text>
           )}
         </Space>
       ),

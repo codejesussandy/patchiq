@@ -11,6 +11,7 @@ import { maybeSendNotificationEmail } from '@shared/services/notification-email.
 let schedulerInterval: ReturnType<typeof setInterval> | null = null;
 let syncSchedulerInterval: ReturnType<typeof setInterval> | null = null;
 let vulnJobSchedulerInterval: ReturnType<typeof setInterval> | null = null;
+let cveSyncSchedulerInterval: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Check for scheduled deployments that are due and execute them.
@@ -125,6 +126,39 @@ async function checkScheduledVulnerabilityJobs() {
   }
 }
 
+/**
+ * Periodically sync the CVE database (NVD, CISA KEV, EPSS, GitHub Advisories).
+ * Reads the sync interval from the VulnerabilityDBSync record or falls back to
+ * the CVE_SYNC_INTERVAL_HOURS env variable.
+ */
+async function checkCveDatabaseSync() {
+  try {
+    const { cveDatabase } = await import('@shared/services/cve-database.service');
+
+    // Check if sync is already running
+    const status = await cveDatabase.getSyncStatus() as { syncInProgress: boolean; lastSync: Date | null };
+    if (status.syncInProgress) return;
+
+    // Determine sync interval from DB config or env
+    const syncRecord = await prisma.vulnerabilityDBSync.findFirst();
+    const intervalHours = syncRecord?.scanJobInterval || Number(process.env.CVE_SYNC_INTERVAL_HOURS) || 24;
+
+    // Check if it's time to sync
+    const lastSync = status.lastSync ? new Date(status.lastSync) : null;
+    const hoursSinceSync = lastSync
+      ? (Date.now() - lastSync.getTime()) / (1000 * 60 * 60)
+      : Infinity;
+
+    if (hoursSinceSync < intervalHours) return;
+
+    console.log(`[cve-scheduler] Starting CVE database sync (last sync: ${lastSync ? lastSync.toISOString() : 'never'}, interval: ${intervalHours}h)`);
+    const result = await cveDatabase.syncAll();
+    console.log(`[cve-scheduler] CVE sync ${result.success ? 'completed' : 'completed with errors'}: ${JSON.stringify(result.stats)}`);
+  } catch (err) {
+    console.error('[cve-scheduler] Error during CVE database sync:', err);
+  }
+}
+
 async function main() {
   const app = createApp();
 
@@ -163,6 +197,11 @@ async function main() {
   vulnJobSchedulerInterval = setInterval(checkScheduledVulnerabilityJobs, 60_000);
   console.log('Vulnerability job scheduler started (60s interval)');
 
+  // Start CVE database sync scheduler (check every 15 minutes, sync based on configured interval)
+  cveSyncSchedulerInterval = setInterval(checkCveDatabaseSync, 15 * 60_000);
+  setTimeout(checkCveDatabaseSync, 60_000); // First check 60s after startup
+  console.log('CVE database sync scheduler started (checks every 15min)');
+
   const server = app.listen(config.port, '0.0.0.0', () => {
     console.log(`
     =============================================
@@ -199,6 +238,11 @@ async function main() {
         clearInterval(vulnJobSchedulerInterval);
         vulnJobSchedulerInterval = null;
         console.log('Vulnerability job scheduler stopped');
+      }
+      if (cveSyncSchedulerInterval) {
+        clearInterval(cveSyncSchedulerInterval);
+        cveSyncSchedulerInterval = null;
+        console.log('CVE sync scheduler stopped');
       }
 
       // Stop download worker

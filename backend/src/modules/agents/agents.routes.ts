@@ -31,6 +31,9 @@ router.get('/:id/commands', controller.getAgentCommands);
 // POST /v1/agents/:id/collect - Trigger on-demand collection
 router.post('/:id/collect', controller.triggerCollection);
 
+// POST /v1/agents/:id/update - Trigger agent self-update
+router.post('/:id/update', controller.triggerAgentUpdate);
+
 // GET /v1/agents/:id/telemetry/latest - Get latest telemetry
 router.get('/:id/telemetry/latest', controller.getLatestTelemetry);
 

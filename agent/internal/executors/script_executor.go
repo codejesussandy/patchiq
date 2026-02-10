@@ -69,7 +69,30 @@ func (e *BaseScriptExecutor) ExecuteBundle(request models.ScriptBundleRequest) m
 		return result
 	}
 
-	// If inline script is provided, use it directly
+	// If both inline script and bundle URL provided, download the file first
+	// then run the inline script with PATCHIQ_DOWNLOAD_PATH set to the downloaded file.
+	// This is the path for patch deployments (raw installer + installer-aware script).
+	if request.Script != "" && request.BundleURL != "" {
+		downloadPath, err := e.downloadInstaller(request.BundleURL, request.BundleChecksum)
+		if err != nil {
+			result.ErrorMessage = err.Error()
+			result.Message = "Failed to download installer for inline script"
+			result.Duration = time.Since(startTime).Milliseconds()
+			return result
+		}
+		defer os.Remove(downloadPath)
+
+		if request.Environment == nil {
+			request.Environment = make(map[string]string)
+		}
+		request.Environment["PATCHIQ_DOWNLOAD_PATH"] = downloadPath
+
+		execResult := e.ExecuteInlineScript(request.Script, request.OperationType, request.RequiresRoot, request.Environment)
+		execResult.Duration = time.Since(startTime).Milliseconds()
+		return execResult
+	}
+
+	// If inline script is provided (no bundle), use it directly
 	if request.Script != "" {
 		return e.ExecuteInlineScript(request.Script, request.OperationType, request.RequiresRoot, request.Environment)
 	}
@@ -182,6 +205,82 @@ func (e *BaseScriptExecutor) ExecuteInlineScript(script string, operationType st
 	}
 
 	return execResult
+}
+
+// downloadInstaller downloads an installer file, preserving the original file extension
+// from the URL (e.g. .exe, .msi, .deb). This is critical on Windows where file extension
+// determines how the OS handles the file.
+func (e *BaseScriptExecutor) downloadInstaller(bundleURL string, expectedChecksum string) (string, error) {
+	req, err := http.NewRequest("GET", bundleURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpClient := &http.Client{Timeout: 30 * time.Minute}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to download installer: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to download installer: HTTP %d", resp.StatusCode)
+	}
+
+	// Determine file extension from Content-Disposition header, URL, or default
+	ext := ""
+	if cd := resp.Header.Get("Content-Disposition"); cd != "" {
+		if idx := strings.Index(cd, "filename="); idx != -1 {
+			fname := strings.Trim(cd[idx+9:], "\" ")
+			if semi := strings.Index(fname, ";"); semi != -1 {
+				fname = fname[:semi]
+			}
+			ext = filepath.Ext(fname)
+		}
+	}
+	if ext == "" {
+		urlPath := bundleURL
+		if idx := strings.Index(urlPath, "?"); idx != -1 {
+			urlPath = urlPath[:idx]
+		}
+		ext = filepath.Ext(urlPath)
+	}
+	if ext == "" {
+		ext = ".bin"
+	}
+
+	tempFile, err := os.CreateTemp(e.bundleDir, "installer-*"+ext)
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tempPath := tempFile.Name()
+
+	log.Printf("Downloading installer to: %s (ext: %s)", tempPath, ext)
+
+	// Download with checksum calculation
+	hasher := sha256.New()
+	writer := io.MultiWriter(tempFile, hasher)
+
+	written, err := io.Copy(writer, resp.Body)
+	tempFile.Close()
+
+	if err != nil {
+		os.Remove(tempPath)
+		return "", fmt.Errorf("failed to save installer: %w", err)
+	}
+
+	log.Printf("Installer downloaded: %s (%d bytes)", tempPath, written)
+
+	// Verify checksum if provided
+	if expectedChecksum != "" {
+		actualChecksum := hex.EncodeToString(hasher.Sum(nil))
+		if !strings.EqualFold(actualChecksum, expectedChecksum) {
+			os.Remove(tempPath)
+			return "", fmt.Errorf("checksum mismatch: expected %s, got %s", expectedChecksum, actualChecksum)
+		}
+	}
+
+	return tempPath, nil
 }
 
 // downloadBundle downloads a bundle file with optional resume, rate limiting,

@@ -113,6 +113,7 @@ export const COMMAND_TYPES = {
   // Hub-centric patch commands (script bundle based)
   HUB_PATCH_INSTALL: 'hub_patch_install',
   HUB_PATCH_ROLLBACK: 'hub_patch_rollback',
+  HUB_PATCH_VERIFY: 'hub_patch_verify',
 
   // Utility commands
   CHECK_REBOOT: 'check_reboot_required',

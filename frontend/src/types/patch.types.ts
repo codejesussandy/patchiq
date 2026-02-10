@@ -9,6 +9,8 @@ export type Patch = {
   platform: string;
   description: string;
   category: string;
+  vendor?: string;
+  product?: string;
   bulletinId: string;
   kbNumber: string;
   releaseDate: string;

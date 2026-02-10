@@ -87,6 +87,8 @@ class DeploymentExecutorService {
       scriptRollback?: string;
       requiresRoot?: boolean;
     } | null = null;
+    // Store installCommand (e.g. winget ID) for legacy mode fallback
+    let hubInstallCommand: string | null = null;
 
     // Try to fetch Hub package info if packageId is provided
     if (pkgPayload.packageId) {
@@ -94,6 +96,10 @@ class DeploymentExecutorService {
         const pkg = await prisma.softwarePackage.findUnique({
           where: { packageId: pkgPayload.packageId },
         });
+
+        if (pkg) {
+          hubInstallCommand = pkg.installCommand;
+        }
 
         if (pkg && (pkg.bundleObjectKey || pkg.scriptsIncluded)) {
           // This is a Hub package with scripts
@@ -176,6 +182,11 @@ class DeploymentExecutorService {
       commandPayload = bundlePayload as unknown as Prisma.InputJsonValue;
     } else {
       // Legacy mode: use package manager commands
+      // Fix source if it's "bundle" (Hub packages without scripts) - map to platform-appropriate source
+      const pkg = packageInfo as SoftwareInstallPayload & { packageId?: string };
+      if (pkg.source === 'bundle' as any || !pkg.source) {
+        // Will be resolved per-agent below based on agent OS
+      }
       commandType = deploymentType === 'uninstall'
         ? COMMAND_TYPES.SOFTWARE_UNINSTALL
         : COMMAND_TYPES.SOFTWARE_INSTALL;
@@ -208,12 +219,24 @@ class DeploymentExecutorService {
       let commandsCreated = 0;
 
       for (const agent of agents) {
+        // If source is "bundle" or missing, resolve to platform-appropriate package manager
+        let agentPayload = commandPayload;
+        const pkgInfo = packageInfo as SoftwareInstallPayload;
+        if (pkgInfo.source === 'bundle' as any || !pkgInfo.source) {
+          const osSource = this.getDefaultSourceForOS(agent.os || 'Unknown');
+          // Use installCommand (winget ID like "7zip.7zip") if available, otherwise display name
+          const pkgName = hubInstallCommand || pkgInfo.name;
+          // Don't pass version for package manager installs — Hub version strings
+          // (e.g. "23.01") often don't match package manager versions and cause failures
+          agentPayload = { name: pkgName, source: osSource } as unknown as Prisma.InputJsonValue;
+        }
+
         // Create the agent command
         const command = await tx.agentCommand.create({
           data: {
             agentId: agent.id,
             type: commandType,
-            payload: commandPayload,
+            payload: agentPayload,
             status: 'pending',
             scheduledAt: new Date(),
           },
@@ -445,7 +468,14 @@ class DeploymentExecutorService {
    * Called when agents report command completion
    */
   async processCommandResult(update: TaskStatusUpdate): Promise<void> {
-    const { commandId, status, result, errorMessage, output } = update;
+    let { commandId, status, result, errorMessage, output } = update;
+
+    // Winget "already installed" (0x8a15002b) — treat as success with informational message
+    if (status === 'failed' && errorMessage?.includes('0x8a15002b')) {
+      status = 'completed';
+      errorMessage = undefined;
+      output = 'Package is already installed (up to date)';
+    }
 
     // Map command status to task status
     const taskStatus = status === 'completed' ? 'SUCCESS'
@@ -501,6 +531,16 @@ class DeploymentExecutorService {
 
     if (configTask) {
       await this.updateConfigDeploymentTask(configTask.id, taskStatus, errorMessage, output);
+      return;
+    }
+
+    // Handle post-install verification command results
+    const command = await prisma.agentCommand.findUnique({
+      where: { id: commandId },
+    });
+
+    if (command?.type === COMMAND_TYPES.HUB_PATCH_VERIFY) {
+      await this.processVerifyCommandResult(command, status, errorMessage);
     }
   }
 
@@ -629,13 +669,19 @@ class DeploymentExecutorService {
 
       // Update associated patch recommendations
       if (status === 'completed') {
-        await tx.assetPatchRecommendation.updateMany({
-          where: { deploymentTaskId: taskId },
-          data: {
-            status: 'verified',
-            verifiedAt: new Date(),
-          },
-        });
+        // Check if any deployed patches have verify scripts
+        const hasVerifyScript = await this.schedulePostInstallVerification(tx, task);
+        if (!hasVerifyScript) {
+          // No verify script — mark recommendations as verified immediately
+          await tx.assetPatchRecommendation.updateMany({
+            where: { deploymentTaskId: taskId },
+            data: {
+              status: 'verified',
+              verifiedAt: new Date(),
+            },
+          });
+        }
+        // If verify script exists, recommendations stay as 'deployed' until verify completes
       } else if (status === 'failed') {
         await tx.assetPatchRecommendation.updateMany({
           where: { deploymentTaskId: taskId },
@@ -1266,6 +1312,109 @@ class DeploymentExecutorService {
   }
 
   /**
+   * Schedule a post-install verification command if the deployed patches have verify scripts.
+   * Returns true if a verify command was created, false otherwise.
+   */
+  private async schedulePostInstallVerification(
+    tx: Prisma.TransactionClient,
+    task: { id: string; assetId: string; deployment: { patches: any[] }; commandId: string | null }
+  ): Promise<boolean> {
+    if (!task.commandId) return false;
+
+    // Get the original command to find the agent
+    const originalCommand = await tx.agentCommand.findUnique({
+      where: { id: task.commandId },
+      select: { agentId: true },
+    });
+
+    if (!originalCommand) return false;
+
+    // Get patch IDs from the deployment
+    const patchIds = task.deployment.patches.map((p: any) => p.id);
+    if (patchIds.length === 0) return false;
+
+    // Check if any of these patches have a bundle with a verify script
+    const patchesWithVerify = await tx.patch.findMany({
+      where: {
+        id: { in: patchIds },
+        bundle: { scriptVerify: { not: null } },
+      },
+      include: {
+        bundle: { select: { scriptVerify: true } },
+      },
+    });
+
+    if (patchesWithVerify.length === 0) return false;
+
+    // Combine all verify scripts into one
+    const verifyScripts = patchesWithVerify
+      .filter(p => p.bundle?.scriptVerify)
+      .map(p => `# Verify: ${p.patchId || p.id}\n${p.bundle!.scriptVerify}`);
+
+    const combinedScript = verifyScripts.join('\n\n');
+
+    // Create a verify command for the agent
+    await tx.agentCommand.create({
+      data: {
+        agentId: originalCommand.agentId,
+        type: COMMAND_TYPES.HUB_PATCH_VERIFY,
+        payload: {
+          operationType: 'verify',
+          script: combinedScript,
+          requiresRoot: true,
+          // Metadata to link back to the original task
+          verifyTaskId: task.id,
+          patchIds,
+        } as unknown as Prisma.InputJsonValue,
+        status: 'pending',
+        scheduledAt: new Date(Date.now() + 10_000), // 10s delay for install to settle
+      },
+    });
+
+    console.log(`[Patch Verify] Scheduled verification for task ${task.id} (${patchesWithVerify.length} patches with verify scripts)`);
+    return true;
+  }
+
+  /**
+   * Process the result of a post-install verification command.
+   * Updates recommendation status to 'verified' on success or 'failed' on failure.
+   */
+  private async processVerifyCommandResult(
+    command: { id: string; payload: any },
+    status: string,
+    errorMessage?: string
+  ): Promise<void> {
+    const payload = command.payload as any;
+    const taskId = payload?.verifyTaskId;
+
+    if (!taskId) {
+      console.warn(`[Patch Verify] Verify command ${command.id} has no verifyTaskId in payload`);
+      return;
+    }
+
+    if (status === 'completed') {
+      await prisma.assetPatchRecommendation.updateMany({
+        where: { deploymentTaskId: taskId, status: 'deployed' },
+        data: {
+          status: 'verified',
+          verifiedAt: new Date(),
+        },
+      });
+      console.log(`[Patch Verify] Task ${taskId} verification passed — recommendations marked verified`);
+    } else if (status === 'failed') {
+      await prisma.assetPatchRecommendation.updateMany({
+        where: { deploymentTaskId: taskId, status: 'deployed' },
+        data: {
+          status: 'failed',
+          failedAt: new Date(),
+          failureReason: `Verification failed: ${errorMessage || 'verify script returned non-zero exit code'}`,
+        },
+      });
+      console.log(`[Patch Verify] Task ${taskId} verification failed — recommendations marked failed`);
+    }
+  }
+
+  /**
    * Resolve asset vulnerabilities when patches are successfully deployed
    * Marks AssetVulnerability records as "Patched" for CVEs covered by the patches
    */
@@ -1544,6 +1693,29 @@ class DeploymentExecutorService {
       commandId: rollbackCommand.id,
       status: 'rollback_initiated',
     };
+  }
+
+  /**
+   * Map agent OS to a default package manager source
+   */
+  private getDefaultSourceForOS(os: string): string {
+    switch (os.toLowerCase()) {
+      case 'windows':
+        return 'winget';
+      case 'linux':
+      case 'ubuntu':
+      case 'debian':
+        return 'apt';
+      case 'macos':
+      case 'darwin':
+        return 'brew';
+      case 'fedora':
+      case 'rhel':
+      case 'centos':
+        return 'dnf';
+      default:
+        return 'apt';
+    }
   }
 }
 

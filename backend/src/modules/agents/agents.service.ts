@@ -162,7 +162,7 @@ export class AgentsService {
   /**
    * Process agent heartbeat
    */
-  async processHeartbeat(agentId: string, input: HeartbeatInput): Promise<Omit<HeartbeatResponse, 'acknowledged' | 'serverTime'>> {
+  async processHeartbeat(agentId: string, input: HeartbeatInput, agentVersion?: string): Promise<Omit<HeartbeatResponse, 'acknowledged' | 'serverTime'>> {
     const agent = await prisma.agent.findUnique({
       where: { id: agentId },
     });
@@ -185,6 +185,7 @@ export class AgentsService {
         status: newStatus,
         lastHeartbeat: new Date(),
         ipAddress: input.ipAddress || agent.ipAddress,
+        ...(agentVersion ? { agentVersion } : {}),
         // Clear the flag after we've noted it
         inventoryRequested: false,
       },
@@ -592,6 +593,34 @@ export class AgentsService {
   }
 
   /**
+   * Trigger agent self-update by queuing an agent_update command
+   */
+  async triggerAgentUpdate(agentId: string, input: {
+    downloadUrl: string;
+    checksum: string;
+    version: string;
+  }): Promise<{ commandId: string; status: string }> {
+    const agent = await prisma.agent.findUnique({ where: { id: agentId } });
+    if (!agent) throw new NotFoundError('Agent not found');
+
+    const command = await prisma.agentCommand.create({
+      data: {
+        agentId,
+        type: 'agent_update',
+        payload: {
+          downloadUrl: input.downloadUrl,
+          checksum: input.checksum,
+          version: input.version,
+        },
+        status: 'pending',
+        scheduledAt: new Date(),
+      },
+    });
+
+    return { commandId: command.id, status: 'queued' };
+  }
+
+  /**
    * Get latest telemetry for an agent
    */
   async getLatestTelemetry(agentId: string) {
@@ -664,6 +693,13 @@ export class AgentsService {
   /**
    * Get agent version by ID
    */
+  async getLatestAgentVersion(platform: string) {
+    return prisma.agentVersion.findFirst({
+      where: { platform, filePath: { not: null } },
+      orderBy: { lastUpdatedAt: 'desc' },
+    });
+  }
+
   async getAgentVersionById(id: string) {
     const version = await prisma.agentVersion.findUnique({
       where: { id },

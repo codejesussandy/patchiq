@@ -16,6 +16,7 @@ import (
 	"github.com/patchify/agent/internal/config"
 	"github.com/patchify/agent/internal/executors"
 	"github.com/patchify/agent/internal/models"
+	"github.com/patchify/agent/internal/update"
 )
 
 // JobHistoryEntry represents a completed job/command
@@ -779,7 +780,7 @@ func (m *Manager) executeCommand(cmd client.PendingCommand) {
 		result.Result = fmt.Sprintf(`{"rebootRequired":%t}`, rebootRequired)
 
 	// Script bundle commands (Hub-centric approach)
-	case "script_bundle", "hub_install", "hub_update", "hub_rollback", "hub_uninstall", "hub_patch_install", "hub_patch_rollback":
+	case "script_bundle", "hub_install", "hub_update", "hub_rollback", "hub_uninstall", "hub_patch_install", "hub_patch_rollback", "hub_patch_verify":
 		var params models.ScriptBundleRequest
 		if err := parsePayload(cmd.Payload, &params); err != nil {
 			result.Status = "failed"
@@ -796,6 +797,8 @@ func (m *Manager) executeCommand(cmd client.PendingCommand) {
 					params.OperationType = "rollback"
 				case "hub_uninstall":
 					params.OperationType = "uninstall"
+				case "hub_patch_verify":
+					params.OperationType = "verify"
 				default:
 					params.OperationType = "install" // default
 				}
@@ -848,6 +851,30 @@ func (m *Manager) executeCommand(cmd client.PendingCommand) {
 			result.Result = execResult.Message
 			result.ErrorMessage = execResult.ErrorMessage
 			result.Output = execResult.Output
+		}
+
+	// Agent self-update
+	case "agent_update":
+		var params update.Request
+		if err := parsePayload(cmd.Payload, &params); err != nil {
+			result.Status = "failed"
+			result.ErrorMessage = "Invalid payload: " + err.Error()
+		} else {
+			updateResult := update.Perform(params)
+			if updateResult.Success {
+				result.Status = "completed"
+				result.Result = updateResult.Message
+				// Report success BEFORE exiting
+				if err := m.client.ReportCommandResult(cmd.ID, result); err != nil {
+					log.Printf("Failed to report update result: %v", err)
+				}
+				log.Printf("[Update] Exiting for restart...")
+				time.Sleep(1 * time.Second)
+				os.Exit(0)
+				return // unreachable but clear
+			}
+			result.Status = "failed"
+			result.ErrorMessage = updateResult.ErrorMessage
 		}
 
 	default:

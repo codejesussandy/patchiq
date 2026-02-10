@@ -63,7 +63,13 @@ func (e *WindowsSoftwareExecutor) installWithWinget(pkg models.SoftwarePackage, 
 	}
 
 	// Build install command
-	args := []string{"install", "--id", pkg.Name, "--silent", "--accept-package-agreements", "--accept-source-agreements"}
+	// Use --id if the name looks like a winget ID (contains a dot, e.g. "7zip.7zip"),
+	// otherwise use --name for display name matching (e.g. "7-Zip")
+	nameFlag := "--name"
+	if strings.Contains(pkg.Name, ".") {
+		nameFlag = "--id"
+	}
+	args := []string{"install", nameFlag, pkg.Name, "--silent", "--accept-package-agreements", "--accept-source-agreements"}
 
 	if pkg.Version != "" {
 		args = append(args, "--version", pkg.Version)
@@ -78,6 +84,12 @@ func (e *WindowsSoftwareExecutor) installWithWinget(pkg models.SoftwarePackage, 
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
+			// 0x8a15002b = package already installed / no update available — treat as success
+			if exitErr.ExitCode() == 0x8a15002b {
+				result.Success = true
+				result.Message = fmt.Sprintf("%s is already installed (up to date)", pkg.Name)
+				return result
+			}
 		}
 		result.ErrorMessage = err.Error()
 		result.Message = fmt.Sprintf("Failed to install %s via winget", pkg.Name)
@@ -284,10 +296,18 @@ func (e *WindowsSoftwareExecutor) UninstallSoftware(name string) models.Executio
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 
-	// Try winget first
+	// Try winget first with fully silent/non-interactive flags
 	wingetPath, err := exec.LookPath("winget")
 	if err == nil {
-		cmd := exec.Command(wingetPath, "uninstall", "--id", name, "--silent")
+		// Use --force to bypass interactive uninstallers, --disable-interactivity to suppress prompts
+		// Use --name if no dot (display name), --id if dot-separated (winget ID)
+		nameFlag := "--name"
+		if strings.Contains(name, ".") {
+			nameFlag = "--id"
+		}
+		cmd := exec.Command(wingetPath, "uninstall", nameFlag, name,
+			"--silent", "--force", "--disable-interactivity",
+			"--accept-source-agreements")
 		output, err := cmd.CombinedOutput()
 		if err == nil {
 			result.Success = true
@@ -301,7 +321,7 @@ func (e *WindowsSoftwareExecutor) UninstallSoftware(name string) models.Executio
 	// Try Chocolatey
 	chocoPath, err := exec.LookPath("choco")
 	if err == nil {
-		cmd := exec.Command(chocoPath, "uninstall", name, "-y")
+		cmd := exec.Command(chocoPath, "uninstall", name, "-y", "--force")
 		output, err := cmd.CombinedOutput()
 		if err == nil {
 			result.Success = true
@@ -312,17 +332,55 @@ func (e *WindowsSoftwareExecutor) UninstallSoftware(name string) models.Executio
 		}
 	}
 
-	// Try WMI uninstall
+	// Try registry-based silent uninstall (more reliable than WMI for most apps)
 	psScript := fmt.Sprintf(`
-		$app = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like '*%s*' }
-		if ($app) {
-			$app.Uninstall()
-			Write-Output "Uninstalled successfully"
-		} else {
-			Write-Error "Application not found"
+		$ErrorActionPreference = 'Stop'
+		$paths = @(
+			'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+			'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*',
+			'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
+		)
+		$app = Get-ItemProperty $paths -ErrorAction SilentlyContinue |
+			Where-Object { $_.DisplayName -like '*%s*' } |
+			Select-Object -First 1
+
+		if (-not $app) {
+			Write-Error "Application '%s' not found in registry"
 			exit 1
 		}
-	`, name)
+
+		Write-Host "Found: $($app.DisplayName) ($($app.DisplayVersion))"
+		$uninstallStr = $app.QuietUninstallString
+		if (-not $uninstallStr) { $uninstallStr = $app.UninstallString }
+		if (-not $uninstallStr) {
+			Write-Error "No uninstall command found"
+			exit 1
+		}
+
+		Write-Host "Uninstall command: $uninstallStr"
+
+		# Add silent flags if not already present
+		if ($uninstallStr -match 'msiexec') {
+			# MSI uninstall — force quiet mode
+			if ($uninstallStr -notmatch '/quiet|/qn') {
+				$uninstallStr = $uninstallStr + ' /quiet /norestart'
+			}
+		} else {
+			# EXE uninstall — try common silent flags
+			if ($uninstallStr -notmatch '/S|/silent|/quiet|--silent') {
+				$uninstallStr = $uninstallStr + ' /S'
+			}
+		}
+
+		Write-Host "Running: $uninstallStr"
+		cmd /c $uninstallStr 2>&1
+		if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq 3010) {
+			Write-Host "Uninstalled successfully"
+		} else {
+			Write-Error "Uninstall exited with code $LASTEXITCODE"
+			exit $LASTEXITCODE
+		}
+	`, name, name)
 
 	cmd := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript)
 	output, err := cmd.CombinedOutput()

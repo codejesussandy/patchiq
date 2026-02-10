@@ -36,7 +36,7 @@ const envSchema = z.object({
   USE_MOCK_NVD: z
     .string()
     .transform((v) => v === 'true')
-    .default('true'),
+    .default('false'),
   USE_MOCK_EMAIL: z
     .string()
     .transform((v) => v === 'true')

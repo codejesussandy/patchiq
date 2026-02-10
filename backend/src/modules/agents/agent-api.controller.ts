@@ -51,13 +51,18 @@ export class AgentApiController {
       }
 
       const input: HeartbeatInput = req.body;
-      const result = await this.agentsService.processHeartbeat(agentId, input);
+      const agentVersion = req.headers['x-agent-version'] as string | undefined;
+      const result = await this.agentsService.processHeartbeat(agentId, input, agentVersion);
 
-      res.json({
+      const response = {
         acknowledged: true,
         serverTime: new Date().toISOString(),
         ...result,
-      });
+      };
+      if (result.commandsPending) {
+        console.log(`[HEARTBEAT] Agent ${agentId} has pending commands`);
+      }
+      res.json(response);
     } catch (error) {
       next(error);
     }
