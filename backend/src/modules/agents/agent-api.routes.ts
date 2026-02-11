@@ -51,6 +51,9 @@ router.post('/register', validateBody(registerAgentSchema), controller.register)
 // POST /api/agent/token/refresh - Refresh agent token (uses refresh token, not access token)
 router.post('/token/refresh', controller.refreshToken);
 
+// GET /api/agent/update/binary/:versionId - Download agent binary for self-update (no auth - uses version UUID as token)
+router.get('/update/binary/:versionId', controller.downloadUpdateBinary);
+
 // All routes below require a valid agent JWT
 router.use(authenticateAgent);
 

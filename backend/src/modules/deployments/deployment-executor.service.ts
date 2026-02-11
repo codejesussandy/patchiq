@@ -219,10 +219,11 @@ class DeploymentExecutorService {
       let commandsCreated = 0;
 
       for (const agent of agents) {
-        // If source is "bundle" or missing, resolve to platform-appropriate package manager
+        // If source is "bundle" or missing AND we're NOT using hub-centric mode,
+        // resolve to platform-appropriate package manager for legacy installs
         let agentPayload = commandPayload;
         const pkgInfo = packageInfo as SoftwareInstallPayload;
-        if (pkgInfo.source === 'bundle' as any || !pkgInfo.source) {
+        if (!hubPackage?.scriptsIncluded && (pkgInfo.source === 'bundle' as any || !pkgInfo.source)) {
           const osSource = this.getDefaultSourceForOS(agent.os || 'Unknown');
           // Use installCommand (winget ID like "7zip.7zip") if available, otherwise display name
           const pkgName = hubInstallCommand || pkgInfo.name;
@@ -512,7 +513,7 @@ class DeploymentExecutorService {
     });
 
     if (patchTask) {
-      await this.updatePatchDeploymentTask(patchTask.id, taskStatus.toLowerCase(), errorMessage, output);
+      await this.updatePatchDeploymentTask(patchTask.id, status, errorMessage, output);
 
       // If task failed, trigger auto-retry or rollback logic
       if (status === 'failed') {
@@ -1041,6 +1042,78 @@ class DeploymentExecutorService {
           pending: 0,
         },
       });
+    });
+  }
+
+  /**
+   * Retry a failed/cancelled patch deployment by re-creating it with same patches and targets.
+   */
+  async retryPatchDeployment(deploymentId: string): Promise<DeploymentCreationResult> {
+    const deployment = await prisma.patchDeployment.findFirst({
+      where: { OR: [{ deploymentId }, { id: deploymentId }] },
+      include: {
+        patches: { select: { id: true } },
+        tasks: {
+          select: {
+            assetId: true,
+            command: { select: { payload: true } },
+          },
+        },
+      },
+    });
+
+    if (!deployment) {
+      throw new NotFoundError('Patch deployment not found');
+    }
+
+    // Get agent IDs from original targets (assets → agents)
+    const assetIds = [...new Set(deployment.tasks.map(t => t.assetId))];
+    const agents = await prisma.agent.findMany({
+      where: { assetId: { in: assetIds } },
+      select: { id: true },
+    });
+
+    if (agents.length === 0) {
+      throw new BadRequestError('No connected agents found for original deployment targets');
+    }
+
+    // Get patch IDs: first try the relation, then extract from command payloads
+    let patchIds: string[] = deployment.patches.map(p => p.id);
+
+    if (patchIds.length === 0) {
+      // Extract patch IDs from command payloads
+      for (const task of deployment.tasks) {
+        const payload = task.command?.payload as any;
+        if (!payload) continue;
+        if (payload.patchId) {
+          // Look up patch by patchId string (e.g. "7ZIP-24.01")
+          const patch = await prisma.patch.findFirst({ where: { patchId: payload.patchId }, select: { id: true } });
+          if (patch) patchIds.push(patch.id);
+        } else if (payload.patches) {
+          for (const p of payload.patches) {
+            if (p.patchId) {
+              const patch = await prisma.patch.findFirst({ where: { patchId: p.patchId }, select: { id: true } });
+              if (patch) patchIds.push(patch.id);
+            }
+          }
+        }
+      }
+      patchIds = [...new Set(patchIds)];
+    }
+
+    if (patchIds.length === 0) {
+      throw new BadRequestError('Could not determine patches from original deployment');
+    }
+
+    return this.createPatchDeployment({
+      name: `${deployment.name} (retry)`,
+      description: deployment.description || undefined,
+      targetAgentIds: agents.map(a => a.id),
+      patches: patchIds.map(id => ({ id })),
+      retryCount: deployment.retryCount,
+      autoRollback: deployment.autoRollback,
+      triggerType: 'manual',
+      createdBy: deployment.createdBy || undefined,
     });
   }
 

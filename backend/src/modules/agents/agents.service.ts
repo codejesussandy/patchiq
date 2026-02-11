@@ -473,6 +473,14 @@ export class AgentsService {
       orderBy: { createdAt: 'asc' },
     });
 
+    // Mark fetched commands as 'delivered' so they aren't re-served on next heartbeat
+    if (commands.length > 0) {
+      await prisma.agentCommand.updateMany({
+        where: { id: { in: commands.map((c) => c.id) } },
+        data: { status: 'delivered' },
+      });
+    }
+
     return commands.map((cmd) => ({
       id: cmd.id,
       type: cmd.type,

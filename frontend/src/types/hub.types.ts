@@ -116,6 +116,7 @@ export interface CreateBundleInput {
 
 export interface HubStats {
   totalPackages: number;
+  totalApplications: number;
   activePackages: number;
   totalSize: string;
   byPlatform: Record<string, number>;

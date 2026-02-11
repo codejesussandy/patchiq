@@ -390,13 +390,10 @@ echo "Starting PatchIQ Agent..."
         return;
       }
 
-      // Generate presigned download URL (valid for 1 hour)
-      await minioStorage.initialize();
-      const downloadUrl = await minioStorage.getPresignedUrl(
-        targetVersion.filePath,
-        { expirySeconds: 3600 },
-        AGENTS_BUCKET
-      );
+      // Build a backend-proxied download URL so the agent doesn't need
+      // to deal with MinIO presigned URL signature issues through nginx
+      const baseUrl = env.BACKEND_PUBLIC_URL || `http://localhost:${env.PORT}`;
+      const downloadUrl = `${baseUrl}/api/agent/update/binary/${targetVersion.id}`;
 
       const result = await this.agentsService.triggerAgentUpdate(id, {
         downloadUrl,

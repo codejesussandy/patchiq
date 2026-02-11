@@ -147,7 +147,7 @@ export const SoftwareJobsCatalog = () => {
   const handleDeploy = (item: SoftwareItem) => {
     // Navigate to software deployed page with deployment context
     // The SoftwareJobsDeployed page will handle deployment creation
-    navigate('/jobs/software/deployed', {
+    navigate('/hub', {
       state: {
         createDeployment: true,
         selectedPackage: {

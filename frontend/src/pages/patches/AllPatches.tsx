@@ -19,6 +19,8 @@ import {
   Upload,
   List,
   Divider,
+  Tag,
+  Spin,
 } from 'antd';
 import {
   SearchOutlined,
@@ -30,9 +32,12 @@ import {
   UploadOutlined,
   RocketOutlined,
   ScanOutlined,
+  AppstoreOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { patchService, type Patch, type AffectedSoftware } from '../../services/patch.service';
+import { patchTemplateService, type SoftwareTemplateItem } from '../../services/patch-template.service';
 import { settingsService } from '../../services/settings.service';
 import { assetService } from '../../services/asset.service';
 import { tagService } from '../../services/tag.service';
@@ -425,6 +430,16 @@ export const AllPatches = () => {
   // CVE auto-suggest
   const [cveSuggestions, setCveSuggestions] = useState<Array<{ cveId: string; severity: string; description: string }>>([]);
 
+  // Template picker
+  const [templateModalVisible, setTemplateModalVisible] = useState(false);
+  const [templates, setTemplates] = useState<SoftwareTemplateItem[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState<SoftwareTemplateItem | null>(null);
+  const [templateOs, setTemplateOs] = useState('Windows');
+  const [templateArch, setTemplateArch] = useState('x64');
+  const [templateFetching, setTemplateFetching] = useState(false);
+
   useEffect(() => {
     fetchPatches();
     const fetchOptions = async () => {
@@ -481,6 +496,61 @@ export const AllPatches = () => {
       setCveSuggestions(suggestions);
     } catch {
       // Silently fail
+    }
+  };
+
+  // ============================================
+  // Template Picker
+  // ============================================
+
+  const openTemplatePicker = async () => {
+    setTemplateModalVisible(true);
+    setSelectedTemplate(null);
+    setTemplateSearch('');
+    if (templates.length === 0) {
+      setTemplatesLoading(true);
+      try {
+        const data = await patchTemplateService.listTemplates();
+        setTemplates(data);
+      } catch {
+        message.error('Failed to load software templates');
+      } finally {
+        setTemplatesLoading(false);
+      }
+    }
+  };
+
+  const handleTemplateSelect = async () => {
+    if (!selectedTemplate) return;
+    setTemplateFetching(true);
+    try {
+      const result = await patchTemplateService.getLatestVersion(selectedTemplate.id, templateOs, templateArch);
+      setTemplateModalVisible(false);
+      // Open the create form and pre-fill with fetched data
+      openPatchModal(null);
+      setTimeout(() => {
+        form.setFieldsValue({
+          software: result.software,
+          platform: result.os,
+          vendor: result.vendor,
+          product: result.product,
+          severity: result.severity,
+          category: result.category,
+          architecture: result.architecture,
+          referenceUrl: result.referenceUrl,
+          downloadUrl: result.downloadUrl,
+          description: `${result.software} update. ${result.vendorData.releaseNotes || ''}`.trim(),
+        });
+      }, 100);
+      if (result.vendorData.version !== 'latest') {
+        message.success(`Fetched ${selectedTemplate.name} v${result.vendorData.version} — review and save`);
+      } else {
+        message.info(`Template loaded for ${selectedTemplate.name} — fill in version details and save`);
+      }
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || `Failed to fetch latest version for ${selectedTemplate.name}`);
+    } finally {
+      setTemplateFetching(false);
     }
   };
 
@@ -879,6 +949,9 @@ export const AllPatches = () => {
             Discover Patches
           </Button>
           <Button onClick={() => setBulkAddModalVisible(true)}>Bulk Add</Button>
+          <Button icon={<AppstoreOutlined />} onClick={openTemplatePicker}>
+            From Template
+          </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => openPatchModal(null)}>
             Create Patch
           </Button>
@@ -1256,6 +1329,102 @@ export const AllPatches = () => {
             </Select>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Template Picker Modal */}
+      <Modal
+        title="Create Patch from Template"
+        open={templateModalVisible}
+        onCancel={() => setTemplateModalVisible(false)}
+        width={720}
+        footer={[
+          <Button key="cancel" onClick={() => setTemplateModalVisible(false)}>Cancel</Button>,
+          <Button
+            key="fetch"
+            type="primary"
+            disabled={!selectedTemplate}
+            loading={templateFetching}
+            onClick={handleTemplateSelect}
+          >
+            {templateFetching ? 'Fetching latest version...' : 'Fetch & Create Patch'}
+          </Button>,
+        ]}
+      >
+        {templatesLoading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}><Spin indicator={<LoadingOutlined spin />} size="large" /></div>
+        ) : (
+          <>
+            <Input
+              placeholder="Search software..."
+              prefix={<SearchOutlined />}
+              style={{ marginBottom: 12 }}
+              value={templateSearch}
+              onChange={(e) => setTemplateSearch(e.target.value)}
+            />
+            <Row gutter={12} style={{ marginBottom: 12 }}>
+              <Col span={12}>
+                <Select
+                  value={templateOs}
+                  onChange={setTemplateOs}
+                  style={{ width: '100%' }}
+                  options={[
+                    { value: 'Windows', label: 'Windows' },
+                    { value: 'MacOS', label: 'macOS' },
+                    { value: 'Linux', label: 'Linux' },
+                    { value: 'Ubuntu', label: 'Ubuntu' },
+                  ]}
+                />
+              </Col>
+              <Col span={12}>
+                <Select
+                  value={templateArch}
+                  onChange={setTemplateArch}
+                  style={{ width: '100%' }}
+                  options={[
+                    { value: 'x64', label: 'x64 (64-bit)' },
+                    { value: 'arm64', label: 'ARM64' },
+                  ]}
+                />
+              </Col>
+            </Row>
+            <div style={{ maxHeight: 400, overflow: 'auto' }}>
+              {templates
+                .filter((t) => {
+                  const q = templateSearch.toLowerCase();
+                  return (
+                    (!q || t.name.toLowerCase().includes(q) || t.vendor.toLowerCase().includes(q)) &&
+                    t.supportedOs.some((os) => os.toLowerCase() === templateOs.toLowerCase())
+                  );
+                })
+                .map((t) => (
+                  <div
+                    key={t.id}
+                    onClick={() => setSelectedTemplate(t)}
+                    style={{
+                      padding: '10px 14px',
+                      marginBottom: 6,
+                      borderRadius: 8,
+                      border: selectedTemplate?.id === t.id ? '2px solid #1890ff' : '1px solid #f0f0f0',
+                      background: selectedTemplate?.id === t.id ? '#e6f7ff' : '#fafafa',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div>
+                      <Text strong>{t.name}</Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: 12 }}>{t.vendor}</Text>
+                    </div>
+                    <Tag color={t.category === 'A' ? 'green' : t.category === 'B' ? 'blue' : 'orange'}>
+                      {t.category === 'A' ? 'Auto' : t.category === 'B' ? 'Semi' : 'Manual'}
+                    </Tag>
+                  </div>
+                ))}
+            </div>
+          </>
+        )}
       </Modal>
     </div>
   );

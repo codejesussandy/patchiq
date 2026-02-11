@@ -311,6 +311,13 @@ deploymentsRouter.post(
   deploymentController.cancelPatchDeployment.bind(deploymentController)
 );
 
+// POST /v1/deployments/patch/:deploymentId/retry - Retry a failed patch deployment
+deploymentsRouter.post(
+  '/patch/:deploymentId/retry',
+  authenticate,
+  deploymentController.retryPatchDeployment.bind(deploymentController)
+);
+
 // POST /v1/deployments/config - Create config deployment
 deploymentsRouter.post(
   '/config',

@@ -2214,8 +2214,9 @@ export async function autoGeneratePatchBundle(patchId: string, minioObjectKey?: 
 
   // ── Fallback: package-manager scripts when no MinIO file ──
   if (!scriptInstall && (os.includes('windows') || os === 'w')) {
-    // Windows patches
-    if (kbNumber) {
+    // Windows patches — only use KB/DISM path for real KB numbers (e.g. KB5034441)
+    const isRealKB = kbNumber && /^KB\d+$/i.test(kbNumber.trim());
+    if (isRealKB) {
       const msuUrl = downloadUrl || '';
       scriptInstall = [
         '#!/usr/bin/env powershell',
@@ -2257,13 +2258,18 @@ export async function autoGeneratePatchBundle(patchId: string, minioObjectKey?: 
 
       scriptInstall = [
         '#!/usr/bin/env powershell',
-        `# Auto-generated upgrade script for ${cleanName}`,
+        `# Auto-generated install/upgrade script for ${cleanName}`,
         `$Package = "${cleanName}"`,
         '',
         '# Try winget first',
         'if (Get-Command winget -ErrorAction SilentlyContinue) {',
-        '    winget upgrade --name $Package --silent --accept-package-agreements --accept-source-agreements',
+        '    $output = winget upgrade --name $Package --silent --accept-package-agreements --accept-source-agreements 2>&1 | Out-String',
         '    if ($LASTEXITCODE -eq 0) { Write-Host "Upgraded $Package via winget"; exit 0 }',
+        '    # "No available upgrade" means already at latest — treat as success',
+        '    if ($output -match "No available upgrade|No newer package|already installed") { Write-Host "$Package is already up to date"; exit 0 }',
+        '    # Try install if upgrade failed (package not yet installed)',
+        '    winget install --name $Package --silent --accept-package-agreements --accept-source-agreements 2>&1 | Out-String',
+        '    if ($LASTEXITCODE -eq 0) { Write-Host "Installed $Package via winget"; exit 0 }',
         '}',
         '',
         '# Fallback to chocolatey',
@@ -2272,7 +2278,7 @@ export async function autoGeneratePatchBundle(patchId: string, minioObjectKey?: 
         '    if ($LASTEXITCODE -eq 0) { Write-Host "Upgraded $Package via chocolatey"; exit 0 }',
         '}',
         '',
-        'Write-Error "No package manager available to upgrade $Package"',
+        'Write-Error "No package manager available to install $Package"',
         'exit 1',
       ].join('\n');
 

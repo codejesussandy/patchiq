@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { AgentsService } from './agents.service';
 import { BadRequestError } from '@shared/errors';
+import { minioStorage } from '@shared/services/minio.service';
+
+const AGENTS_BUCKET = 'agents';
 import type {
   RegisterAgentInput,
   HeartbeatInput,
@@ -157,6 +160,34 @@ export class AgentApiController {
       const telemetry: TelemetryInput = req.body;
       await this.agentsService.processTelemetry(agentId, telemetry);
       res.json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /api/agent/update/binary/:versionId
+   * Stream agent binary from MinIO — used by agent self-update
+   */
+  downloadUpdateBinary = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { versionId } = req.params;
+      const version = await this.agentsService.getAgentVersionById(versionId);
+
+      if (!version.filePath) {
+        res.status(404).json({ error: 'Agent binary not found' });
+        return;
+      }
+
+      await minioStorage.initialize();
+      const isExe = version.filePath.endsWith('.exe');
+      const filename = `patchiq-agent${isExe ? '.exe' : ''}`;
+
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+      const stream = await minioStorage.downloadStream(version.filePath, AGENTS_BUCKET);
+      stream.pipe(res);
     } catch (error) {
       next(error);
     }

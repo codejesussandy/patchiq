@@ -219,6 +219,20 @@ export class DeploymentController {
   }
 
   /**
+   * Retry a failed patch deployment
+   * POST /v1/deployments/patch/:deploymentId/retry
+   */
+  async retryPatchDeployment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { deploymentId } = req.params;
+      const result = await deploymentExecutorService.retryPatchDeployment(deploymentId);
+      res.status(201).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Create a new config deployment
    * POST /v1/deployments/config
    */

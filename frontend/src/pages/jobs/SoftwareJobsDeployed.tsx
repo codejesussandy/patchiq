@@ -19,7 +19,6 @@ import {
   Progress,
   Badge,
   Descriptions,
-  Card,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
@@ -1337,7 +1336,7 @@ export const SoftwareJobsDeployed = () => {
       >
         {/* Deployment Summary */}
         {deploymentDetail && (
-          <Card size="small" style={{ marginBottom: 16 }}>
+          <div style={{ background: '#fafafa', borderRadius: 8, padding: 16, marginBottom: 16 }}>
             <Row gutter={24} align="middle">
               <Col flex="1">
                 <Progress
@@ -1394,7 +1393,7 @@ export const SoftwareJobsDeployed = () => {
                 </Text>
               </Col>
             </Row>
-          </Card>
+          </div>
         )}
 
         {/* Tasks Controls */}

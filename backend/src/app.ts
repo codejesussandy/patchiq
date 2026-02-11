@@ -19,6 +19,7 @@ import { dashboardRoutes } from '@modules/dashboard';
 import { reportsRoutes } from '@modules/reports';
 import { settingsRoutes } from '@modules/settings';
 import { patchRepositoryRoutes } from '@modules/patch-repository';
+import { patchTemplateRoutes } from '@modules/patch-templates';
 import { hubRoutes } from '@modules/hub';
 import { notificationsRoutes, notificationsController } from '@modules/notifications';
 
@@ -221,6 +222,9 @@ export function createApp(): Application {
 
   // Patch Repository routes (Central patch storage with MinIO)
   app.use(`/${config.apiVersion}/patch-repository`, patchRepositoryRoutes);
+
+  // Patch Template routes (Software catalog with vendor API fetching)
+  app.use(`/${config.apiVersion}/patch-templates`, patchTemplateRoutes);
 
   // Hub routes (Software package repository with MinIO)
   app.use(`/${config.apiVersion}/hub`, hubRoutes);

@@ -712,7 +712,7 @@ class HubService {
         isActive: pkg.isActive,
         isVerified: pkg.isVerified,
         installSource: pkg.installSource,
-        fileSize: pkg.fileSize ? this.formatFileSize(pkg.fileSize) : null,
+        fileSize: this.formatFileSize(pkg.fileSize || pkg.bundleSize || null),
         createdAt: pkg.createdAt.toISOString(),
       }));
 
@@ -928,6 +928,7 @@ class HubService {
    */
   async getStats(): Promise<{
     totalPackages: number;
+    totalApplications: number;
     activePackages: number;
     totalSize: number;
     byPlatform: Record<string, number>;
@@ -941,11 +942,12 @@ class HubService {
       platformStats,
       categoryStats,
       totalBundles,
+      applicationGroups,
     ] = await Promise.all([
       prisma.softwarePackage.count(),
       prisma.softwarePackage.count({ where: { isActive: true } }),
       prisma.softwarePackage.aggregate({
-        _sum: { fileSize: true },
+        _sum: { fileSize: true, bundleSize: true },
       }),
       prisma.softwarePackage.groupBy({
         by: ['platform'],
@@ -957,7 +959,12 @@ class HubService {
         where: { category: { not: null } },
       }),
       prisma.hubBundle.count(),
+      prisma.softwarePackage.groupBy({
+        by: ['name'],
+        _count: true,
+      }),
     ]);
+    const totalApplications = applicationGroups.length;
 
     const byPlatform: Record<string, number> = {};
     platformStats.forEach(stat => {
@@ -973,8 +980,9 @@ class HubService {
 
     return {
       totalPackages,
+      totalApplications,
       activePackages,
-      totalSize: Number(sizeStats._sum.fileSize || BigInt(0)),
+      totalSize: Number((sizeStats._sum.fileSize || BigInt(0)) + (sizeStats._sum.bundleSize || BigInt(0))),
       byPlatform,
       byCategory,
       totalBundles,
@@ -1036,8 +1044,8 @@ class HubService {
       requiresReboot: pkg.requiresReboot,
       requiresRoot: pkg.requiresRoot ?? false,
       fileName: pkg.fileName,
-      fileSize: pkg.fileSize ? this.formatFileSize(pkg.fileSize) : null,
-      fileSizeBytes: pkg.fileSize ? Number(pkg.fileSize) : null,
+      fileSize: this.formatFileSize(pkg.fileSize || pkg.bundleSize || null),
+      fileSizeBytes: pkg.fileSize ? Number(pkg.fileSize) : pkg.bundleSize ? Number(pkg.bundleSize) : null,
       hasFile: !!(pkg.minioObjectKey || pkg.bundleObjectKey),
       hasBundle: !!pkg.bundleObjectKey,
       scriptsIncluded: pkg.scriptsIncluded ?? false,
@@ -1090,7 +1098,8 @@ class HubService {
     };
   }
 
-  private formatFileSize(bytes: bigint): string {
+  private formatFileSize(bytes: bigint | null | undefined): string | null {
+    if (!bytes) return null;
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let size = Number(bytes);
     let unitIndex = 0;

@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   App,
   Card,
@@ -51,6 +52,8 @@ import {
 } from '@ant-design/icons';
 import { hubService } from '../../services/hub.service';
 import { SoftwareJobsDeployed as HubDeployments } from '../jobs/SoftwareJobsDeployed';
+import { SoftwareJobsCatalog } from '../jobs/SoftwareJobsCatalog';
+import { SoftwareJobsBundle } from '../jobs/SoftwareJobsBundle';
 import { softwareJobsService } from '../../services/softwareJobs.service';
 import type {
   SoftwarePackage,
@@ -119,10 +122,19 @@ export const Hub = () => {
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
   const [deployLoading, setDeployLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('packages');
+  const location = useLocation();
+
+  // Auto-switch to deployments tab when navigating with createDeployment state
+  useEffect(() => {
+    if ((location.state as any)?.createDeployment) {
+      setActiveTab('deployments');
+    }
+  }, [location.state]);
 
   // Bundle upload modal state
   const [bundleUploadVisible, setBundleUploadVisible] = useState(false);
   const [bundleUploading, setBundleUploading] = useState(false);
+
 
   const fetchStats = useCallback(async () => {
     try {
@@ -631,8 +643,8 @@ export const Hub = () => {
         <Col span={12}>
           <Card>
             <Statistic
-              title="Total Packages"
-              value={stats?.totalPackages || 0}
+              title="Total Applications"
+              value={stats?.totalApplications || 0}
               prefix={<AppstoreOutlined />}
             />
           </Card>
@@ -680,7 +692,6 @@ export const Hub = () => {
           </Space>
           <Space>
             <Button
-              type="primary"
               icon={<UploadOutlined />}
               onClick={() => setBundleUploadVisible(true)}
             >
@@ -1156,6 +1167,16 @@ export const Hub = () => {
       </Modal>
               </div>
             ),
+          },
+          {
+            key: 'catalog',
+            label: 'Software Catalog',
+            children: <SoftwareJobsCatalog />,
+          },
+          {
+            key: 'bundle',
+            label: 'Bundles',
+            children: <SoftwareJobsBundle />,
           },
           {
             key: 'deployments',

@@ -3,6 +3,7 @@ package executors
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -143,10 +144,26 @@ func (e *BaseScriptExecutor) executeFromBundle(request models.ScriptBundleReques
 		return result
 	}
 
-	// 5. Merge environment variables
+	// 5. Set PATCHIQ_DOWNLOAD_PATH to the installer file in the bundle's files/ directory
+	filesDir := filepath.Join(bundleRoot, "files")
+	log.Printf("[ScriptExec] Looking for installer in: %s", filesDir)
+	if entries, err := os.ReadDir(filesDir); err == nil && len(entries) > 0 {
+		installerPath := filepath.Join(filesDir, entries[0].Name())
+		log.Printf("[ScriptExec] Found installer: %s (%d files total)", installerPath, len(entries))
+		if request.Environment == nil {
+			request.Environment = make(map[string]string)
+		}
+		request.Environment["PATCHIQ_DOWNLOAD_PATH"] = installerPath
+	} else if err != nil {
+		log.Printf("[ScriptExec] WARNING: files dir not found: %v", err)
+	} else {
+		log.Printf("[ScriptExec] WARNING: files dir empty")
+	}
+
+	// 6. Merge environment variables
 	env := e.mergeEnvironment(manifest.Environment, request.Environment)
 
-	// 6. Execute script
+	// 7. Execute script
 	requiresRoot := request.RequiresRoot || manifest.RequiresRoot
 	execResult := e.runScript(scriptPath, bundleRoot, requiresRoot, env, request.Timeout)
 
@@ -668,13 +685,20 @@ func (e *BaseScriptExecutor) runScript(scriptPath string, workDir string, requir
 	cmd.Env = append(cmd.Env, fmt.Sprintf("PATCHIQ_WORK_DIR=%s", workDir))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("PATCHIQ_SCRIPT_PATH=%s", scriptPath))
 
-	// Execute with timeout if specified
-	if timeoutSec > 0 {
-		// Note: In a real implementation, you'd use context.WithTimeout
-		// For simplicity, we'll trust the script to complete in reasonable time
+	// Execute with timeout (default 15 minutes if not specified)
+	effectiveTimeout := timeoutSec
+	if effectiveTimeout <= 0 {
+		effectiveTimeout = 900 // 15 minutes default
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(effectiveTimeout)*time.Second)
+	defer cancel()
 
-	output, err := cmd.CombinedOutput()
+	// Replace cmd with context-aware version
+	ctxCmd := exec.CommandContext(ctx, cmd.Path, cmd.Args[1:]...)
+	ctxCmd.Dir = cmd.Dir
+	ctxCmd.Env = cmd.Env
+
+	output, err := ctxCmd.CombinedOutput()
 	result.Output = string(output)
 
 	if err != nil {

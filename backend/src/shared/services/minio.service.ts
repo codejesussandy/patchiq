@@ -145,7 +145,6 @@ class MinioStorageService {
     // Upload to MinIO
     const metadata: Record<string, string> = {
       'Content-Type': options.contentType || 'application/octet-stream',
-      'x-amz-checksum-sha256': checksum,
       ...options.metadata,
     };
 

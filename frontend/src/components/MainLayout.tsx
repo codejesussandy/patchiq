@@ -260,7 +260,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
 
   const patchesTabItems: MenuItem[] = [
     { key: 'all-patches', icon: <FolderOutlined />, label: 'All Patches' },
-    { key: 'patch-deployed', icon: <CreditCardOutlined />, label: 'Patch Deployed' },
+    { key: 'patch-deployed', icon: <CreditCardOutlined />, label: 'Patch Deployments' },
     { key: 'patch-test-approve', icon: <EnvironmentOutlined />, label: 'Patch Test and Approve' },
     { key: 'zero-touch', icon: <EnvironmentOutlined />, label: 'Zero Touch Deployment' },
     { key: 'patch-jobs', icon: <SafetyOutlined />, label: 'Patch Jobs' },

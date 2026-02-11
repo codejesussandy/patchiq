@@ -138,6 +138,25 @@ export const patchService = {
     return response.data.data || response.data;
   },
 
+  async listPatchDeployments(): Promise<any[]> {
+    const response = await api.get('/deployments/patch');
+    return response.data.data || response.data || [];
+  },
+
+  async getPatchDeploymentStatus(deploymentId: string): Promise<any> {
+    const response = await api.get(`/deployments/patch/${deploymentId}`);
+    return response.data.data || response.data;
+  },
+
+  async cancelPatchDeployment(deploymentId: string): Promise<void> {
+    await api.post(`/deployments/patch/${deploymentId}/cancel`);
+  },
+
+  async retryPatchDeployment(deploymentId: string): Promise<any> {
+    const response = await api.post(`/deployments/patch/${deploymentId}/retry`);
+    return response.data.data || response.data;
+  },
+
   async deleteDeployment(id: string): Promise<void> {
     await api.delete(`/deployments/${id}`);
   },

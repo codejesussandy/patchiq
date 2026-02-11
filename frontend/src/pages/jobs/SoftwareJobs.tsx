@@ -4,6 +4,7 @@ import { Typography, Tabs } from 'antd';
 import { SoftwareJobsCatalog } from './SoftwareJobsCatalog';
 import { SoftwareJobsBundle } from './SoftwareJobsBundle';
 import { SoftwareJobsDeployed } from './SoftwareJobsDeployed';
+import { PatchJobsDeployed } from './PatchJobsDeployed';
 
 const { Title } = Typography;
 
@@ -14,6 +15,7 @@ export const SoftwareJobs = () => {
   const getActiveTab = () => {
     if (location.pathname.includes('/catalog')) return 'catalog';
     if (location.pathname.includes('/bundle')) return 'bundle';
+    if (location.pathname.includes('/patch-deployments')) return 'patch-deployments';
     if (location.pathname.includes('/deployed')) return 'deployed';
     return 'catalog';
   };
@@ -28,6 +30,9 @@ export const SoftwareJobs = () => {
         break;
       case 'deployed':
         navigate('/patches/deployed/deployed');
+        break;
+      case 'patch-deployments':
+        navigate('/patches/deployed/patch-deployments');
         break;
       default:
         navigate('/patches/deployed/catalog');
@@ -62,7 +67,11 @@ export const SoftwareJobs = () => {
           },
           {
             key: 'deployed',
-            label: 'Deployed',
+            label: 'Software Deployed',
+          },
+          {
+            key: 'patch-deployments',
+            label: 'Patch Deployments',
           },
         ]}
       />
@@ -71,6 +80,7 @@ export const SoftwareJobs = () => {
           <Route path="catalog" element={<SoftwareJobsCatalog />} />
           <Route path="bundle" element={<SoftwareJobsBundle />} />
           <Route path="deployed" element={<SoftwareJobsDeployed />} />
+          <Route path="patch-deployments" element={<PatchJobsDeployed />} />
         </Routes>
       </div>
     </div>

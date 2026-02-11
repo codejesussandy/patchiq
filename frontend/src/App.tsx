@@ -33,7 +33,7 @@ import { DeviceCredentials } from './pages/discovery/DeviceCredentials';
 import { Agents } from './pages/discovery/Agents';
 
 // Jobs
-import { SoftwareJobs } from './pages/jobs/SoftwareJobs';
+import { PatchJobsDeployed } from './pages/jobs/PatchJobsDeployed';
 import { PatchJobs } from './pages/jobs/PatchJobs';
 import { VulnerabilityJobs } from './pages/jobs/VulnerabilityJobs';
 
@@ -195,7 +195,7 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MainLayout>
-              <SoftwareJobs />
+              <PatchJobsDeployed />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -359,11 +359,11 @@ function AppRoutes() {
       {/* Jobs - backwards compat redirects */}
       <Route
         path="/jobs/software-jobs/*"
-        element={<Navigate to="/patches/deployed/catalog" replace />}
+        element={<Navigate to="/hub" replace />}
       />
       <Route
         path="/jobs"
-        element={<Navigate to="/patches/deployed/catalog" replace />}
+        element={<Navigate to="/hub" replace />}
       />
 
       {/* Hub - Software Package Repository (under Assets) */}
