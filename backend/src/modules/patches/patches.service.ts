@@ -19,13 +19,15 @@ import type {
   TestPatchInput,
   RejectPatchInput,
   ScanEndpointsInput,
-  CreateDeploymentInput,
-  DeploymentListQuery,
   CreatePatchTestInput,
   CreateZeroTouchConfigInput,
   UpdateZeroTouchConfigInput,
-  CreatePatchDeploymentFromUIInput,
 } from './patches.validator';
+import type {
+  CreateDeploymentInput,
+  DeploymentListQuery,
+  CreatePatchDeploymentFromUIInput,
+} from '@modules/deployments/deployment.validators';
 
 // ============================================
 // Patches CRUD

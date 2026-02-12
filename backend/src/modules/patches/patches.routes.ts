@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { deploymentController } from '@modules/deployments';
 import { authenticate } from '@middleware/auth';
 import { validateBody, validateQuery, validateParams } from '@middleware/validation';
 import * as controller from './patches.controller';
@@ -11,9 +10,6 @@ import {
   testPatchSchema,
   rejectPatchSchema,
   testApproveQuerySchema,
-  createDeploymentSchema,
-  deploymentIdParamSchema,
-  deploymentListQuerySchema,
   createPatchTestSchema,
   patchTestIdParamSchema,
   patchTestListQuerySchema,
@@ -22,7 +18,6 @@ import {
   zeroTouchConfigIdParamSchema,
   zeroTouchConfigListQuerySchema,
   scanEndpointsSchema,
-  createPatchDeploymentFromUISchema,
 } from './patches.validator';
 
 const router = Router();
@@ -226,169 +221,6 @@ router.post(
 );
 
 // ============================================
-// Deployments Routes
-// ============================================
-
-const deploymentsRouter = Router();
-
-// ============================================
-// Software Deployment Routes (MUST be before /:id routes)
-// ============================================
-
-// GET /v1/deployments/software - List software deployments
-deploymentsRouter.get(
-  '/software',
-  authenticate,
-  deploymentController.listSoftwareDeployments.bind(deploymentController)
-);
-
-// POST /v1/deployments/software - Create software deployment
-deploymentsRouter.post(
-  '/software',
-  authenticate,
-  deploymentController.createSoftwareDeployment.bind(deploymentController)
-);
-
-// GET /v1/deployments/software/:deploymentId - Get software deployment status
-deploymentsRouter.get(
-  '/software/:deploymentId',
-  authenticate,
-  deploymentController.getSoftwareDeploymentStatus.bind(deploymentController)
-);
-
-// POST /v1/deployments/software/:deploymentId/cancel - Cancel software deployment
-deploymentsRouter.post(
-  '/software/:deploymentId/cancel',
-  authenticate,
-  deploymentController.cancelSoftwareDeployment.bind(deploymentController)
-);
-
-// POST /v1/deployments/software/:deploymentId/tasks/:taskId/rollback - Trigger rollback
-deploymentsRouter.post(
-  '/software/:deploymentId/tasks/:taskId/rollback',
-  authenticate,
-  deploymentController.triggerRollback.bind(deploymentController)
-);
-
-// ============================================
-// Patch Deployment Routes
-// ============================================
-
-// POST /v1/deployments/patch - Create patch deployment from UI
-deploymentsRouter.post(
-  '/patch',
-  authenticate,
-  validateBody(createPatchDeploymentFromUISchema),
-  controller.createPatchDeploymentFromUI
-);
-
-// GET /v1/deployments/patch - List patch deployments (via deployment executor)
-deploymentsRouter.get(
-  '/patch',
-  authenticate,
-  deploymentController.listPatchDeployments.bind(deploymentController)
-);
-
-// GET /v1/deployments/patch/:deploymentId - Get patch deployment status
-deploymentsRouter.get(
-  '/patch/:deploymentId',
-  authenticate,
-  deploymentController.getPatchDeploymentStatus.bind(deploymentController)
-);
-
-// POST /v1/deployments/patch/:deploymentId/cancel - Cancel patch deployment
-deploymentsRouter.post(
-  '/patch/:deploymentId/cancel',
-  authenticate,
-  deploymentController.cancelPatchDeployment.bind(deploymentController)
-);
-
-// POST /v1/deployments/patch/:deploymentId/retry - Retry a failed patch deployment
-deploymentsRouter.post(
-  '/patch/:deploymentId/retry',
-  authenticate,
-  deploymentController.retryPatchDeployment.bind(deploymentController)
-);
-
-// POST /v1/deployments/config - Create config deployment
-deploymentsRouter.post(
-  '/config',
-  authenticate,
-  deploymentController.createConfigDeployment.bind(deploymentController)
-);
-
-// GET /v1/deployments/config/:deploymentId - Get config deployment status
-deploymentsRouter.get(
-  '/config/:deploymentId',
-  authenticate,
-  deploymentController.getConfigDeploymentStatus.bind(deploymentController)
-);
-
-// GET /v1/deployments - List deployments
-deploymentsRouter.get(
-  '/',
-  authenticate,
-  validateQuery(deploymentListQuerySchema),
-  controller.listDeployments
-);
-
-// POST /v1/deployments - Create deployment
-deploymentsRouter.post(
-  '/',
-  authenticate,
-  validateBody(createDeploymentSchema),
-  controller.createDeployment
-);
-
-// GET /v1/deployments/:id - Get deployment by ID
-deploymentsRouter.get(
-  '/:id',
-  authenticate,
-  validateParams(deploymentIdParamSchema),
-  controller.getDeployment
-);
-
-// PUT /v1/deployments/:id - Update deployment
-deploymentsRouter.put(
-  '/:id',
-  authenticate,
-  validateParams(deploymentIdParamSchema),
-  controller.updateDeployment
-);
-
-// POST /v1/deployments/:id/cancel - Cancel deployment
-deploymentsRouter.post(
-  '/:id/cancel',
-  authenticate,
-  validateParams(deploymentIdParamSchema),
-  controller.cancelDeployment
-);
-
-// DELETE /v1/deployments/:id - Delete deployment
-deploymentsRouter.delete(
-  '/:id',
-  authenticate,
-  validateParams(deploymentIdParamSchema),
-  controller.deleteDeployment
-);
-
-// GET /v1/deployments/:id/preview - Get deployment preview
-deploymentsRouter.get(
-  '/:id/preview',
-  authenticate,
-  validateParams(deploymentIdParamSchema),
-  controller.getDeploymentPreview
-);
-
-// POST /v1/deployments/:id/execute - Execute deployment
-deploymentsRouter.post(
-  '/:id/execute',
-  authenticate,
-  validateParams(deploymentIdParamSchema),
-  controller.executeDeployment
-);
-
-// ============================================
 // Patch Tests Routes
 // ============================================
 
@@ -481,4 +313,4 @@ zeroTouchConfigsRouter.delete(
   controller.deleteZeroTouchConfig
 );
 
-export { router as patchRoutes, deploymentsRouter as deploymentRoutes, patchTestsRouter as patchTestRoutes, zeroTouchConfigsRouter as zeroTouchConfigRoutes };
+export { router as patchRoutes, patchTestsRouter as patchTestRoutes, zeroTouchConfigsRouter as zeroTouchConfigRoutes };

@@ -18,12 +18,12 @@ model User {
   id            String    @id @default(uuid())
   email         String    @unique
   passwordHash  String    @map("password_hash")
-  name          String?   @map("display_name")  // Keep for backwards compatibility
-  firstName     String?   @map("first_name")    // NEW: Split name for frontend
-  lastName      String?   @map("last_name")     // NEW: Split name for frontend
+  name          String?   @map("display_name") // Keep for backwards compatibility
+  firstName     String?   @map("first_name") // NEW: Split name for frontend
+  lastName      String?   @map("last_name") // NEW: Split name for frontend
   contactNumber String?   @map("contact_number")
-  timezone      String?   @default("UTC")       // NEW: User timezone preference
-  avatar        String?                         // NEW: Avatar URL or path
+  timezone      String?   @default("UTC") // NEW: User timezone preference
+  avatar        String? // NEW: Avatar URL or path
   role          String    @default("USER")
   isActive      Boolean   @default(true) @map("is_active")
   isOnboarded   Boolean   @default(false) @map("is_onboarded")
@@ -40,12 +40,15 @@ model User {
   locationId     String?       @map("location_id")
   location       Location?     @relation(fields: [locationId], references: [id])
 
-  refreshTokens       RefreshToken[]
-  passwordResetTokens PasswordResetToken[]
-  auditLogs           AuditLog[]
-  notifications            Notification[]
-  notificationPreference   NotificationPreference?
+  refreshTokens          RefreshToken[]
+  passwordResetTokens    PasswordResetToken[]
+  auditLogs              AuditLog[]
+  notifications          Notification[]
+  notificationPreference NotificationPreference?
 
+  @@index([organizationId])
+  @@index([departmentId])
+  @@index([locationId])
   @@map("users")
 }
 
@@ -63,13 +66,13 @@ model RefreshToken {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(uuid())
-  tokenHash String   @unique @map("token_hash")
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime @map("expires_at")
+  id        String    @id @default(uuid())
+  tokenHash String    @unique @map("token_hash")
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([userId])
   @@map("password_reset_tokens")
@@ -185,28 +188,28 @@ model Agent {
   assetId String? @unique @map("asset_id")
   asset   Asset?  @relation(fields: [assetId], references: [id], onDelete: SetNull)
 
-  commands    AgentCommand[]
-  telemetry   AgentTelemetry[]
-  tags        AgentTagRelation[]
-  groups      AgentGroupMembership[]
+  commands  AgentCommand[]
+  telemetry AgentTelemetry[]
+  tags      AgentTagRelation[]
+  groups    AgentGroupMembership[]
 
   @@index([status])
   @@map("agents")
 }
 
 model AgentCommand {
-  id          String    @id @default(uuid())
-  agentId     String    @map("agent_id")
-  agent       Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  type        String    // software_install, software_uninstall, patch_install, etc.
-  payload     Json?
-  status      String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED
-  result      Json?
-  errorMessage String?  @map("error_message")
-  scheduledAt DateTime? @map("scheduled_at")
-  executedAt  DateTime? @map("executed_at")
-  completedAt DateTime? @map("completed_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id           String    @id @default(uuid())
+  agentId      String    @map("agent_id")
+  agent        Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  type         String // software_install, software_uninstall, patch_install, etc.
+  payload      Json?
+  status       String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED
+  result       Json?
+  errorMessage String?   @map("error_message")
+  scheduledAt  DateTime? @map("scheduled_at")
+  executedAt   DateTime? @map("executed_at")
+  completedAt  DateTime? @map("completed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   // Relations to deployment tasks
   softwareTask SoftwareDeploymentTask?
@@ -218,23 +221,23 @@ model AgentCommand {
 }
 
 model AgentTelemetry {
-  id          String   @id @default(uuid())
-  agentId     String   @map("agent_id")
-  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  id      String @id @default(uuid())
+  agentId String @map("agent_id")
+  agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   // Summary fields for quick queries and dashboards
   cpuUsage      Float?   @map("cpu_usage")
   memoryUsage   Float?   @map("memory_usage")
   diskUsage     Float?   @map("disk_usage")
   uptime        Int?
-  networkInBps  BigInt?  @map("network_in_bps")   // NEW: Network bytes in per second
-  networkOutBps BigInt?  @map("network_out_bps")  // NEW: Network bytes out per second
-  processCount  Int?     @map("process_count")    // NEW: Running process count
-  pendingReboot Boolean? @map("pending_reboot")   // NEW: System needs reboot
+  networkInBps  BigInt?  @map("network_in_bps") // NEW: Network bytes in per second
+  networkOutBps BigInt?  @map("network_out_bps") // NEW: Network bytes out per second
+  processCount  Int?     @map("process_count") // NEW: Running process count
+  pendingReboot Boolean? @map("pending_reboot") // NEW: System needs reboot
 
   // NEW: Full telemetry payload from agent
-  rawPayload    Json?    @map("raw_payload")      // Stores complete Telemetry struct
-  timestamp     DateTime @default(now())
+  rawPayload Json?    @map("raw_payload") // Stores complete Telemetry struct
+  timestamp  DateTime @default(now())
 
   @@index([agentId, timestamp])
   @@map("agent_telemetry")
@@ -284,72 +287,72 @@ model AgentDownload {
 }
 
 model AgentVersion {
-  id          String   @id @default(uuid())
-  platform    String
-  architecture String
-  version     String
-  filePath    String?  @map("file_path")
-  fileSize    BigInt?  @map("file_size")
-  checksum    String?
+  id            String   @id @default(uuid())
+  platform      String
+  architecture  String
+  version       String
+  filePath      String?  @map("file_path")
+  fileSize      BigInt?  @map("file_size")
+  checksum      String?
   lastUpdatedAt DateTime @map("last_updated_at")
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   @@unique([platform, architecture, version])
   @@map("agent_versions")
 }
 
 model Asset {
-  id             String       @id @default(uuid())
-  name           String
-  type           String       @default("Endpoint")
-  status         String       @default("In Use")
-  serialNumber   String?      @unique @map("serial_number")
-  assetTag       String?      @unique @map("asset_tag")
-  os             String?
-  osVersion      String?      @map("os_version")
-  osEdition      String?      @map("os_edition")      // Windows: Home, Pro, Enterprise | macOS: Standard | Linux: Distribution
-  architecture   String?                              // x86_64, aarch64, arm64, etc.
+  id                String    @id @default(uuid())
+  name              String
+  type              String    @default("Endpoint")
+  status            String    @default("In Use")
+  serialNumber      String?   @unique @map("serial_number")
+  assetTag          String?   @unique @map("asset_tag")
+  os                String?
+  osVersion         String?   @map("os_version")
+  osEdition         String?   @map("os_edition") // Windows: Home, Pro, Enterprise | macOS: Standard | Linux: Distribution
+  architecture      String? // x86_64, aarch64, arm64, etc.
   installedFeatures String[]  @default([]) @map("installed_features") // IIS, SQL Server, Active Directory, etc.
-  ipAddress      String?      @map("ip_address")
-  macAddress     String?      @map("mac_address")
-  manufacturer   String?
-  model          String?
-  hostname       String?                         // NEW: Hostname from agent
-  purchaseDate   DateTime?    @map("purchase_date")
-  warrantyExpiry DateTime?    @map("warranty_expiry")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  ipAddress         String?   @map("ip_address")
+  macAddress        String?   @map("mac_address")
+  manufacturer      String?
+  model             String?
+  hostname          String? // NEW: Hostname from agent
+  purchaseDate      DateTime? @map("purchase_date")
+  warrantyExpiry    DateTime? @map("warranty_expiry")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   // NEW: Owner information (denormalized for display)
-  ownerId        String?      @map("owner_id")   // Optional FK to User
-  ownerName      String?      @map("owner_name")
-  ownerEmail     String?      @map("owner_email")
-  ownerPhone     String?      @map("owner_phone")
-  ownerDepartment String?     @map("owner_department")
+  ownerId         String? @map("owner_id") // Optional FK to User
+  ownerName       String? @map("owner_name")
+  ownerEmail      String? @map("owner_email")
+  ownerPhone      String? @map("owner_phone")
+  ownerDepartment String? @map("owner_department")
 
   // NEW: Procurement fields (from MISMATCH_DECISIONS.md)
-  vendor             String?                     // Vendor who sold the asset
+  vendor              String? // Vendor who sold the asset
   purchaseOrderNumber String?   @map("purchase_order_number")
-  amcCost            String?    @map("amc_cost") // Annual Maintenance Contract cost
-  amcExpiryDate      DateTime?  @map("amc_expiry_date")
-  amcVendor          String?    @map("amc_vendor")
-  endOfLife          DateTime?  @map("end_of_life")
-  endOfSupport       DateTime?  @map("end_of_support")
+  amcCost             String?   @map("amc_cost") // Annual Maintenance Contract cost
+  amcExpiryDate       DateTime? @map("amc_expiry_date")
+  amcVendor           String?   @map("amc_vendor")
+  endOfLife           DateTime? @map("end_of_life")
+  endOfSupport        DateTime? @map("end_of_support")
 
   // NEW: Cost fields (from MISMATCH_DECISIONS.md)
-  purchaseCost       Decimal?   @map("purchase_cost") @db.Decimal(12, 2)
-  currentValue       Decimal?   @map("current_value") @db.Decimal(12, 2)
-  salvageValue       Decimal?   @map("salvage_value") @db.Decimal(12, 2)
-  currency           String?    @default("USD")
-  depreciationType   String?    @map("depreciation_type") // "Straight Line" | "Declining Balance"
-  depreciationRate   Decimal?   @map("depreciation_rate") @db.Decimal(5, 2)
-  invoiceNumber      String?    @map("invoice_number")
+  purchaseCost     Decimal? @map("purchase_cost") @db.Decimal(12, 2)
+  currentValue     Decimal? @map("current_value") @db.Decimal(12, 2)
+  salvageValue     Decimal? @map("salvage_value") @db.Decimal(12, 2)
+  currency         String?  @default("USD")
+  depreciationType String?  @map("depreciation_type") // "Straight Line" | "Declining Balance"
+  depreciationRate Decimal? @map("depreciation_rate") @db.Decimal(5, 2)
+  invoiceNumber    String?  @map("invoice_number")
 
   // Category relations
-  categoryId      String?      @map("category_id")
-  category        Category?    @relation(fields: [categoryId], references: [id])
-  subCategoryId   String?      @map("sub_category_id")
-  subCategory     SubCategory? @relation(fields: [subCategoryId], references: [id])
+  categoryId    String?      @map("category_id")
+  category      Category?    @relation(fields: [categoryId], references: [id])
+  subCategoryId String?      @map("sub_category_id")
+  subCategory   SubCategory? @relation(fields: [subCategoryId], references: [id])
 
   // Existing relations
   organizationId String?       @map("organization_id")
@@ -357,17 +360,17 @@ model Asset {
   locationId     String?       @map("location_id")
   location       Location?     @relation(fields: [locationId], references: [id])
 
-  agent             Agent?
-  hardware          AssetHardware?
-  software          AssetSoftware[]
-  softwareInventory AssetSoftwareInventory?
-  security          AssetSecurity?
-  peripherals       AssetPeripherals?
-  tags              AssetTag[]
-  vulnerabilities   AssetVulnerability[]
-  patchTasks        PatchDeploymentTask[]
-  softwareTasks     SoftwareDeploymentTask[]
-  alerts            AssetAlert[]
+  agent                Agent?
+  hardware             AssetHardware?
+  software             AssetSoftware[]
+  softwareInventory    AssetSoftwareInventory?
+  security             AssetSecurity?
+  peripherals          AssetPeripherals?
+  tags                 AssetTag[]
+  vulnerabilities      AssetVulnerability[]
+  patchTasks           PatchDeploymentTask[]
+  softwareTasks        SoftwareDeploymentTask[]
+  alerts               AssetAlert[]
   patchRecommendations AssetPatchRecommendation[]
 
   @@index([status])
@@ -379,56 +382,56 @@ model Asset {
 }
 
 model AssetHardware {
-  id         String  @id @default(uuid())
-  assetId    String  @unique @map("asset_id")
-  asset      Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  id      String @id @default(uuid())
+  assetId String @unique @map("asset_id")
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
   // Summary fields for querying/display in lists (indexed)
   cpu             String?
-  cpuCores        Int?     @map("cpu_cores")
-  cpuManufacturer String?  @map("cpu_manufacturer")  // NEW: Intel, AMD, Apple
-  cpuThreads      Int?     @map("cpu_threads")       // NEW: Thread count
-  cpuSpeedMHz     Int?     @map("cpu_speed_mhz")     // NEW: Clock speed
-  ramTotal        BigInt?  @map("ram_total")
-  ramSlots        Int?     @map("ram_slots")         // NEW: Used memory slots
-  ramType         String?  @map("ram_type")          // NEW: DDR4, DDR5
-  diskTotal       BigInt?  @map("disk_total")
-  diskFree        BigInt?  @map("disk_free")
-  diskType        String?  @map("disk_type")         // NEW: SSD, HDD, NVMe
-  gpuModel        String?  @map("gpu_model")
-  gpuMemoryMB     Int?     @map("gpu_memory_mb")     // NEW: GPU memory
-  biosVendor      String?  @map("bios_vendor")       // NEW: BIOS manufacturer
-  biosVersion     String?  @map("bios_version")
-  systemSKU       String?  @map("system_sku")
-  manufacturer    String?                            // NEW: System manufacturer
-  model           String?                            // NEW: System model
-  serialNumber    String?  @map("serial_number")     // NEW: System serial
+  cpuCores        Int?    @map("cpu_cores")
+  cpuManufacturer String? @map("cpu_manufacturer") // NEW: Intel, AMD, Apple
+  cpuThreads      Int?    @map("cpu_threads") // NEW: Thread count
+  cpuSpeedMHz     Int?    @map("cpu_speed_mhz") // NEW: Clock speed
+  ramTotal        BigInt? @map("ram_total")
+  ramSlots        Int?    @map("ram_slots") // NEW: Used memory slots
+  ramType         String? @map("ram_type") // NEW: DDR4, DDR5
+  diskTotal       BigInt? @map("disk_total")
+  diskFree        BigInt? @map("disk_free")
+  diskType        String? @map("disk_type") // NEW: SSD, HDD, NVMe
+  gpuModel        String? @map("gpu_model")
+  gpuMemoryMB     Int?    @map("gpu_memory_mb") // NEW: GPU memory
+  biosVendor      String? @map("bios_vendor") // NEW: BIOS manufacturer
+  biosVersion     String? @map("bios_version")
+  systemSKU       String? @map("system_sku")
+  manufacturer    String? // NEW: System manufacturer
+  model           String? // NEW: System model
+  serialNumber    String? @map("serial_number") // NEW: System serial
 
   // NEW: Full hardware payload from agent (JSON + Summary pattern)
-  rawPayload      Json?    @map("raw_payload")       // Stores complete agent Hardware struct
-  collectedAt     DateTime? @map("collected_at")     // When agent collected this data
+  rawPayload  Json?     @map("raw_payload") // Stores complete agent Hardware struct
+  collectedAt DateTime? @map("collected_at") // When agent collected this data
 
   @@map("asset_hardware")
 }
 
 model AssetSoftware {
-  id           String   @id @default(uuid())
-  assetId      String   @map("asset_id")
-  asset        Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  name         String
-  version      String?
-  vendor       String?
-  installDate  DateTime? @map("install_date")
-  installPath  String?   @map("install_path")
-  isSystem     Boolean   @default(false) @map("is_system")
-  category     String?                           // Application category
+  id          String    @id @default(uuid())
+  assetId     String    @map("asset_id")
+  asset       Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  name        String
+  version     String?
+  vendor      String?
+  installDate DateTime? @map("install_date")
+  installPath String?   @map("install_path")
+  isSystem    Boolean   @default(false) @map("is_system")
+  category    String? // Application category
 
   // CPE correlation fields (Phase 1 - Vulnerability Correlation Improvement)
-  normalizedVersion String? @map("normalized_version")  // Cleaned version: "3.0.13" from "3.0.13-1ubuntu3.1"
-  cpeVendor         String? @map("cpe_vendor")          // Resolved CPE vendor (e.g., "google", "openssl")
-  cpeProduct        String? @map("cpe_product")         // Resolved CPE product (e.g., "chrome", "openssl")
-  cpeMappingId      String? @map("cpe_mapping_id")      // Reference to CpeMapping used for resolution
-  matchConfidence   Float?  @map("match_confidence")    // Confidence score of CPE match (0.0-1.0)
+  normalizedVersion String? @map("normalized_version") // Cleaned version: "3.0.13" from "3.0.13-1ubuntu3.1"
+  cpeVendor         String? @map("cpe_vendor") // Resolved CPE vendor (e.g., "google", "openssl")
+  cpeProduct        String? @map("cpe_product") // Resolved CPE product (e.g., "chrome", "openssl")
+  cpeMappingId      String? @map("cpe_mapping_id") // Reference to CpeMapping used for resolution
+  matchConfidence   Float?  @map("match_confidence") // Confidence score of CPE match (0.0-1.0)
 
   @@index([assetId])
   @@index([cpeVendor, cpeProduct])
@@ -437,50 +440,50 @@ model AssetSoftware {
 
 // NEW: Complete software inventory from agent (includes OS info, services, etc.)
 model AssetSoftwareInventory {
-  id           String    @id @default(uuid())
-  assetId      String    @unique @map("asset_id")
-  asset        Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  id      String @id @default(uuid())
+  assetId String @unique @map("asset_id")
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
   // Summary fields for quick queries
-  osName       String?   @map("os_name")
-  osVersion    String?   @map("os_version")
-  osBuild      String?   @map("os_build")
-  totalApps    Int?      @map("total_apps")
-  totalServices Int?     @map("total_services")
+  osName        String? @map("os_name")
+  osVersion     String? @map("os_version")
+  osBuild       String? @map("os_build")
+  totalApps     Int?    @map("total_apps")
+  totalServices Int?    @map("total_services")
 
   // Full software inventory payload from agent
-  rawPayload   Json?     @map("raw_payload")     // Stores complete SoftwareInventory struct
-  collectedAt  DateTime? @map("collected_at")
+  rawPayload  Json?     @map("raw_payload") // Stores complete SoftwareInventory struct
+  collectedAt DateTime? @map("collected_at")
 
   @@map("asset_software_inventory")
 }
 
 model AssetSecurity {
-  id                  String    @id @default(uuid())
-  assetId             String    @unique @map("asset_id")
-  asset               Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  antivirusInstalled  Boolean?  @map("antivirus_installed")
-  antivirusName       String?   @map("antivirus_name")
-  antivirusUpdated    DateTime? @map("antivirus_updated")
-  firewallEnabled     Boolean?  @map("firewall_enabled")
-  encryptionEnabled   Boolean?  @map("encryption_enabled")
-  lastSecurityScan    DateTime? @map("last_security_scan")
-  complianceScore     Float?    @map("compliance_score")
+  id                 String    @id @default(uuid())
+  assetId            String    @unique @map("asset_id")
+  asset              Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  antivirusInstalled Boolean?  @map("antivirus_installed")
+  antivirusName      String?   @map("antivirus_name")
+  antivirusUpdated   DateTime? @map("antivirus_updated")
+  firewallEnabled    Boolean?  @map("firewall_enabled")
+  encryptionEnabled  Boolean?  @map("encryption_enabled")
+  lastSecurityScan   DateTime? @map("last_security_scan")
+  complianceScore    Float?    @map("compliance_score")
 
   @@map("asset_security")
 }
 
 model AssetPeripherals {
-  id          String   @id @default(uuid())
-  assetId     String   @unique @map("asset_id")
-  asset       Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  id      String @id @default(uuid())
+  assetId String @unique @map("asset_id")
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
   // Summary counts for quick queries
-  monitorCount        Int      @default(0) @map("monitor_count")
-  usbDeviceCount      Int      @default(0) @map("usb_device_count")
-  printerCount        Int      @default(0) @map("printer_count")
-  audioDeviceCount    Int      @default(0) @map("audio_device_count")
-  bluetoothDeviceCount Int     @default(0) @map("bluetooth_device_count")
+  monitorCount         Int @default(0) @map("monitor_count")
+  usbDeviceCount       Int @default(0) @map("usb_device_count")
+  printerCount         Int @default(0) @map("printer_count")
+  audioDeviceCount     Int @default(0) @map("audio_device_count")
+  bluetoothDeviceCount Int @default(0) @map("bluetooth_device_count")
 
   // Full peripheral payload from agent
   rawPayload  Json?    @map("raw_payload")
@@ -524,57 +527,57 @@ model AssetTag {
 // ============================================
 
 model Vulnerability {
-  id                    String    @id @default(uuid())
-  cveId                 String    @unique @map("cve_id")
-  title                 String
-  description           String?
-  severity              String
+  id          String  @id @default(uuid())
+  cveId       String  @unique @map("cve_id")
+  title       String
+  description String?
+  severity    String
 
   // CVSS Scores
-  cvss3BaseScore        Float?    @map("cvss3_base_score")
-  cvss2BaseScore        Float?    @map("cvss2_base_score")
+  cvss3BaseScore Float? @map("cvss3_base_score")
+  cvss2BaseScore Float? @map("cvss2_base_score")
 
   // CVSS3 Vector Details
-  cvss3AttackVector     String?   @map("cvss3_attack_vector")
-  cvss3AttackComplexity String?   @map("cvss3_attack_complexity")
+  cvss3AttackVector       String? @map("cvss3_attack_vector")
+  cvss3AttackComplexity   String? @map("cvss3_attack_complexity")
   cvss3PrivilegesRequired String? @map("cvss3_privileges_required")
-  cvss3Scope            String?   @map("cvss3_scope")
-  cvss3Confidentiality  String?   @map("cvss3_confidentiality")
-  cvss3Integrity        String?   @map("cvss3_integrity")
-  cvss3Availability     String?   @map("cvss3_availability")
-  cvss3ImpactScore      Float?    @map("cvss3_impact_score")
-  cvss3VectorString     String?   @map("cvss3_vector_string")
+  cvss3Scope              String? @map("cvss3_scope")
+  cvss3Confidentiality    String? @map("cvss3_confidentiality")
+  cvss3Integrity          String? @map("cvss3_integrity")
+  cvss3Availability       String? @map("cvss3_availability")
+  cvss3ImpactScore        Float?  @map("cvss3_impact_score")
+  cvss3VectorString       String? @map("cvss3_vector_string")
 
   // CVSS2 Details (optional)
-  cvss2Severity         String?   @map("cvss2_severity")
+  cvss2Severity String? @map("cvss2_severity")
 
   // EPSS and Risk
-  epss                  Float?    // Exploit Prediction Scoring System (0-100)
-  riskScore             Float?    @map("risk_score")
-  exploitable           Boolean   @default(false)
-  isZeroDay             Boolean   @default(false) @map("is_zero_day")
+  epss        Float? // Exploit Prediction Scoring System (0-100)
+  riskScore   Float?  @map("risk_score")
+  exploitable Boolean @default(false)
+  isZeroDay   Boolean @default(false) @map("is_zero_day")
 
   // Metadata
-  publishedDate         DateTime? @map("published_date")
-  lastModified          DateTime? @map("last_modified")
-  patchAvailable        Boolean   @default(false) @map("patch_available")
-  fixRecommendation     String?   @map("fix_recommendation")
+  publishedDate     DateTime? @map("published_date")
+  lastModified      DateTime? @map("last_modified")
+  patchAvailable    Boolean   @default(false) @map("patch_available")
+  fixRecommendation String?   @map("fix_recommendation")
 
   // MITRE ATT&CK
-  mitreTactic           String?   @map("mitre_tactic")
-  mitreTechnique        String?   @map("mitre_technique")
-  mitreSubTechnique     String?   @map("mitre_sub_technique")
-  mitreDescription      String?   @map("mitre_description")
+  mitreTactic       String? @map("mitre_tactic")
+  mitreTechnique    String? @map("mitre_technique")
+  mitreSubTechnique String? @map("mitre_sub_technique")
+  mitreDescription  String? @map("mitre_description")
 
   // Timestamps
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  affectedAssets        AssetVulnerability[]
-  exceptions            VulnerabilityException[]
-  references            VulnerabilityReference[]
-  affectedSoftware      VulnerabilitySoftware[]
+  affectedAssets            AssetVulnerability[]
+  exceptions                VulnerabilityException[]
+  references                VulnerabilityReference[]
+  affectedSoftware          VulnerabilitySoftware[]
   assetPatchRecommendations AssetPatchRecommendation[]
 
   @@index([severity])
@@ -605,13 +608,13 @@ model VulnerabilitySoftware {
   vendor          String?
 
   // CPE fields for accurate matching (Phase 1 - Vulnerability Correlation Improvement)
-  cpeUri            String?  @map("cpe_uri")             // Full CPE 2.3 URI (e.g., "cpe:2.3:a:google:chrome:120.0.6099.129:*:*:*:*:*:*:*")
-  cpeVendor         String?  @map("cpe_vendor")          // Extracted vendor (e.g., "google")
-  cpeProduct        String?  @map("cpe_product")         // Extracted product (e.g., "chrome")
-  versionStart      String?  @map("version_start")       // Vulnerable range start version
-  versionEnd        String?  @map("version_end")         // Vulnerable range end version
-  versionStartType  String?  @map("version_start_type")  // "including" or "excluding"
-  versionEndType    String?  @map("version_end_type")    // "including" or "excluding"
+  cpeUri           String? @map("cpe_uri") // Full CPE 2.3 URI (e.g., "cpe:2.3:a:google:chrome:120.0.6099.129:*:*:*:*:*:*:*")
+  cpeVendor        String? @map("cpe_vendor") // Extracted vendor (e.g., "google")
+  cpeProduct       String? @map("cpe_product") // Extracted product (e.g., "chrome")
+  versionStart     String? @map("version_start") // Vulnerable range start version
+  versionEnd       String? @map("version_end") // Vulnerable range end version
+  versionStartType String? @map("version_start_type") // "including" or "excluding"
+  versionEndType   String? @map("version_end_type") // "including" or "excluding"
 
   @@index([cpeVendor, cpeProduct])
   @@map("vulnerability_software")
@@ -633,20 +636,20 @@ model AssetVulnerability {
 }
 
 model VulnerabilityException {
-  id                  String        @id @default(uuid())
-  vulnerabilityId     String        @map("vulnerability_id")
-  vulnerability       Vulnerability @relation(fields: [vulnerabilityId], references: [id], onDelete: Cascade)
-  cve                 String
-  exceptionType       String        @map("exception_type")
-  reasonForExclusion  String?       @map("reason_for_exclusion")
-  scope               String        @default("GLOBAL")
-  source              String        @default("VULNERABILITIES") // 'VULNERABILITIES' | 'ZERO_DAY'
-  createdBy           String?       @map("created_by")
-  createdAt           DateTime      @default(now()) @map("created_at")
-  deletedAt           DateTime?     @map("deleted_at")
+  id                 String        @id @default(uuid())
+  vulnerabilityId    String        @map("vulnerability_id")
+  vulnerability      Vulnerability @relation(fields: [vulnerabilityId], references: [id], onDelete: Cascade)
+  cve                String
+  exceptionType      String        @map("exception_type")
+  reasonForExclusion String?       @map("reason_for_exclusion")
+  scope              String        @default("GLOBAL")
+  source             String        @default("VULNERABILITIES") // 'VULNERABILITIES' | 'ZERO_DAY'
+  createdBy          String?       @map("created_by")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  deletedAt          DateTime?     @map("deleted_at")
 
   // Relation to endpoints for scope-based exceptions
-  endpoints           ExceptionEndpoint[]
+  endpoints ExceptionEndpoint[]
 
   @@index([cve])
   @@map("vulnerability_exceptions")
@@ -668,25 +671,25 @@ model ExceptionEndpoint {
 
 // Maps agent-reported software names to CPE vendor/product identifiers
 model CpeMapping {
-  id              String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // Agent-side identifiers (what we receive from agents)
-  agentName       String   @map("agent_name")        // e.g., "Google Chrome", "libssl3"
-  agentVendor     String?  @map("agent_vendor")      // e.g., "Google LLC", null
-  platform        String?                             // "windows", "linux", "darwin", "all"
-  packageManager  String?  @map("package_manager")   // "dpkg", "rpm", "brew", "msi", null
+  agentName      String  @map("agent_name") // e.g., "Google Chrome", "libssl3"
+  agentVendor    String? @map("agent_vendor") // e.g., "Google LLC", null
+  platform       String? // "windows", "linux", "darwin", "all"
+  packageManager String? @map("package_manager") // "dpkg", "rpm", "brew", "msi", null
 
   // CPE-side identifiers (what NVD uses)
-  cpeVendor       String   @map("cpe_vendor")        // e.g., "google", "openssl"
-  cpeProduct      String   @map("cpe_product")       // e.g., "chrome", "openssl"
+  cpeVendor  String @map("cpe_vendor") // e.g., "google", "openssl"
+  cpeProduct String @map("cpe_product") // e.g., "chrome", "openssl"
 
   // Metadata
-  confidence      Float    @default(1.0)             // Match confidence (0.0-1.0)
-  source          String   @default("MANUAL")        // "MANUAL", "NVD", "AUTO"
-  notes           String?                             // Optional notes about mapping
-  isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  confidence Float    @default(1.0) // Match confidence (0.0-1.0)
+  source     String   @default("MANUAL") // "MANUAL", "NVD", "AUTO"
+  notes      String? // Optional notes about mapping
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   @@unique([agentName, agentVendor, platform, packageManager])
   @@index([agentName])
@@ -696,15 +699,15 @@ model CpeMapping {
 
 // Tracks software that couldn't be mapped to CPE for continuous improvement
 model UnmatchedSoftware {
-  id          String   @id @default(uuid())
-  name        String                              // Software name from agent
-  vendor      String   @default("")               // Vendor from agent (empty if not provided)
-  platform    String?                              // Platform where seen
-  occurrences Int      @default(1)                // How many times we've seen this
-  lastSeen    DateTime @default(now()) @map("last_seen")
-  resolved    Boolean  @default(false)            // True if mapping was created
+  id          String    @id @default(uuid())
+  name        String // Software name from agent
+  vendor      String    @default("") // Vendor from agent (empty if not provided)
+  platform    String? // Platform where seen
+  occurrences Int       @default(1) // How many times we've seen this
+  lastSeen    DateTime  @default(now()) @map("last_seen")
+  resolved    Boolean   @default(false) // True if mapping was created
   resolvedAt  DateTime? @map("resolved_at")
-  notes       String?                              // Admin notes
+  notes       String? // Admin notes
 
   @@unique([name, vendor])
   @@index([occurrences(sort: Desc)])
@@ -717,73 +720,73 @@ model UnmatchedSoftware {
 // ============================================
 
 model Patch {
-  id                    String    @id @default(uuid())
-  patchId               String    @unique @map("patch_id")
-  title                 String
-  software              String?
-  description           String?
-  severity              String
-  category              String?
-  vendor                String?
-  product               String?
-  os                    String?
-  osVersion             String?   @map("os_version")
-  platform              String?
-  architecture          String?
-  kbNumber              String?   @map("kb_number")
-  bulletinId            String?   @map("bulletin_id")
+  id           String  @id @default(uuid())
+  patchId      String  @unique @map("patch_id")
+  title        String
+  software     String?
+  description  String?
+  severity     String
+  category     String?
+  vendor       String?
+  product      String?
+  os           String?
+  osVersion    String? @map("os_version")
+  platform     String?
+  architecture String?
+  kbNumber     String? @map("kb_number")
+  bulletinId   String? @map("bulletin_id")
 
   // Dates — publishedAt is the single authoritative vendor publish date
   // downloadedAt lives on PatchBundle (when we acquired the binary)
-  publishedAt           DateTime? @map("published_at")
+  publishedAt DateTime? @map("published_at")
 
-  size                  BigInt?
-  sizeFormatted         String?   @map("size_formatted")
-  downloadUrl           String?   @map("download_url")
-  referenceUrl          String?   @map("reference_url")
-  rebootRequired        Boolean   @default(false) @map("reboot_required")
-  supportUninstallation Boolean   @default(false) @map("support_uninstallation")
-  supportsRollback      Boolean   @default(false) @map("supports_rollback")  // NEW: Rollback capability
-  patchType             String    @default("UPDATE") @map("patch_type")      // NEW: UPDATE, HOTFIX, SERVICE_PACK, DRIVER
-  languagesSupported    String[]  @default([]) @map("languages_supported")
-  tags                  String[]  @default([])
-  cveNumbers            String[]  @default([]) @map("cve_numbers")
-  source                String?
-  status                String?   @default("Draft")
-  downloadStatus        String?   @default("None") @map("download_status")
-  supersedes            String[]  @default([])
-  supersededBy          String[]  @default([]) @map("superseded_by")
-  supersededAt          DateTime? @map("superseded_at")  // When this patch was superseded
+  size                   BigInt?
+  sizeFormatted          String?   @map("size_formatted")
+  downloadUrl            String?   @map("download_url")
+  referenceUrl           String?   @map("reference_url")
+  rebootRequired         Boolean   @default(false) @map("reboot_required")
+  supportUninstallation  Boolean   @default(false) @map("support_uninstallation")
+  supportsRollback       Boolean   @default(false) @map("supports_rollback") // NEW: Rollback capability
+  patchType              String    @default("UPDATE") @map("patch_type") // NEW: UPDATE, HOTFIX, SERVICE_PACK, DRIVER
+  languagesSupported     String[]  @default([]) @map("languages_supported")
+  tags                   String[]  @default([])
+  cveNumbers             String[]  @default([]) @map("cve_numbers")
+  source                 String?
+  status                 String?   @default("Draft")
+  downloadStatus         String?   @default("None") @map("download_status")
+  supersedes             String[]  @default([])
+  supersededBy           String[]  @default([]) @map("superseded_by")
+  supersededAt           DateTime? @map("superseded_at") // When this patch was superseded
   operationalStatusSince DateTime? @map("operational_status_since")
-  endpoints             Int       @default(0)
+  endpoints              Int       @default(0)
 
   // Applicability prerequisites (commercial patch manager feature)
-  prerequisites         Json?     // { minOsVersion, maxOsVersion, requiredFeatures, excludedFeatures, osEditions, architectures }
+  prerequisites Json? // { minOsVersion, maxOsVersion, requiredFeatures, excludedFeatures, osEditions, architectures }
 
   // Test/Approval workflow fields
-  testStatus            String    @default("Not Tested") @map("test_status")
-  testResult            String?   @map("test_result")
-  testedBy              String?   @map("tested_by")
-  testedAt              DateTime? @map("tested_at")
-  testNotes             String?   @map("test_notes")
-  testEnvironment       String?   @map("test_environment")
-  approvalStatus        String    @default("Pending") @map("approval_status")
-  approvedBy            String?   @map("approved_by")
-  approvedAt            DateTime? @map("approved_at")
-  rejectedBy            String?   @map("rejected_by")
-  rejectedAt            DateTime? @map("rejected_at")
-  rejectionReason       String?   @map("rejection_reason")
-  rejectionNotes        String?   @map("rejection_notes")
+  testStatus      String    @default("Not Tested") @map("test_status")
+  testResult      String?   @map("test_result")
+  testedBy        String?   @map("tested_by")
+  testedAt        DateTime? @map("tested_at")
+  testNotes       String?   @map("test_notes")
+  testEnvironment String?   @map("test_environment")
+  approvalStatus  String    @default("Pending") @map("approval_status")
+  approvedBy      String?   @map("approved_by")
+  approvedAt      DateTime? @map("approved_at")
+  rejectedBy      String?   @map("rejected_by")
+  rejectedAt      DateTime? @map("rejected_at")
+  rejectionReason String?   @map("rejection_reason")
+  rejectionNotes  String?   @map("rejection_notes")
 
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  bundle            PatchBundle?           // NEW: 1:1 relation to bundle storage (preferred)
-  deployments       PatchDeployment[]
-  affectedProducts  PatchAffectedProduct[]
+  bundle                    PatchBundle? // NEW: 1:1 relation to bundle storage (preferred)
+  deployments               PatchDeployment[]
+  affectedProducts          PatchAffectedProduct[]
   // PatchFileDetail relation removed — use bundle instead
-  vulnerabilities   PatchVulnerability[]
+  vulnerabilities           PatchVulnerability[]
   // PatchEndpoint relation removed — use Agent/Asset via PatchDeploymentTask
   assetPatchRecommendations AssetPatchRecommendation[]
 
@@ -798,48 +801,48 @@ model Patch {
 
 // NEW: Hub-centric patch bundle storage (mirrors SoftwarePackage pattern)
 model PatchBundle {
-  id              String    @id @default(uuid())
+  id String @id @default(uuid())
 
   // Link to Patch (1:1)
-  patchId         String    @unique @map("patch_id")
-  patch           Patch     @relation(fields: [patchId], references: [id], onDelete: Cascade)
+  patchId String @unique @map("patch_id")
+  patch   Patch  @relation(fields: [patchId], references: [id], onDelete: Cascade)
 
   // MinIO Storage
-  minioBucket     String    @default("patches") @map("minio_bucket")
-  bundleObjectKey String?   @map("bundle_object_key")  // e.g., "windows/microsoft/KB5034441/bundle.tar.gz"
-  bundleChecksum  String?   @map("bundle_checksum")    // SHA256
-  bundleSize      BigInt?   @map("bundle_size")
+  minioBucket     String  @default("patches") @map("minio_bucket")
+  bundleObjectKey String? @map("bundle_object_key") // e.g., "windows/microsoft/KB5034441/bundle.tar.gz"
+  bundleChecksum  String? @map("bundle_checksum") // SHA256
+  bundleSize      BigInt? @map("bundle_size")
 
   // Manifest (parsed from bundle)
-  manifestJson    Json?     @map("manifest_json")      // Complete manifest.json
-  scriptsIncluded Boolean   @default(false) @map("scripts_included")
+  manifestJson    Json?   @map("manifest_json") // Complete manifest.json
+  scriptsIncluded Boolean @default(false) @map("scripts_included")
 
   // Inline Scripts (fallback when no bundle)
-  scriptInstall   String?   @map("script_install")     // Install script content
-  scriptRollback  String?   @map("script_rollback")    // Rollback script content
-  scriptVerify    String?   @map("script_verify")      // Verification script content
-  scriptUninstall String?   @map("script_uninstall")   // Uninstall script content
+  scriptInstall   String? @map("script_install") // Install script content
+  scriptRollback  String? @map("script_rollback") // Rollback script content
+  scriptVerify    String? @map("script_verify") // Verification script content
+  scriptUninstall String? @map("script_uninstall") // Uninstall script content
 
   // Download Tracking
-  sourceUrl       String?   @map("source_url")         // Original vendor download URL
-  downloadStatus  String    @default("PENDING") @map("download_status") // PENDING, DOWNLOADING, COMPLETED, FAILED
-  downloadedAt    DateTime? @map("downloaded_at")
-  downloadError   String?   @map("download_error")
-  retryCount      Int       @default(0) @map("retry_count")
+  sourceUrl      String?   @map("source_url") // Original vendor download URL
+  downloadStatus String    @default("PENDING") @map("download_status") // PENDING, DOWNLOADING, COMPLETED, FAILED
+  downloadedAt   DateTime? @map("downloaded_at")
+  downloadError  String?   @map("download_error")
+  retryCount     Int       @default(0) @map("retry_count")
 
   // File Metadata
-  fileName        String?   @map("file_name")
-  fileSize        BigInt?   @map("file_size")
-  fileChecksum    String?   @map("file_checksum")
-  checksumType    String?   @default("sha256") @map("checksum_type")
+  fileName     String? @map("file_name")
+  fileSize     BigInt? @map("file_size")
+  fileChecksum String? @map("file_checksum")
+  checksumType String? @default("sha256") @map("checksum_type")
 
   // Execution Options
-  requiresRoot    Boolean   @default(true) @map("requires_root")
-  timeoutSeconds  Int       @default(3600) @map("timeout_seconds")
+  requiresRoot   Boolean @default(true) @map("requires_root")
+  timeoutSeconds Int     @default(3600) @map("timeout_seconds")
 
   // Timestamps
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([downloadStatus])
   @@index([bundleObjectKey])
@@ -847,41 +850,41 @@ model PatchBundle {
 }
 
 model PatchDeployment {
-  id           String    @id @default(uuid())
+  id           String  @id @default(uuid())
   name         String
-  deploymentId String?   @unique @map("deployment_id")
+  deploymentId String? @unique @map("deployment_id")
   description  String?
-  type         String    @default("INSTANT")              // INSTANT, SCHEDULED
-  configType   String    @default("INSTALL") @map("config_type")  // INSTALL, ROLLBACK, VERIFY
-  scope        String    @default("Endpoint")             // Global, Group, Endpoint
-  status       String    @default("PENDING")              // PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
-  pending      Int       @default(0)
-  succeeded    Int       @default(0)
-  failed       Int       @default(0)
+  type         String  @default("INSTANT") // INSTANT, SCHEDULED
+  configType   String  @default("INSTALL") @map("config_type") // INSTALL, ROLLBACK, VERIFY
+  scope        String  @default("Endpoint") // Global, Group, Endpoint
+  status       String  @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
+  pending      Int     @default(0)
+  succeeded    Int     @default(0)
+  failed       Int     @default(0)
 
   // Targeting - Explicit separate fields (NEW)
-  targetGroupIds  String[]  @default([]) @map("target_group_ids")   // When scope=Group
-  targetAgentIds  String[]  @default([]) @map("target_agent_ids")   // When scope=Endpoint
+  targetGroupIds String[] @default([]) @map("target_group_ids") // When scope=Group
+  targetAgentIds String[] @default([]) @map("target_agent_ids") // When scope=Endpoint
 
   // Retry Policy (NEW)
-  retryCount      Int       @default(1) @map("retry_count")
-  retryDelay      Int       @default(300) @map("retry_delay")       // seconds between retries
-  autoRollback    Boolean   @default(false) @map("auto_rollback")
+  retryCount   Int     @default(1) @map("retry_count")
+  retryDelay   Int     @default(300) @map("retry_delay") // seconds between retries
+  autoRollback Boolean @default(false) @map("auto_rollback")
 
   // Trigger & Approval
-  triggerType         String?   @map("trigger_type")                    // manual | scheduled | zero-touch | policy
-  skipApprovalCheck   Boolean   @default(false) @map("skip_approval_check")
-  approvalOverrideBy  String?   @map("approval_override_by")
+  triggerType        String? @map("trigger_type") // manual | scheduled | zero-touch | policy
+  skipApprovalCheck  Boolean @default(false) @map("skip_approval_check")
+  approvalOverrideBy String? @map("approval_override_by")
 
   // Scheduling
-  scheduledAt  DateTime? @map("scheduled_at")
-  startedAt    DateTime? @map("started_at")
-  completedAt  DateTime? @map("completed_at")
+  scheduledAt DateTime? @map("scheduled_at")
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
 
   // Audit
-  createdBy    String?   @map("created_by")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   patches Patch[]
   tasks   PatchDeploymentTask[]
@@ -896,37 +899,37 @@ model PatchDeploymentTask {
   deployment   PatchDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
 
   // Target identification
-  agentId      String?         @map("agent_id")           // NEW: Target agent ID
-  assetId      String          @map("asset_id")           // Linked asset (for reporting)
-  asset        Asset           @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  agentId String? @map("agent_id") // NEW: Target agent ID
+  assetId String  @map("asset_id") // Linked asset (for reporting)
+  asset   Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
   // Status: PENDING, IN_PROGRESS, COMPLETED, FAILED, ROLLED_BACK
-  status       String          @default("PENDING")
+  status String @default("PENDING")
 
   // Link to agent command for tracking execution
-  commandId    String?         @unique @map("command_id")
-  command      AgentCommand?   @relation(fields: [commandId], references: [id])
+  commandId String?       @unique @map("command_id")
+  command   AgentCommand? @relation(fields: [commandId], references: [id])
 
   // Execution details
-  startedAt    DateTime?       @map("started_at")
-  completedAt  DateTime?       @map("completed_at")
-  errorMessage String?         @map("error_message")
-  output       String?                                    // Execution output/logs
-  exitCode     Int?            @map("exit_code")          // NEW: Process exit code
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  errorMessage String?   @map("error_message")
+  output       String? // Execution output/logs
+  exitCode     Int?      @map("exit_code") // NEW: Process exit code
 
   // Rollback tracking (NEW)
-  previousVersion    String?   @map("previous_version")   // Version before patch
-  installedVersion   String?   @map("installed_version")  // Version after patch
-  rollbackAvailable  Boolean   @default(false) @map("rollback_available")
-  retryAttempt       Int       @default(0) @map("retry_attempt")
+  previousVersion   String? @map("previous_version") // Version before patch
+  installedVersion  String? @map("installed_version") // Version after patch
+  rollbackAvailable Boolean @default(false) @map("rollback_available")
+  retryAttempt      Int     @default(0) @map("retry_attempt")
 
   // Verification (NEW)
-  verifiedAt   DateTime?       @map("verified_at")
-  verifyResult String?         @map("verify_result")      // passed, failed
+  verifiedAt   DateTime? @map("verified_at")
+  verifyResult String?   @map("verify_result") // passed, failed
 
   // Timestamps
-  createdAt    DateTime        @default(now()) @map("created_at")
-  updatedAt    DateTime        @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
   patchRecommendation AssetPatchRecommendation?
@@ -943,47 +946,47 @@ model PatchDeploymentTask {
 // ============================================
 
 model AssetPatchRecommendation {
-  id                String    @id @default(uuid())
+  id String @id @default(uuid())
 
   // Core relationships
-  assetId           String    @map("asset_id")
-  asset             Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  assetId String @map("asset_id")
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
-  vulnerabilityId   String    @map("vulnerability_id")
-  vulnerability     Vulnerability @relation(fields: [vulnerabilityId], references: [id], onDelete: Cascade)
+  vulnerabilityId String        @map("vulnerability_id")
+  vulnerability   Vulnerability @relation(fields: [vulnerabilityId], references: [id], onDelete: Cascade)
 
-  patchId           String    @map("patch_id")
-  patch             Patch     @relation(fields: [patchId], references: [id], onDelete: Cascade)
+  patchId String @map("patch_id")
+  patch   Patch  @relation(fields: [patchId], references: [id], onDelete: Cascade)
 
   // Lifecycle
-  status            String    @default("RECOMMENDED")  // RECOMMENDED | ACCEPTED | REJECTED | DEPLOYED | VERIFIED | FAILED
+  status String @default("RECOMMENDED") // RECOMMENDED | ACCEPTED | REJECTED | DEPLOYED | VERIFIED | FAILED
 
   // Scoring (computed during creation)
-  severity          String                             // CRITICAL, HIGH, MEDIUM, LOW
-  cvssScore         Float?    @map("cvss_score")
-  epssScore         Float?    @map("epss_score")
-  riskScore         Float?    @map("risk_score")       // Combined metric for sorting
+  severity  String // CRITICAL, HIGH, MEDIUM, LOW
+  cvssScore Float? @map("cvss_score")
+  epssScore Float? @map("epss_score")
+  riskScore Float? @map("risk_score") // Combined metric for sorting
 
   // Metadata
-  reason            String?                            // "Fixes CVE-2024-1234: RCE in OpenSSL"
-  affectedSoftware  String?   @map("affected_software") // "openssl 3.0.5"
+  reason           String? // "Fixes CVE-2024-1234: RCE in OpenSSL"
+  affectedSoftware String? @map("affected_software") // "openssl 3.0.5"
 
   // Deployment link
-  deploymentTaskId  String?   @unique @map("deployment_task_id")
-  deploymentTask    PatchDeploymentTask? @relation(fields: [deploymentTaskId], references: [id])
+  deploymentTaskId String?              @unique @map("deployment_task_id")
+  deploymentTask   PatchDeploymentTask? @relation(fields: [deploymentTaskId], references: [id])
 
   // Lifecycle timestamps
-  recommendedAt     DateTime  @default(now()) @map("recommended_at")
-  acceptedAt        DateTime? @map("accepted_at")
-  rejectedAt        DateTime? @map("rejected_at")
-  rejectionReason   String?   @map("rejection_reason")
-  deployedAt        DateTime? @map("deployed_at")
-  verifiedAt        DateTime? @map("verified_at")
-  failedAt          DateTime? @map("failed_at")
-  failureReason     String?   @map("failure_reason")
+  recommendedAt   DateTime  @default(now()) @map("recommended_at")
+  acceptedAt      DateTime? @map("accepted_at")
+  rejectedAt      DateTime? @map("rejected_at")
+  rejectionReason String?   @map("rejection_reason")
+  deployedAt      DateTime? @map("deployed_at")
+  verifiedAt      DateTime? @map("verified_at")
+  failedAt        DateTime? @map("failed_at")
+  failureReason   String?   @map("failure_reason")
 
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([assetId, vulnerabilityId, patchId])
   @@index([assetId, status])
@@ -1016,27 +1019,27 @@ model PatchAffectedProduct {
 // ============================================
 
 model PatchSource {
-  id              String    @id @default(uuid())
-  name            String                              // e.g., "Microsoft Windows Update"
-  vendor          String                              // e.g., "Microsoft", "Apple", "Adobe"
-  category        String                              // "os", "firmware", "enterprise", "runtime", "security", "browser", "utility"
-  platform        String?                             // "windows", "macos", "linux", "cross-platform"
-  baseUrl         String    @map("base_url")          // e.g., "https://download.windowsupdate.com"
-  urlPatterns     String[]  @default([]) @map("url_patterns") // Glob patterns for allowed URLs
-  priority        Int       @default(50)              // 1-100, higher = more important
-  isEnabled       Boolean   @default(true) @map("is_enabled")
-  requiresAuth    Boolean   @default(false) @map("requires_auth")
-  authType        String?   @map("auth_type")         // "basic", "bearer", "api_key"
-  authConfig      Json?     @map("auth_config")       // Encrypted auth configuration
-  syncSchedule    String?   @map("sync_schedule")     // Cron expression for scheduled sync
-  lastSyncAt      DateTime? @map("last_sync_at")
-  lastSyncStatus  String?   @map("last_sync_status")  // "success", "partial", "failed"
-  lastSyncError   String?   @map("last_sync_error")
-  metadata        Json?                               // Additional vendor-specific config
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id             String    @id @default(uuid())
+  name           String // e.g., "Microsoft Windows Update"
+  vendor         String // e.g., "Microsoft", "Apple", "Adobe"
+  category       String // "os", "firmware", "enterprise", "runtime", "security", "browser", "utility"
+  platform       String? // "windows", "macos", "linux", "cross-platform"
+  baseUrl        String    @map("base_url") // e.g., "https://download.windowsupdate.com"
+  urlPatterns    String[]  @default([]) @map("url_patterns") // Glob patterns for allowed URLs
+  priority       Int       @default(50) // 1-100, higher = more important
+  isEnabled      Boolean   @default(true) @map("is_enabled")
+  requiresAuth   Boolean   @default(false) @map("requires_auth")
+  authType       String?   @map("auth_type") // "basic", "bearer", "api_key"
+  authConfig     Json?     @map("auth_config") // Encrypted auth configuration
+  syncSchedule   String?   @map("sync_schedule") // Cron expression for scheduled sync
+  lastSyncAt     DateTime? @map("last_sync_at")
+  lastSyncStatus String?   @map("last_sync_status") // "success", "partial", "failed"
+  lastSyncError  String?   @map("last_sync_error")
+  metadata       Json? // Additional vendor-specific config
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  downloadJobs    PatchDownloadJob[]
+  downloadJobs PatchDownloadJob[]
 
   @@unique([vendor, name])
   @@index([vendor])
@@ -1046,29 +1049,29 @@ model PatchSource {
 }
 
 model PatchDownloadJob {
-  id              String    @id @default(uuid())
-  jobId           String    @unique @map("job_id")    // BullMQ job ID for tracking
-  sourceId        String?   @map("source_id")
-  source          PatchSource? @relation(fields: [sourceId], references: [id])
-  patchId         String?   @map("patch_id")          // Link to Patch if known
-  sourceUrl       String    @map("source_url")        // URL to download from
-  targetPath      String    @map("target_path")       // MinIO object key target
-  fileName        String    @map("file_name")
-  expectedSize    BigInt?   @map("expected_size")
-  expectedChecksum String?  @map("expected_checksum")
-  checksumType    String?   @map("checksum_type")
-  status          String    @default("PENDING")       // PENDING | QUEUED | DOWNLOADING | VERIFYING | COMPLETED | FAILED | CANCELLED
-  progress        Int       @default(0)               // 0-100 percentage
-  downloadedBytes BigInt?   @map("downloaded_bytes")
-  actualChecksum  String?   @map("actual_checksum")
-  error           String?
-  retryCount      Int       @default(0) @map("retry_count")
-  maxRetries      Int       @default(3) @map("max_retries")
-  priority        Int       @default(50)              // 1-100
-  startedAt       DateTime? @map("started_at")
-  completedAt     DateTime? @map("completed_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id               String       @id @default(uuid())
+  jobId            String       @unique @map("job_id") // BullMQ job ID for tracking
+  sourceId         String?      @map("source_id")
+  source           PatchSource? @relation(fields: [sourceId], references: [id])
+  patchId          String?      @map("patch_id") // Link to Patch if known
+  sourceUrl        String       @map("source_url") // URL to download from
+  targetPath       String       @map("target_path") // MinIO object key target
+  fileName         String       @map("file_name")
+  expectedSize     BigInt?      @map("expected_size")
+  expectedChecksum String?      @map("expected_checksum")
+  checksumType     String?      @map("checksum_type")
+  status           String       @default("PENDING") // PENDING | QUEUED | DOWNLOADING | VERIFYING | COMPLETED | FAILED | CANCELLED
+  progress         Int          @default(0) // 0-100 percentage
+  downloadedBytes  BigInt?      @map("downloaded_bytes")
+  actualChecksum   String?      @map("actual_checksum")
+  error            String?
+  retryCount       Int          @default(0) @map("retry_count")
+  maxRetries       Int          @default(3) @map("max_retries")
+  priority         Int          @default(50) // 1-100
+  startedAt        DateTime?    @map("started_at")
+  completedAt      DateTime?    @map("completed_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
 
   @@index([status])
   @@index([sourceId])
@@ -1078,14 +1081,14 @@ model PatchDownloadJob {
 }
 
 model PatchVulnerability {
-  id            String    @id @default(uuid())
-  patchId       String    @map("patch_id")
-  patch         Patch     @relation(fields: [patchId], references: [id], onDelete: Cascade)
-  cveNumber     String    @map("cve_number")
-  severity      String?
-  description   String?
+  id                String    @id @default(uuid())
+  patchId           String    @map("patch_id")
+  patch             Patch     @relation(fields: [patchId], references: [id], onDelete: Cascade)
+  cveNumber         String    @map("cve_number")
+  severity          String?
+  description       String?
   publishedDate     DateTime? @map("published_date")
-  correlationSource String    @default("MANUAL") @map("correlation_source")  // MANUAL | AUTO_KB | AUTO_VENDOR | AUTO_NVD
+  correlationSource String    @default("MANUAL") @map("correlation_source") // MANUAL | AUTO_KB | AUTO_VENDOR | AUTO_NVD
 
   @@index([patchId])
   @@map("patch_vulnerabilities")
@@ -1111,21 +1114,21 @@ model PatchTest {
 }
 
 model ZeroTouchConfig {
-  id                  String   @id @default(uuid())
+  id                  String    @id @default(uuid())
   name                String
   description         String?
-  applicationType     String   @default("ALL") @map("application_type")
-  applications        String[] @default([])
-  scope               String   @default("ALL_COMPUTERS")
-  computers           String[] @default([])
-  groups              String[] @default([])
-  autoDeploymentRules Json     @default("{}") @map("auto_deployment_rules")
-  status              String   @default("Active")
-  createdBy           String?  @map("created_by")
+  applicationType     String    @default("ALL") @map("application_type")
+  applications        String[]  @default([])
+  scope               String    @default("ALL_COMPUTERS")
+  computers           String[]  @default([])
+  groups              String[]  @default([])
+  autoDeploymentRules Json      @default("{}") @map("auto_deployment_rules")
+  status              String    @default("Active")
+  createdBy           String?   @map("created_by")
   lastTriggeredAt     DateTime? @map("last_triggered_at")
   deploymentsCreated  Int       @default(0) @map("deployments_created")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   @@map("zero_touch_configs")
 }
@@ -1135,78 +1138,78 @@ model ZeroTouchConfig {
 // ============================================
 
 model IPRange {
-  id                  String    @id @default(uuid())
-  name                String
-  range               String    // CIDR notation (e.g., "192.168.1.0/24")
-  description         String?
-  credentialId        String?   @map("credential_id")
-  credential          DeviceCredential? @relation(fields: [credentialId], references: [id])
-  scanScheduleType    String?   @map("scan_schedule_type") // 'once' | 'daily' | 'weekly'
-  scanScheduleTime    String?   @map("scan_schedule_time")
-  scanScheduleDay     Int?      @map("scan_schedule_day")
-  lastScanned         DateTime? @map("last_scanned")
-  deviceCount         Int       @default(0) @map("device_count")
-  status              String    @default("ACTIVE") // 'ACTIVE' | 'INACTIVE'
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
+  id               String            @id @default(uuid())
+  name             String
+  range            String // CIDR notation (e.g., "192.168.1.0/24")
+  description      String?
+  credentialId     String?           @map("credential_id")
+  credential       DeviceCredential? @relation(fields: [credentialId], references: [id])
+  scanScheduleType String?           @map("scan_schedule_type") // 'once' | 'daily' | 'weekly'
+  scanScheduleTime String?           @map("scan_schedule_time")
+  scanScheduleDay  Int?              @map("scan_schedule_day")
+  lastScanned      DateTime?         @map("last_scanned")
+  deviceCount      Int               @default(0) @map("device_count")
+  status           String            @default("ACTIVE") // 'ACTIVE' | 'INACTIVE'
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
 
-  scans               DiscoveryScan[]
-  discoveredDevices   DiscoveredDevice[]
+  scans             DiscoveryScan[]
+  discoveredDevices DiscoveredDevice[]
 
   @@map("ip_ranges")
 }
 
 model DeviceCredential {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   name          String
-  type          String   // 'SSH' | 'Windows' | 'SNMP' | 'WinRM'
+  type          String // 'SSH' | 'Windows' | 'SNMP' | 'WinRM'
   username      String?
-  passwordEnc   String?  @map("password_enc") // AES-256 encrypted
+  passwordEnc   String?   @map("password_enc") // AES-256 encrypted
   domain        String?
-  snmpCommunity String?  @map("snmp_community")
-  snmpVersion   String?  @map("snmp_version") // 'v2c' | 'v3'
+  snmpCommunity String?   @map("snmp_community")
+  snmpVersion   String?   @map("snmp_version") // 'v2c' | 'v3'
   port          Int?
   description   String?
   lastUsed      DateTime? @map("last_used")
-  createdBy     String?  @map("created_by")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdBy     String?   @map("created_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  ipRanges      IPRange[]
+  ipRanges IPRange[]
 
   @@map("device_credentials")
 }
 
 model DiscoveryScan {
-  id            String    @id @default(uuid())
-  ipRangeId     String    @map("ip_range_id")
-  ipRange       IPRange   @relation(fields: [ipRangeId], references: [id], onDelete: Cascade)
-  status        String    @default("PENDING") // 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED'
-  devicesFound  Int       @default(0) @map("devices_found")
-  startedAt     DateTime? @map("started_at")
-  completedAt   DateTime? @map("completed_at")
-  errorMessage  String?   @map("error_message")
-  createdAt     DateTime  @default(now()) @map("created_at")
+  id           String    @id @default(uuid())
+  ipRangeId    String    @map("ip_range_id")
+  ipRange      IPRange   @relation(fields: [ipRangeId], references: [id], onDelete: Cascade)
+  status       String    @default("PENDING") // 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED'
+  devicesFound Int       @default(0) @map("devices_found")
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  errorMessage String?   @map("error_message")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   @@index([ipRangeId, status])
   @@map("discovery_scans")
 }
 
 model DiscoveredDevice {
-  id            String    @id @default(uuid())
-  ipRangeId     String    @map("ip_range_id")
-  ipRange       IPRange   @relation(fields: [ipRangeId], references: [id], onDelete: Cascade)
-  ipAddress     String    @map("ip_address")
-  hostname      String?
-  macAddress    String?   @map("mac_address")
-  deviceType    String?   @map("device_type")
-  os            String?
-  vendor        String?
-  openPorts     Int[]     @default([]) @map("open_ports")
-  status        String    @default("DISCOVERED") // 'DISCOVERED' | 'ENROLLED' | 'IGNORED'
-  assetId       String?   @unique @map("asset_id")
-  discoveredAt  DateTime  @default(now()) @map("discovered_at")
-  lastSeenAt    DateTime  @default(now()) @map("last_seen_at")
+  id           String   @id @default(uuid())
+  ipRangeId    String   @map("ip_range_id")
+  ipRange      IPRange  @relation(fields: [ipRangeId], references: [id], onDelete: Cascade)
+  ipAddress    String   @map("ip_address")
+  hostname     String?
+  macAddress   String?  @map("mac_address")
+  deviceType   String?  @map("device_type")
+  os           String?
+  vendor       String?
+  openPorts    Int[]    @default([]) @map("open_ports")
+  status       String   @default("DISCOVERED") // 'DISCOVERED' | 'ENROLLED' | 'IGNORED'
+  assetId      String?  @unique @map("asset_id")
+  discoveredAt DateTime @default(now()) @map("discovered_at")
+  lastSeenAt   DateTime @default(now()) @map("last_seen_at")
 
   @@unique([ipRangeId, ipAddress])
   @@index([status])
@@ -1218,21 +1221,21 @@ model DiscoveredDevice {
 // ============================================
 
 model Job {
-  id          String    @id @default(uuid())
-  type        String
-  name        String
-  status      String    @default("PENDING")
-  priority    Int       @default(0)
-  payload     Json?
-  result      Json?
-  progress    Float     @default(0)
-  scheduledAt DateTime? @map("scheduled_at")
-  startedAt   DateTime? @map("started_at")
-  completedAt DateTime? @map("completed_at")
-  errorMessage String?  @map("error_message")
-  createdBy   String?   @map("created_by")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id           String    @id @default(uuid())
+  type         String
+  name         String
+  status       String    @default("PENDING")
+  priority     Int       @default(0)
+  payload      Json?
+  result       Json?
+  progress     Float     @default(0)
+  scheduledAt  DateTime? @map("scheduled_at")
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  errorMessage String?   @map("error_message")
+  createdBy    String?   @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   @@index([status])
   @@index([type])
@@ -1244,18 +1247,18 @@ model Job {
 // ============================================
 
 model Report {
-  id           String    @id @default(uuid())
-  name         String
-  type         String
-  format       String    @default("CSV")
-  status       String    @default("PENDING")
-  parameters   Json?
-  filePath     String?   @map("file_path")
-  fileSize     BigInt?   @map("file_size")
-  generatedAt  DateTime? @map("generated_at")
-  expiresAt    DateTime? @map("expires_at")
-  createdBy    String?   @map("created_by")
-  createdAt    DateTime  @default(now()) @map("created_at")
+  id          String    @id @default(uuid())
+  name        String
+  type        String
+  format      String    @default("CSV")
+  status      String    @default("PENDING")
+  parameters  Json?
+  filePath    String?   @map("file_path")
+  fileSize    BigInt?   @map("file_size")
+  generatedAt DateTime? @map("generated_at")
+  expiresAt   DateTime? @map("expires_at")
+  createdBy   String?   @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   @@index([type])
   @@index([status])
@@ -1263,19 +1266,19 @@ model Report {
 }
 
 model ScheduledReport {
-  id          String   @id @default(uuid())
-  name        String
-  type        String
-  format      String   @default("CSV")
-  frequency   String
-  parameters  Json?
-  recipients  String[]
-  isActive    Boolean  @default(true) @map("is_active")
-  lastRunAt   DateTime? @map("last_run_at")
-  nextRunAt   DateTime? @map("next_run_at")
-  createdBy   String?  @map("created_by")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id         String    @id @default(uuid())
+  name       String
+  type       String
+  format     String    @default("CSV")
+  frequency  String
+  parameters Json?
+  recipients String[]
+  isActive   Boolean   @default(true) @map("is_active")
+  lastRunAt  DateTime? @map("last_run_at")
+  nextRunAt  DateTime? @map("next_run_at")
+  createdBy  String?   @map("created_by")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
   @@map("scheduled_reports")
 }
@@ -1307,17 +1310,17 @@ model AlertConfig {
 }
 
 model LdapConfig {
-  id           String   @id @default(uuid())
-  name         String
-  host         String
-  port         Int      @default(389)
-  baseDn       String   @map("base_dn")
-  bindDnEnc    String   @map("bind_dn_enc")
-  bindPasswordEnc String @map("bind_password_enc")
-  userFilter   String?  @map("user_filter")
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  name            String
+  host            String
+  port            Int      @default(389)
+  baseDn          String   @map("base_dn")
+  bindDnEnc       String   @map("bind_dn_enc")
+  bindPasswordEnc String   @map("bind_password_enc")
+  userFilter      String?  @map("user_filter")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("ldap_configs")
 }
@@ -1371,7 +1374,7 @@ model SubCategory {
   description String?
   createdAt   DateTime @default(now()) @map("created_at")
 
-  assets      Asset[]
+  assets Asset[]
 
   @@unique([categoryId, name])
   @@map("sub_categories")
@@ -1454,7 +1457,7 @@ model VulnerabilityJob {
   scanType      String    @default("INSTANT") @map("scan_type") // INSTANT | SCHEDULED
   scheduleDate  String?   @map("schedule_date")
   scheduleTime  String?   @map("schedule_time")
-  recurrence    String?   // once | daily | weekly | monthly
+  recurrence    String? // once | daily | weekly | monthly
   status        String    @default("SCHEDULED") // RUNNING | COMPLETED | FAILED | SCHEDULED
   scheduledTime String?   @map("scheduled_time")
   lastRun       DateTime? @map("last_run")
@@ -1487,73 +1490,73 @@ model VulnerabilityDBSync {
 // ============================================
 
 model SoftwarePackage {
-  id              String   @id @default(uuid())
-  packageId       String   @unique @map("package_id") // e.g., "SWP-001"
-  name            String
-  displayName     String   @map("display_name")
-  version         String
-  vendor          String?
-  category        String?  // browser, utility, enterprise, runtime, security, etc.
-  platform        String   // windows, macos, linux, cross-platform
-  architecture    String?  // x64, arm64, universal
+  id           String  @id @default(uuid())
+  packageId    String  @unique @map("package_id") // e.g., "SWP-001"
+  name         String
+  displayName  String  @map("display_name")
+  version      String
+  vendor       String?
+  category     String? // browser, utility, enterprise, runtime, security, etc.
+  platform     String // windows, macos, linux, cross-platform
+  architecture String? // x64, arm64, universal
 
   // Installation details (legacy - for non-bundle packages)
-  installSource   String   @map("install_source") // apt, brew, pkg, dmg, deb, rpm, msi, exe, url, bundle
-  installCommand  String?  @map("install_command") // Custom install command if needed
-  installArgs     String?  @map("install_args")    // Additional arguments
-  silentInstall   Boolean  @default(true) @map("silent_install")
-  requiresReboot  Boolean  @default(false) @map("requires_reboot")
-  requiresRoot    Boolean  @default(false) @map("requires_root") // Needs sudo/admin
+  installSource  String  @map("install_source") // apt, brew, pkg, dmg, deb, rpm, msi, exe, url, bundle
+  installCommand String? @map("install_command") // Custom install command if needed
+  installArgs    String? @map("install_args") // Additional arguments
+  silentInstall  Boolean @default(true) @map("silent_install")
+  requiresReboot Boolean @default(false) @map("requires_reboot")
+  requiresRoot   Boolean @default(false) @map("requires_root") // Needs sudo/admin
 
   // MinIO storage (single file - legacy)
-  minioObjectKey  String?  @map("minio_object_key")
-  minioBucket     String?  @map("minio_bucket")
-  fileName        String?  @map("file_name")
-  fileSize        BigInt?  @map("file_size")
-  checksum        String?
-  checksumType    String?  @default("sha256") @map("checksum_type")
+  minioObjectKey String? @map("minio_object_key")
+  minioBucket    String? @map("minio_bucket")
+  fileName       String? @map("file_name")
+  fileSize       BigInt? @map("file_size")
+  checksum       String?
+  checksumType   String? @default("sha256") @map("checksum_type")
 
   // Bundle storage (new Hub-centric approach)
-  bundleObjectKey String?  @map("bundle_object_key") // MinIO key for bundle archive (e.g., packages/linux/chrome/120/bundle.tar.gz)
-  bundleChecksum  String?  @map("bundle_checksum")   // SHA256 of the bundle archive
-  bundleSize      BigInt?  @map("bundle_size")       // Size of bundle in bytes
-  manifestJson    Json?    @map("manifest_json")     // Parsed manifest.json contents
-  scriptsIncluded Boolean  @default(false) @map("scripts_included") // True if bundle contains scripts
+  bundleObjectKey String? @map("bundle_object_key") // MinIO key for bundle archive (e.g., packages/linux/chrome/120/bundle.tar.gz)
+  bundleChecksum  String? @map("bundle_checksum") // SHA256 of the bundle archive
+  bundleSize      BigInt? @map("bundle_size") // Size of bundle in bytes
+  manifestJson    Json?   @map("manifest_json") // Parsed manifest.json contents
+  scriptsIncluded Boolean @default(false) @map("scripts_included") // True if bundle contains scripts
 
   // Inline scripts (alternative to bundle - stored directly in DB)
-  scriptInstall   String?  @map("script_install")    // Bash/PowerShell install script
-  scriptUpdate    String?  @map("script_update")     // Bash/PowerShell update script
-  scriptRollback  String?  @map("script_rollback")   // Bash/PowerShell rollback script
-  scriptUninstall String?  @map("script_uninstall")  // Bash/PowerShell uninstall script
+  scriptInstall   String? @map("script_install") // Bash/PowerShell install script
+  scriptUpdate    String? @map("script_update") // Bash/PowerShell update script
+  scriptRollback  String? @map("script_rollback") // Bash/PowerShell rollback script
+  scriptUninstall String? @map("script_uninstall") // Bash/PowerShell uninstall script
 
   // External URL (if not stored in MinIO)
-  downloadUrl     String?  @map("download_url")
+  downloadUrl String? @map("download_url")
 
   // Metadata
-  description     String?
-  releaseNotes    String?  @map("release_notes")
-  iconUrl         String?  @map("icon_url")
-  tags            String[] @default([])
+  description  String?
+  releaseNotes String?  @map("release_notes")
+  iconUrl      String?  @map("icon_url")
+  tags         String[] @default([])
 
   // Pre/Post scripts (legacy - for non-bundle packages)
-  preInstallScript   String?  @map("pre_install_script")
-  postInstallScript  String?  @map("post_install_script")
-  uninstallCommand   String?  @map("uninstall_command")
+  preInstallScript  String? @map("pre_install_script")
+  postInstallScript String? @map("post_install_script")
+  uninstallCommand  String? @map("uninstall_command")
 
   // Rollback support
-  supportsRollback   Boolean @default(false) @map("supports_rollback")
-  rollbackCommand    String? @map("rollback_command")
+  supportsRollback Boolean @default(false) @map("supports_rollback")
+  rollbackCommand  String? @map("rollback_command")
 
   // Status
-  isActive        Boolean  @default(true) @map("is_active")
-  isVerified      Boolean  @default(false) @map("is_verified")
+  isActive   Boolean @default(true) @map("is_active")
+  isVerified Boolean @default(false) @map("is_verified")
 
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  createdBy       String?  @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
 
   // Relations
-  bundleItems     HubBundleItem[]
+  bundleItems HubBundleItem[]
 
   @@index([platform])
   @@index([category])
@@ -1564,14 +1567,14 @@ model SoftwarePackage {
 }
 
 model HubBundle {
-  id           String   @id @default(uuid())
-  bundleId     String   @unique @map("bundle_id")
-  name         String
-  description  String?
-  platform     String   // windows, macos, linux, cross-platform
-  createdBy    String?  @map("created_by")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid())
+  bundleId    String   @unique @map("bundle_id")
+  name        String
+  description String?
+  platform    String // windows, macos, linux, cross-platform
+  createdBy   String?  @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   items HubBundleItem[]
 
@@ -1625,27 +1628,27 @@ model SoftwareDeploymentTask {
   id           String             @id @default(uuid())
   deploymentId String             @map("deployment_id")
   deployment   SoftwareDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-  agentId      String?            @map("endpoint_id")   // Agent ID (DB column: endpoint_id)
-  assetId      String?            @map("asset_id")      // Asset ID for tracking
+  agentId      String?            @map("endpoint_id") // Agent ID (DB column: endpoint_id)
+  assetId      String?            @map("asset_id") // Asset ID for tracking
   asset        Asset?             @relation(fields: [assetId], references: [id], onDelete: SetNull)
   agentName    String             @map("endpoint_name") // Agent hostname (DB column: endpoint_name)
-  agentOs      String             @map("endpoint_os")   // Agent OS (DB column: endpoint_os)
-  packageName  String             @map("item_name")     // Package name (DB column: item_name)
+  agentOs      String             @map("endpoint_os") // Agent OS (DB column: endpoint_os)
+  packageName  String             @map("item_name") // Package name (DB column: item_name)
   status       String             @default("PENDING") // SUCCESS | FAILED | PENDING | IN_PROGRESS
 
   // Link to agent command for tracking execution
-  commandId    String?            @unique @map("command_id")
-  command      AgentCommand?      @relation(fields: [commandId], references: [id])
+  commandId String?       @unique @map("command_id")
+  command   AgentCommand? @relation(fields: [commandId], references: [id])
 
   // Execution details
-  startedAt    DateTime?          @map("started_at")
-  completedAt  DateTime?          @map("completed_at")
-  errorMessage String?            @map("error_message")
-  output       String?            // Execution output/logs
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  errorMessage String?   @map("error_message")
+  output       String? // Execution output/logs
 
-  createdBy    String?            @map("created_by")
-  createdAt    DateTime           @default(now()) @map("created_at")
-  updatedAt    DateTime           @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([deploymentId])
   @@index([status])
@@ -1658,7 +1661,7 @@ model ConfigCatalog {
   id                String   @id @default(uuid())
   configurationId   String   @unique @map("configuration_id")
   name              String
-  os                String   // Windows | Mac | Linux
+  os                String // Windows | Mac | Linux
   description       String?
   tags              String[] @default([])
   configurationType String   @default("COMMAND") @map("configuration_type") // COMMAND | POLICY | SCRIPT
@@ -1680,7 +1683,7 @@ model ConfigBundle {
   id          String   @id @default(uuid())
   bundleId    String   @unique @map("bundle_id")
   bundleName  String   @map("bundle_name")
-  os          String   // Windows | Mac | Linux
+  os          String // Windows | Mac | Linux
   description String?
   createdBy   String?  @map("created_by")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -1733,10 +1736,10 @@ model ConfigDeploymentTask {
   id           String           @id @default(uuid())
   deploymentId String           @map("deployment_id")
   deployment   ConfigDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-  agentId      String?          @map("endpoint_id")   // Agent ID (DB column: endpoint_id)
+  agentId      String?          @map("endpoint_id") // Agent ID (DB column: endpoint_id)
   agentName    String           @map("endpoint_name") // Agent hostname (DB column: endpoint_name)
-  agentOs      String           @map("endpoint_os")   // Agent OS (DB column: endpoint_os)
-  configName   String           @map("item_name")     // Config name (DB column: item_name)
+  agentOs      String           @map("endpoint_os") // Agent OS (DB column: endpoint_os)
+  configName   String           @map("item_name") // Config name (DB column: item_name)
   status       String           @default("PENDING") // SUCCESS | FAILED | PENDING | IN_PROGRESS
   commandId    String?          @unique @map("command_id")
   command      AgentCommand?    @relation(fields: [commandId], references: [id])
@@ -1786,20 +1789,20 @@ model DeploymentPolicy {
 // Asset Alerts (triggered alert events per asset)
 // ============================================
 model AssetAlert {
-  id              String    @id @default(uuid())
-  assetId         String    @map("asset_id")
-  asset           Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  alertConfigId   String?   @map("alert_config_id")
-  alert           String                              // Alert name/title
-  severity        String    @default("INFO")          // CRITICAL | WARNING | INFO | CLEAR
-  module          String    @default("System")        // Security, Performance, Software, etc.
-  attribute       String    @default("")              // e.g. "CPU Usage", "Disk Space"
-  value           String    @default("")              // The value that triggered the alert
-  message         String    @default("")              // Human-readable description
-  status          String    @default("Open")          // Open | Acknowledged | Resolved
-  resolvedAt      DateTime? @map("resolved_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id            String    @id @default(uuid())
+  assetId       String    @map("asset_id")
+  asset         Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  alertConfigId String?   @map("alert_config_id")
+  alert         String // Alert name/title
+  severity      String    @default("INFO") // CRITICAL | WARNING | INFO | CLEAR
+  module        String    @default("System") // Security, Performance, Software, etc.
+  attribute     String    @default("") // e.g. "CPU Usage", "Disk Space"
+  value         String    @default("") // The value that triggered the alert
+  message       String    @default("") // Human-readable description
+  status        String    @default("Open") // Open | Acknowledged | Resolved
+  resolvedAt    DateTime? @map("resolved_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   @@index([assetId])
   @@index([severity])
@@ -1812,18 +1815,18 @@ model AssetAlert {
 // ============================================
 
 model Notification {
-  id        String    @id @default(uuid())
-  userId    String    @map("user_id")
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   message   String
-  type      String    @default("INFO")   // INFO | SUCCESS | WARNING | ERROR
-  category  String    @default("SYSTEM") @map("category")  // AGENT | DEPLOYMENT | VULNERABILITY | ALERT | SYSTEM
-  read      Boolean   @default(false)
-  link      String?                      // frontend route to navigate to on click
-  metadata  Json?                        // optional extra context
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  type      String   @default("INFO") // INFO | SUCCESS | WARNING | ERROR
+  category  String   @default("SYSTEM") @map("category") // AGENT | DEPLOYMENT | VULNERABILITY | ALERT | SYSTEM
+  read      Boolean  @default(false)
+  link      String? // frontend route to navigate to on click
+  metadata  Json? // optional extra context
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([userId, read])
   @@index([createdAt])
@@ -1832,21 +1835,21 @@ model Notification {
 }
 
 model NotificationPreference {
-  id                  String   @id @default(uuid())
-  userId              String   @unique @map("user_id")
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  agentInApp          Boolean  @default(true)  @map("agent_in_app")
-  agentEmail          Boolean  @default(false) @map("agent_email")
-  deploymentInApp     Boolean  @default(true)  @map("deployment_in_app")
-  deploymentEmail     Boolean  @default(false) @map("deployment_email")
-  vulnerabilityInApp  Boolean  @default(true)  @map("vulnerability_in_app")
-  vulnerabilityEmail  Boolean  @default(true)  @map("vulnerability_email")
-  alertInApp          Boolean  @default(true)  @map("alert_in_app")
-  alertEmail          Boolean  @default(true)  @map("alert_email")
-  systemInApp         Boolean  @default(true)  @map("system_in_app")
-  systemEmail         Boolean  @default(false) @map("system_email")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  id                 String   @id @default(uuid())
+  userId             String   @unique @map("user_id")
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentInApp         Boolean  @default(true) @map("agent_in_app")
+  agentEmail         Boolean  @default(false) @map("agent_email")
+  deploymentInApp    Boolean  @default(true) @map("deployment_in_app")
+  deploymentEmail    Boolean  @default(false) @map("deployment_email")
+  vulnerabilityInApp Boolean  @default(true) @map("vulnerability_in_app")
+  vulnerabilityEmail Boolean  @default(true) @map("vulnerability_email")
+  alertInApp         Boolean  @default(true) @map("alert_in_app")
+  alertEmail         Boolean  @default(true) @map("alert_email")
+  systemInApp        Boolean  @default(true) @map("system_in_app")
+  systemEmail        Boolean  @default(false) @map("system_email")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   @@map("notification_preferences")
 }
@@ -1858,10 +1861,10 @@ model NotificationPreference {
 model VendorLogo {
   id        String   @id @default(uuid())
   name      String
-  type      String   // integration, vendor, os
+  type      String // integration, vendor, os
   logoUrl   String   @map("logo_url")
   fileName  String   @map("file_name")
-  objectKey String?  @map("object_key")  // MinIO object key
+  objectKey String?  @map("object_key") // MinIO object key
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
