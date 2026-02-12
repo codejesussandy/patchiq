@@ -187,9 +187,6 @@ async function main() {
   }
   console.log('Created', tags.length, 'tags');
 
-  // NOTE: No sample patches seeded — patches come from real agent discovery and patch templates.
-  // NOTE: No sample vulnerabilities seeded — vulnerabilities come from real CVE database sync (NVD, CISA KEV).
-
   // ============================================
   // Computer Groups
   // ============================================
@@ -385,6 +382,788 @@ async function main() {
     });
   }
   console.log('Created', agentVersions.length, 'agent versions');
+
+  // ============================================
+  // Sample Agents
+  // ============================================
+
+  console.log('\nSeeding sample agents...');
+  const sampleAgents = [
+    {
+      machineId: 'WIN-WKS-001-UUID',
+      name: 'WIN-WKS-001',
+      hostname: 'WIN-WKS-001',
+      status: 'Online',
+      os: 'Windows',
+      osVersion: '10.0.19045',
+      architecture: 'x86_64',
+      agentVersion: '1.0.0',
+      ipAddress: '192.168.1.101',
+      macAddress: '00:1A:2B:3C:4D:01',
+      serialNumber: 'WIN-SN-001',
+      lastHeartbeat: new Date(),
+      capabilities: ['software_install', 'patch_install', 'inventory_collect'],
+    },
+    {
+      machineId: 'UBUNTU-SRV-01-UUID',
+      name: 'UBUNTU-SRV-01',
+      hostname: 'ubuntu-srv-01',
+      status: 'Online',
+      os: 'Linux',
+      osVersion: 'Ubuntu 22.04.3 LTS',
+      architecture: 'x86_64',
+      agentVersion: '1.0.0',
+      ipAddress: '192.168.1.102',
+      macAddress: '00:1A:2B:3C:4D:02',
+      serialNumber: 'LNX-SN-002',
+      lastHeartbeat: new Date(),
+      capabilities: ['software_install', 'patch_install', 'inventory_collect'],
+    },
+    {
+      machineId: 'MAC-MBA-101-UUID',
+      name: 'MAC-MBA-101',
+      hostname: 'mac-mba-101',
+      status: 'Online',
+      os: 'macOS',
+      osVersion: '14.2.1',
+      architecture: 'arm64',
+      agentVersion: '1.0.0',
+      ipAddress: '192.168.1.103',
+      macAddress: '00:1A:2B:3C:4D:03',
+      serialNumber: 'MAC-SN-003',
+      lastHeartbeat: new Date(),
+      capabilities: ['software_install', 'patch_install', 'inventory_collect'],
+    },
+    {
+      machineId: 'WIN-SRV-DC01-UUID',
+      name: 'WIN-SRV-DC01',
+      hostname: 'WIN-SRV-DC01',
+      status: 'Online',
+      os: 'Windows',
+      osVersion: '10.0.20348',
+      architecture: 'x86_64',
+      agentVersion: '1.0.0',
+      ipAddress: '192.168.1.104',
+      macAddress: '00:1A:2B:3C:4D:04',
+      serialNumber: 'WIN-SN-004',
+      lastHeartbeat: new Date(),
+      capabilities: ['software_install', 'patch_install', 'inventory_collect'],
+    },
+    {
+      machineId: 'DEBIAN-WEB-01-UUID',
+      name: 'DEBIAN-WEB-01',
+      hostname: 'debian-web-01',
+      status: 'Offline',
+      os: 'Linux',
+      osVersion: 'Debian 12.5',
+      architecture: 'x86_64',
+      agentVersion: '1.0.0',
+      ipAddress: '192.168.1.105',
+      macAddress: '00:1A:2B:3C:4D:05',
+      serialNumber: 'LNX-SN-005',
+      lastHeartbeat: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 hours ago
+      capabilities: ['software_install', 'patch_install', 'inventory_collect'],
+    },
+  ];
+
+  const createdAgents = [];
+  for (const agent of sampleAgents) {
+    const createdAgent = await prisma.agent.upsert({
+      where: { machineId: agent.machineId },
+      update: {},
+      create: agent,
+    });
+    createdAgents.push(createdAgent);
+  }
+  console.log('Created', createdAgents.length, 'sample agents');
+
+  // ============================================
+  // Sample Assets
+  // ============================================
+
+  console.log('\nSeeding sample assets...');
+  const sampleAssets = [
+    {
+      name: 'Finance Workstation 01',
+      type: 'Workstation',
+      status: 'In Use',
+      serialNumber: 'WIN-SN-001',
+      assetTag: 'AST-WKS-001',
+      os: 'Windows',
+      osVersion: '10.0.19045',
+      osEdition: 'Pro',
+      architecture: 'x86_64',
+      ipAddress: '192.168.1.101',
+      macAddress: '00:1A:2B:3C:4D:01',
+      manufacturer: 'Dell',
+      model: 'OptiPlex 7090',
+      hostname: 'WIN-WKS-001',
+      purchaseDate: new Date('2023-03-15'),
+      warrantyExpiry: new Date('2026-03-15'),
+      organizationId: org.id,
+      locationId: location.id,
+      agentId: createdAgents[0].id,
+    },
+    {
+      name: 'Production Ubuntu Server',
+      type: 'Server',
+      status: 'In Use',
+      serialNumber: 'LNX-SN-002',
+      assetTag: 'AST-SRV-002',
+      os: 'Linux',
+      osVersion: 'Ubuntu 22.04.3 LTS',
+      osEdition: 'Server',
+      architecture: 'x86_64',
+      ipAddress: '192.168.1.102',
+      macAddress: '00:1A:2B:3C:4D:02',
+      manufacturer: 'HPE',
+      model: 'ProLiant DL380 Gen10',
+      hostname: 'ubuntu-srv-01',
+      purchaseDate: new Date('2022-11-20'),
+      warrantyExpiry: new Date('2027-11-20'),
+      organizationId: org.id,
+      locationId: location.id,
+      agentId: createdAgents[1].id,
+    },
+    {
+      name: 'Engineering MacBook Air',
+      type: 'Laptop',
+      status: 'In Use',
+      serialNumber: 'MAC-SN-003',
+      assetTag: 'AST-LAP-003',
+      os: 'macOS',
+      osVersion: '14.2.1',
+      osEdition: 'Sonoma',
+      architecture: 'arm64',
+      ipAddress: '192.168.1.103',
+      macAddress: '00:1A:2B:3C:4D:03',
+      manufacturer: 'Apple',
+      model: 'MacBook Air M2',
+      hostname: 'mac-mba-101',
+      purchaseDate: new Date('2024-01-10'),
+      warrantyExpiry: new Date('2025-01-10'),
+      organizationId: org.id,
+      locationId: location.id,
+      agentId: createdAgents[2].id,
+    },
+    {
+      name: 'Windows Server Domain Controller',
+      type: 'Server',
+      status: 'In Use',
+      serialNumber: 'WIN-SN-004',
+      assetTag: 'AST-SRV-004',
+      os: 'Windows',
+      osVersion: '10.0.20348',
+      osEdition: 'Server 2022 Standard',
+      architecture: 'x86_64',
+      installedFeatures: ['Active Directory', 'DNS', 'DHCP'],
+      ipAddress: '192.168.1.104',
+      macAddress: '00:1A:2B:3C:4D:04',
+      manufacturer: 'Dell',
+      model: 'PowerEdge R750',
+      hostname: 'WIN-SRV-DC01',
+      purchaseDate: new Date('2023-06-01'),
+      warrantyExpiry: new Date('2028-06-01'),
+      organizationId: org.id,
+      locationId: location.id,
+      agentId: createdAgents[3].id,
+    },
+    {
+      name: 'Debian Web Server',
+      type: 'Server',
+      status: 'Maintenance',
+      serialNumber: 'LNX-SN-005',
+      assetTag: 'AST-SRV-005',
+      os: 'Linux',
+      osVersion: 'Debian 12.5',
+      osEdition: 'Server',
+      architecture: 'x86_64',
+      ipAddress: '192.168.1.105',
+      macAddress: '00:1A:2B:3C:4D:05',
+      manufacturer: 'Lenovo',
+      model: 'ThinkSystem SR650 V2',
+      hostname: 'debian-web-01',
+      purchaseDate: new Date('2023-09-12'),
+      warrantyExpiry: new Date('2026-09-12'),
+      organizationId: org.id,
+      locationId: location.id,
+      agentId: createdAgents[4].id,
+    },
+  ];
+
+  const createdAssets = [];
+  for (const asset of sampleAssets) {
+    const createdAsset = await prisma.asset.upsert({
+      where: { serialNumber: asset.serialNumber },
+      update: {},
+      create: asset,
+    });
+    createdAssets.push(createdAsset);
+
+    // Update agent with assetId
+    await prisma.agent.update({
+      where: { id: asset.agentId },
+      data: { assetId: createdAsset.id },
+    });
+  }
+  console.log('Created', createdAssets.length, 'sample assets');
+
+  // Assign tags to assets
+  const productionTag = await prisma.tag.findUnique({ where: { name: 'Production' } });
+  const criticalTag = await prisma.tag.findUnique({ where: { name: 'Critical' } });
+  const developmentTag = await prisma.tag.findUnique({ where: { name: 'Development' } });
+
+  if (productionTag && createdAssets[1]) {
+    await prisma.assetTag.upsert({
+      where: { assetId_tagId: { assetId: createdAssets[1].id, tagId: productionTag.id } },
+      update: {},
+      create: { assetId: createdAssets[1].id, tagId: productionTag.id },
+    });
+  }
+
+  if (criticalTag && createdAssets[3]) {
+    await prisma.assetTag.upsert({
+      where: { assetId_tagId: { assetId: createdAssets[3].id, tagId: criticalTag.id } },
+      update: {},
+      create: { assetId: createdAssets[3].id, tagId: criticalTag.id },
+    });
+  }
+
+  if (developmentTag && createdAssets[2]) {
+    await prisma.assetTag.upsert({
+      where: { assetId_tagId: { assetId: createdAssets[2].id, tagId: developmentTag.id } },
+      update: {},
+      create: { assetId: createdAssets[2].id, tagId: developmentTag.id },
+    });
+  }
+  console.log('Assigned tags to assets');
+
+  // ============================================
+  // Sample Patches
+  // ============================================
+
+  console.log('\nSeeding sample patches...');
+  const samplePatches = [
+    {
+      patchId: 'KB5034441',
+      title: '2024-01 Cumulative Update for Windows 10 Version 22H2 (KB5034441)',
+      description: 'This security update includes quality improvements. Key changes include addressing security vulnerabilities.',
+      severity: 'CRITICAL',
+      category: 'Security Update',
+      vendor: 'Microsoft',
+      product: 'Windows 10',
+      os: 'Windows',
+      osVersion: '10.0.19045',
+      platform: 'windows',
+      architecture: 'x64',
+      kbNumber: 'KB5034441',
+      bulletinId: 'MS24-JAN',
+      publishedAt: new Date('2024-01-09'),
+      size: BigInt(512000000),
+      sizeFormatted: '512 MB',
+      downloadUrl: 'https://catalog.update.microsoft.com/v7/site/Search.aspx?q=KB5034441',
+      referenceUrl: 'https://support.microsoft.com/kb/5034441',
+      rebootRequired: true,
+      supportUninstallation: true,
+      supportsRollback: false,
+      patchType: 'UPDATE',
+      cveNumbers: ['CVE-2024-0001', 'CVE-2024-0002'],
+      status: 'Approved',
+      approvalStatus: 'Approved',
+      testStatus: 'Passed',
+    },
+    {
+      patchId: 'KB5034763',
+      title: '2024-01 Security Update for Windows Server 2022 (KB5034763)',
+      description: 'Security update addressing remote code execution vulnerabilities in Windows Server 2022.',
+      severity: 'CRITICAL',
+      category: 'Security Update',
+      vendor: 'Microsoft',
+      product: 'Windows Server 2022',
+      os: 'Windows',
+      osVersion: '10.0.20348',
+      platform: 'windows',
+      architecture: 'x64',
+      kbNumber: 'KB5034763',
+      bulletinId: 'MS24-JAN',
+      publishedAt: new Date('2024-01-09'),
+      size: BigInt(640000000),
+      sizeFormatted: '640 MB',
+      downloadUrl: 'https://catalog.update.microsoft.com/v7/site/Search.aspx?q=KB5034763',
+      referenceUrl: 'https://support.microsoft.com/kb/5034763',
+      rebootRequired: true,
+      supportUninstallation: true,
+      supportsRollback: false,
+      patchType: 'UPDATE',
+      cveNumbers: ['CVE-2024-0003', 'CVE-2024-0004'],
+      status: 'Approved',
+      approvalStatus: 'Approved',
+      testStatus: 'Passed',
+    },
+    {
+      patchId: 'USN-6549-1',
+      title: 'OpenSSL vulnerabilities (USN-6549-1)',
+      description: 'Security update for OpenSSL addressing multiple vulnerabilities including potential memory corruption.',
+      severity: 'HIGH',
+      category: 'Security Update',
+      vendor: 'Canonical',
+      product: 'OpenSSL',
+      os: 'Linux',
+      osVersion: 'Ubuntu 22.04 LTS',
+      platform: 'linux',
+      architecture: 'x64',
+      publishedAt: new Date('2024-01-15'),
+      size: BigInt(2400000),
+      sizeFormatted: '2.4 MB',
+      referenceUrl: 'https://ubuntu.com/security/notices/USN-6549-1',
+      rebootRequired: false,
+      supportUninstallation: true,
+      supportsRollback: true,
+      patchType: 'UPDATE',
+      cveNumbers: ['CVE-2023-5678', 'CVE-2023-5679'],
+      status: 'Approved',
+      approvalStatus: 'Approved',
+      testStatus: 'Passed',
+    },
+    {
+      patchId: 'USN-6550-1',
+      title: 'Linux kernel vulnerabilities (USN-6550-1)',
+      description: 'Security update for Linux kernel addressing privilege escalation and denial of service vulnerabilities.',
+      severity: 'HIGH',
+      category: 'Security Update',
+      vendor: 'Canonical',
+      product: 'Linux Kernel',
+      os: 'Linux',
+      osVersion: 'Ubuntu 22.04 LTS',
+      platform: 'linux',
+      architecture: 'x64',
+      publishedAt: new Date('2024-01-18'),
+      size: BigInt(18500000),
+      sizeFormatted: '18.5 MB',
+      referenceUrl: 'https://ubuntu.com/security/notices/USN-6550-1',
+      rebootRequired: true,
+      supportUninstallation: false,
+      supportsRollback: false,
+      patchType: 'UPDATE',
+      cveNumbers: ['CVE-2023-6789', 'CVE-2023-6790'],
+      status: 'Approved',
+      approvalStatus: 'Approved',
+      testStatus: 'Passed',
+    },
+    {
+      patchId: 'macOS-14.2.1',
+      title: 'macOS Sonoma 14.2.1',
+      description: 'This update provides important security fixes and addresses issues with Wi-Fi connectivity and Bluetooth devices.',
+      severity: 'HIGH',
+      category: 'Security Update',
+      vendor: 'Apple',
+      product: 'macOS Sonoma',
+      os: 'macOS',
+      osVersion: '14.2.1',
+      platform: 'darwin',
+      architecture: 'universal',
+      publishedAt: new Date('2024-01-08'),
+      size: BigInt(3200000000),
+      sizeFormatted: '3.2 GB',
+      downloadUrl: 'https://support.apple.com/downloads/macos',
+      referenceUrl: 'https://support.apple.com/en-us/HT214036',
+      rebootRequired: true,
+      supportUninstallation: false,
+      supportsRollback: false,
+      patchType: 'UPDATE',
+      cveNumbers: ['CVE-2023-7890', 'CVE-2023-7891'],
+      status: 'Approved',
+      approvalStatus: 'Approved',
+      testStatus: 'Passed',
+    },
+    {
+      patchId: 'DEBIAN-DLA-3712-1',
+      title: 'Apache2 security update (DLA-3712-1)',
+      description: 'Security update for Apache HTTP Server fixing multiple vulnerabilities including HTTP request smuggling.',
+      severity: 'MEDIUM',
+      category: 'Security Update',
+      vendor: 'Debian',
+      product: 'Apache HTTP Server',
+      os: 'Linux',
+      osVersion: 'Debian 12',
+      platform: 'linux',
+      architecture: 'x64',
+      publishedAt: new Date('2024-01-20'),
+      size: BigInt(1800000),
+      sizeFormatted: '1.8 MB',
+      referenceUrl: 'https://www.debian.org/security/2024/dla-3712',
+      rebootRequired: false,
+      supportUninstallation: true,
+      supportsRollback: true,
+      patchType: 'UPDATE',
+      cveNumbers: ['CVE-2023-8901', 'CVE-2023-8902'],
+      status: 'Approved',
+      approvalStatus: 'Approved',
+      testStatus: 'Passed',
+    },
+    {
+      patchId: 'KB5033920',
+      title: '.NET Framework 4.8.1 Security Update (KB5033920)',
+      description: 'Security and quality update for .NET Framework 4.8.1 addressing remote code execution vulnerabilities.',
+      severity: 'HIGH',
+      category: 'Security Update',
+      vendor: 'Microsoft',
+      product: '.NET Framework',
+      os: 'Windows',
+      osVersion: '10.0',
+      platform: 'windows',
+      architecture: 'x64',
+      kbNumber: 'KB5033920',
+      publishedAt: new Date('2024-01-09'),
+      size: BigInt(95000000),
+      sizeFormatted: '95 MB',
+      downloadUrl: 'https://catalog.update.microsoft.com/v7/site/Search.aspx?q=KB5033920',
+      referenceUrl: 'https://support.microsoft.com/kb/5033920',
+      rebootRequired: false,
+      supportUninstallation: true,
+      supportsRollback: false,
+      patchType: 'UPDATE',
+      cveNumbers: ['CVE-2024-0010', 'CVE-2024-0011'],
+      status: 'Approved',
+      approvalStatus: 'Approved',
+      testStatus: 'Passed',
+    },
+    {
+      patchId: 'USN-6548-1',
+      title: 'Git vulnerabilities (USN-6548-1)',
+      description: 'Security update for Git addressing arbitrary code execution vulnerabilities via malicious repositories.',
+      severity: 'MEDIUM',
+      category: 'Security Update',
+      vendor: 'Canonical',
+      product: 'Git',
+      os: 'Linux',
+      osVersion: 'Ubuntu 22.04 LTS',
+      platform: 'linux',
+      architecture: 'x64',
+      publishedAt: new Date('2024-01-12'),
+      size: BigInt(8500000),
+      sizeFormatted: '8.5 MB',
+      referenceUrl: 'https://ubuntu.com/security/notices/USN-6548-1',
+      rebootRequired: false,
+      supportUninstallation: true,
+      supportsRollback: true,
+      patchType: 'UPDATE',
+      cveNumbers: ['CVE-2023-9012', 'CVE-2023-9013'],
+      status: 'Approved',
+      approvalStatus: 'Approved',
+      testStatus: 'Passed',
+    },
+  ];
+
+  const createdPatches = [];
+  for (const patch of samplePatches) {
+    const createdPatch = await prisma.patch.upsert({
+      where: { patchId: patch.patchId },
+      update: {},
+      create: patch,
+    });
+    createdPatches.push(createdPatch);
+  }
+  console.log('Created', createdPatches.length, 'sample patches');
+
+  // ============================================
+  // Sample Vulnerabilities (Famous CVEs)
+  // ============================================
+
+  console.log('\nSeeding sample vulnerabilities...');
+  const sampleVulnerabilities = [
+    {
+      cveId: 'CVE-2021-44228',
+      title: 'Apache Log4j2 Remote Code Execution (Log4Shell)',
+      description: 'Apache Log4j2 2.0-beta9 through 2.15.0 (excluding security releases 2.12.2, 2.12.3, and 2.3.1) JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled.',
+      severity: 'CRITICAL',
+      cvss3BaseScore: 10.0,
+      cvss3AttackVector: 'NETWORK',
+      cvss3AttackComplexity: 'LOW',
+      cvss3PrivilegesRequired: 'NONE',
+      cvss3Scope: 'CHANGED',
+      cvss3Confidentiality: 'HIGH',
+      cvss3Integrity: 'HIGH',
+      cvss3Availability: 'HIGH',
+      cvss3VectorString: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H',
+      epss: 97.5,
+      exploitable: true,
+      isZeroDay: false,
+      patchAvailable: true,
+      fixRecommendation: 'Upgrade to Log4j 2.17.0 or later. Java 8 users should upgrade to release 2.17.1.',
+      publishedDate: new Date('2021-12-10'),
+      lastModified: new Date('2023-11-07'),
+    },
+    {
+      cveId: 'CVE-2014-0160',
+      title: 'OpenSSL Heartbleed Vulnerability',
+      description: 'The TLS heartbeat extension in OpenSSL before 0.9.8za, 1.0.0 before 1.0.0m, and 1.0.1 before 1.0.1g allows remote attackers to obtain sensitive information from process memory via crafted packets that trigger a buffer over-read.',
+      severity: 'HIGH',
+      cvss3BaseScore: 7.5,
+      cvss3AttackVector: 'NETWORK',
+      cvss3AttackComplexity: 'LOW',
+      cvss3PrivilegesRequired: 'NONE',
+      cvss3Scope: 'UNCHANGED',
+      cvss3Confidentiality: 'HIGH',
+      cvss3Integrity: 'NONE',
+      cvss3Availability: 'NONE',
+      cvss3VectorString: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N',
+      epss: 78.2,
+      exploitable: true,
+      isZeroDay: false,
+      patchAvailable: true,
+      fixRecommendation: 'Update OpenSSL to version 1.0.1g or later.',
+      publishedDate: new Date('2014-04-07'),
+      lastModified: new Date('2023-11-07'),
+    },
+    {
+      cveId: 'CVE-2017-5638',
+      title: 'Apache Struts2 Remote Code Execution',
+      description: 'The Jakarta Multipart parser in Apache Struts 2 2.3.x before 2.3.32 and 2.5.x before 2.5.10.1 has incorrect exception handling and error-message generation during file-upload attempts, which allows remote attackers to execute arbitrary commands via a crafted Content-Type, Content-Disposition, or Content-Length HTTP header.',
+      severity: 'CRITICAL',
+      cvss3BaseScore: 10.0,
+      cvss3AttackVector: 'NETWORK',
+      cvss3AttackComplexity: 'LOW',
+      cvss3PrivilegesRequired: 'NONE',
+      cvss3Scope: 'CHANGED',
+      cvss3Confidentiality: 'HIGH',
+      cvss3Integrity: 'HIGH',
+      cvss3Availability: 'HIGH',
+      cvss3VectorString: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H',
+      epss: 89.3,
+      exploitable: true,
+      isZeroDay: false,
+      patchAvailable: true,
+      fixRecommendation: 'Upgrade to Apache Struts 2.3.32 or 2.5.10.1 or later.',
+      publishedDate: new Date('2017-03-10'),
+      lastModified: new Date('2023-11-07'),
+    },
+    {
+      cveId: 'CVE-2021-26855',
+      title: 'Microsoft Exchange Server ProxyLogon',
+      description: 'Microsoft Exchange Server Remote Code Execution Vulnerability (ProxyLogon). This vulnerability is part of a chain of vulnerabilities that allows an unauthenticated attacker to execute arbitrary code on vulnerable Exchange servers.',
+      severity: 'CRITICAL',
+      cvss3BaseScore: 9.8,
+      cvss3AttackVector: 'NETWORK',
+      cvss3AttackComplexity: 'LOW',
+      cvss3PrivilegesRequired: 'NONE',
+      cvss3Scope: 'UNCHANGED',
+      cvss3Confidentiality: 'HIGH',
+      cvss3Integrity: 'HIGH',
+      cvss3Availability: 'HIGH',
+      cvss3VectorString: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H',
+      epss: 94.7,
+      exploitable: true,
+      isZeroDay: false,
+      patchAvailable: true,
+      fixRecommendation: 'Apply Microsoft Exchange Server security updates immediately.',
+      publishedDate: new Date('2021-03-02'),
+      lastModified: new Date('2023-11-07'),
+    },
+    {
+      cveId: 'CVE-2019-0708',
+      title: 'Windows RDP BlueKeep Vulnerability',
+      description: 'A remote code execution vulnerability exists in Remote Desktop Services when an unauthenticated attacker connects to the target system using RDP and sends specially crafted requests. This vulnerability is pre-authentication and requires no user interaction.',
+      severity: 'CRITICAL',
+      cvss3BaseScore: 9.8,
+      cvss3AttackVector: 'NETWORK',
+      cvss3AttackComplexity: 'LOW',
+      cvss3PrivilegesRequired: 'NONE',
+      cvss3Scope: 'UNCHANGED',
+      cvss3Confidentiality: 'HIGH',
+      cvss3Integrity: 'HIGH',
+      cvss3Availability: 'HIGH',
+      cvss3VectorString: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H',
+      epss: 91.2,
+      exploitable: true,
+      isZeroDay: false,
+      patchAvailable: true,
+      fixRecommendation: 'Apply Windows security updates and enable Network Level Authentication (NLA).',
+      publishedDate: new Date('2019-05-16'),
+      lastModified: new Date('2023-11-07'),
+    },
+  ];
+
+  const createdVulnerabilities = [];
+  for (const vuln of sampleVulnerabilities) {
+    const createdVuln = await prisma.vulnerability.upsert({
+      where: { cveId: vuln.cveId },
+      update: {},
+      create: vuln,
+    });
+    createdVulnerabilities.push(createdVuln);
+  }
+  console.log('Created', createdVulnerabilities.length, 'sample vulnerabilities');
+
+  // ============================================
+  // Sample Software & Installations
+  // ============================================
+
+  console.log('\nSeeding sample software installations...');
+
+  // Software installations for Windows Workstation (Asset 0)
+  const windowsSoftware = [
+    {
+      assetId: createdAssets[0].id,
+      name: 'Google Chrome',
+      version: '120.0.6099.129',
+      vendor: 'Google LLC',
+      installDate: new Date('2024-01-05'),
+      installPath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      category: 'Browser',
+    },
+    {
+      assetId: createdAssets[0].id,
+      name: 'Microsoft Office 365',
+      version: '16.0.17126.20132',
+      vendor: 'Microsoft Corporation',
+      installDate: new Date('2023-12-01'),
+      installPath: 'C:\\Program Files\\Microsoft Office\\root\\Office16',
+      category: 'Productivity',
+    },
+    {
+      assetId: createdAssets[0].id,
+      name: '7-Zip',
+      version: '23.01',
+      vendor: 'Igor Pavlov',
+      installDate: new Date('2023-11-15'),
+      installPath: 'C:\\Program Files\\7-Zip',
+      category: 'Utility',
+    },
+  ];
+
+  // Software installations for Ubuntu Server (Asset 1)
+  const ubuntuSoftware = [
+    {
+      assetId: createdAssets[1].id,
+      name: 'openssl',
+      version: '3.0.2-0ubuntu1.12',
+      vendor: 'OpenSSL Project',
+      installDate: new Date('2023-10-20'),
+      installPath: '/usr/bin/openssl',
+      category: 'Security',
+    },
+    {
+      assetId: createdAssets[1].id,
+      name: 'apache2',
+      version: '2.4.52-1ubuntu4.7',
+      vendor: 'Apache Software Foundation',
+      installDate: new Date('2023-09-15'),
+      installPath: '/usr/sbin/apache2',
+      category: 'Web Server',
+    },
+    {
+      assetId: createdAssets[1].id,
+      name: 'postgresql',
+      version: '14.10-0ubuntu0.22.04.1',
+      vendor: 'PostgreSQL Global Development Group',
+      installDate: new Date('2023-11-01'),
+      installPath: '/usr/lib/postgresql/14',
+      category: 'Database',
+    },
+  ];
+
+  // Software installations for MacBook (Asset 2)
+  const macOsSoftware = [
+    {
+      assetId: createdAssets[2].id,
+      name: 'Safari',
+      version: '17.2.1',
+      vendor: 'Apple Inc.',
+      installDate: new Date('2024-01-08'),
+      installPath: '/Applications/Safari.app',
+      category: 'Browser',
+    },
+    {
+      assetId: createdAssets[2].id,
+      name: 'Visual Studio Code',
+      version: '1.85.2',
+      vendor: 'Microsoft Corporation',
+      installDate: new Date('2024-01-10'),
+      installPath: '/Applications/Visual Studio Code.app',
+      category: 'Development',
+    },
+    {
+      assetId: createdAssets[2].id,
+      name: 'Homebrew',
+      version: '4.2.0',
+      vendor: 'Homebrew Team',
+      installDate: new Date('2023-12-15'),
+      installPath: '/opt/homebrew/bin/brew',
+      category: 'Package Manager',
+    },
+  ];
+
+  // Software installations for Windows Server (Asset 3)
+  const windowsServerSoftware = [
+    {
+      assetId: createdAssets[3].id,
+      name: 'Active Directory Domain Services',
+      version: '10.0.20348.1',
+      vendor: 'Microsoft Corporation',
+      installDate: new Date('2023-06-01'),
+      installPath: 'C:\\Windows\\System32\\ntdsa.dll',
+      category: 'Directory Service',
+    },
+    {
+      assetId: createdAssets[3].id,
+      name: 'IIS',
+      version: '10.0.20348',
+      vendor: 'Microsoft Corporation',
+      installDate: new Date('2023-06-01'),
+      installPath: 'C:\\Windows\\System32\\inetsrv',
+      category: 'Web Server',
+    },
+  ];
+
+  // Software installations for Debian Server (Asset 4)
+  const debianSoftware = [
+    {
+      assetId: createdAssets[4].id,
+      name: 'nginx',
+      version: '1.22.1-9',
+      vendor: 'NGINX Inc.',
+      installDate: new Date('2023-09-12'),
+      installPath: '/usr/sbin/nginx',
+      category: 'Web Server',
+    },
+    {
+      assetId: createdAssets[4].id,
+      name: 'git',
+      version: '2.39.2-1.1',
+      vendor: 'Software Freedom Conservancy',
+      installDate: new Date('2023-09-12'),
+      installPath: '/usr/bin/git',
+      category: 'Version Control',
+    },
+    {
+      assetId: createdAssets[4].id,
+      name: 'Docker',
+      version: '24.0.7-1~debian.12~bookworm',
+      vendor: 'Docker Inc.',
+      installDate: new Date('2023-10-05'),
+      installPath: '/usr/bin/docker',
+      category: 'Container Runtime',
+    },
+    {
+      assetId: createdAssets[4].id,
+      name: 'Python',
+      version: '3.11.2-6',
+      vendor: 'Python Software Foundation',
+      installDate: new Date('2023-09-12'),
+      installPath: '/usr/bin/python3.11',
+      category: 'Programming Language',
+    },
+  ];
+
+  const allSoftware = [...windowsSoftware, ...ubuntuSoftware, ...macOsSoftware, ...windowsServerSoftware, ...debianSoftware];
+
+  for (const software of allSoftware) {
+    await prisma.assetSoftware.create({
+      data: software,
+    });
+  }
+  console.log('Created', allSoftware.length, 'software installations across', createdAssets.length, 'assets');
 
   // Asset alerts are now created by the real-time alert evaluation engine
   // (see backend/src/modules/alerts/alert-evaluation.service.ts)
