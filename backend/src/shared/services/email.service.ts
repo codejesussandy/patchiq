@@ -1,5 +1,10 @@
 import nodemailer, { Transporter } from 'nodemailer';
 import SMTPTransport from 'nodemailer/lib/smtp-transport';
+import { config } from '@config/index';
+import { loadMailConfig } from '@shared/services/notification-email.service';
+import { createLogger } from '@shared/services/logger';
+
+const logger = createLogger('email');
 
 export interface MailServerConfig {
   host: string;
@@ -162,8 +167,69 @@ export async function sendTestEmail(
   }
 }
 
+export interface SendEmailInput {
+  to: string | string[];
+  subject: string;
+  html: string;
+  text?: string;
+}
+
+export interface SendEmailResult {
+  success: boolean;
+  message: string;
+  error?: string;
+}
+
+export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
+  // Mock mode — log and return
+  if (config.externalServices.useMockEmail) {
+    logger.info({ subject: input.subject, to: input.to }, 'Mock email sent');
+    return { success: true, message: 'Email logged (mock mode)' };
+  }
+
+  try {
+    // Try DB config first
+    let mailConfig = await loadMailConfig();
+
+    // Env fallback if DB config is null
+    if (!mailConfig && config.smtp.host) {
+      mailConfig = {
+        host: config.smtp.host,
+        port: config.smtp.port || 587,
+        secure: false,
+        username: config.smtp.user,
+        password: config.smtp.pass,
+        fromAddress: config.smtp.from,
+        fromName: 'PatchIQ',
+      };
+    }
+
+    if (!mailConfig) {
+      return { success: false, message: 'Mail server not configured' };
+    }
+
+    const transporter = createTransporter(mailConfig);
+    const from = `"${mailConfig.fromName || 'PatchIQ'}" <${mailConfig.fromAddress || mailConfig.username || 'noreply@patchiq.io'}>`;
+
+    await transporter.sendMail({
+      from,
+      to: input.to,
+      subject: input.subject,
+      html: input.html,
+      text: input.text,
+    });
+
+    return { success: true, message: 'Email sent successfully' };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.warn({ err: error, subject: input.subject, to: input.to }, 'Failed to send email');
+    return { success: false, message: 'Failed to send email', error: errorMessage };
+  }
+}
+
 export const emailService = {
   createTransporter,
   testConnection,
   sendTestEmail,
+  sendEmail,
 };

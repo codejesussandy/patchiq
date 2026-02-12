@@ -118,6 +118,16 @@ export const updateReportBodySchema = z.object({
 
 export type UpdateReportBody = z.infer<typeof updateReportBodySchema>;
 
+// Send report via email
+export const sendReportBodySchema = z.object({
+  recipients: z.array(z.string().email()).min(1, 'At least one recipient is required'),
+  subject: z.string().optional(),
+  message: z.string().optional(),
+  format: reportFormatEnum.optional(),
+});
+
+export type SendReportBody = z.infer<typeof sendReportBodySchema>;
+
 // ==================== Schedules ====================
 
 // List schedules query params

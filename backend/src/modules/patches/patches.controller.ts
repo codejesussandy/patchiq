@@ -224,6 +224,36 @@ export async function getVulnerabilities(req: Request, res: Response, next: Next
 }
 
 // ============================================
+// Scan Endpoints & Endpoints
+// ============================================
+
+export async function scanEndpoints(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const orgId = req.user!.organizationId;
+    const result = await patchesService.scanEndpoints(id, req.body, orgId);
+    sendSuccess(res, {
+      scannedCount: result.assetsScanned,
+      missingCount: result.missing,
+      notApplicableCount: result.notApplicable,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getEndpoints(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const orgId = req.user!.organizationId;
+    const result = await patchesService.getEndpoints(id, orgId);
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ============================================
 // Test & Approve Workflow
 // ============================================
 

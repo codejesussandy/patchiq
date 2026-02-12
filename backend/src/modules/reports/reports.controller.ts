@@ -1,6 +1,9 @@
 import * as fs from 'fs';
 import { RequestHandler } from 'express';
 import { createLogger } from '@shared/services/logger';
+import { sendEmail } from '@shared/services/email.service';
+import { buildReportEmailHtml } from '@shared/services/email-templates';
+import { config } from '@config/index';
 import { sendSuccess, sendError, typedQuery } from '@shared/utils';
 import { reportsService } from './reports.service';
 
@@ -149,12 +152,7 @@ export const regenerateReport: RequestHandler = async (req, res, next) => {
  */
 export const sendReport: RequestHandler = async (req, res, next) => {
   try {
-    const { recipients, _subject, _message, _format } = req.body;
-
-    // Validate recipients
-    if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
-      return sendError(res, 400, 'BAD_REQUEST', 'At least one recipient is required');
-    }
+    const { recipients, subject, message } = req.body;
 
     // Get report to verify it exists and is completed
     const report = await reportsService.getReportById(req.params.id);
@@ -163,13 +161,48 @@ export const sendReport: RequestHandler = async (req, res, next) => {
       return sendError(res, 400, 'BAD_REQUEST', 'Report must be completed before sending');
     }
 
-    // TODO: Implement actual email sending with nodemailer
-    // For now, return a mock success response
-    logger.info({ reportName: report.name, recipients }, 'Sending report');
+    const emailSubject = subject || `PatchIQ Report: ${report.name}`;
+    const reportLink = `${config.corsOrigin}/reports/${req.params.id}`;
+    const emailHtml = buildReportEmailHtml(
+      report.name,
+      report.type || 'N/A',
+      report.createdAt ? new Date(report.createdAt).toLocaleDateString() : 'N/A',
+      message,
+      reportLink,
+    );
 
-    sendSuccess(res, {
-      message: `Report will be sent to ${recipients.length} recipient(s). (Email service not configured)`,
-    });
+    // Send to all recipients, track successes and failures
+    let successCount = 0;
+    let failCount = 0;
+    let isMocked = false;
+
+    for (const recipient of recipients) {
+      const result = await sendEmail({
+        to: recipient,
+        subject: emailSubject,
+        html: emailHtml,
+      });
+
+      if (result.success) {
+        successCount++;
+        if (result.message.includes('mock')) {
+          isMocked = true;
+        }
+      } else {
+        failCount++;
+        logger.warn({ recipient, error: result.error }, 'Failed to send report email to recipient');
+      }
+    }
+
+    if (isMocked) {
+      sendSuccess(res, { message: `Report email logged (mock mode)` });
+    } else if (failCount === 0) {
+      sendSuccess(res, { message: `Report sent to ${successCount} recipient(s)` });
+    } else if (successCount === 0) {
+      sendSuccess(res, { message: `Failed to send report email to all ${failCount} recipient(s)` });
+    } else {
+      sendSuccess(res, { message: `Report sent to ${successCount} recipient(s), failed for ${failCount}` });
+    }
   } catch (error) {
     next(error);
   }

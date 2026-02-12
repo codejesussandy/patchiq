@@ -410,15 +410,20 @@ export async function getAssetTags(assetId: string): Promise<TagResponse[]> {
   return tagsWithCounts;
 }
 
-export async function bulkAssignTags(assetIds: string[], tagIds: string[]): Promise<{ message: string; assignedCount: number }> {
-  // Verify all assets exist
+export async function bulkAssignTags(assetIds: string[], tagIds: string[], organizationId?: string): Promise<{ message: string; assignedCount: number }> {
+  // Filter to only org-owned assets
+  const assetWhere: Prisma.AssetWhereInput = { id: { in: assetIds } };
+  if (organizationId) {
+    assetWhere.organizationId = organizationId;
+  }
   const assets = await prisma.asset.findMany({
-    where: { id: { in: assetIds } },
+    where: assetWhere,
     select: { id: true },
   });
+  const validAssetIds = assets.map(a => a.id);
 
-  if (assets.length !== assetIds.length) {
-    throw new NotFoundError('One or more assets not found');
+  if (validAssetIds.length === 0) {
+    return { message: 'No matching assets found in your organization', assignedCount: 0 };
   }
 
   // Verify all tags exist
@@ -432,7 +437,7 @@ export async function bulkAssignTags(assetIds: string[], tagIds: string[]): Prom
   }
 
   // Build array of all asset-tag combinations
-  const data = assetIds.flatMap((assetId) =>
+  const data = validAssetIds.flatMap((assetId) =>
     tagIds.map((tagId) => ({ assetId, tagId }))
   );
 
@@ -443,8 +448,156 @@ export async function bulkAssignTags(assetIds: string[], tagIds: string[]): Prom
   });
 
   return {
-    message: `Tags assigned to ${assetIds.length} assets`,
+    message: `Tags assigned to ${validAssetIds.length} assets`,
     assignedCount: result.count,
+  };
+}
+
+export async function bulkRemoveTags(assetIds: string[], tagIds: string[], organizationId?: string): Promise<{ message: string; removedCount: number }> {
+  const orgFilter: Prisma.AssetWhereInput = { id: { in: assetIds } };
+  if (organizationId) {
+    orgFilter.organizationId = organizationId;
+  }
+  const assets = await prisma.asset.findMany({ where: orgFilter, select: { id: true } });
+  const validAssetIds = assets.map(a => a.id);
+
+  if (validAssetIds.length === 0) {
+    return { message: 'No matching assets found in your organization', removedCount: 0 };
+  }
+
+  const result = await prisma.assetTag.deleteMany({
+    where: { assetId: { in: validAssetIds }, tagId: { in: tagIds } },
+  });
+
+  return { message: `Tags removed from ${validAssetIds.length} assets`, removedCount: result.count };
+}
+
+export async function searchTags(q: string) {
+  const tags = await prisma.tag.findMany({
+    where: {
+      OR: [
+        { name: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+      ],
+    },
+    orderBy: { name: 'asc' },
+  });
+
+  return tags.map(t => ({
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    color: t.color,
+    icon: t.icon,
+    priority: t.priority,
+    compliance: t.compliance,
+  }));
+}
+
+export async function getAssetsByCategory(categoryId: string, organizationId?: string) {
+  const category = await prisma.category.findUnique({ where: { id: categoryId } });
+  if (!category) {
+    throw new NotFoundError('Category not found');
+  }
+
+  const where: Prisma.AssetWhereInput = { categoryId };
+  if (organizationId) {
+    where.organizationId = organizationId;
+  }
+
+  const assets = await prisma.asset.findMany({
+    where,
+    include: { tags: { include: { tag: true } }, category: true, subCategory: true },
+  });
+
+  return assets;
+}
+
+export async function getAssetsBySubCategory(subCategoryId: string, organizationId?: string) {
+  const subCategory = await prisma.subCategory.findUnique({ where: { id: subCategoryId } });
+  if (!subCategory) {
+    throw new NotFoundError('Subcategory not found');
+  }
+
+  const where: Prisma.AssetWhereInput = { subCategoryId };
+  if (organizationId) {
+    where.organizationId = organizationId;
+  }
+
+  const assets = await prisma.asset.findMany({
+    where,
+    include: { tags: { include: { tag: true } }, category: true, subCategory: true },
+  });
+
+  return assets;
+}
+
+export async function getEndpointDetails(assetId: string, organizationId?: string) {
+  const where: Prisma.AssetWhereInput = { id: assetId };
+  if (organizationId) {
+    where.organizationId = organizationId;
+  }
+
+  const asset = await prisma.asset.findFirst({
+    where,
+    include: {
+      category: true,
+      subCategory: true,
+      tags: { include: { tag: true } },
+      vulnerabilities: { include: { vulnerability: true }, take: 20 },
+    },
+  });
+
+  if (!asset) {
+    throw new NotFoundError('Endpoint not found');
+  }
+
+  const [totalVulnerabilities, deploymentTasks] = await Promise.all([
+    prisma.assetVulnerability.count({ where: { assetId } }),
+    prisma.patchDeploymentTask.findMany({
+      where: { assetId },
+      include: { deployment: { include: { patches: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    }),
+  ]);
+
+  const relatedPatches = deploymentTasks
+    .flatMap(t => t.deployment?.patches || [])
+    .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i)
+    .slice(0, 10)
+    .map(p => ({ id: p.id, title: p.title, severity: p.severity, status: p.status }));
+
+  const recentDeployments = deploymentTasks.slice(0, 5).map(t => ({
+    id: t.id,
+    deploymentId: t.deploymentId,
+    status: t.status,
+    createdAt: t.createdAt.toISOString(),
+    completedAt: t.completedAt?.toISOString() || null,
+  }));
+
+  const installedCount = deploymentTasks.filter(t => t.status === 'COMPLETED').length;
+  const pendingCount = deploymentTasks.filter(t => ['PENDING', 'IN_PROGRESS'].includes(t.status)).length;
+
+  return {
+    id: asset.id,
+    name: asset.name,
+    os: asset.os || 'Unknown',
+    osVersion: asset.osVersion || 'Unknown',
+    status: asset.status || 'Unknown',
+    lastSeen: asset.updatedAt.toISOString(),
+    ipAddress: asset.ipAddress || null,
+    hostname: asset.hostname || asset.name,
+    category: asset.category,
+    subCategory: asset.subCategory,
+    tags: asset.tags.map(at => at.tag),
+    patchSummary: {
+      totalVulnerabilities,
+      installedPatches: installedCount,
+      pendingPatches: pendingCount,
+    },
+    relatedPatches,
+    recentDeployments,
   };
 }
 

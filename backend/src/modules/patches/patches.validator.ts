@@ -127,7 +127,7 @@ export const testApproveQuerySchema = z.object({
 
 export const scanEndpointsSchema = z.object({
   scope: z.enum(['ALL_END_POINTS', 'SPECIFIC_GROUPS']),
-  endpointIds: z.array(z.string()).optional().default([]),
+  endpointIds: z.array(z.string()).max(5000).optional().default([]),
 });
 
 // ============================================

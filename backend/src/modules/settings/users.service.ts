@@ -1,10 +1,13 @@
 import { NotFoundError, BadRequestError, ConflictError } from '@shared/errors';
 import { createLogger } from '@shared/services/logger';
+import { sendEmail } from '@shared/services/email.service';
+import { buildInvitationEmailHtml, buildAdminPasswordResetEmailHtml } from '@shared/services/email-templates';
 import { hashPassword, generateToken, hashString } from '@shared/utils/crypto';
 import { addDuration } from '@shared/utils/date';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import { withTransaction } from '@shared/utils/transaction';
 import { prisma } from '@db/client';
+import { config } from '@config/index';
 
 const logger = createLogger('users');
 import type {
@@ -304,10 +307,29 @@ export class UsersService {
       role: user.role,
     });
 
-    // TODO: Send invitation email
-    logger.info({ email: input.email }, 'User invitation created');
+    // Send invitation email (fire-and-forget)
+    let inviterName = 'An administrator';
+    if (invitedById) {
+      const inviter = await prisma.user.findUnique({
+        where: { id: invitedById },
+        select: { name: true, email: true },
+      });
+      if (inviter) {
+        inviterName = inviter.name || inviter.email;
+      }
+    }
 
-    return { message: 'Invitation sent successfully' };
+    const onboardingLink = `${config.corsOrigin}/onboarding?token=${inviteToken}`;
+    const emailResult = await sendEmail({
+      to: input.email,
+      subject: "You've been invited to PatchIQ",
+      html: buildInvitationEmailHtml(input.name || input.email, inviterName, input.role, onboardingLink, '7 days'),
+    });
+
+    logger.info({ email: input.email, success: emailResult.success }, 'Invitation email status');
+
+    const emailStatus = emailResult.message.includes('mock') ? ' (mock mode)' : emailResult.success ? '' : ' (email delivery failed)';
+    return { message: `Invitation sent successfully${emailStatus}` };
   }
 
   async suspendUser(id: string, suspendedById?: string): Promise<MessageResponse> {
@@ -395,8 +417,15 @@ export class UsersService {
       email: user.email,
     });
 
-    // TODO: Send password reset email
-    logger.info({ email: user.email }, 'Password reset requested');
+    // Send admin-initiated password reset email (fire-and-forget)
+    const resetLink = `${config.corsOrigin}/reset-password?token=${resetToken}`;
+    const emailResult = await sendEmail({
+      to: user.email,
+      subject: 'PatchIQ — Password Reset Requested',
+      html: buildAdminPasswordResetEmailHtml(user.name || user.email, resetLink, '24 hours'),
+    });
+
+    logger.info({ email: user.email, success: emailResult.success }, 'Admin password reset email status');
 
     return { message: 'Password reset email sent successfully' };
   }

@@ -17,6 +17,8 @@ import {
   addTagsToAssetSchema,
   assetTagParamSchema,
   bulkAssignTagsSchema,
+  bulkRemoveTagsSchema,
+  tagSearchQuerySchema,
   assetCreateSchema,
   assetUpdateSchema,
   assetIdParamSchema,
@@ -46,6 +48,7 @@ router.get('/categories/:id', validateParams(categoryIdParamSchema), controller.
 router.post('/categories', validateBody(categoryCreateSchema), controller.createCategory);
 router.put('/categories/:id', validateParams(categoryIdParamSchema), validateBody(categoryUpdateSchema), controller.updateCategory);
 router.delete('/categories/:id', validateParams(categoryIdParamSchema), controller.deleteCategory);
+router.get('/categories/:id/assets', validateParams(categoryIdParamSchema), controller.getAssetsByCategory);
 
 // ============================================
 // SubCategories Routes
@@ -55,12 +58,14 @@ router.get('/subcategories/:id', validateParams(subCategoryIdParamSchema), contr
 router.post('/subcategories', validateBody(subCategoryCreateSchema), controller.createSubCategory);
 router.put('/subcategories/:id', validateParams(subCategoryIdParamSchema), validateBody(subCategoryUpdateSchema), controller.updateSubCategory);
 router.delete('/subcategories/:id', validateParams(subCategoryIdParamSchema), controller.deleteSubCategory);
+router.get('/subcategories/:id/assets', validateParams(subCategoryIdParamSchema), controller.getAssetsBySubCategory);
 
 // ============================================
 // Tags Routes
 // ============================================
 router.get('/tags', validateQuery(tagQuerySchema), controller.listTags);
 router.get('/tags/popular', validateQuery(popularTagsQuerySchema), controller.getPopularTags);
+router.get('/tags/search', validateQuery(tagSearchQuerySchema), controller.searchTags);
 router.get('/tags/:id', validateParams(tagIdParamSchema), controller.getTagById);
 router.post('/tags', validateBody(tagCreateSchema), controller.createTag);
 router.put('/tags/:id', validateParams(tagIdParamSchema), validateBody(tagUpdateSchema), controller.updateTag);
@@ -68,10 +73,13 @@ router.delete('/tags/:id', validateParams(tagIdParamSchema), controller.deleteTa
 
 // Bulk tag operations
 router.post('/assets/bulk-tags', validateBody(bulkAssignTagsSchema), controller.bulkAssignTags);
+router.post('/tags/bulk-assign', validateBody(bulkAssignTagsSchema), controller.bulkAssignTags);
+router.post('/tags/bulk-remove', validateBody(bulkRemoveTagsSchema), controller.bulkRemoveTags);
 
 // ============================================
 // Assets Routes
 // ============================================
+router.get('/endpoints/:id', validateParams(assetIdParamSchema), controller.getEndpointDetails);
 router.get('/assets', validateQuery(assetQuerySchema), controller.listAssets);
 router.post('/assets', validateBody(assetCreateSchema), controller.createAsset);
 router.post('/assets/bulk', validateBody(bulkDeleteSchema), controller.bulkDeleteAssets);

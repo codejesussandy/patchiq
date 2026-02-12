@@ -492,34 +492,59 @@ export async function getVulnerabilities(patchId: string) {
   }));
 }
 
-export async function getEndpoints(patchId: string) {
-  const patch = await prisma.patch.findUnique({ where: { id: patchId } });
+export async function getEndpoints(patchId: string, organizationId?: string) {
+  const patch = await prisma.patch.findUnique({
+    where: { id: patchId },
+    select: { id: true, cveNumbers: true, affectedProducts: true },
+  });
   if (!patch) {
     throw new NotFoundError('Patch not found');
   }
 
-  // Query deployment tasks for this patch's deployments
-  const tasks = await prisma.patchDeploymentTask.findMany({
-    where: {
-      deployment: {
-        patches: { some: { id: patchId } },
+  const assetWhere: Prisma.AssetWhereInput = {};
+  if (organizationId) {
+    assetWhere.organizationId = organizationId;
+  }
+
+  // Try matching via CVE numbers first
+  if (patch.cveNumbers && patch.cveNumbers.length > 0) {
+    assetWhere.vulnerabilities = {
+      some: {
+        vulnerability: { cveId: { in: patch.cveNumbers } },
       },
-    },
-    include: {
-      asset: true,
-    },
+    };
+  } else if (patch.affectedProducts && patch.affectedProducts.length > 0) {
+    // Fall back to matching via affected products against asset software
+    const productNames = patch.affectedProducts.map((p: any) => p.name).filter(Boolean);
+    if (productNames.length > 0) {
+      assetWhere.software = {
+        some: {
+          name: { in: productNames, mode: 'insensitive' },
+        },
+      };
+    }
+  }
+
+  // If no matching criteria, return empty
+  if (!assetWhere.vulnerabilities && !assetWhere.software) {
+    return [];
+  }
+
+  const assets = await prisma.asset.findMany({
+    where: assetWhere,
+    select: { id: true, name: true, os: true, status: true, updatedAt: true },
   });
 
-  return tasks.map((t) => ({
-    id: t.id,
-    name: t.asset?.name || 'Unknown',
-    os: t.asset?.os || null,
-    status: t.status,
-    lastSeen: t.updatedAt?.toISOString() || null,
+  return assets.map((a) => ({
+    id: a.id,
+    name: a.name,
+    os: a.os || 'Unknown',
+    status: a.status,
+    lastSeen: a.updatedAt.toISOString(),
   }));
 }
 
-export async function scanEndpoints(patchId: string, data: ScanEndpointsInput) {
+export async function scanEndpoints(patchId: string, data: ScanEndpointsInput, organizationId?: string) {
   const patch = await prisma.patch.findUnique({
     where: { id: patchId },
     include: {
@@ -534,6 +559,10 @@ export async function scanEndpoints(patchId: string, data: ScanEndpointsInput) {
 
   // Determine scope of assets to check
   const assetWhere: Prisma.AssetWhereInput = { status: { not: 'RETIRED' } };
+
+  if (organizationId) {
+    assetWhere.organizationId = organizationId;
+  }
 
   if (data.scope === 'SPECIFIC_GROUPS' && data.endpointIds.length > 0) {
     assetWhere.id = { in: data.endpointIds };

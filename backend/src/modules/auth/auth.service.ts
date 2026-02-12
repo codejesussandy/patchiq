@@ -1,6 +1,9 @@
 import { createLogger } from '@shared/services/logger';
 import { withTransaction } from '@shared/utils/transaction';
 import { prisma } from '@db/client';
+import { sendEmail } from '@shared/services/email.service';
+import { buildPasswordResetEmailHtml } from '@shared/services/email-templates';
+import { config } from '@config/index';
 
 const logger = createLogger('auth');
 import {
@@ -217,9 +220,15 @@ export class AuthService {
       },
     });
 
-    // TODO: Send email with reset link
-    // EmailService.sendPasswordResetEmail(user.email, resetToken);
-    logger.info({ email }, 'Password reset token generated');
+    // Send password reset email (fire-and-forget)
+    const resetLink = `${config.corsOrigin}/reset-password?token=${resetToken}`;
+    const emailResult = await sendEmail({
+      to: user.email,
+      subject: 'PatchIQ — Password Reset',
+      html: buildPasswordResetEmailHtml(user.name || user.email, resetLink, '1 hour'),
+    });
+
+    logger.info({ email, success: emailResult.success, message: emailResult.message }, 'Password reset email status');
   }
 
   /**

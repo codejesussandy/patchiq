@@ -21,6 +21,7 @@ import {
   updateZeroTouchConfigSchema,
   zeroTouchConfigIdParamSchema,
   zeroTouchConfigListQuerySchema,
+  scanEndpointsSchema,
   createPatchDeploymentFromUISchema,
 } from './patches.validator';
 
@@ -128,6 +129,23 @@ router.get(
   authenticate,
   validateParams(patchIdParamSchema),
   controller.getVulnerabilities
+);
+
+// POST /v1/patches/:id/scan-endpoints - Scan endpoints for patch applicability
+router.post(
+  '/:id/scan-endpoints',
+  authenticate,
+  validateParams(patchIdParamSchema),
+  validateBody(scanEndpointsSchema),
+  controller.scanEndpoints
+);
+
+// GET /v1/patches/:id/endpoints - Get endpoints affected by this patch
+router.get(
+  '/:id/endpoints',
+  authenticate,
+  validateParams(patchIdParamSchema),
+  controller.getEndpoints
 );
 
 // GET /v1/patches/:id/recommendations - Get asset recommendations for this patch
