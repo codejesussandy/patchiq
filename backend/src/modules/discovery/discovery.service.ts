@@ -2,6 +2,7 @@ import { NotFoundError, ConflictError, BadRequestError } from '@shared/errors';
 import { encrypt, decrypt, maskString } from '@shared/utils/crypto';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import { withTransaction } from '@shared/utils/transaction';
+import { testCredentialConnection } from '@shared/utils/credential-tester';
 import { prisma } from '@/db/client';
 import type {
   IPRangeResponse,
@@ -15,6 +16,7 @@ import type {
   ListCredentialsParams,
   ListDiscoveredDevicesParams,
 } from './discovery.types';
+import { queueDiscoveryScanJob } from './discovery-scan.worker';
 import type {
   CreateIPRangeInput,
   UpdateIPRangeInput,
@@ -221,12 +223,8 @@ export class DiscoveryService {
       data: { lastScanned: new Date() },
     });
 
-    // TODO: Queue the actual network scan job
-    // This would typically:
-    // 1. Perform ICMP ping sweep
-    // 2. Port scan discovered IPs
-    // 3. Identify device types
-    // 4. Store results in discovered_devices table
+    // Queue the network scan job
+    await queueDiscoveryScanJob(scan.id, id);
 
     return {
       jobId: scan.id,
@@ -466,7 +464,7 @@ export class DiscoveryService {
   /**
    * Test a credential against a target host
    */
-  async testCredential(id: string, _data: TestCredentialInput): Promise<TestCredentialResponse> {
+  async testCredential(id: string, data: TestCredentialInput): Promise<TestCredentialResponse> {
     const credential = await prisma.deviceCredential.findUnique({
       where: { id },
     });
@@ -475,22 +473,29 @@ export class DiscoveryService {
       throw new NotFoundError('Credential not found');
     }
 
+    // Decrypt password for connection test
+    const decryptedPassword = credential.passwordEnc ? decrypt(credential.passwordEnc) : null;
+
+    // Test the credential against the target host
+    const result = await testCredentialConnection(credential.type, data.targetHost, {
+      port: credential.port,
+      username: credential.username,
+      password: decryptedPassword,
+      domain: credential.domain,
+      snmpCommunity: credential.snmpCommunity,
+    });
+
     // Update last used timestamp
     await prisma.deviceCredential.update({
       where: { id },
       data: { lastUsed: new Date() },
     });
 
-    // TODO: Actually test the credential against targetHost
-    // This would:
-    // 1. Decrypt the password
-    // 2. Attempt SSH/WMI/SNMP connection based on type
-    // 3. Return success/failure
-
-    // For now, return mock result
     return {
-      success: true,
-      message: 'Connection successful',
+      success: result.success,
+      message: result.message,
+      errorCode: result.errorCode,
+      latencyMs: result.latencyMs,
     };
   }
 

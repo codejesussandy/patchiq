@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
+import multer from 'multer';
 import { HttpError, InternalServerError } from '@shared/errors';
 import { createLogger } from '@shared/services/logger';
 import { config } from '@config/index';
@@ -19,6 +20,18 @@ export const errorHandler: ErrorRequestHandler = (
       { err: error, method: _req.method, path: _req.originalUrl, statusCode: res.statusCode },
       'Request error'
     );
+  }
+
+  // Handle Multer file-size errors as 413
+  if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+    res.status(413).json({
+      success: false,
+      error: {
+        code: 'PAYLOAD_TOO_LARGE',
+        message: 'File exceeds the maximum allowed size of 10 MB',
+      },
+    });
+    return;
   }
 
   // Handle Zod validation errors

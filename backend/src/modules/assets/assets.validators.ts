@@ -269,6 +269,44 @@ export const telemetryHistoryQuerySchema = z.object({
   period: z.enum(['hour', 'day', 'week']).optional().default('day'),
 });
 
+// CSV Import Row Schemas
+export const softwareInventoryCsvRowSchema = z.object({
+  name: z.string().min(1, 'name is required'),
+  version: z.string().min(1, 'version is required'),
+  vendor: z.string().min(1, 'vendor is required'),
+  installDate: z.string().optional(),
+  installPath: z.string().optional(),
+  category: z.string().optional(),
+});
+
+export const softwareLicenseCsvRowSchema = z.object({
+  licenseName: z.string().min(1, 'licenseName is required'),
+  softwareName: z.string().min(1, 'softwareName is required'),
+  vendorName: z.string().min(1, 'vendorName is required'),
+  licenseKey: z.string().optional(),
+  publisher: z.string().optional(),
+  purchaseDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+  licenseCount: z.string().optional(),
+  cost: z.string().optional(),
+  status: z.enum(['ALLOCATED', 'AVAILABLE', 'EXPIRED']).optional(),
+  notes: z.string().optional(),
+});
+
+export const osLicenseCsvRowSchema = z.object({
+  licenseName: z.string().min(1, 'licenseName is required'),
+  osType: z.string().min(1, 'osType is required'),
+  vendorName: z.string().min(1, 'vendorName is required'),
+  licenseKey: z.string().optional(),
+  purchaseDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+  licenseCount: z.string().optional(),
+  publisher: z.string().optional(),
+  cost: z.string().optional(),
+  status: z.enum(['ALLOCATED', 'AVAILABLE', 'EXPIRED']).optional(),
+  notes: z.string().optional(),
+});
+
 // Export types inferred from schemas
 export type CategoryCreateInput = z.infer<typeof categoryCreateSchema>;
 export type CategoryUpdateInput = z.infer<typeof categoryUpdateSchema>;

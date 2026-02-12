@@ -497,8 +497,13 @@ export async function getAssetDeployments(req: Request, res: Response, next: Nex
 
 export async function uploadAssetAttachment(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // File upload requires MinIO/S3 integration
-    sendError(res, 501, 'NOT_IMPLEMENTED', 'Asset attachment upload is not yet implemented. This feature requires file storage integration.');
+    const file = req.file;
+    if (!file) {
+      sendError(res, 400, 'BAD_REQUEST', 'No file provided');
+      return;
+    }
+    const result = await assetsService.uploadAttachment(req.params.id, file, req.user?.id);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -534,8 +539,13 @@ export async function getSoftwareInventoryItem(req: Request, res: Response, next
 
 export async function importSoftwareInventory(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // CSV/Excel import requires file parsing implementation
-    sendError(res, 501, 'NOT_IMPLEMENTED', 'Software inventory import is not yet implemented. This feature requires CSV/Excel parsing.');
+    const file = req.file;
+    if (!file) {
+      sendError(res, 400, 'BAD_REQUEST', 'No file provided');
+      return;
+    }
+    const result = await assetsService.importSoftwareInventory(file.buffer);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -592,8 +602,13 @@ export async function deleteSoftwareLicense(req: Request, res: Response, next: N
 
 export async function importSoftwareLicenses(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // CSV/Excel import requires file parsing implementation
-    sendError(res, 501, 'NOT_IMPLEMENTED', 'Software license import is not yet implemented. This feature requires CSV/Excel parsing.');
+    const file = req.file;
+    if (!file) {
+      sendError(res, 400, 'BAD_REQUEST', 'No file provided');
+      return;
+    }
+    const result = await assetsService.importSoftwareLicenses(file.buffer);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -650,8 +665,13 @@ export async function deleteOSLicense(req: Request, res: Response, next: NextFun
 
 export async function importOSLicenses(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // CSV/Excel import requires file parsing implementation
-    sendError(res, 501, 'NOT_IMPLEMENTED', 'OS license import is not yet implemented. This feature requires CSV/Excel parsing.');
+    const file = req.file;
+    if (!file) {
+      sendError(res, 400, 'BAD_REQUEST', 'No file provided');
+      return;
+    }
+    const result = await assetsService.importOSLicenses(file.buffer);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
