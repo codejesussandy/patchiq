@@ -78,8 +78,8 @@ All frontend service calls use `/deployments/...` (confirmed in `patch.service.t
 - [x] `@@index([departmentId])` added to User model
 - [x] `@@index([locationId])` added to User model
 - [x] `npx prisma migrate dev --name add-user-fk-indexes` generates a clean migration
-- [ ] Migration applies successfully on a fresh database (`make db-reset`)
-- [ ] `EXPLAIN ANALYZE SELECT * FROM users WHERE organization_id = 'xxx'` shows Index Scan (not Seq Scan) when table has >100 rows
+- [x] Migration applies successfully on a fresh database (`make db-reset`)
+- [x] `EXPLAIN ANALYZE SELECT * FROM users WHERE organization_id = 'xxx'` shows Index Scan (not Seq Scan) when table has >100 rows
 
 #### R2: Consolidate deployment routes into `deployments/` module
 
@@ -199,16 +199,16 @@ Test: patches.routes.ts has no deployment routes
 
 #### Regression Checklist
 
-- [ ] `GET /v1/deployments` returns paginated deployment list
-- [ ] `POST /v1/deployments/software` creates a software deployment
-- [ ] `POST /v1/deployments/patch` creates a patch deployment
-- [ ] `POST /v1/deployments/config` creates a config deployment
-- [ ] `POST /v1/deployments/patch/:id/retry` retries a failed deployment
-- [ ] `GET /v1/deployments/:id/preview` returns deployment preview
-- [ ] `POST /v1/deployments/:id/execute` triggers deployment execution
-- [ ] Frontend deployment pages load without errors
-- [ ] Frontend can create, view, cancel deployments
-- [ ] `make check-all` passes (types + lint + build)
+- [x] `GET /v1/deployments` returns paginated deployment list
+- [x] `POST /v1/deployments/software` creates a software deployment
+- [x] `POST /v1/deployments/patch` creates a patch deployment
+- [x] `POST /v1/deployments/config` creates a config deployment
+- [x] `POST /v1/deployments/patch/:id/retry` retries a failed deployment
+- [x] `GET /v1/deployments/:id/preview` returns deployment preview
+- [x] `POST /v1/deployments/:id/execute` triggers deployment execution
+- [x] Frontend deployment pages load without errors
+- [x] Frontend can create, view, cancel deployments
+- [x] `make check-all` passes (types + lint + build)
 
 ---
 

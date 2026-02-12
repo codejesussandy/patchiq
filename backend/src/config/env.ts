@@ -124,6 +124,12 @@ const envSchema = z.object({
   // Public MinIO endpoint for agents outside Docker network
   MINIO_PUBLIC_ENDPOINT: z.string().optional(),
   MINIO_PUBLIC_PORT: z.string().transform(Number).optional(),
+
+  // AI / OpenRouter
+  OPENROUTER_API_KEY: z.string().optional(),
+  OPENROUTER_BASE_URL: z.string().url().optional().default('https://openrouter.ai/api/v1'),
+  OPENROUTER_MODEL: z.string().optional().default('anthropic/claude-sonnet-4-20250514'),
+  OPENROUTER_MAX_TOKENS: z.string().transform(Number).optional().default('1024'),
 });
 
 // Validate environment variables
