@@ -3,9 +3,9 @@
 > **Owner:** Dev 2 (Track B)
 > **Sprint:** 1 — Fix & Ship
 > **Priority:** Must Have (Week 1-2) items first, then Should Have (Week 3-4)
-> **Last Updated:** 2026-02-12 (Batch 1 Complete, A.1/A.2 Integration Verified)
-> **Implementation Status:** Batch 1 Complete (B.2, B.3, B.4, B.10) ✅ | Integration Tested ✅
-> **Unblocked:** B.1 (A.1 shipped — 8 backend routes ready) ✅
+> **Last Updated:** 2026-02-12 (B.1-B.5, B.10 Complete)
+> **Implementation Status:** 6/13 Features Complete ✅ (B.1, B.2, B.3, B.4, B.5, B.10)
+> **Latest:** B.1 (Frontend URL Consolidation) — 1 URL updated, 7 verified correct ✅
 
 ---
 
@@ -33,15 +33,85 @@ PatchIQ's frontend has multiple bugs that cause crashes, auth failures, silent d
 
 ## 3. Non-Goals
 
-1. **B.1 (Fix broken service URLs)** — Blocked by A.1 (backend routes). Will be picked up as soon as A.1 merges to main.
-2. **New feature development** — No new UI features beyond what exists. This is bug-fix and data-seeding work.
-3. **Backend changes** — Track B touches only `frontend/src/` and `backend/src/db/prisma/seed.ts`. No backend service/controller changes.
-4. **Performance optimization** — B.14 (lazy routes, code splitting) is deferred to Week 4+ if time permits.
-5. **E2E test coverage** — B.13 is deferred to Week 5+.
+1. **New feature development** — No new UI features beyond what exists. This is bug-fix and data-seeding work.
+2. **Backend changes** — Track B touches only `frontend/src/` and `backend/src/db/prisma/seed.ts`. No backend service/controller changes.
+3. **Performance optimization** — B.14 (lazy routes, code splitting) is deferred to Week 4+ if time permits.
+4. **E2E test coverage** — B.13 is deferred to Week 5+.
 
 ---
 
 ## 4. Feature Specs
+
+---
+
+### B.1 — Frontend API URL Consolidation & Alignment ✅
+
+**Priority:** P0 (Must Have) | **Effort:** ~1-2 days | **Dependencies:** A.1 (backend routes) | **Status:** ✅ **COMPLETE**
+
+#### Problem Statement
+
+Frontend service methods use inconsistent URL paths that don't match backend route definitions. This was blocked by A.1 (Missing API Routes) which implemented 8 new backend endpoints. Now that A.1 is merged, the frontend URLs need to be consolidated and aligned with the actual backend routes.
+
+**Evidence:**
+- `tag.service.ts:51` — Uses `POST /tags/bulk-assign` but backend prefers `POST /assets/bulk-tags` (assets.routes.ts:75)
+- 7 other URLs were already correctly aligned with backend routes from A.1
+- ROADMAP.md:114-123 — Documents all 8 URL mappings to verify
+
+#### User Stories
+
+- As a developer, I want all frontend service URLs to match backend routes so that API calls don't fail with 404 errors
+- As a developer, I want a single source of truth for API URLs so that future changes are easier to track
+- As a user, I want bulk tag assignment to work correctly so that I can efficiently organize my assets
+
+#### Requirements
+
+**Must Have (P0):**
+
+| # | Requirement | Acceptance Criteria |
+|---|-------------|---------------------|
+| 1 | Consolidate bulk tag assignment URL | Change `POST /tags/bulk-assign` to `POST /assets/bulk-tags` in `tag.service.ts:51` |
+| 2 | Verify all other URLs match backend | Confirm that 7 other service URLs correctly match A.1 backend routes |
+| 3 | No broken references | Search entire frontend codebase to ensure no hardcoded references to old URLs remain |
+
+**Nice to Have (P1):**
+
+| # | Requirement | Acceptance Criteria |
+|---|-------------|---------------------|
+| 4 | Deprecate backward-compatible routes | In future sprint, remove the duplicate `/tags/bulk-assign` route from backend after frontend is stable |
+
+#### Affected Files
+
+| File | Line | Change |
+|------|------|--------|
+| `frontend/src/services/tag.service.ts` | 51 | `POST /tags/bulk-assign` → `POST /assets/bulk-tags` |
+
+#### Verified Correct (No Changes Needed)
+
+| File | Line | URL | Backend Route |
+|------|------|-----|---------------|
+| `patch.service.ts` | 88 | `POST /patches/:id/scan-endpoints` | patches.routes.ts:134 |
+| `patch.service.ts` | 98 | `GET /patches/:id/endpoints` | patches.routes.ts:143 |
+| `patch.service.ts` | 103 | `GET /endpoints/:id` | assets.routes.ts:82 |
+| `tag.service.ts` | 55 | `POST /tags/bulk-remove` | assets.routes.ts:77 |
+| `tag.service.ts` | 60 | `GET /tags/search` | assets.routes.ts:68 |
+| `category.service.ts` | 66 | `GET /categories/:id/assets` | assets.routes.ts:51 |
+| `category.service.ts` | 72 | `GET /subcategories/:id/assets` | assets.routes.ts:61 |
+
+#### Implementation Notes
+
+**Completed:** 2026-02-12
+- ✅ Changed `POST /tags/bulk-assign` to `POST /assets/bulk-tags` at tag.service.ts:51
+- ✅ Verified all 7 other URLs were already correctly aligned with backend
+- ✅ Backend supports both old and new URLs for backward compatibility (assets.routes.ts:75-76)
+- ✅ No broken references to old URL found in frontend codebase
+- ✅ React Query hooks properly integrate with updated service method
+
+**Verification:**
+- TypeScript: ✅ No new errors introduced (0 errors from this change)
+- ESLint: ✅ No errors
+- QA Agent: ✅ Validated implementation with 0 issues
+- Backend routes: ✅ All 8 routes from A.1 exist and are properly wired
+- Integration: ✅ Method signature unchanged (pure URL string change)
 
 ---
 
