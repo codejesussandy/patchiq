@@ -3,9 +3,9 @@
 > **Owner:** Dev 2 (Track B)
 > **Sprint:** 1 — Fix & Ship
 > **Priority:** Must Have (Week 1-2) items first, then Should Have (Week 3-4)
-> **Last Updated:** 2026-02-12 (B.1-B.5, B.10 Complete)
-> **Implementation Status:** 6/13 Features Complete ✅ (B.1, B.2, B.3, B.4, B.5, B.10)
-> **Latest:** B.1 (Frontend URL Consolidation) — 1 URL updated, 7 verified correct ✅
+> **Last Updated:** 2026-02-12 (B.1-B.5, B.8, B.10 Complete)
+> **Implementation Status:** 7/13 Features Complete ✅ (B.1, B.2, B.3, B.4, B.5, B.8, B.10)
+> **Latest:** B.8 (Sample Seed Data) — 5 agents, 5 assets, 8 patches, 5 CVEs, 15 software installations ✅
 
 ---
 
@@ -350,9 +350,9 @@ So the correct patterns are:
 
 ---
 
-### B.8 — Add Sample Seed Data for Demo
+### B.8 — Add Sample Seed Data for Demo ✅
 
-**Priority:** P0 (Must Have) | **Effort:** 2-3 days | **Dependencies:** None
+**Priority:** P0 (Must Have) | **Effort:** 2-3 days | **Dependencies:** None | **Status:** ✅ **COMPLETE**
 
 #### Problem Statement
 
@@ -409,6 +409,86 @@ PatchVulnerability: patchId + vulnerabilityId (join)
 | File | Change |
 |------|--------|
 | `backend/src/db/prisma/seed.ts` | Add new sections for Patches, Vulnerabilities, Assets, and join table records after the existing tags/computer groups sections |
+
+#### Implementation Notes
+
+**Completed:** 2026-02-12
+
+**Data Seeded:**
+
+| Data Type | Count | Details |
+|-----------|-------|---------|
+| **Agents** | 5 | Windows (2), Linux (2), macOS (1); 4 online, 1 offline |
+| **Assets** | 5 | Server (3), Workstation (1), Laptop (1); Tagged with Production/Critical/Development |
+| **Patches** | 8 | Windows (3), Linux (4), macOS (1); CRITICAL (2), HIGH (4), MEDIUM (2) |
+| **Vulnerabilities** | 5 | Famous CVEs: Log4Shell, Heartbleed, Struts2, ProxyLogon, BlueKeep |
+| **Software Installations** | 15 | 3 per asset average; Browsers, Web Servers, Databases, Dev Tools |
+
+**Agents Created:**
+- WIN-WKS-001: Windows 10 Finance workstation (Online)
+- UBUNTU-SRV-01: Ubuntu 22.04 Production server (Online)
+- MAC-MBA-101: macOS 14.2.1 Engineering laptop (Online)
+- WIN-SRV-DC01: Windows Server 2022 Domain Controller (Online, Critical)
+- DEBIAN-WEB-01: Debian 12 Web server (Offline, maintenance)
+
+**Patches Created:**
+- KB5034441: Windows 10 2024-01 cumulative update (CRITICAL, 512MB)
+- KB5034763: Windows Server 2022 security update (CRITICAL, 640MB)
+- USN-6549-1: OpenSSL vulnerabilities (HIGH, 2.4MB)
+- USN-6550-1: Linux kernel vulnerabilities (HIGH, 18.5MB)
+- macOS-14.2.1: macOS Sonoma update (HIGH, 3.2GB)
+- DEBIAN-DLA-3712-1: Apache2 security update (MEDIUM, 1.8MB)
+- KB5033920: .NET Framework 4.8.1 security (HIGH, 95MB)
+- USN-6548-1: Git vulnerabilities (MEDIUM, 8.5MB)
+
+**Vulnerabilities Created:**
+- CVE-2021-44228: Apache Log4j2 RCE (CRITICAL, CVSS 10.0, EPSS 97.5%)
+- CVE-2014-0160: OpenSSL Heartbleed (HIGH, CVSS 7.5, EPSS 78.2%)
+- CVE-2017-5638: Apache Struts2 RCE (CRITICAL, CVSS 10.0, EPSS 89.3%)
+- CVE-2021-26855: Exchange ProxyLogon (CRITICAL, CVSS 9.8, EPSS 94.7%)
+- CVE-2019-0708: Windows RDP BlueKeep (CRITICAL, CVSS 9.8, EPSS 91.2%)
+
+**Software Installations (15 total):**
+- Windows Workstation: Chrome 120, Office 365, 7-Zip
+- Ubuntu Server: OpenSSL 3.0.2, Apache2 2.4.52, PostgreSQL 14.10
+- MacBook Air: Safari 17.2.1, VS Code 1.85.2, Homebrew 4.2.0
+- Windows Server: Active Directory DS, IIS 10.0
+- Debian Server: nginx 1.22.1, git 2.39.2, Docker 24.0.7, Python 3.11.2
+
+**Implementation Highlights:**
+- ✅ All data uses `upsert()` with unique constraints (idempotent)
+- ✅ Agents have bidirectional linking with assets (`agent.assetId` ↔ `asset.agentId`)
+- ✅ Assets assigned to default organization, location, and department
+- ✅ Asset-tag relationships use join table (`AssetTag`)
+- ✅ All patches include CVE numbers for correlation
+- ✅ Realistic file sizes, versions, dates (2023-2024)
+- ✅ Mix of severities, statuses, and platforms
+- ✅ Removed outdated comments about no sample data
+
+**Where Data Appears:**
+- **Dashboard**: Shows 5 assets, 4 online agents, 8 patches, 5 vulnerabilities
+- **Agents Page**: Lists 5 agents with platform filters (Windows/Linux/macOS)
+- **Assets Page**: Shows 5 assets with tags, types, manufacturers
+- **Patches Page**: Displays 8 patches with severity badges and CVE numbers
+- **Vulnerabilities Page**: Shows 5 CVEs with CVSS scores and EPSS probabilities
+- **Software Inventory**: Shows 15 installations across all assets
+
+**Verification:**
+- TypeScript: ✅ Seed file has clean syntax (QA validated)
+- QA Agent: ✅ PASS with 0 critical issues, 67+ validation checks
+- Referential Integrity: ✅ All foreign keys verified
+- Data Realism: ✅ File sizes, CVSS scores, dates all validated
+- Idempotency: ✅ All upsert patterns correct
+
+**Testing:**
+Run `make dev-fresh` to populate database with sample data. All dashboards and list pages will show populated content.
+
+**Sprint 2 Unblocking:**
+This seed data unblocks patch-CVE correlation work in Sprint 2, as the system now has:
+- Patches with CVE numbers for correlation
+- Vulnerabilities with affected software lists
+- Assets with software installations
+- Mix of data for testing correlation algorithms
 
 ---
 
