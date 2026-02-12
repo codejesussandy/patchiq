@@ -27,6 +27,8 @@ export function useNotificationSSE({ onNotification, enabled = true }: UseNotifi
     if (!token) return;
 
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/v1';
+    // Note: EventSource doesn't support custom headers, so auth token is passed via query param.
+    // This is a known limitation. Consider using fetch+ReadableStream if backend adds header auth support.
     const url = `${baseUrl}/notifications/stream?token=${encodeURIComponent(token)}`;
 
     const es = new EventSource(url);

@@ -36,4 +36,23 @@ export const agentService = {
     // Paginated response: interceptor returns { data: T[], ...meta }
     return response.data.data || [];
   },
+
+  /**
+   * Download agent binary file (ZIP)
+   * @param versionId - Agent version ID
+   * @returns Blob and optional filename from Content-Disposition header
+   */
+  async downloadAgentBinary(versionId: string): Promise<{ blob: Blob; filename?: string }> {
+    const response = await api.get(`/agent-versions/${versionId}/download`, {
+      responseType: 'blob',
+    });
+
+    const contentDisposition = response.headers['content-disposition'];
+    const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+
+    return {
+      blob: response.data,
+      filename: filenameMatch?.[1],
+    };
+  },
 };

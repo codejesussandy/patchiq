@@ -14,6 +14,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { DataTable } from '../../components/shared/DataTable';
 import { useAgentVersions } from '../../hooks/useAgents';
+import { agentService } from '../../services/agent.service';
 import type { AgentVersion } from '../../types/agent.types';
 
 const { Title } = Typography;
@@ -93,43 +94,21 @@ export const AgentVersions = () => {
 
   const handleDownload = async (record: AgentVersion) => {
     try {
-      // Get auth token from localStorage
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        message.error('Please log in to download agents');
-        return;
-      }
-
       message.loading({ content: 'Preparing download...', key: 'download' });
 
-      // Fetch from API with authorization - server returns a ZIP file
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/v1';
-      const response = await fetch(`${apiBaseUrl}/agent-versions/${record.id}/download`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const { blob, filename } = await agentService.downloadAgentBinary(record.id);
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        // Use the filename from Content-Disposition header or generate one
-        const contentDisposition = response.headers.get('content-disposition');
-        const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
-        const filename = filenameMatch?.[1] || `patchiq-agent-${record.platform.toLowerCase()}-${record.architecture}-v${record.version}.zip`;
-        link.setAttribute('download', filename);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        message.success({ content: 'Download started! Extract the ZIP and run start-agent script.', key: 'download', duration: 5 });
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        message.error({ content: errorData.message || 'Failed to download agent version', key: 'download' });
-      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename || `patchiq-agent-${record.platform.toLowerCase()}-${record.architecture}-v${record.version}.zip`;
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      message.success({ content: 'Download started! Extract the ZIP and run start-agent script.', key: 'download', duration: 5 });
     } catch {
       message.error({ content: 'Failed to download agent version', key: 'download' });
     }

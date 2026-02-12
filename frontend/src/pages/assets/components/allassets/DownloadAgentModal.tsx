@@ -4,6 +4,8 @@ import {
   WindowsOutlined,
 } from '@ant-design/icons';
 import { App, Modal, Button } from 'antd';
+import { useAgentVersions } from '../../../../hooks/useAgents';
+import { agentService } from '../../../../services/agent.service';
 
 interface DownloadAgentModalProps {
   open: boolean;
@@ -12,6 +14,7 @@ interface DownloadAgentModalProps {
 
 export const DownloadAgentModal = ({ open, onClose }: DownloadAgentModalProps) => {
   const { message } = App.useApp();
+  const { data: versions } = useAgentVersions();
 
   const handleAgentDownload = async (platform: 'windows' | 'macos' | 'linux') => {
     const platformMap: Record<string, string> = {
@@ -28,47 +31,22 @@ export const DownloadAgentModal = ({ open, onClose }: DownloadAgentModalProps) =
     try {
       message.loading({ content: `Downloading ${platform} agent...`, key: 'agent-download' });
 
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const versionsResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/agent-versions`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-
-      if (!versionsResponse.ok) {
-        throw new Error(`Failed to fetch agent versions: ${versionsResponse.statusText}`);
-      }
-
-      const versions = await versionsResponse.json();
       const targetPlatform = platformMap[platform];
 
-      const version = versions.find((v: { platform: string; architecture: string }) =>
+      const version = versions?.find((v) =>
         v.platform === targetPlatform && v.architecture === 'amd64'
-      ) || versions.find((v: { platform: string }) => v.platform === targetPlatform);
+      ) || versions?.find((v) => v.platform === targetPlatform);
 
       if (!version) {
         throw new Error(`No agent version found for ${platform}`);
       }
 
-      const downloadResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/agent-versions/${version.id}/download`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      const { blob, filename } = await agentService.downloadAgentBinary(version.id);
 
-      if (!downloadResponse.ok) {
-        const errorData = await downloadResponse.json().catch(() => null);
-        const errorMsg = errorData?.message || downloadResponse.statusText;
-        throw new Error(errorMsg);
-      }
-
-      const blob = await downloadResponse.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
-      const contentDisposition = downloadResponse.headers.get('content-disposition');
-      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
-      link.download = filenameMatch?.[1] || filenameMap[platform];
+      link.download = filename || filenameMap[platform];
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

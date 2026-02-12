@@ -1,3 +1,4 @@
+import { fetchWithAuth } from '../utils/fetchWithAuth';
 import { api } from './api.service';
 
 export interface SoftwareTemplateItem {
@@ -67,11 +68,10 @@ export const patchTemplateService = {
     templateIds?: string[],
     onProgress?: (result: Record<string, unknown>) => void
   ): Promise<void> {
-    const response = await fetch(`/v1/patch-templates/sync`, {
+    const response = await fetchWithAuth(`/v1/patch-templates/sync`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
       },
       body: JSON.stringify({ os, arch, templateIds }),
     });
