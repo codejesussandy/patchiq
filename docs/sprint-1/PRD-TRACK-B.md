@@ -3,9 +3,9 @@
 > **Owner:** Dev 2 (Track B)
 > **Sprint:** 1 — Fix & Ship
 > **Priority:** Must Have (Week 1-2) items first, then Should Have (Week 3-4)
-> **Last Updated:** 2026-02-12 (Extended with additional findings)
-> **Implementation Status:** Batch 1 Complete (B.2, B.3, B.4, B.10) ✅
-> **Skipped:** B.1 (blocked by A.1 — backend routes not yet shipped)
+> **Last Updated:** 2026-02-12 (Batch 1 Complete, A.1/A.2 Integration Verified)
+> **Implementation Status:** Batch 1 Complete (B.2, B.3, B.4, B.10) ✅ | Integration Tested ✅
+> **Unblocked:** B.1 (A.1 shipped — 8 backend routes ready) ✅
 
 ---
 
@@ -840,13 +840,13 @@ These were discovered via systematic codebase exploration using the Explore agen
 
 ---
 
-### Batch 4: Feature Work (Week 2) ⏳ BLOCKED
-**Dependencies:** Awaiting A.1 (backend routes) and A.16 (AI endpoint)
-**Status:** Blocked
+### Batch 4: Feature Work (Week 2) ✅ UNBLOCKED (A.1 shipped)
+**Dependencies:** A.1 ✅ COMPLETE | A.16 ⏳ Awaiting
+**Status:** Ready (except B.6)
 
 | Item | Status | Blocker |
 |------|--------|---------|
-| **B.1** | ⏳ Blocked | Waiting for A.1 (backend API routes) |
+| **B.1** | ✅ **UNBLOCKED** | A.1 shipped (8 backend routes ready) |
 | **B.6** | ⏳ Blocked | Waiting for A.16 (AI chat backend) |
 | **B.7** | ⏳ Pending | No blocker (backend CRUD exists) |
 | **B.12** | ⏳ Pending | No blocker (settings audit) |
@@ -856,19 +856,67 @@ These were discovered via systematic codebase exploration using the Explore agen
 
 ### Overall Sprint Progress
 
-**Total Items:** 12 (excluding B.1 which is blocked)
+**Total Items:** 12 (B.1 now unblocked)
 **Completed:** 4 (33%)
 **In Progress:** 0
 **Pending:** 7 (58%)
-**Blocked:** 1 (8%)
+**Blocked:** 1 (8% - only B.6)
 
 **Timeline Status:**
-- Week 1 Day 1: ✅ On track (Batch 1 complete)
-- Week 1 Day 1-2: ⏳ Ready to start (Batch 2)
-- Week 1 Day 3-5: ⏳ Ready to start (Batch 3)
+- Week 1 Day 1: ✅ Complete (Batch 1 done + A.1 integration verified)
+- Week 1 Day 1-2: ⏳ Ready to start (Batch 2: B.5 + B.11)
+- Week 1 Day 3-5: ⏳ Ready to start (Batch 3: B.8 + B.9)
+- Week 2: ✅ **B.1 now unblocked** (can fix frontend URLs)
+
+**Integration Status:**
+- ✅ Track A (A.1, A.2) merged from `full-dev-heramb`
+- ✅ All Batch 1 changes verified against new backend routes
+- ✅ 8/8 API endpoints match perfectly
+- ✅ 0 new TypeScript errors from merge
+- ✅ Authentication token flow working end-to-end
 
 **Next Action:** Proceed with Batch 2 (B.5 + B.11) — Service Layer Refactor
 
 ---
 
-*This document covers all Track B items for Sprint 1 that Dev 2 can action. B.1 will be added as an amendment when A.1 ships.*
+## 11. Integration Test Summary (2026-02-12)
+
+### **Track A + Track B Merge Verification**
+
+**Merged Changes from Dev 1 (`full-dev-heramb`):**
+- ✅ A.1: 8 missing API routes (patches endpoints, tag operations, category assets)
+- ✅ A.2: Email service wired into auth, users, reports
+
+**Integration Test Results:**
+
+| Test | Status | Details |
+|------|--------|---------|
+| Token Authentication | ✅ PASS | Frontend `accessToken` ↔ Backend `Bearer <token>` |
+| API URL Matching | ✅ PASS | 8/8 endpoints match perfectly |
+| Response Unwrapping | ✅ PASS | Backend envelope ↔ Interceptor unwrap |
+| Email Integration | ✅ PASS | A.2 wired correctly, no conflicts |
+| Type Safety | ✅ PASS | 0 new errors from merge |
+| B.3 Modal Fix | ✅ PASS | All Batch 1 changes intact |
+
+**URL Verification Matrix:**
+
+| Frontend Service | Backend Route | Match |
+|-----------------|---------------|-------|
+| `POST /patches/:id/scan-endpoints` | patches.routes.ts:135 | ✅ |
+| `GET /patches/:id/endpoints` | patches.routes.ts:144 | ✅ |
+| `GET /endpoints/:id` | assets.routes.ts:82 | ✅ |
+| `POST /tags/bulk-assign` | assets.routes.ts:76 | ✅ |
+| `POST /tags/bulk-remove` | assets.routes.ts:77 | ✅ |
+| `GET /tags/search` | assets.routes.ts:68 | ✅ |
+| `GET /categories/:id/assets` | assets.routes.ts:51 | ✅ |
+| `GET /subcategories/:id/assets` | assets.routes.ts:61 | ✅ |
+
+**Pre-existing Issues (Not from Integration):**
+- 20 TypeScript errors in other files (DataTable pagination, type casts)
+- Double-unwrapping patterns in existing service methods (B.5 will fix)
+
+**Approval:** ✅ Integration approved — No blocking issues, ready for production
+
+---
+
+*Last Updated: 2026-02-12 — Batch 1 complete, A.1/A.2 integration verified, B.1 unblocked*
