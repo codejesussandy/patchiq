@@ -189,7 +189,58 @@ export async function removeTagFromAsset(req: Request, res: Response, next: Next
 
 export async function bulkAssignTags(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const result = await assetsService.bulkAssignTags(req.body.assetIds, req.body.tagIds);
+    const orgId = req.user?.organizationId;
+    const result = await assetsService.bulkAssignTags(req.body.assetIds, req.body.tagIds, orgId);
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function bulkRemoveTags(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const orgId = req.user?.organizationId;
+    const result = await assetsService.bulkRemoveTags(req.body.assetIds, req.body.tagIds, orgId);
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function searchTags(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const q = req.query.q as string;
+    const result = await assetsService.searchTags(q);
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAssetsByCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const orgId = req.user?.organizationId;
+    const result = await assetsService.getAssetsByCategory(req.params.id, orgId);
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAssetsBySubCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const orgId = req.user?.organizationId;
+    const result = await assetsService.getAssetsBySubCategory(req.params.id, orgId);
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getEndpointDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const orgId = req.user?.organizationId;
+    const result = await assetsService.getEndpointDetails(req.params.id, orgId);
     sendSuccess(res, result);
   } catch (error) {
     next(error);

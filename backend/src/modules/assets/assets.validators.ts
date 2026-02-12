@@ -90,8 +90,17 @@ export const assetTagParamSchema = z.object({
 });
 
 export const bulkAssignTagsSchema = z.object({
-  assetIds: z.array(uuidSchema).min(1, 'At least one asset ID is required'),
-  tagIds: z.array(uuidSchema).min(1, 'At least one tag ID is required'),
+  assetIds: z.array(uuidSchema).min(1, 'At least one asset ID is required').max(1000, 'assetIds must contain at most 1000 items'),
+  tagIds: z.array(uuidSchema).min(1, 'At least one tag ID is required').max(100, 'tagIds must contain at most 100 items'),
+});
+
+export const bulkRemoveTagsSchema = z.object({
+  assetIds: z.array(uuidSchema).min(1, 'At least one asset ID is required').max(1000, 'assetIds must contain at most 1000 items'),
+  tagIds: z.array(uuidSchema).min(1, 'At least one tag ID is required').max(100, 'tagIds must contain at most 100 items'),
+});
+
+export const tagSearchQuerySchema = z.object({
+  q: z.string().min(1, 'Search query is required'),
 });
 
 // Asset Validators
@@ -280,3 +289,5 @@ export type OSLicenseCreateInput = z.infer<typeof osLicenseCreateSchema>;
 export type OSLicenseUpdateInput = z.infer<typeof osLicenseUpdateSchema>;
 export type SubCategoryListQueryInput = z.infer<typeof subCategoryListQuerySchema>;
 export type LifecycleQueryInput = z.infer<typeof lifecycleQuerySchema>;
+export type BulkRemoveTagsInput = z.infer<typeof bulkRemoveTagsSchema>;
+export type TagSearchQueryInput = z.infer<typeof tagSearchQuerySchema>;
