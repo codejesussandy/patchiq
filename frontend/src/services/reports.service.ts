@@ -29,16 +29,7 @@ export const reportsService = {
    */
   async getReports(params?: ListReportsParams): Promise<PaginatedReportsResponse> {
     const response = await api.get('/reports', { params });
-    // Handle both array and paginated response formats
-    if (Array.isArray(response.data)) {
-      return {
-        data: response.data,
-        total: response.data.length,
-        page: 1,
-        limit: response.data.length,
-        totalPages: 1,
-      };
-    }
+    // Paginated response: interceptor returns { data: T[], ...meta }
     return response.data;
   },
 
@@ -143,8 +134,8 @@ export const reportsService = {
    */
   async getTemplates(): Promise<ReportTemplate[]> {
     const response = await api.get('/reports/templates');
-    const body = response.data;
-    return Array.isArray(body) ? body : body.data ?? [];
+    // May be paginated or non-paginated, handle both
+    return response.data.data || response.data || [];
   },
 
   // ============================================
@@ -156,7 +147,8 @@ export const reportsService = {
    */
   async getSchedules(): Promise<ScheduledReport[]> {
     const response = await api.get('/reports/schedules');
-    return Array.isArray(response.data) ? response.data : (response.data.data || []);
+    // Paginated response: interceptor returns { data: T[], ...meta }
+    return response.data.data || [];
   },
 
   /**

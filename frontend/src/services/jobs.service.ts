@@ -149,6 +149,7 @@ export const jobsService = {
   // ==========================================
   async getConfigCatalog(): Promise<ConfigCatalogItem[]> {
     const response = await api.get<PaginatedResponse<ConfigCatalogItem>>('/jobs/config/catalog');
+    // Paginated response: interceptor returns { data: T[], ...meta }
     return response.data.data || [];
   },
 
@@ -213,7 +214,8 @@ export const jobsService = {
 
   async getConfigDeploymentTasks(id: string): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/jobs/config/deployed/${id}/tasks`);
-    return response.data.tasks || response.data || [];
+    // Non-paginated response with nested tasks field
+    return response.data.tasks || [];
   },
 
   async deleteConfigDeployment(id: string): Promise<void> {
@@ -291,11 +293,13 @@ export const jobsService = {
   // ==========================================
   async getSoftwareDeployments(): Promise<Record<string, unknown>[]> {
     const response = await api.get('/jobs/software/deployed');
+    // Paginated response: interceptor returns { data: T[], ...meta }
     return response.data.data || [];
   },
 
   async getSoftwareDeploymentTasks(id: string): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/jobs/software/deployed/${id}/tasks`);
-    return response.data.tasks || response.data || [];
+    // Non-paginated response with nested tasks field
+    return response.data.tasks || [];
   },
 };

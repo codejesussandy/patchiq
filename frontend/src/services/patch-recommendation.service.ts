@@ -18,13 +18,15 @@ export const patchRecommendationService = {
   // Get single recommendation with full details
   async getRecommendation(id: string): Promise<PatchRecommendation> {
     const response = await api.get(`/patch-recommendations/${id}`);
-    return response.data.data;
+    // Non-paginated response, interceptor unwraps envelope
+    return response.data;
   },
 
   // Get dashboard statistics
   async getDashboardStats(): Promise<PatchRecommendationDashboardStats> {
     const response = await api.get('/patch-recommendations/dashboard');
-    return response.data.data;
+    // Non-paginated response, interceptor unwraps envelope
+    return response.data;
   },
 
   // Get recommendations for specific asset
@@ -48,13 +50,15 @@ export const patchRecommendationService = {
   // Accept recommendation
   async acceptRecommendation(id: string, reason?: string): Promise<PatchRecommendation> {
     const response = await api.post(`/patch-recommendations/${id}/accept`, { reason });
-    return response.data.data;
+    // Non-paginated response, interceptor unwraps envelope
+    return response.data;
   },
 
   // Reject recommendation
   async rejectRecommendation(id: string, reason: string): Promise<PatchRecommendation> {
     const response = await api.post(`/patch-recommendations/${id}/reject`, { reason });
-    return response.data.data;
+    // Non-paginated response, interceptor unwraps envelope
+    return response.data;
   },
 
   // Deploy recommendation
@@ -62,6 +66,7 @@ export const patchRecommendationService = {
     id: string
   ): Promise<{ recommendation: PatchRecommendation; deployment: Record<string, unknown> }> {
     const response = await api.post(`/patch-recommendations/${id}/deploy`);
-    return response.data.data;
+    // Non-paginated response, interceptor unwraps envelope
+    return response.data;
   },
 };

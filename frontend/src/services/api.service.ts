@@ -29,7 +29,20 @@ class ApiService {
       }
     );
 
-    // Response interceptor: unwrap standard envelope and handle errors
+    /**
+     * Response interceptor: unwraps standard envelope and handles errors
+     *
+     * IMPORTANT: This interceptor automatically unwraps API responses.
+     * Service methods should access response.data directly (already unwrapped).
+     *
+     * Non-paginated: { success: true, data: T } → response.data = T
+     * Paginated: { success: true, data: T[], meta: {...} } → response.data = { data: T[], total, page, limit, totalPages }
+     *
+     * Examples:
+     * - Non-paginated: return response.data (not response.data.data)
+     * - Paginated list: return response.data.data (to get the array from pagination object)
+     * - Paginated full: return response.data (to get { data: [], total, page, ... })
+     */
     this.api.interceptors.response.use(
       (response) => {
         // Unwrap standard API envelope: { success: true, data: T } → T

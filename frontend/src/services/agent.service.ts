@@ -7,12 +7,14 @@ export const agentService = {
   async getAgents(): Promise<Agent[]> {
     const response = await api.get('/agents');
     // Backend returns paginated response { data, total, page, limit, totalPages }
-    return Array.isArray(response.data) ? response.data : (response.data.data || []);
+    // Paginated response: interceptor returns { data: T[], ...meta }
+    return response.data.data || [];
   },
 
   async getAgentDownloads(): Promise<AgentDownload[]> {
     const response = await api.get('/agents/downloads');
-    return Array.isArray(response.data) ? response.data : (response.data.data || []);
+    // Paginated response: interceptor returns { data: T[], ...meta }
+    return response.data.data || [];
   },
 
   async deleteAgent(id: string): Promise<void> {
@@ -31,6 +33,7 @@ export const agentService = {
 
   async getAgentVersions(): Promise<AgentVersion[]> {
     const response = await api.get('/agent-versions');
-    return Array.isArray(response.data) ? response.data : (response.data.data || []);
+    // Paginated response: interceptor returns { data: T[], ...meta }
+    return response.data.data || [];
   },
 };

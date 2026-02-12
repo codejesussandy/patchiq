@@ -67,7 +67,7 @@ export const assetService = {
   // Assets
   async getAssets(): Promise<Asset[]> {
     const response = await api.get(`/assets`);
-    // Backend returns paginated response { data, total, page, limit, totalPages }
+    // Paginated response: interceptor returns { data: T[], ...meta }
     return response.data.data || [];
   },
 

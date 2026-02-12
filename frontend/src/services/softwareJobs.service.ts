@@ -74,17 +74,20 @@ export const softwareJobsService = {
 
   async listDeployments(): Promise<SoftwareDeployment[]> {
     const response = await api.get('/deployments/software');
+    // Paginated response: interceptor returns { data: T[], ...meta }
     return response.data.data || [];
   },
 
   async getDeployment(deploymentId: string): Promise<SoftwareDeploymentWithTasks> {
     const response = await api.get(`/deployments/software/${deploymentId}`);
-    return response.data.data || response.data;
+    // Non-paginated response, interceptor unwraps envelope
+    return response.data;
   },
 
   async createDeployment(input: CreateSoftwareDeploymentInput): Promise<DeploymentCreationResult> {
     const response = await api.post('/deployments/software', input);
-    return response.data.data || response.data;
+    // Non-paginated response, interceptor unwraps envelope
+    return response.data;
   },
 
   async cancelDeployment(deploymentId: string): Promise<void> {
@@ -97,11 +100,13 @@ export const softwareJobsService = {
 
   async listPackages(): Promise<SoftwarePackage[]> {
     const response = await api.get('/hub/packages', { params: { limit: 100 } });
+    // Paginated response: interceptor returns { data: T[], ...meta }
     return response.data.data || [];
   },
 
   async listBundles(): Promise<HubBundle[]> {
     const response = await api.get('/hub/bundles');
+    // May be paginated or non-paginated, handle both
     return response.data.data || response.data || [];
   },
 
@@ -117,7 +122,7 @@ export const softwareJobsService = {
     status: string;
   }>> {
     const response = await api.get('/agents');
-    // Handle both wrapped (data.data) and unwrapped (data) response formats
+    // Paginated response: interceptor returns { data: T[], ...meta }
     const agents = response.data.data || response.data || [];
     // Normalize agent data to consistent format
     return agents.map((agent: Record<string, unknown>) => {
@@ -138,6 +143,7 @@ export const softwareJobsService = {
 
   async triggerRollback(deploymentId: string, taskId: string, options?: { force?: boolean }): Promise<{ commandId: string; status: string }> {
     const response = await api.post(`/deployments/software/${deploymentId}/tasks/${taskId}/rollback`, options || {});
-    return response.data.data || response.data;
+    // Non-paginated response, interceptor unwraps envelope
+    return response.data;
   },
 };

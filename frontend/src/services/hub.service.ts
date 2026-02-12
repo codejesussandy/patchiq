@@ -25,7 +25,8 @@ export const hubService = {
 
   async getStats(): Promise<HubStats> {
     const response = await api.get('/hub/stats');
-    return response.data.data;
+    // Non-paginated response, interceptor unwraps envelope
+    return response.data;
   },
 
   // ============================================
@@ -74,7 +75,8 @@ export const hubService = {
 
   async getDownloadUrl(packageId: string): Promise<PackageDownloadUrl> {
     const response = await api.get(`/hub/packages/${packageId}/download-url`);
-    return response.data.data;
+    // Non-paginated response, but may have nested data property
+    return response.data.data || response.data;
   },
 
   // ============================================
@@ -93,7 +95,8 @@ export const hubService = {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return response.data.data;
+    // Non-paginated response, but may have nested data property
+    return response.data.data || response.data;
   },
 
   /**
@@ -107,7 +110,8 @@ export const hubService = {
     expiresAt: string;
   }> {
     const response = await api.get(`/hub/packages/${packageId}/bundle`);
-    return response.data.data;
+    // Non-paginated response, but may have nested data property
+    return response.data.data || response.data;
   },
 
   // ============================================
@@ -116,7 +120,8 @@ export const hubService = {
 
   async listBundles(platform?: string): Promise<HubBundle[]> {
     const response = await api.get('/hub/bundles', { params: platform ? { platform } : undefined });
-    return response.data.data || response.data;
+    // May be paginated or non-paginated, handle both
+    return response.data.data || response.data || [];
   },
 
   async getBundle(bundleId: string): Promise<HubBundle> {

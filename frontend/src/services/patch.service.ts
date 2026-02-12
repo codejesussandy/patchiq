@@ -43,7 +43,7 @@ export const patchService = {
   // Patches
   async getPatches(): Promise<Patch[]> {
     const response = await api.get(`/patches`);
-    // Backend returns paginated response { data, total, page, limit, totalPages }
+    // Paginated response: interceptor returns { data: T[], ...meta }
     return response.data.data || [];
   },
 
@@ -116,7 +116,7 @@ export const patchService = {
   // Deployments
   async getDeployments(): Promise<Deployment[]> {
     const response = await api.get(`/deployments`);
-    // Backend returns paginated response { data, total, page, limit, totalPages }
+    // Paginated response: interceptor returns { data: T[], ...meta }
     return response.data.data || [];
   },
 
@@ -128,17 +128,20 @@ export const patchService = {
   async createDeployment(deployment: Partial<Deployment>): Promise<Deployment> {
     // Use the patch deployment endpoint
     const response = await api.post(`/deployments/patch`, deployment);
-    return response.data.data || response.data;
+    // Non-paginated response, interceptor unwraps envelope
+    return response.data;
   },
 
   async listPatchDeployments(): Promise<Record<string, unknown>[]> {
     const response = await api.get('/deployments/patch');
-    return response.data.data || response.data || [];
+    // Paginated response: interceptor returns { data: T[], ...meta }
+    return response.data.data || [];
   },
 
   async getPatchDeploymentStatus(deploymentId: string): Promise<Record<string, unknown>> {
     const response = await api.get(`/deployments/patch/${deploymentId}`);
-    return response.data.data || response.data;
+    // Non-paginated response, interceptor unwraps envelope
+    return response.data;
   },
 
   async cancelPatchDeployment(deploymentId: string): Promise<void> {
@@ -147,7 +150,8 @@ export const patchService = {
 
   async retryPatchDeployment(deploymentId: string): Promise<Record<string, unknown>> {
     const response = await api.post(`/deployments/patch/${deploymentId}/retry`);
-    return response.data.data || response.data;
+    // Non-paginated response, interceptor unwraps envelope
+    return response.data;
   },
 
   async deleteDeployment(id: string): Promise<void> {
@@ -171,7 +175,7 @@ export const patchService = {
   // Patch Tests
   async getPatchTests(): Promise<PatchTest[]> {
     const response = await api.get(`/patch-tests`);
-    // Backend returns paginated response { data, total, page, limit, totalPages }
+    // Paginated response: interceptor returns { data: T[], ...meta }
     return response.data.data || [];
   },
 
@@ -196,7 +200,7 @@ export const patchService = {
   // Zero Touch
   async getZeroTouchConfigs(): Promise<ZeroTouchConfig[]> {
     const response = await api.get(`/zero-touch-configs`);
-    // Backend returns paginated response { data, total, page, limit, totalPages }
+    // Paginated response: interceptor returns { data: T[], ...meta }
     return response.data.data || [];
   },
 
