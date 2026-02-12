@@ -19,6 +19,7 @@ import { patchRoutes, patchTestRoutes, zeroTouchConfigRoutes, assetPatchRecommen
 import { deploymentRoutes } from '@modules/deployments';
 import { reportsRoutes } from '@modules/reports';
 import { settingsRoutes } from '@modules/settings';
+import { aiRoutes } from '@modules/ai';
 import { vulnerabilityRoutes } from '@modules/vulnerabilities';
 import cveSyncRoutes from '@modules/vulnerabilities/cve-sync.routes';
 import { createLogger } from '@shared/services/logger';
@@ -223,6 +224,9 @@ export function createApp(): Application {
 
   // Settings routes
   app.use(`/${config.apiVersion}/settings`, settingsRoutes);
+
+  // AI routes
+  app.use(`/${config.apiVersion}/ai`, aiRoutes);
 
   // Patch Repository routes (Central patch storage with MinIO)
   app.use(`/${config.apiVersion}/patch-repository`, patchRepositoryRoutes);

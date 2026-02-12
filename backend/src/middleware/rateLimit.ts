@@ -25,6 +25,22 @@ export const authRateLimiter = rateLimit({
   skip: () => config.isTest,
 });
 
+// AI chat rate limit: 20 requests per user per minute
+export const aiChatRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20, // 20 requests per minute per user
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Per authenticated user rate limiting
+    return req.user?.id || req.ip || 'anonymous';
+  },
+  handler: (_req, _res, next) => {
+    next(new TooManyRequestsError('AI chat rate limit exceeded. Please wait a moment before sending more messages.'));
+  },
+  skip: () => config.isTest,
+});
+
 // Even stricter for password reset
 export const passwordResetRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour

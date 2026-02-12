@@ -71,6 +71,14 @@ export const config = {
   encryption: {
     key: env.ENCRYPTION_KEY || 'default-dev-key-change-in-production',
   },
+
+  // AI / OpenRouter
+  ai: {
+    apiKey: env.OPENROUTER_API_KEY,
+    baseUrl: env.OPENROUTER_BASE_URL,
+    model: env.OPENROUTER_MODEL,
+    maxTokens: env.OPENROUTER_MAX_TOKENS,
+  },
 };
 
 export type Config = typeof config;
