@@ -783,21 +783,14 @@ export class SettingsService {
   }
 
   async syncVulnerabilityDatabase(): Promise<SuccessResponse> {
-    // TODO: Trigger actual CVE database sync job
-    logger.info('Triggering CVE database sync');
+    const { queueCveSyncJob } = await import('@modules/vulnerabilities/cve-sync.worker');
+    const result = await queueCveSyncJob({ incremental: true });
 
-    // Update last sync time
-    const dbSync = await prisma.vulnerabilityDBSync.findFirst();
-    if (dbSync) {
-      await prisma.vulnerabilityDBSync.update({
-        where: { id: dbSync.id },
-        data: { lastSync: new Date() },
-      });
-    }
+    logger.info({ jobId: result.jobId, alreadyRunning: result.alreadyRunning }, 'CVE database sync triggered');
 
     return {
       success: true,
-      message: 'CVE database sync initiated',
+      message: result.alreadyRunning ? 'CVE sync already in progress' : 'CVE database sync queued',
     };
   }
 

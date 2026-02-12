@@ -477,19 +477,12 @@ export async function updateVulnerabilityDBSync(data: UpdateVulnerabilityDBSyncI
 }
 
 export async function triggerVulnerabilityDBSync() {
-  const sync = await prisma.vulnerabilityDBSync.findFirst();
+  const { queueCveSyncJob } = await import('@modules/vulnerabilities/cve-sync.worker');
+  const result = await queueCveSyncJob({ incremental: true });
 
-  if (sync) {
-    await prisma.vulnerabilityDBSync.update({
-      where: { id: sync.id },
-      data: { lastSync: new Date() },
-    });
-  }
-
-  // TODO: Queue actual NIST NVD sync job
   return {
-    message: 'Database sync initiated',
-    jobId: `sync-${Date.now()}`,
+    message: result.alreadyRunning ? 'CVE sync already in progress' : 'CVE database sync queued',
+    jobId: result.jobId,
   };
 }
 
