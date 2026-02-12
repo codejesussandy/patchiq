@@ -517,7 +517,7 @@ export async function getEndpoints(patchId: string, organizationId?: string) {
     };
   } else if (patch.affectedProducts && patch.affectedProducts.length > 0) {
     // Fall back to matching via affected products against asset software
-    const productNames = patch.affectedProducts.map((p: any) => p.name).filter(Boolean);
+    const productNames = patch.affectedProducts.map((p: { softwareName: string }) => p.softwareName).filter(Boolean);
     if (productNames.length > 0) {
       assetWhere.software = {
         some: {

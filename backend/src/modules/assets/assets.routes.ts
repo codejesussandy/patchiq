@@ -1,6 +1,9 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { authenticate } from '@middleware/auth';
 import { validateBody, validateParams, validateQuery } from '@middleware/validation';
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 import * as controller from './assets.controller';
 import {
   categoryCreateSchema,
@@ -110,7 +113,7 @@ router.get('/assets/:id/patch-recommendations', validateParams(assetIdParamSchem
 });
 router.get('/assets/:id/vulnerabilities', validateParams(assetIdParamSchema), controller.getAssetVulnerabilities);
 router.get('/assets/:id/deployments', validateParams(assetIdParamSchema), controller.getAssetDeployments);
-router.post('/assets/:id/attachments', validateParams(assetIdParamSchema), controller.uploadAssetAttachment);
+router.post('/assets/:id/attachments', validateParams(assetIdParamSchema), upload.single('file'), controller.uploadAssetAttachment);
 
 // Force inventory refresh
 router.post('/assets/:id/refresh', validateParams(assetIdParamSchema), controller.refreshAssetInventory);
@@ -124,7 +127,7 @@ router.delete('/assets/:id/tags/:tagId', validateParams(assetTagParamSchema), co
 // ============================================
 router.get('/software-inventory', controller.listSoftwareInventory);
 router.get('/software-inventory/:id', controller.getSoftwareInventoryItem);
-router.post('/software-inventory/import', controller.importSoftwareInventory);
+router.post('/software-inventory/import', upload.single('file'), controller.importSoftwareInventory);
 
 // ============================================
 // Software Licenses Routes
@@ -134,7 +137,7 @@ router.get('/software-licenses/:id', validateParams(softwareLicenseIdParamSchema
 router.post('/software-licenses', validateBody(softwareLicenseCreateSchema), controller.createSoftwareLicense);
 router.put('/software-licenses/:id', validateParams(softwareLicenseIdParamSchema), validateBody(softwareLicenseUpdateSchema), controller.updateSoftwareLicense);
 router.delete('/software-licenses/:id', validateParams(softwareLicenseIdParamSchema), controller.deleteSoftwareLicense);
-router.post('/software-licenses/import', controller.importSoftwareLicenses);
+router.post('/software-licenses/import', upload.single('file'), controller.importSoftwareLicenses);
 
 // ============================================
 // OS Licenses Routes
@@ -144,6 +147,6 @@ router.get('/os-licenses/:id', validateParams(osLicenseIdParamSchema), controlle
 router.post('/os-licenses', validateBody(osLicenseCreateSchema), controller.createOSLicense);
 router.put('/os-licenses/:id', validateParams(osLicenseIdParamSchema), validateBody(osLicenseUpdateSchema), controller.updateOSLicense);
 router.delete('/os-licenses/:id', validateParams(osLicenseIdParamSchema), controller.deleteOSLicense);
-router.post('/os-licenses/import', controller.importOSLicenses);
+router.post('/os-licenses/import', upload.single('file'), controller.importOSLicenses);
 
 export default router;

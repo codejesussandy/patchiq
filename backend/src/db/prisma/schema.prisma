@@ -372,6 +372,7 @@ model Asset {
   softwareTasks        SoftwareDeploymentTask[]
   alerts               AssetAlert[]
   patchRecommendations AssetPatchRecommendation[]
+  attachments          AssetAttachment[]
 
   @@index([status])
   @@index([type])
@@ -1869,4 +1870,21 @@ model VendorLogo {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("vendor_logos")
+}
+
+model AssetAttachment {
+  id         String   @id @default(uuid())
+  assetId    String   @map("asset_id")
+  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  fileName   String   @map("file_name")
+  fileSize   Int      @map("file_size")
+  mimeType   String   @map("mime_type")
+  storageKey String   @map("storage_key")
+  uploadedBy String?  @map("uploaded_by")
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([assetId])
+  @@map("asset_attachments")
 }

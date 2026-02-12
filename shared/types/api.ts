@@ -1305,6 +1305,8 @@ export interface ListCredentialsParams {
 export interface TestCredentialResponse {
   success: boolean;
   message: string;
+  errorCode?: 'AUTH_FAILED' | 'HOST_UNREACHABLE' | 'TIMEOUT' | 'UNKNOWN';
+  latencyMs?: number;
 }
 
 export interface ScanResponse {

@@ -2,6 +2,7 @@ import './types';
 import { setSseManager, setEmailSender } from '@modules/notifications';
 import { startWorker, shutdownWorker, patchRepositoryService } from '@modules/patch-repository';
 import { startCveSyncWorker, shutdownCveSyncWorker, setupRepeatableSync } from '@modules/vulnerabilities';
+import { startDiscoveryScanWorker, shutdownDiscoveryScanWorker } from '@modules/discovery';
 import { executeDeployment } from '@modules/patches/patches.service';
 import { createLogger } from '@shared/services/logger';
 import { maybeSendNotificationEmail } from '@shared/services/notification-email.service';
@@ -174,6 +175,14 @@ async function main() {
     logger.error({ err: error }, 'Failed to start CVE sync worker');
   }
 
+  // Start Discovery scan BullMQ worker
+  try {
+    startDiscoveryScanWorker();
+    logger.info('Discovery scan worker started');
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to start discovery scan worker');
+  }
+
   const server = app.listen(config.port, '0.0.0.0', () => {
     logger.info({ environment: config.nodeEnv, port: config.port, apiVersion: config.apiVersion }, 'PatchIQ Backend Server started');
   });
@@ -207,6 +216,13 @@ async function main() {
         logger.info('Download worker stopped');
       } catch (error) {
         logger.error({ err: error }, 'Error shutting down download worker');
+      }
+
+      try {
+        await shutdownDiscoveryScanWorker();
+        logger.info('Discovery scan worker stopped');
+      } catch (error) {
+        logger.error({ err: error }, 'Error shutting down discovery scan worker');
       }
 
       try {

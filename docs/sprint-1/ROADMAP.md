@@ -60,9 +60,9 @@ These are critical — the platform is broken without them.
 | # | Item | Why | Files | Status |
 |---|------|-----|-------|--------|
 | A.4 | **Add missing database indexes** | `organizationId`, `departmentId`, `locationId` FK fields on User model have no indexes — sequential scans on admin queries. | `schema.prisma` — User model `@@index` | `COMPLETED` |
-| A.5 | **Network discovery scanning** | `triggerScan()` creates a record but never scans. Discovery is the #1 advertised feature that doesn't work. | `discovery.service.ts:224`, new BullMQ worker for ping sweep / port scan | `PENDING` |
-| A.6 | **Asset file upload & CSV import** | 4 endpoints return 501. Bulk onboarding requires manual data entry. | `assets.controller.ts:447,484,542,600`, MinIO integration for attachments, CSV parser for imports | `PENDING` |
-| A.7 | **Credential testing** | `testCredential()` always returns `{ success: true }`. Users get false confidence before deployments fail. | `discovery.service.ts:484` — implement actual SSH/WinRM/SNMP test | `PENDING` |
+| A.5 | **Network discovery scanning** | `triggerScan()` creates a record but never scans. Discovery is the #1 advertised feature that doesn't work. | `discovery.service.ts:224`, new BullMQ worker for ping sweep / port scan | `COMPLETED` |
+| A.6 | **Asset file upload & CSV import** | 4 endpoints return 501. Bulk onboarding requires manual data entry. | `assets.controller.ts:447,484,542,600`, MinIO integration for attachments, CSV parser for imports | `COMPLETED` |
+| A.7 | **Credential testing** | `testCredential()` always returns `{ success: true }`. Users get false confidence before deployments fail. | `discovery.service.ts:484` — implement actual SSH/WinRM/SNMP test | `COMPLETED` |
 | A.9 | **Consolidate deployment route duplication** | Deployment routes exist in both `patches.routes.ts` (lines 214-372) AND `deployments/deployment.routes.ts` (lines 18-42). **Both are mounted** in `app.ts` (lines 188, 191) creating duplicate endpoints at `/v1/patches/...` and `/v1/deployments/...`. | Consolidate into single module, remove duplicate mount | `COMPLETED` |
 | A.16 | **AI chat backend endpoint** | No backend exists for the AI chat panel. **Sprint 2 prerequisite (AI/MCP access).** Basic endpoint that accepts messages and returns responses — even simple rule-based responses are fine for Sprint 1. | New `ai` module or route in existing module, `POST /ai/chat` | `COMPLETED` |
 

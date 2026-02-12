@@ -7,6 +7,9 @@ export { DiscoveryController, discoveryController } from './discovery.controller
 // Service
 export { DiscoveryService, discoveryService } from './discovery.service';
 
+// Worker
+export { startDiscoveryScanWorker, shutdownDiscoveryScanWorker, queueDiscoveryScanJob } from './discovery-scan.worker';
+
 // Types - export from types file (response types)
 export type {
   IPRangeResponse,
