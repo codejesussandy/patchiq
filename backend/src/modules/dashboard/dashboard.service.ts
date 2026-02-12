@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/db/client';
+import { createLogger } from '@shared/services/logger';
 import type {
   DashboardData,
   DashboardStats,
@@ -40,6 +41,8 @@ const OS_COLORS: Record<string, string> = {
   Debian: '#A6757D',
   default: '#B6E3F5',
 };
+
+const logger = createLogger('dashboard');
 
 export class DashboardService {
   /**
@@ -357,39 +360,52 @@ export class DashboardService {
       { label: '> 90 days', minDays: 90, maxDays: 99999 },
     ];
 
-    const rows = await prisma.$queryRaw<Array<{
-      range_label: string;
-      critical: bigint;
-      high: bigint;
-      medium: bigint;
-      low: bigint;
-    }>>`
-      SELECT
-        CASE
-          WHEN av.detected_at >= ${new Date(now.getTime() - 30 * 86400000)} THEN '< 30 days'
-          WHEN av.detected_at >= ${new Date(now.getTime() - 60 * 86400000)} THEN '30-60 days'
-          WHEN av.detected_at >= ${new Date(now.getTime() - 90 * 86400000)} THEN '60-90 days'
-          ELSE '> 90 days'
-        END as range_label,
-        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'critical') as critical,
-        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'high') as high,
-        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'medium') as medium,
-        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'low') as low
-      FROM asset_vulnerabilities av
-      JOIN vulnerabilities v ON v.id = av.vulnerability_id
-      GROUP BY range_label
-    `;
+    const emptyFallback = ranges.map(range => ({
+      date: range.label,
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+    }));
 
-    return ranges.map(range => {
-      const row = rows.find(r => r.range_label === range.label);
-      return {
-        date: range.label,
-        critical: Number(row?.critical ?? 0),
-        high: Number(row?.high ?? 0),
-        medium: Number(row?.medium ?? 0),
-        low: Number(row?.low ?? 0),
-      };
-    });
+    try {
+      const rows = await prisma.$queryRaw<Array<{
+        range_label: string;
+        critical: bigint;
+        high: bigint;
+        medium: bigint;
+        low: bigint;
+      }>>`
+        SELECT
+          CASE
+            WHEN av.detected_at >= ${new Date(now.getTime() - 30 * 86400000)} THEN '< 30 days'
+            WHEN av.detected_at >= ${new Date(now.getTime() - 60 * 86400000)} THEN '30-60 days'
+            WHEN av.detected_at >= ${new Date(now.getTime() - 90 * 86400000)} THEN '60-90 days'
+            ELSE '> 90 days'
+          END as range_label,
+          COUNT(*) FILTER (WHERE LOWER(v.severity) = 'critical') as critical,
+          COUNT(*) FILTER (WHERE LOWER(v.severity) = 'high') as high,
+          COUNT(*) FILTER (WHERE LOWER(v.severity) = 'medium') as medium,
+          COUNT(*) FILTER (WHERE LOWER(v.severity) = 'low') as low
+        FROM asset_vulnerabilities av
+        JOIN vulnerabilities v ON v.id = av.vulnerability_id
+        GROUP BY range_label
+      `;
+
+      return ranges.map(range => {
+        const row = rows.find(r => r.range_label === range.label);
+        return {
+          date: range.label,
+          critical: Number(row?.critical ?? 0),
+          high: Number(row?.high ?? 0),
+          medium: Number(row?.medium ?? 0),
+          low: Number(row?.low ?? 0),
+        };
+      });
+    } catch (err) {
+      logger.error({ err, method: 'getVulnerabilityByDiscoveredDate' }, 'Raw SQL query failed');
+      return emptyFallback;
+    }
   }
 
   /**
@@ -566,14 +582,19 @@ export class DashboardService {
    * Get total software count by platform
    */
   async getTotalSoftwareByPlatform(): Promise<DistributionItem[]> {
-    const rows = await prisma.$queryRaw<Array<{ name: string; value: bigint }>>`
-      SELECT COALESCE(a.os, 'Unknown') as name, COUNT(asw.id) as value
-      FROM assets a
-      JOIN asset_software asw ON asw.asset_id = a.id
-      WHERE a.os IS NOT NULL
-      GROUP BY a.os
-    `;
-    return rows.map(r => ({ name: this.normalizeOS(r.name), value: Number(r.value) }));
+    try {
+      const rows = await prisma.$queryRaw<Array<{ name: string; value: bigint }>>`
+        SELECT COALESCE(a.os, 'Unknown') as name, COUNT(asw.id) as value
+        FROM assets a
+        JOIN asset_software asw ON asw.asset_id = a.id
+        WHERE a.os IS NOT NULL
+        GROUP BY a.os
+      `;
+      return rows.map(r => ({ name: this.normalizeOS(r.name), value: Number(r.value) }));
+    } catch (err) {
+      logger.error({ err, method: 'getTotalSoftwareByPlatform' }, 'Raw SQL query failed');
+      return [];
+    }
   }
 
   /**
@@ -633,26 +654,31 @@ export class DashboardService {
    * Get alert severity count by platform
    */
   async getAlertSeverityCountByPlatform(): Promise<AlertSeverityByPlatform[]> {
-    const rows = await prisma.$queryRaw<Array<{ platform: string; critical: bigint; high: bigint; medium: bigint; low: bigint }>>`
-      SELECT
-        COALESCE(a.os, 'Unknown') as platform,
-        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'critical') as critical,
-        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'high') as high,
-        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'medium') as medium,
-        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'low') as low
-      FROM asset_vulnerabilities av
-      JOIN assets a ON a.id = av.asset_id
-      JOIN vulnerabilities v ON v.id = av.vulnerability_id
-      WHERE a.os IS NOT NULL
-      GROUP BY a.os
-    `;
-    return rows.map(r => ({
-      platform: r.platform,
-      critical: Number(r.critical),
-      high: Number(r.high),
-      medium: Number(r.medium),
-      low: Number(r.low),
-    }));
+    try {
+      const rows = await prisma.$queryRaw<Array<{ platform: string; critical: bigint; high: bigint; medium: bigint; low: bigint }>>`
+        SELECT
+          COALESCE(a.os, 'Unknown') as platform,
+          COUNT(*) FILTER (WHERE LOWER(v.severity) = 'critical') as critical,
+          COUNT(*) FILTER (WHERE LOWER(v.severity) = 'high') as high,
+          COUNT(*) FILTER (WHERE LOWER(v.severity) = 'medium') as medium,
+          COUNT(*) FILTER (WHERE LOWER(v.severity) = 'low') as low
+        FROM asset_vulnerabilities av
+        JOIN assets a ON a.id = av.asset_id
+        JOIN vulnerabilities v ON v.id = av.vulnerability_id
+        WHERE a.os IS NOT NULL
+        GROUP BY a.os
+      `;
+      return rows.map(r => ({
+        platform: r.platform,
+        critical: Number(r.critical),
+        high: Number(r.high),
+        medium: Number(r.medium),
+        low: Number(r.low),
+      }));
+    } catch (err) {
+      logger.error({ err, method: 'getAlertSeverityCountByPlatform' }, 'Raw SQL query failed');
+      return [];
+    }
   }
 
   /**
@@ -695,25 +721,30 @@ export class DashboardService {
    * Get alert severity count by module
    */
   async getAlertSeverityCountByModule(): Promise<AlertSeverityByModule[]> {
-    const rows = await prisma.$queryRaw<Array<{ module: string; critical: bigint; high: bigint; medium: bigint }>>`
-      SELECT
-        vs.name as module,
-        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'critical') as critical,
-        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'high') as high,
-        COUNT(*) FILTER (WHERE LOWER(v.severity) = 'medium') as medium
-      FROM vulnerability_software vs
-      JOIN vulnerabilities v ON v.id = vs.vulnerability_id
-      WHERE vs.name IS NOT NULL
-      GROUP BY vs.name
-      ORDER BY COUNT(*) DESC
-      LIMIT 10
-    `;
-    return rows.map(r => ({
-      module: r.module,
-      critical: Number(r.critical),
-      high: Number(r.high),
-      medium: Number(r.medium),
-    }));
+    try {
+      const rows = await prisma.$queryRaw<Array<{ module: string; critical: bigint; high: bigint; medium: bigint }>>`
+        SELECT
+          vs.name as module,
+          COUNT(*) FILTER (WHERE LOWER(v.severity) = 'critical') as critical,
+          COUNT(*) FILTER (WHERE LOWER(v.severity) = 'high') as high,
+          COUNT(*) FILTER (WHERE LOWER(v.severity) = 'medium') as medium
+        FROM vulnerability_software vs
+        JOIN vulnerabilities v ON v.id = vs.vulnerability_id
+        WHERE vs.name IS NOT NULL
+        GROUP BY vs.name
+        ORDER BY COUNT(*) DESC
+        LIMIT 10
+      `;
+      return rows.map(r => ({
+        module: r.module,
+        critical: Number(r.critical),
+        high: Number(r.high),
+        medium: Number(r.medium),
+      }));
+    } catch (err) {
+      logger.error({ err, method: 'getAlertSeverityCountByModule' }, 'Raw SQL query failed');
+      return [];
+    }
   }
 
   /**
