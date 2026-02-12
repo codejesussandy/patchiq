@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-Manages the complete patch lifecycle: CRUD, test/approve workflow, supersedence management, affected software tracking, bundle streaming, zero-touch deployment configs, patch tests, and asset-patch recommendations. Also defines deployment routes that delegate to the deployments module.
+Manages the complete patch lifecycle: CRUD, test/approve workflow, supersedence management, affected software tracking, bundle streaming, zero-touch deployment configs, patch tests, and asset-patch recommendations.
 
 ## Endpoints
 
@@ -45,31 +45,6 @@ Manages the complete patch lifecycle: CRUD, test/approve workflow, supersedence 
 | POST | /v1/patches/:id/test | Mark patch as tested | Yes |
 | POST | /v1/patches/:id/approve | Approve patch for deployment | Yes |
 | POST | /v1/patches/:id/reject | Reject patch | Yes |
-
-### Deployments (delegated to deployments module)
-
-| Method | Path | Description | Auth |
-|--------|------|-------------|------|
-| GET | /v1/deployments | List deployments | Yes |
-| POST | /v1/deployments | Create deployment | Yes |
-| GET | /v1/deployments/:id | Get deployment by ID | Yes |
-| PUT | /v1/deployments/:id | Update deployment | Yes |
-| POST | /v1/deployments/:id/cancel | Cancel deployment | Yes |
-| DELETE | /v1/deployments/:id | Delete deployment | Yes |
-| GET | /v1/deployments/:id/preview | Get deployment preview | Yes |
-| POST | /v1/deployments/:id/execute | Execute deployment | Yes |
-| POST | /v1/deployments/patch | Create patch deployment from UI | Yes |
-| GET | /v1/deployments/patch | List patch deployments | Yes |
-| GET | /v1/deployments/patch/:deploymentId | Get patch deployment status | Yes |
-| POST | /v1/deployments/patch/:deploymentId/cancel | Cancel patch deployment | Yes |
-| POST | /v1/deployments/patch/:deploymentId/retry | Retry failed patch deployment | Yes |
-| GET | /v1/deployments/software | List software deployments | Yes |
-| POST | /v1/deployments/software | Create software deployment | Yes |
-| GET | /v1/deployments/software/:deploymentId | Get software deployment status | Yes |
-| POST | /v1/deployments/software/:deploymentId/cancel | Cancel software deployment | Yes |
-| POST | /v1/deployments/software/:deploymentId/tasks/:taskId/rollback | Trigger rollback | Yes |
-| POST | /v1/deployments/config | Create config deployment | Yes |
-| GET | /v1/deployments/config/:deploymentId | Get config deployment status | Yes |
 
 ### Patch Tests
 
@@ -117,7 +92,7 @@ Deployment: patch -> create deployment -> send command to agent -> agent downloa
 - `patches.controller.ts` — Patch CRUD, test/approve, supersedence, deployments, zero-touch, patch-tests
 - `patches.service.ts` — Core patch business logic, discovery, bundle streaming
 - `patches.validator.ts` — Zod schemas for all endpoints
-- `patches.routes.ts` — Route definitions (exports patchRoutes, deploymentRoutes, patchTestRoutes, zeroTouchConfigRoutes)
+- `patches.routes.ts` — Route definitions (exports patchRoutes, patchTestRoutes, zeroTouchConfigRoutes)
 - `asset-patch-recommendation.controller.ts` — Recommendation endpoints
 - `asset-patch-recommendation.service.ts` — Recommendation matching logic
 - `asset-patch-recommendation.routes.ts` — Recommendation route definitions
@@ -125,12 +100,12 @@ Deployment: patch -> create deployment -> send command to agent -> agent downloa
 
 ## Dependencies
 
-- **Depends on:** deployments (deploymentController, deploymentExecutorService), patch-repository (queueDownloadJob), hub (bundle streaming via MinIO)
+- **Depends on:** patch-repository (queueDownloadJob), hub (bundle streaming via MinIO)
 - **Depended on by:** assets (patch-recommendations tab), dashboard (patch statistics)
 
 ## Notes
 
-- This module exports 4 routers: patchRoutes, deploymentRoutes, patchTestRoutes, zeroTouchConfigRoutes
-- Deployment routes in patches.routes.ts delegate to the deployments module's controller
+- This module exports 4 routers: patchRoutes, patchTestRoutes, zeroTouchConfigRoutes, assetPatchRecommendationRoutes
+- Deployment routes are defined in the `deployments` module (see `deployments/deployment.routes.ts`)
 - Bundle streaming endpoint is also mounted publicly in app.ts (without auth) for agent access
 - Patch discovery (`POST /v1/patches/discover`) scans Hub packages to auto-create patches
