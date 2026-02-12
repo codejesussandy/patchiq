@@ -1,3 +1,5 @@
+import { STORAGE_KEYS } from '@/constants/storage.constants';
+
 /**
  * Fetch helper with automatic auth header injection.
  * Use for streaming responses or special cases where axios is not suitable.
@@ -19,7 +21,7 @@ export async function fetchWithAuth(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const token = localStorage.getItem('accessToken');
+  const token = localStorage.getItem(STORAGE_KEYS.AUTH.ACCESS_TOKEN);
 
   if (!token) {
     throw new Error('No authentication token found. Please log in.');

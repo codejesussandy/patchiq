@@ -1,3 +1,4 @@
+import { STORAGE_KEYS } from '@/constants/storage.constants';
 import type {
   LoginRequest,
   LoginResponseData,
@@ -16,16 +17,16 @@ export const authService = {
     const data = response.data;
 
     // Store tokens in localStorage
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
+    localStorage.setItem(STORAGE_KEYS.AUTH.ACCESS_TOKEN, data.accessToken);
+    localStorage.setItem(STORAGE_KEYS.AUTH.REFRESH_TOKEN, data.refreshToken);
 
     return data;
   },
 
   logout: async (): Promise<void> => {
     await api.post('/auth/logout');
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    localStorage.removeItem(STORAGE_KEYS.AUTH.ACCESS_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.AUTH.REFRESH_TOKEN);
   },
 
   forgotPassword: async (data: ForgotPasswordRequest): Promise<MessageResponse> => {

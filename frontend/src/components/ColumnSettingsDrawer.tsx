@@ -8,6 +8,9 @@ import {
   VerticalLeftOutlined,
   VerticalRightOutlined,
 } from '@ant-design/icons';
+// Note: This component uses dynamic storageKey prop for table column configurations.
+// For standard keys, see @/constants/storage.constants
+// Dynamic keys like 'column-config-${tableName}' are passed as props.
 import {
   DndContext,
   closestCenter,

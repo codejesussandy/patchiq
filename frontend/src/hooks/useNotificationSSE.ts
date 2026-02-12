@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { STORAGE_KEYS } from '@/constants/storage.constants';
 
 export interface SSENotification {
   id?: string;
@@ -23,7 +24,7 @@ export function useNotificationSSE({ onNotification, enabled = true }: UseNotifi
   onNotificationRef.current = onNotification;
 
   const connect = useCallback(() => {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH.ACCESS_TOKEN);
     if (!token) return;
 
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/v1';

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosError } from 'axios';
+import { STORAGE_KEYS } from '@/constants/storage.constants';
 import type { ApiError } from '../types/auth.types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/v1';
@@ -18,7 +19,7 @@ class ApiService {
     // Request interceptor to add auth token
     this.api.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('accessToken');
+        const token = localStorage.getItem(STORAGE_KEYS.AUTH.ACCESS_TOKEN);
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -61,8 +62,8 @@ class ApiService {
       (error: AxiosError<ApiError>) => {
         if (error.response?.status === 401) {
           // Clear tokens and redirect to login
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
+          localStorage.removeItem(STORAGE_KEYS.AUTH.ACCESS_TOKEN);
+          localStorage.removeItem(STORAGE_KEYS.AUTH.REFRESH_TOKEN);
           window.location.href = '/login';
         }
         // Unwrap error envelope: { success: false, error: { code, message, details? } }

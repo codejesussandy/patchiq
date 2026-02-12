@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { App } from 'antd';
+import { STORAGE_KEYS } from '@/constants/storage.constants';
 import { authService } from '../services/auth.service';
 import type { User, AuthContextType } from '../types/auth.types';
 
@@ -14,14 +15,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Check if user is already logged in
     const initAuth = async () => {
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem(STORAGE_KEYS.AUTH.ACCESS_TOKEN);
       if (token) {
         try {
           const currentUser = await authService.getCurrentUser();
           setUser(currentUser);
         } catch {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
+          localStorage.removeItem(STORAGE_KEYS.AUTH.ACCESS_TOKEN);
+          localStorage.removeItem(STORAGE_KEYS.AUTH.REFRESH_TOKEN);
         }
       }
       setIsLoading(false);
