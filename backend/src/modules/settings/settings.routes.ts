@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { settingsController } from './settings.controller';
 import { authenticate } from '@middleware/auth';
-import { validateBody, validateParams } from '@middleware/validation';
+import { validateBody, validateParams, validateQuery } from '@middleware/validation';
+import { settingsController } from './settings.controller';
 
 // Configure multer for file uploads (memory storage)
 const upload = multer({
@@ -48,6 +48,11 @@ import {
   updateRiskScoreSettingsSchema,
   updateRemoteDesktopSchema,
   idParamSchema,
+  listOrganizationsQuerySchema,
+  listBranchesQuerySchema,
+  listDepartmentsQuerySchema,
+  userListQuerySchema,
+  auditLogQuerySchema,
 } from './settings.validators';
 
 const router = Router();
@@ -58,7 +63,7 @@ router.use(authenticate);
 // ============================================
 // Organizations
 // ============================================
-router.get('/organizations', settingsController.listOrganizations.bind(settingsController));
+router.get('/organizations', validateQuery(listOrganizationsQuerySchema), settingsController.listOrganizations.bind(settingsController));
 router.get('/organizations/:id', validateParams(idParamSchema), settingsController.getOrganization.bind(settingsController));
 router.post('/organizations', validateBody(createOrganizationSchema), settingsController.createOrganization.bind(settingsController));
 router.put('/organizations/:id', validateParams(idParamSchema), validateBody(updateOrganizationSchema), settingsController.updateOrganization.bind(settingsController));
@@ -67,7 +72,7 @@ router.delete('/organizations/:id', validateParams(idParamSchema), settingsContr
 // ============================================
 // Branches
 // ============================================
-router.get('/branches', settingsController.listBranches.bind(settingsController));
+router.get('/branches', validateQuery(listBranchesQuerySchema), settingsController.listBranches.bind(settingsController));
 router.get('/branches/:id', validateParams(idParamSchema), settingsController.getBranch.bind(settingsController));
 router.post('/branches', validateBody(createBranchSchema), settingsController.createBranch.bind(settingsController));
 router.put('/branches/:id', validateParams(idParamSchema), validateBody(updateBranchSchema), settingsController.updateBranch.bind(settingsController));
@@ -76,7 +81,7 @@ router.delete('/branches/:id', validateParams(idParamSchema), settingsController
 // ============================================
 // Departments
 // ============================================
-router.get('/departments', settingsController.listDepartments.bind(settingsController));
+router.get('/departments', validateQuery(listDepartmentsQuerySchema), settingsController.listDepartments.bind(settingsController));
 router.get('/departments/:id', validateParams(idParamSchema), settingsController.getDepartment.bind(settingsController));
 router.post('/departments', validateBody(createDepartmentSchema), settingsController.createDepartment.bind(settingsController));
 router.put('/departments/:id', validateParams(idParamSchema), validateBody(updateDepartmentSchema), settingsController.updateDepartment.bind(settingsController));
@@ -85,7 +90,7 @@ router.delete('/departments/:id', validateParams(idParamSchema), settingsControl
 // ============================================
 // Locations
 // ============================================
-router.get('/locations', settingsController.listLocations.bind(settingsController));
+router.get('/locations', validateQuery(listOrganizationsQuerySchema), settingsController.listLocations.bind(settingsController));
 router.get('/locations/:id', validateParams(idParamSchema), settingsController.getLocation.bind(settingsController));
 router.post('/locations', validateBody(createLocationSchema), settingsController.createLocation.bind(settingsController));
 router.put('/locations/:id', validateParams(idParamSchema), validateBody(updateLocationSchema), settingsController.updateLocation.bind(settingsController));
@@ -94,7 +99,7 @@ router.delete('/locations/:id', validateParams(idParamSchema), settingsControlle
 // ============================================
 // Users
 // ============================================
-router.get('/users', settingsController.listUsers.bind(settingsController));
+router.get('/users', validateQuery(userListQuerySchema), settingsController.listUsers.bind(settingsController));
 router.get('/users/:id', validateParams(idParamSchema), settingsController.getUser.bind(settingsController));
 router.post('/users', validateBody(createUserSchema), settingsController.createUser.bind(settingsController));
 router.put('/users/:id', validateParams(idParamSchema), validateBody(updateUserSchema), settingsController.updateUser.bind(settingsController));
@@ -148,7 +153,7 @@ router.put('/agent-configuration', validateBody(updateAgentConfigSchema), settin
 // ============================================
 // Agent Approvals
 // ============================================
-router.get('/agent-approvals', settingsController.listAgentApprovals.bind(settingsController));
+router.get('/agent-approvals', validateQuery(listOrganizationsQuerySchema), settingsController.listAgentApprovals.bind(settingsController));
 router.post('/agent-approvals/:id/approve', validateParams(idParamSchema), settingsController.approveAgent.bind(settingsController));
 router.post('/agent-approvals/:id/reject', validateParams(idParamSchema), settingsController.rejectAgent.bind(settingsController));
 
@@ -169,7 +174,7 @@ router.post('/mail-server/test', validateBody(testMailServerSchema), settingsCon
 // ============================================
 // Audit Logs
 // ============================================
-router.get('/audit', settingsController.listAuditLogs.bind(settingsController));
+router.get('/audit', validateQuery(auditLogQuerySchema), settingsController.listAuditLogs.bind(settingsController));
 router.get('/audit/filter-options', settingsController.getAuditLogFilters.bind(settingsController));
 
 // ============================================

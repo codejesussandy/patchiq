@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { AgentsController } from './agents.controller';
 import { authenticate } from '@middleware/auth';
+import { AgentsController } from './agents.controller';
 
 const router = Router();
 const controller = new AgentsController();

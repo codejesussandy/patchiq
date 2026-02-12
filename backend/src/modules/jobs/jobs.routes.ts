@@ -9,12 +9,6 @@ import {
   vulnerabilityJobListQuerySchema,
   createVulnerabilityJobSchema,
   updateVulnerabilityDBSyncSchema,
-  softwareCatalogListQuerySchema,
-  createSoftwareCatalogSchema,
-  updateSoftwareCatalogSchema,
-  softwareBundleListQuerySchema,
-  createSoftwareBundleSchema,
-  updateSoftwareBundleSchema,
   softwareDeploymentListQuerySchema,
   createSoftwareDeploymentSchema,
   configCatalogListQuerySchema,
@@ -113,86 +107,6 @@ router.delete(
   authenticate,
   validateParams(idParamSchema),
   controller.deleteVulnerabilityJob
-);
-
-// ============================================
-// Software Catalog Routes - /v1/jobs/software/catalog
-// ============================================
-
-router.get(
-  '/software/catalog',
-  authenticate,
-  validateQuery(softwareCatalogListQuerySchema),
-  controller.listSoftwareCatalog
-);
-
-router.post(
-  '/software/catalog',
-  authenticate,
-  validateBody(createSoftwareCatalogSchema),
-  controller.createSoftwareCatalog
-);
-
-router.get(
-  '/software/catalog/:id',
-  authenticate,
-  validateParams(idParamSchema),
-  controller.getSoftwareCatalog
-);
-
-router.put(
-  '/software/catalog/:id',
-  authenticate,
-  validateParams(idParamSchema),
-  validateBody(updateSoftwareCatalogSchema),
-  controller.updateSoftwareCatalog
-);
-
-router.delete(
-  '/software/catalog/:id',
-  authenticate,
-  validateParams(idParamSchema),
-  controller.deleteSoftwareCatalog
-);
-
-// ============================================
-// Software Bundle Routes - /v1/jobs/software/bundles
-// ============================================
-
-router.get(
-  '/software/bundles',
-  authenticate,
-  validateQuery(softwareBundleListQuerySchema),
-  controller.listSoftwareBundles
-);
-
-router.post(
-  '/software/bundles',
-  authenticate,
-  validateBody(createSoftwareBundleSchema),
-  controller.createSoftwareBundle
-);
-
-router.get(
-  '/software/bundles/:id',
-  authenticate,
-  validateParams(idParamSchema),
-  controller.getSoftwareBundle
-);
-
-router.put(
-  '/software/bundles/:id',
-  authenticate,
-  validateParams(idParamSchema),
-  validateBody(updateSoftwareBundleSchema),
-  controller.updateSoftwareBundle
-);
-
-router.delete(
-  '/software/bundles/:id',
-  authenticate,
-  validateParams(idParamSchema),
-  controller.deleteSoftwareBundle
 );
 
 // ============================================

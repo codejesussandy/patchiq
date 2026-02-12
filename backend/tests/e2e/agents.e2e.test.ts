@@ -21,7 +21,7 @@ describe('E2E: Agent Lifecycle', () => {
         email: 'agents-test-admin@patchiq.io',
         name: 'Agents Test Admin',
         passwordHash,
-        role: 'admin',
+        role: 'ADMIN',
         isActive: true,
         isOnboarded: true,
       },
@@ -178,7 +178,7 @@ describe('E2E: Agent Lifecycle', () => {
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(agentRes.status).toBe(200);
-      expect(agentRes.body.status).toBe('Connected');
+      expect(agentRes.body.status).toBe('CONNECTED');
     });
   });
 
@@ -202,7 +202,7 @@ describe('E2E: Agent Lifecycle', () => {
         .set('X-Agent-Id', registeredAgentId)
         .send({
           commandId: 'fake-command-id',
-          status: 'completed',
+          status: 'COMPLETED',
           output: 'Command executed successfully',
           exitCode: 0,
           completedAt: new Date().toISOString(),
@@ -339,7 +339,7 @@ describe('E2E: Agent Lifecycle', () => {
 
       // All returned agents should have Connected status
       res.body.forEach((agent: any) => {
-        expect(agent.status).toBe('Connected');
+        expect(agent.status).toBe('CONNECTED');
       });
     });
 
@@ -438,7 +438,7 @@ describe('E2E: Agent Versions', () => {
         email: 'agent-versions-test@patchiq.io',
         name: 'Agent Versions Test',
         passwordHash,
-        role: 'admin',
+        role: 'ADMIN',
         isActive: true,
         isOnboarded: true,
       },

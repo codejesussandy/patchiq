@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import { authenticate } from '../../middleware/auth';
+import { validateQuery } from '../../middleware/validation';
 import * as controller from './patch-repository.controller';
+import {
+  listPatchSourcesQuerySchema,
+  listDownloadJobsQuerySchema,
+  cleanQueueQuerySchema,
+  startPendingQuerySchema,
+} from './patch-repository.validators';
 
 const router = Router();
 
@@ -12,7 +19,7 @@ router.use(authenticate);
 // ============================================
 
 // List all patch sources
-router.get('/sources', controller.listPatchSources);
+router.get('/sources', validateQuery(listPatchSourcesQuerySchema), controller.listPatchSources);
 
 // Create a new patch source
 router.post('/sources', controller.createPatchSource);
@@ -34,7 +41,7 @@ router.patch('/sources/:id/toggle', controller.togglePatchSource);
 // ============================================
 
 // List download jobs
-router.get('/downloads', controller.listDownloadJobs);
+router.get('/downloads', validateQuery(listDownloadJobsQuerySchema), controller.listDownloadJobs);
 
 // Create a download job
 router.post('/downloads', controller.createDownloadJob);
@@ -95,9 +102,9 @@ router.post('/queue/pause', controller.pauseDownloadQueue);
 router.post('/queue/resume', controller.resumeDownloadQueue);
 
 // Clean old jobs from the queue
-router.post('/queue/clean', controller.cleanDownloadQueue);
+router.post('/queue/clean', validateQuery(cleanQueueQuerySchema), controller.cleanDownloadQueue);
 
 // Start downloading all pending jobs
-router.post('/queue/start-pending', controller.startPendingDownloads);
+router.post('/queue/start-pending', validateQuery(startPendingQuerySchema), controller.startPendingDownloads);
 
 export default router;

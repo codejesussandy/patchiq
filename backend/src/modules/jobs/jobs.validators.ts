@@ -27,7 +27,7 @@ export const createPatchJobSchema = z.object({
   description: z.string().optional(),
   type: z.enum(['SCHEDULE', 'INSTANT']).default('SCHEDULE'),
   configType: z.enum(['INSTALL', 'ROLLBACK']).default('INSTALL'),
-  scope: z.enum(['Global', 'Group', 'Endpoint']).default('Global'),
+  scope: z.enum(['GLOBAL', 'GROUP', 'ENDPOINT']).default('GLOBAL'),
   endpoints: z.array(z.string()).optional(),
   patches: z.array(z.string()).default([]),
   deploymentPolicy: z.string().optional(),
@@ -51,17 +51,17 @@ export const vulnerabilityJobListQuerySchema = paginationQuerySchema.extend({
 export const createVulnerabilityJobSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().optional(),
-  scope: z.enum(['Global', 'Group', 'Endpoint']).default('Global'),
+  scope: z.enum(['GLOBAL', 'GROUP', 'ENDPOINT']).default('GLOBAL'),
   endpoints: z.array(z.string()).optional(),
-  scanType: z.enum(['instant', 'scheduled']).default('instant'),
+  scanType: z.enum(['INSTANT', 'SCHEDULED']).default('INSTANT'),
   scheduleDate: z.string().optional(),
   scheduleTime: z.string().optional(),
-  recurrence: z.enum(['once', 'daily', 'weekly', 'monthly']).optional(),
+  recurrence: z.enum(['ONCE', 'DAILY', 'WEEKLY', 'MONTHLY']).optional(),
 });
 
 export const updateVulnerabilityDBSyncSchema = z.object({
   scanJobInterval: z.number().int().min(1).max(999),
-  scanJobUnit: z.enum(['Hour', 'Day', 'Week']),
+  scanJobUnit: z.enum(['HOUR', 'DAY', 'WEEK']),
   databaseSyncTime: z.string().regex(/^\d{2}:\d{2}:\d{2}$/),
 });
 
@@ -70,77 +70,24 @@ export type VulnerabilityJobListQuery = z.infer<typeof vulnerabilityJobListQuery
 export type UpdateVulnerabilityDBSyncInput = z.infer<typeof updateVulnerabilityDBSyncSchema>;
 
 // ============================================
-// Software Catalog Schemas
-// ============================================
-
-export const softwareCatalogListQuerySchema = paginationQuerySchema.extend({
-  os: z.enum(['Windows', 'Mac', 'Linux']).optional(),
-  search: z.string().optional(),
-});
-
-export const createSoftwareCatalogSchema = z.object({
-  applicationName: z.string().min(1).max(255),
-  description: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  os: z.enum(['Windows', 'Mac', 'Linux']),
-  version: z.string().default('latest'),
-  applicationLocationType: z.enum(['Local Directory', 'Network Share', 'URL']).default('URL'),
-  installationCommand: z.string().optional(),
-  uninstallationCommand: z.string().optional(),
-  upgradeCommand: z.string().optional(),
-  iconUrl: z.string().url().optional(),
-  selfService: z.boolean().default(true),
-  architecture: z.enum(['x64', 'x86', 'ARM64']).default('x64'),
-  applicationType: z.enum(['MSI', 'EXE', 'APPLICATION', 'ZIP']).default('EXE'),
-  applicationFileUrl: z.string().optional(),
-});
-
-export const updateSoftwareCatalogSchema = createSoftwareCatalogSchema.partial();
-
-export type CreateSoftwareCatalogInput = z.infer<typeof createSoftwareCatalogSchema>;
-export type UpdateSoftwareCatalogInput = z.infer<typeof updateSoftwareCatalogSchema>;
-export type SoftwareCatalogListQuery = z.infer<typeof softwareCatalogListQuerySchema>;
-
-// ============================================
-// Software Bundle Schemas
-// ============================================
-
-export const softwareBundleListQuerySchema = paginationQuerySchema.extend({
-  os: z.enum(['Windows', 'Mac', 'Linux']).optional(),
-});
-
-export const createSoftwareBundleSchema = z.object({
-  bundleName: z.string().min(1).max(255),
-  os: z.enum(['Windows', 'Mac', 'Linux']),
-  description: z.string().optional(),
-  applications: z.array(z.string()).default([]),
-});
-
-export const updateSoftwareBundleSchema = createSoftwareBundleSchema.partial();
-
-export type CreateSoftwareBundleInput = z.infer<typeof createSoftwareBundleSchema>;
-export type UpdateSoftwareBundleInput = z.infer<typeof updateSoftwareBundleSchema>;
-export type SoftwareBundleListQuery = z.infer<typeof softwareBundleListQuerySchema>;
-
-// ============================================
 // Software Deployment Schemas
 // ============================================
 
 export const softwareDeploymentListQuerySchema = paginationQuerySchema.extend({
-  stage: z.enum(['COMPLETED', 'IN_PROGRESS', 'INSTALLED', 'FAILED']).optional(),
+  status: z.enum(['COMPLETED', 'IN_PROGRESS', 'INSTALLED', 'FAILED']).optional(),
 });
 
 export const createSoftwareDeploymentSchema = z.object({
   deploymentName: z.string().min(1).max(255),
   description: z.string().optional(),
-  deploymentType: z.enum(['install', 'uninstall', 'upgrade']).default('install'),
-  selectionType: z.enum(['application', 'bundle']).default('application'),
+  deploymentType: z.enum(['INSTALL', 'UNINSTALL', 'UPGRADE']).default('INSTALL'),
+  selectionType: z.enum(['APPLICATION', 'BUNDLE']).default('APPLICATION'),
   selectedItems: z.array(z.string()).min(1),
-  scope: z.enum(['all', 'windows', 'mac', 'linux']).default('all'),
+  scope: z.enum(['ALL', 'WINDOWS', 'MAC', 'LINUX']).default('ALL'),
   endpoints: z.array(z.string()).optional(),
   deploymentPolicy: z.string().optional(),
   retryCount: z.number().int().min(1).max(10).default(1),
-  notifyTo: z.enum(['admin', 'user']).default('admin'),
+  notifyTo: z.enum(['ADMIN', 'USER']).default('ADMIN'),
 });
 
 export type CreateSoftwareDeploymentInput = z.infer<typeof createSoftwareDeploymentSchema>;
@@ -151,19 +98,19 @@ export type SoftwareDeploymentListQuery = z.infer<typeof softwareDeploymentListQ
 // ============================================
 
 export const configCatalogListQuerySchema = paginationQuerySchema.extend({
-  os: z.enum(['Windows', 'Mac', 'Linux']).optional(),
+  os: z.enum(['WINDOWS', 'MAC', 'LINUX']).optional(),
   search: z.string().optional(),
 });
 
 export const createConfigCatalogSchema = z.object({
   name: z.string().min(1).max(255),
-  os: z.enum(['Windows', 'Mac', 'Linux']),
+  os: z.enum(['WINDOWS', 'MAC', 'LINUX']),
   description: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  configurationType: z.enum(['command', 'policy', 'script']).default('command'),
-  architecture: z.enum(['x64', 'x86', 'ARM64']).default('x64'),
+  configurationType: z.enum(['COMMAND', 'POLICY', 'SCRIPT']).default('COMMAND'),
+  architecture: z.enum(['X64', 'X86', 'ARM64']).default('X64'),
   isRemediation: z.boolean().default(false),
-  commandType: z.enum(['powershell', 'cmd', 'bash', 'sh']).default('powershell'),
+  commandType: z.enum(['POWERSHELL', 'CMD', 'BASH', 'SH']).default('POWERSHELL'),
   command: z.string().min(1),
 });
 
@@ -178,12 +125,12 @@ export type ConfigCatalogListQuery = z.infer<typeof configCatalogListQuerySchema
 // ============================================
 
 export const configBundleListQuerySchema = paginationQuerySchema.extend({
-  os: z.enum(['Windows', 'Mac', 'Linux']).optional(),
+  os: z.enum(['WINDOWS', 'MAC', 'LINUX']).optional(),
 });
 
 export const createConfigBundleSchema = z.object({
   bundleName: z.string().min(1).max(255),
-  os: z.enum(['Windows', 'Mac', 'Linux']),
+  os: z.enum(['WINDOWS', 'MAC', 'LINUX']),
   description: z.string().optional(),
   configurations: z.array(z.string()).default([]),
 });
@@ -199,19 +146,19 @@ export type ConfigBundleListQuery = z.infer<typeof configBundleListQuerySchema>;
 // ============================================
 
 export const configDeploymentListQuerySchema = paginationQuerySchema.extend({
-  stage: z.enum(['COMPLETED', 'IN_PROGRESS', 'INSTALLED', 'FAILED']).optional(),
+  status: z.enum(['COMPLETED', 'IN_PROGRESS', 'INSTALLED', 'FAILED']).optional(),
 });
 
 export const createConfigDeploymentSchema = z.object({
   deploymentName: z.string().min(1).max(255),
   description: z.string().optional(),
-  selectionType: z.enum(['configuration', 'bundle']).default('configuration'),
+  selectionType: z.enum(['CONFIGURATION', 'BUNDLE']).default('CONFIGURATION'),
   selectedItems: z.array(z.string()).min(1),
-  scope: z.enum(['all', 'windows', 'mac', 'linux']).default('all'),
+  scope: z.enum(['ALL', 'WINDOWS', 'MAC', 'LINUX']).default('ALL'),
   endpoints: z.array(z.string()).optional(),
   deploymentPolicy: z.string().optional(),
   retryCount: z.number().int().min(1).max(10).default(1),
-  notifyTo: z.enum(['admin', 'user']).default('admin'),
+  notifyTo: z.enum(['ADMIN', 'USER']).default('ADMIN'),
 });
 
 export type CreateConfigDeploymentInput = z.infer<typeof createConfigDeploymentSchema>;
@@ -229,8 +176,8 @@ export const createDeploymentPolicySchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().optional(),
   type: z.enum(['SCHEDULE', 'INSTANT']).default('INSTANT'),
-  supportedModule: z.enum(['All', 'Patch', 'Update', 'Security']).default('All'),
-  relatedType: z.enum(['No Relation', 'Critical', 'Important', 'Optional']).default('No Relation'),
+  supportedModule: z.enum(['ALL', 'PATCH', 'UPDATE', 'SECURITY']).default('ALL'),
+  relatedType: z.enum(['NO_RELATION', 'CRITICAL', 'IMPORTANT', 'OPTIONAL']).default('NO_RELATION'),
 });
 
 export const updateDeploymentPolicySchema = createDeploymentPolicySchema.partial();

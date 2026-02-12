@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 // Report types enum
-const reportTypeEnum = z.enum(['patch', 'asset', 'vulnerability', 'compliance', 'audit', 'custom']);
-const reportFormatEnum = z.enum(['PDF', 'CSV', 'Excel']);
-const reportStatusEnum = z.enum(['draft', 'generating', 'completed', 'failed']);
-const frequencyEnum = z.enum(['daily', 'weekly', 'monthly']);
+const reportTypeEnum = z.enum(['PATCH', 'ASSET', 'VULNERABILITY', 'COMPLIANCE', 'AUDIT', 'CUSTOM']);
+const reportFormatEnum = z.enum(['PDF', 'CSV', 'XLSX']);
+const reportStatusEnum = z.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED']);
+const frequencyEnum = z.enum(['DAILY', 'WEEKLY', 'MONTHLY']);
 
 // List reports query params
 export const listReportsQuerySchema = z.object({

@@ -1,6 +1,6 @@
-import { prisma } from '@/db/client';
-import { decrypt } from '@shared/utils/crypto';
 import { createTransporter, type MailServerConfig } from '@shared/services/email.service';
+import { decrypt } from '@shared/utils/crypto';
+import { prisma } from '@/db/client';
 
 /**
  * Load SMTP configuration from the Settings table.

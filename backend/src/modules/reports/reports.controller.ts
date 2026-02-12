@@ -1,6 +1,10 @@
-import { RequestHandler } from 'express';
 import * as fs from 'fs';
+import { RequestHandler } from 'express';
+import { createLogger } from '@shared/services/logger';
+import { sendSuccess, sendError, typedQuery } from '@shared/utils';
 import { reportsService } from './reports.service';
+
+const logger = createLogger('reports-controller');
 import type {
   ListReportsQuery,
   SimpleCreateReportBody,
@@ -17,9 +21,9 @@ import type {
  */
 export const listReports: RequestHandler = async (req, res, next) => {
   try {
-    const query = req.query as unknown as ListReportsQuery;
+    const query = typedQuery<ListReportsQuery>(req);
     const result = await reportsService.listReports(query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -32,7 +36,7 @@ export const listReports: RequestHandler = async (req, res, next) => {
 export const getReportById: RequestHandler = async (req, res, next) => {
   try {
     const result = await reportsService.getReportById(req.params.id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -51,23 +55,26 @@ export const createReport: RequestHandler = async (req, res, next) => {
     if ('step' in body) {
       // Wizard mode
       switch (body.step) {
-        case 1:
+        case 1: {
           const step1Result = await reportsService.createReportStep1(body.data, userId);
-          res.json(step1Result);
+          sendSuccess(res, step1Result);
           break;
-        case 2:
+        }
+        case 2: {
           const step2Result = await reportsService.createReportStep2(body.reportId, body.data);
-          res.json(step2Result);
+          sendSuccess(res, step2Result);
           break;
-        case 3:
+        }
+        case 3: {
           const step3Result = await reportsService.createReportStep3(body.reportId, body.data);
-          res.status(201).json(step3Result);
+          sendSuccess(res, step3Result, 201);
           break;
+        }
       }
     } else {
       // Simple creation mode
       const result = await reportsService.createReport(body, userId);
-      res.status(201).json(result);
+      sendSuccess(res, result, 201);
     }
   } catch (error) {
     next(error);
@@ -83,7 +90,7 @@ export const updateReport: RequestHandler = async (req, res, next) => {
     const userId = req.user?.id;
     const body = req.body as UpdateReportBody;
     const result = await reportsService.updateReport(req.params.id, body, userId);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -97,7 +104,7 @@ export const deleteReport: RequestHandler = async (req, res, next) => {
   try {
     const userId = req.user?.id;
     const result = await reportsService.deleteReport(req.params.id, userId);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -130,7 +137,7 @@ export const downloadReport: RequestHandler = async (req, res, next) => {
 export const regenerateReport: RequestHandler = async (req, res, next) => {
   try {
     const result = await reportsService.regenerateReport(req.params.id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -142,26 +149,25 @@ export const regenerateReport: RequestHandler = async (req, res, next) => {
  */
 export const sendReport: RequestHandler = async (req, res, next) => {
   try {
-    const { recipients, subject, message, format } = req.body;
+    const { recipients, _subject, _message, _format } = req.body;
 
     // Validate recipients
     if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
-      return res.status(400).json({ error: 'At least one recipient is required' });
+      return sendError(res, 400, 'BAD_REQUEST', 'At least one recipient is required');
     }
 
     // Get report to verify it exists and is completed
     const report = await reportsService.getReportById(req.params.id);
 
-    if (report.status !== 'completed') {
-      return res.status(400).json({ error: 'Report must be completed before sending' });
+    if (report.status !== 'COMPLETED') {
+      return sendError(res, 400, 'BAD_REQUEST', 'Report must be completed before sending');
     }
 
     // TODO: Implement actual email sending with nodemailer
     // For now, return a mock success response
-    console.log(`[MOCK] Sending report ${report.name} to ${recipients.join(', ')}`);
+    logger.info({ reportName: report.name, recipients }, 'Sending report');
 
-    res.json({
-      success: true,
+    sendSuccess(res, {
       message: `Report will be sent to ${recipients.length} recipient(s). (Email service not configured)`,
     });
   } catch (error) {
@@ -176,7 +182,7 @@ export const sendReport: RequestHandler = async (req, res, next) => {
 export const getTemplates: RequestHandler = async (_req, res, next) => {
   try {
     const result = await reportsService.getTemplates();
-    res.json({ data: result });
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -190,9 +196,9 @@ export const getTemplates: RequestHandler = async (_req, res, next) => {
  */
 export const listSchedules: RequestHandler = async (req, res, next) => {
   try {
-    const query = req.query as unknown as ListSchedulesQuery;
+    const query = typedQuery<ListSchedulesQuery>(req);
     const result = await reportsService.listSchedules(query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -207,7 +213,7 @@ export const createSchedule: RequestHandler = async (req, res, next) => {
     const userId = req.user?.id;
     const body = req.body as CreateScheduleBody;
     const result = await reportsService.createSchedule(body, userId);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -222,7 +228,7 @@ export const updateSchedule: RequestHandler = async (req, res, next) => {
     const userId = req.user?.id;
     const body = req.body as UpdateScheduleBody;
     const result = await reportsService.updateSchedule(req.params.id, body, userId);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -236,7 +242,7 @@ export const deleteSchedule: RequestHandler = async (req, res, next) => {
   try {
     const userId = req.user?.id;
     const result = await reportsService.deleteSchedule(req.params.id, userId);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }

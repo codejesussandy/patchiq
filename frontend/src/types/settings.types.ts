@@ -1,4 +1,44 @@
-// Branch Location Types
+import type { ApprovalStatus } from '@shared/types';
+
+// Re-export shared API types for settings
+export type {
+  OrganizationResponse,
+  BranchResponse,
+  DepartmentResponse,
+  LocationResponse,
+  UserListItem,
+  UserDetailResponse,
+  UserAuditLogEntry,
+  ModulePermissions,
+  RolePermissions,
+  RoleResponse,
+  AlertConfigResponse,
+  LdapConfigResponse,
+  ServerSettingsResponse,
+  AgentConfigSettingsResponse,
+  ProxyServerResponse,
+  MailServerResponse,
+  AuditLogResponse,
+  AuditLogFilterOptions,
+  PlatformLicenseResponse,
+  EnrollSecretResponse,
+  IntegrationResponse,
+  ComputerGroupResponse,
+  DeploymentPolicyResponse,
+  VulnerabilityPreferenceResponse,
+  PatchPreferenceResponse,
+  BrandingResponse,
+  AgentApprovalSettingsResponse,
+  AgentApprovalResponse,
+  DistributionServerResponse,
+  RedHatNominationResponse,
+  VendorLogoResponse,
+} from '@shared/types';
+
+// Re-export User types for convenience
+export type { User, UserFormData, InviteUserFormData } from './user.types';
+
+// UI-specific Branch type (extra form fields)
 export type Branch = {
   id: string;
   name: string;
@@ -19,9 +59,7 @@ export type Branch = {
 
 export type BranchFormData = Omit<Branch, 'id' | 'users' | 'assets' | 'status'>;
 
-// Re-export User types for convenience
-export type { User, UserFormData, InviteUserFormData } from './user.types';
-
+// UI-specific Role type
 export type Role = {
   id: string;
   name: string;
@@ -36,7 +74,7 @@ export type Role = {
 
 export type Permission = {
   module: string;
-  actions: string[]; // ['view', 'create', 'edit', 'delete']
+  actions: string[];
 };
 
 export type RoleFormData = {
@@ -48,7 +86,7 @@ export type RoleFormData = {
   capabilities?: string[];
 };
 
-// Policy Types
+// Policy Types (UI-specific)
 export type Policy = {
   id: string;
   name: string;
@@ -66,7 +104,6 @@ export type Policy = {
 };
 
 export type PolicyConfiguration = {
-  // Password Policy
   resetDuration?: string;
   changeEveryDays?: number;
   lastNPasswordHistory?: number;
@@ -76,9 +113,7 @@ export type PolicyConfiguration = {
   minUpperCaseCharacters?: number;
   minNumbers?: number;
   minSpecialCharacters?: number;
-
-  // Other policy types can have different configurations
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export type PolicyFormData = {
@@ -90,7 +125,7 @@ export type PolicyFormData = {
   configuration: PolicyConfiguration;
 };
 
-// Deployment Policy Types
+// UI-specific Deployment Policy type
 export type DeploymentPolicy = {
   id: string;
   name: string;
@@ -111,7 +146,7 @@ export type DeploymentPolicyFormData = {
   relatedType: string;
 };
 
-// Mail Server Configuration Types
+// Mail Server Configuration Types (UI-specific)
 export type MailServerConfig = {
   smtpHost: string;
   smtpPort: number;
@@ -123,7 +158,7 @@ export type MailServerConfig = {
   testEmail?: string;
 };
 
-// Proxy Server Configuration Types
+// Proxy Server Configuration Types (UI-specific)
 export type ProxyServerConfig = {
   enabled: boolean;
   host?: string;
@@ -134,7 +169,7 @@ export type ProxyServerConfig = {
   noProxyList?: string[];
 };
 
-// Vendor Logo Types
+// Vendor Logo Types (UI-specific)
 export type VendorLogo = {
   id: string;
   name: string;
@@ -153,7 +188,7 @@ export type VendorLogoFormData = {
   logo: File;
 };
 
-// LDAP Server Configuration Types
+// LDAP Server Configuration Types (UI-specific)
 export type LDAPServerConfig = {
   id: string;
   name: string;
@@ -177,7 +212,7 @@ export type LDAPServerConfig = {
 
 export type LDAPServerFormData = Omit<LDAPServerConfig, 'id' | 'createdAt' | 'updatedAt'>;
 
-// Risk Score Types
+// Risk Score Types (UI-specific)
 export type RiskScore = {
   id: string;
   applyDefaultSettings: boolean;
@@ -191,7 +226,7 @@ export type RiskScore = {
 
 export type RiskScoreFormData = Omit<RiskScore, 'id' | 'createdAt' | 'updatedAt'>;
 
-// Remote Desktop Settings Types
+// Remote Desktop Settings Types (UI-specific)
 export type RemoteDesktopSettings = {
   id: string;
   connectionType: 'Local' | 'Remote';
@@ -203,7 +238,7 @@ export type RemoteDesktopSettings = {
 
 export type RemoteDesktopSettingsFormData = Omit<RemoteDesktopSettings, 'id' | 'createdAt' | 'updatedAt'>;
 
-// Server Settings Types
+// Server Settings Types (UI-specific)
 export type ServerSettings = {
   id: string;
   sessionTimeout: boolean;
@@ -218,7 +253,7 @@ export type ServerSettings = {
 
 export type ServerSettingsFormData = Omit<ServerSettings, 'id' | 'createdAt' | 'updatedAt'>;
 
-// Marketplace/Integration Types
+// Marketplace/Integration Types (UI-specific)
 export type Integration = {
   id: string;
   name: string;
@@ -240,7 +275,7 @@ export type IntegrationFormData = {
   recipients?: string[];
 };
 
-// Agent Approval Settings Types
+// Agent Approval Settings Types (UI-specific)
 export type AgentApprovalSettings = {
   id?: string;
   approvalType: 'auto' | 'manual';
@@ -254,14 +289,14 @@ export type AgentApprovalSettingsFormData = Omit<
   'id' | 'createdAt' | 'updatedAt'
 >;
 
-// Vulnerability Preference Types
+// Vulnerability Preference Types (UI-specific)
 export type VulnerabilityPreference = {
   id: string;
-  lastSyncAt: string; // ISO timestamp
-  scanJobInterval: number; // e.g., 2
-  scanJobUnit: 'Hour' | 'Day' | 'Week'; // e.g., "Hour"
-  databaseSyncTime: string; // Time in HH:mm:ss format, e.g., "01:00:00"
-  totalCveCount?: number; // Read-only field from backend
+  lastSyncAt: string;
+  scanJobInterval: number;
+  scanJobUnit: 'Hour' | 'Day' | 'Week';
+  databaseSyncTime: string;
+  totalCveCount?: number;
   createdAt: string;
   updatedAt?: string;
 };
@@ -272,7 +307,7 @@ export type VulnerabilityPreferenceFormData = {
   databaseSyncTime: string;
 };
 
-// Agent Configuration Types
+// Agent Configuration Types (UI-specific)
 export type AgentConfiguration = {
   id: string;
   allowedBandwidth: number;
@@ -296,50 +331,50 @@ export type AgentConfiguration = {
 
 export type AgentConfigurationFormData = Omit<AgentConfiguration, 'id' | 'createdAt' | 'updatedAt'>;
 
-// Agent Approval Types
-export type AgentApprovalStatus = 'Pending' | 'Approved' | 'Rejected';
+// Agent Approval Types — alias for shared ApprovalStatus
+export type AgentApprovalStatus = ApprovalStatus;
 
 export type AgentApproval = {
   id: string;
   uuid: string;
   hostName: string;
   ipAddresses: string[];
-  createdOn: string; // ISO 8601 format
+  createdOn: string;
   performedBy: string;
   status: AgentApprovalStatus;
 };
 
-// Enroll Secret Types
+// Enroll Secret Types (UI-specific)
 export type EnrollSecret = {
   id: string;
   name: string;
   secret: string;
   organization: string;
   department: string;
-  createdOn: string; // ISO 8601 format
+  createdOn: string;
 };
 
 export type EnrollSecretFormData = Omit<EnrollSecret, 'id' | 'createdOn'>;
 
-// Red Hat Agent Nomination Types
+// Red Hat Agent Nomination Types (UI-specific)
 export type RedHatAgentNomination = {
   id: string;
   name: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
   endpoint: number;
-  scheduledTime?: string; // Time in HH:mm format
-  lastSyncTime: string; // ISO 8601 format
+  scheduledTime?: string;
+  lastSyncTime: string;
   updatedBy: string;
-  updatedAt: string; // ISO 8601 format
+  updatedAt: string;
 };
 
-// Computer Group Types
+// Computer Group Types (UI-specific)
 export type ComputerGroup = {
   id: string;
   name: string;
   description: string;
-  endpoints: string[]; // Array of endpoint IDs or names
-  endpointCount: number; // Calculated field
+  endpoints: string[];
+  endpointCount: number;
   createdBy: string;
   createdAt: string;
   updatedAt?: string;
@@ -348,10 +383,10 @@ export type ComputerGroup = {
 export type ComputerGroupFormData = {
   name: string;
   description: string;
-  endpoints: string[]; // Multi-select dropdown
+  endpoints: string[];
 };
 
-// Endpoint option for dropdown
+// Endpoint option for dropdown (UI-specific)
 export type EndpointOption = {
   id: string;
   name: string;
@@ -359,18 +394,18 @@ export type EndpointOption = {
   status?: 'Online' | 'Offline';
 };
 
-// Patch Preferences Types
+// Patch Preferences Types (UI-specific)
 export type PatchPreference = {
   id: string;
   enablePatching: boolean;
   corridorOnlyApprovedPatch: boolean;
-  patchSyncForOS: string[]; // e.g., ["Windows", "Ubuntu"]
+  patchSyncForOS: string[];
   patchApprovalPolicy: 'PreApproved' | 'ManuallyApproves' | 'TestAndApprove';
   enableThirdPartyPatching: boolean;
-  patchApprovalScheduleTime: string; // Time in HH:mm:ss format
-  scheduleTime: string; // Time in HH:mm:ss format
-  zeroTouchDeploymentScheduleTime: string; // Time in HH:mm:ss format
-  lastSyncedAt: string; // ISO 8601 format
+  patchApprovalScheduleTime: string;
+  scheduleTime: string;
+  zeroTouchDeploymentScheduleTime: string;
+  lastSyncedAt: string;
   createdAt: string;
   updatedAt?: string;
 };
@@ -386,7 +421,7 @@ export type PatchPreferenceFormData = {
   zeroTouchDeploymentScheduleTime: string;
 };
 
-// Distribution Server Types
+// Distribution Server Types (UI-specific)
 export type DistributionServer = {
   id: string;
   name: string;
@@ -394,7 +429,7 @@ export type DistributionServer = {
   location: string;
   url: string;
   version: string;
-  createdOn: string; // ISO 8601 format
+  createdOn: string;
 };
 
 export type DistributionServerFormData = Omit<DistributionServer, 'id' | 'createdOn'>;

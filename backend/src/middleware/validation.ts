@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
-import { z, ZodSchema, ZodError } from 'zod';
+import { ZodSchema, ZodError } from 'zod';
 import { BadRequestError } from '@shared/errors';
 
 type ValidationTarget = 'body' | 'query' | 'params';
@@ -17,7 +17,7 @@ export function validate<T extends ZodSchema>(
       if (target === 'body') {
         req.body = result;
       } else if (target === 'query') {
-        (req as unknown as { query: z.infer<T> }).query = result;
+        Object.assign(req, { query: result });
       } else {
         req.params = result;
       }

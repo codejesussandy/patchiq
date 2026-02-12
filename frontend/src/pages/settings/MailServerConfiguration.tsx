@@ -1,41 +1,31 @@
+import { useEffect } from 'react';
 import { App,
   Form, Input, Select, Checkbox, Button, Space, Typography, Divider } from 'antd';
-import { useState, useEffect } from 'react';
-import { settingsService } from '../../services/settings.service';
+import { useMailServerConfig, useUpdateMailServerConfig, useTestMailServerConfig } from '../../hooks/useSettings';
 import type { MailServerConfig } from '../../types/settings.types';
+import { getErrorMessage } from '../../utils/error';
 
 const { Title } = Typography;
 
 export const MailServerConfiguration = () => {
   const { message } = App.useApp();
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
-  const [testLoading, setTestLoading] = useState(false);
-  const [config, setConfig] = useState<MailServerConfig | null>(null);
+  const { data: config } = useMailServerConfig();
+  const updateConfigMutation = useUpdateMailServerConfig();
+  const testConfigMutation = useTestMailServerConfig();
 
   useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const data = await settingsService.getMailServerConfig();
-        setConfig(data);
-        form.setFieldsValue(data);
-      } catch (error) {
-        console.error('Failed to fetch mail server config:', error);
-      }
-    };
-    fetchConfig();
-  }, [form]);
+    if (config) {
+      form.setFieldsValue(config);
+    }
+  }, [config, form]);
 
-  const onFinish = async (values: any) => {
-    setLoading(true);
+  const onFinish = async (values: MailServerConfig) => {
     try {
-      await settingsService.updateMailServerConfig(values);
+      await updateConfigMutation.mutateAsync(values);
       message.success('Mail server configuration updated successfully');
-      setConfig(values);
-    } catch (error) {
+    } catch {
       message.error('Failed to update mail server configuration');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -45,15 +35,11 @@ export const MailServerConfiguration = () => {
       message.warning('Please enter a test email address');
       return;
     }
-    setTestLoading(true);
     try {
-      await settingsService.testMailServerConfig(values);
+      await testConfigMutation.mutateAsync(values);
       message.success('Test email sent successfully! Please check your inbox.');
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || 'Mail server connection test failed';
-      message.error(errorMessage);
-    } finally {
-      setTestLoading(false);
+    } catch (error: unknown) {
+      message.error(getErrorMessage(error, 'Mail server connection test failed'));
     }
   };
 
@@ -165,10 +151,10 @@ export const MailServerConfiguration = () => {
 
         <Form.Item>
           <Space>
-            <Button type="primary" htmlType="submit" loading={loading}>
+            <Button type="primary" htmlType="submit" loading={updateConfigMutation.isPending}>
               Save
             </Button>
-            <Button loading={testLoading} onClick={handleTest}>
+            <Button loading={testConfigMutation.isPending} onClick={handleTest}>
               Test
             </Button>
             <Button onClick={handleReset}>

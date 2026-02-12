@@ -3,7 +3,6 @@
  * API client for software package repository (Hub)
  */
 
-import { api } from './api.service';
 import type {
   SoftwarePackage,
   CreatePackageInput,
@@ -17,6 +16,7 @@ import type {
   BundleUploadResult,
   GroupedPackageListResponse,
 } from '../types/hub.types';
+import { api } from './api.service';
 
 export const hubService = {
   // ============================================

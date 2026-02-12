@@ -1,6 +1,7 @@
-import { Request, Response, NextFunction, RequestHandler } from 'express';
-import { vulnerabilitiesService } from './vulnerabilities.service';
+import { RequestHandler } from 'express';
+import { sendSuccess, typedQuery } from '@shared/utils';
 import { prisma } from '@/db/client';
+import { vulnerabilitiesService } from './vulnerabilities.service';
 import type {
   ListVulnerabilitiesQuery,
   ListZeroDayQuery,
@@ -8,6 +9,9 @@ import type {
   CreateExceptionBody,
   UpdateExceptionBody,
   ScanVulnerabilitiesBody,
+  StatsQuery,
+  UnmatchedSoftwareQuery,
+  CveSuggestQuery,
 } from './vulnerabilities.validators';
 
 /**
@@ -16,9 +20,9 @@ import type {
  */
 export const listVulnerabilities: RequestHandler = async (req, res, next) => {
   try {
-    const query = req.query as unknown as ListVulnerabilitiesQuery;
+    const query = typedQuery<ListVulnerabilitiesQuery>(req);
     const result = await vulnerabilitiesService.listVulnerabilities(query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -30,9 +34,9 @@ export const listVulnerabilities: RequestHandler = async (req, res, next) => {
  */
 export const listZeroDayVulnerabilities: RequestHandler = async (req, res, next) => {
   try {
-    const query = req.query as unknown as ListZeroDayQuery;
+    const query = typedQuery<ListZeroDayQuery>(req);
     const result = await vulnerabilitiesService.listZeroDayVulnerabilities(query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -45,7 +49,7 @@ export const listZeroDayVulnerabilities: RequestHandler = async (req, res, next)
 export const getVulnerabilityById: RequestHandler = async (req, res, next) => {
   try {
     const result = await vulnerabilitiesService.getVulnerabilityById(req.params.id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -57,9 +61,9 @@ export const getVulnerabilityById: RequestHandler = async (req, res, next) => {
  */
 export const getAffectedEndpoints: RequestHandler = async (req, res, next) => {
   try {
-    const query = req.query as unknown as AffectedQuery;
+    const query = typedQuery<AffectedQuery>(req);
     const result = await vulnerabilitiesService.getAffectedEndpoints(req.params.cve, query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -71,9 +75,9 @@ export const getAffectedEndpoints: RequestHandler = async (req, res, next) => {
  */
 export const getAffectedSoftware: RequestHandler = async (req, res, next) => {
   try {
-    const query = req.query as unknown as AffectedQuery;
+    const query = typedQuery<AffectedQuery>(req);
     const result = await vulnerabilitiesService.getAffectedSoftware(req.params.cve, query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -85,10 +89,9 @@ export const getAffectedSoftware: RequestHandler = async (req, res, next) => {
  */
 export const getStats: RequestHandler = async (req, res, next) => {
   try {
-    // Support affectsAssets filter to only count CVEs affecting your assets
-    const affectsAssets = req.query.affectsAssets === 'true';
-    const result = await vulnerabilitiesService.getStats(affectsAssets);
-    res.json({ data: result });
+    const { affectsAssets } = typedQuery<StatsQuery>(req);
+    const result = await vulnerabilitiesService.getStats(affectsAssets ?? false);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -100,16 +103,12 @@ export const getStats: RequestHandler = async (req, res, next) => {
  */
 export const suggestCvesForSoftware: RequestHandler = async (req, res, next) => {
   try {
-    const { software, vendor } = req.query;
-    if (!software || typeof software !== 'string') {
-      res.status(400).json({ error: 'software query param is required' });
-      return;
-    }
+    const { software, vendor } = typedQuery<CveSuggestQuery>(req);
     const result = await vulnerabilitiesService.suggestCvesForSoftware({
       software,
-      vendor: typeof vendor === 'string' ? vendor : undefined,
+      vendor,
     });
-    res.json({ data: result });
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -122,7 +121,7 @@ export const suggestCvesForSoftware: RequestHandler = async (req, res, next) => 
 export const getTypes: RequestHandler = async (_req, res, next) => {
   try {
     const result = await vulnerabilitiesService.getTypes();
-    res.json({ data: result });
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -135,7 +134,7 @@ export const getTypes: RequestHandler = async (_req, res, next) => {
 export const getEndpointVulnerabilities: RequestHandler = async (_req, res, next) => {
   try {
     const result = await vulnerabilitiesService.getEndpointVulnerabilities();
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -148,7 +147,7 @@ export const getEndpointVulnerabilities: RequestHandler = async (_req, res, next
 export const getNetworkVulnerabilities: RequestHandler = async (_req, res, next) => {
   try {
     const result = await vulnerabilitiesService.getNetworkVulnerabilities();
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -161,7 +160,7 @@ export const getNetworkVulnerabilities: RequestHandler = async (_req, res, next)
 export const listExceptions: RequestHandler = async (_req, res, next) => {
   try {
     const result = await vulnerabilitiesService.getExceptions();
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -176,7 +175,7 @@ export const createExceptions: RequestHandler = async (req, res, next) => {
     const userId = req.user?.id;
     const body = req.body as CreateExceptionBody;
     const result = await vulnerabilitiesService.createExceptions(body, userId);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -191,7 +190,7 @@ export const updateException: RequestHandler = async (req, res, next) => {
     const userId = req.user?.id;
     const body = req.body as UpdateExceptionBody;
     const result = await vulnerabilitiesService.updateException(req.params.id, body, userId);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -205,7 +204,7 @@ export const deleteException: RequestHandler = async (req, res, next) => {
   try {
     const userId = req.user?.id;
     const result = await vulnerabilitiesService.deleteException(req.params.id, userId);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -220,7 +219,7 @@ export const triggerScan: RequestHandler = async (req, res, next) => {
     const userId = req.user?.id;
     const body = req.body as ScanVulnerabilitiesBody;
     const result = await vulnerabilitiesService.triggerScan(body, userId);
-    res.status(202).json(result);
+    sendSuccess(res, result, 202);
   } catch (error) {
     next(error);
   }
@@ -236,9 +235,7 @@ export const triggerScan: RequestHandler = async (req, res, next) => {
  */
 export const listUnmatchedSoftware: RequestHandler = async (req, res, next) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
-    const offset = parseInt(req.query.offset as string) || 0;
-    const resolved = req.query.resolved === 'true';
+    const { limit, offset, resolved } = typedQuery<UnmatchedSoftwareQuery>(req);
 
     const [data, total] = await Promise.all([
       prisma.unmatchedSoftware.findMany({
@@ -250,7 +247,7 @@ export const listUnmatchedSoftware: RequestHandler = async (req, res, next) => {
       prisma.unmatchedSoftware.count({ where: { resolved } }),
     ]);
 
-    res.json({ data, total, limit, offset });
+    sendSuccess(res, { data, total, limit, offset });
   } catch (error) {
     next(error);
   }
@@ -273,7 +270,7 @@ export const resolveUnmatchedSoftware: RequestHandler = async (req, res, next) =
       },
     });
 
-    res.json({ data: updated });
+    sendSuccess(res, updated);
   } catch (error) {
     next(error);
   }
@@ -304,15 +301,13 @@ export const getCpeStats: RequestHandler = async (_req, res, next) => {
       ? Math.round((softwareWithCpe / totalSoftware) * 100)
       : 0;
 
-    res.json({
-      data: {
-        totalMappings,
-        totalUnmatched,
-        unresolvedUnmatched,
-        softwareWithCpe,
-        softwareWithoutCpe,
-        matchRate,
-      },
+    sendSuccess(res, {
+      totalMappings,
+      totalUnmatched,
+      unresolvedUnmatched,
+      softwareWithCpe,
+      softwareWithoutCpe,
+      matchRate,
     });
   } catch (error) {
     next(error);

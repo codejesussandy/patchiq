@@ -8,13 +8,16 @@
  * 4. Updates database records
  */
 
-import { Worker, Job, Queue, QueueEvents, ConnectionOptions } from 'bullmq';
-import * as https from 'https';
-import * as http from 'http';
 import * as crypto from 'crypto';
-import { prisma } from '../../db/client';
-import { minioStorage } from '../../shared/services/minio.service';
+import * as http from 'http';
+import * as https from 'https';
+import { Worker, Job, Queue, QueueEvents, ConnectionOptions } from 'bullmq';
 import { env } from '../../config/env';
+import { prisma } from '../../db/client';
+import { createLogger } from '../../shared/services/logger';
+import { minioStorage } from '../../shared/services/minio.service';
+
+const logger = createLogger('download-worker');
 
 // Queue name for patch downloads
 export const DOWNLOAD_QUEUE_NAME = 'patch-downloads';
@@ -55,7 +58,6 @@ export interface DownloadJobData {
   targetPath: string;      // MinIO object key
   fileName: string;
   patchId?: string;
-  fileDetailId?: string;
   expectedChecksum?: string;
   checksumType?: string;
   expectedSize?: number;
@@ -205,10 +207,10 @@ async function updateJobProgress(
     if (error) {
       updateData.error = error;
     }
-    if (status === 'downloading' && progress === 0) {
+    if (status === 'DOWNLOADING' && progress === 0) {
       updateData.startedAt = new Date();
     }
-    if (status === 'completed' || status === 'failed') {
+    if (status === 'COMPLETED' || status === 'FAILED') {
       updateData.completedAt = new Date();
     }
 
@@ -217,7 +219,7 @@ async function updateJobProgress(
       data: updateData,
     });
   } catch (err) {
-    console.error(`Failed to update job ${jobId} progress:`, err);
+    logger.error({ err, jobId }, 'Failed to update job progress');
   }
 }
 
@@ -225,28 +227,26 @@ async function updateJobProgress(
  * Process a download job
  */
 async function processDownloadJob(job: Job<DownloadJobData, DownloadJobResult>): Promise<DownloadJobResult> {
-  const { jobId, sourceUrl, targetPath, fileName, expectedChecksum, checksumType, patchId, fileDetailId } = job.data;
+  const { jobId, sourceUrl, targetPath, fileName, expectedChecksum, checksumType } = job.data;
 
-  console.log(`[Download Worker] Processing job ${jobId}: ${fileName}`);
-  console.log(`[Download Worker] Source: ${sourceUrl}`);
-  console.log(`[Download Worker] Target: ${targetPath}`);
+  logger.info({ jobId, fileName, sourceUrl, targetPath }, 'Processing download job');
 
   try {
     // Update status to downloading
-    await updateJobProgress(jobId, 'downloading', 0);
+    await updateJobProgress(jobId, 'DOWNLOADING', 0);
 
     // Download the file
     const { buffer, checksum, contentType } = await downloadFile(
       sourceUrl,
       async (downloaded, total) => {
         const progress = total ? Math.round((downloaded / total) * 100) : 0;
-        await updateJobProgress(jobId, 'downloading', progress, BigInt(downloaded));
+        await updateJobProgress(jobId, 'DOWNLOADING', progress, BigInt(downloaded));
         await job.updateProgress(progress);
       }
     );
 
     // Update status to verifying
-    await updateJobProgress(jobId, 'verifying', 100, BigInt(buffer.length));
+    await updateJobProgress(jobId, 'VERIFYING', 100, BigInt(buffer.length));
 
     // Verify checksum if expected
     if (expectedChecksum) {
@@ -263,7 +263,7 @@ async function processDownloadJob(job: Job<DownloadJobData, DownloadJobResult>):
       }
     }
 
-    console.log(`[Download Worker] File downloaded: ${buffer.length} bytes, checksum: ${checksum}`);
+    logger.info({ bytes: buffer.length, checksum }, 'File downloaded');
 
     // Upload to MinIO
     const uploadResult = await minioStorage.uploadBuffer(targetPath, buffer, {
@@ -275,30 +275,13 @@ async function processDownloadJob(job: Job<DownloadJobData, DownloadJobResult>):
       },
     });
 
-    console.log(`[Download Worker] Uploaded to MinIO: ${uploadResult.objectKey}`);
-
-    // Update PatchFileDetail if provided
-    if (fileDetailId) {
-      await prisma.patchFileDetail.update({
-        where: { id: fileDetailId },
-        data: {
-          minioObjectKey: uploadResult.objectKey,
-          minioBucket: uploadResult.bucket,
-          checksum: uploadResult.checksum,
-          checksumType: 'sha256',
-          sizeBytes: BigInt(uploadResult.size),
-          downloadStatus: 'completed',
-          downloadedAt: new Date(),
-          downloadError: null,
-        },
-      });
-    }
+    logger.info({ objectKey: uploadResult.objectKey }, 'Uploaded to MinIO');
 
     // Update job as completed
     await prisma.patchDownloadJob.update({
       where: { jobId },
       data: {
-        status: 'completed',
+        status: 'COMPLETED',
         progress: 100,
         downloadedBytes: BigInt(buffer.length),
         actualChecksum: checksum,
@@ -307,7 +290,7 @@ async function processDownloadJob(job: Job<DownloadJobData, DownloadJobResult>):
       },
     });
 
-    console.log(`[Download Worker] Job ${jobId} completed successfully`);
+    logger.info({ jobId }, 'Download job completed successfully');
 
     return {
       success: true,
@@ -317,30 +300,18 @@ async function processDownloadJob(job: Job<DownloadJobData, DownloadJobResult>):
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[Download Worker] Job ${jobId} failed:`, errorMessage);
+    logger.error({ jobId, error: errorMessage }, 'Download job failed');
 
     // Update job as failed
     await prisma.patchDownloadJob.update({
       where: { jobId },
       data: {
-        status: 'failed',
+        status: 'FAILED',
         error: errorMessage,
         completedAt: new Date(),
         retryCount: { increment: 1 },
       },
     });
-
-    // Update PatchFileDetail if provided
-    if (fileDetailId) {
-      await prisma.patchFileDetail.update({
-        where: { id: fileDetailId },
-        data: {
-          downloadStatus: 'failed',
-          downloadError: errorMessage,
-          retryCount: { increment: 1 },
-        },
-      });
-    }
 
     throw error;
   }
@@ -364,15 +335,15 @@ function getDownloadWorker(): Worker<DownloadJobData, DownloadJobResult> {
 
     // Worker event handlers
     _downloadWorker.on('completed', (job, result) => {
-      console.log(`[Download Worker] Job ${job.id} completed:`, result.objectKey);
+      logger.info({ jobId: job.id, objectKey: result.objectKey }, 'Worker job completed');
     });
 
     _downloadWorker.on('failed', (job, error) => {
-      console.error(`[Download Worker] Job ${job?.id} failed:`, error.message);
+      logger.error({ jobId: job?.id, error: error.message }, 'Worker job failed');
     });
 
     _downloadWorker.on('error', (error) => {
-      console.error('[Download Worker] Worker error:', error);
+      logger.error({ err: error }, 'Worker error');
     });
   }
   return _downloadWorker;
@@ -386,10 +357,10 @@ function initQueueEvents() {
   // Only attach handlers if not already attached
   if (events.listenerCount('completed') === 0) {
     events.on('completed', ({ jobId }) => {
-      console.log(`[Download Queue] Job ${jobId} completed`);
+      logger.info({ jobId }, 'Queue job completed');
     });
     events.on('failed', ({ jobId, failedReason }) => {
-      console.log(`[Download Queue] Job ${jobId} failed: ${failedReason}`);
+      logger.error({ jobId, reason: failedReason }, 'Queue job failed');
     });
   }
 }
@@ -401,7 +372,7 @@ export async function queueDownloadJob(data: DownloadJobData): Promise<Job<Downl
   // Update database job status to queued
   await prisma.patchDownloadJob.update({
     where: { jobId: data.jobId },
-    data: { status: 'queued' },
+    data: { status: 'QUEUED' },
   });
 
   // Initialize queue and events
@@ -414,7 +385,7 @@ export async function queueDownloadJob(data: DownloadJobData): Promise<Job<Downl
     jobId: data.jobId,
   });
 
-  console.log(`[Download Queue] Added job ${data.jobId} to queue`);
+  logger.info({ jobId: data.jobId }, 'Added job to download queue');
 
   return job;
 }
@@ -435,7 +406,7 @@ export async function queueBulkDownloadJobs(jobs: DownloadJobData[]): Promise<vo
   // Update all database jobs to queued
   await prisma.patchDownloadJob.updateMany({
     where: { jobId: { in: jobs.map((j) => j.jobId) } },
-    data: { status: 'queued' },
+    data: { status: 'QUEUED' },
   });
 
   // Initialize queue and events
@@ -445,7 +416,7 @@ export async function queueBulkDownloadJobs(jobs: DownloadJobData[]): Promise<vo
   // Add all to queue
   await queue.addBulk(bulkJobs);
 
-  console.log(`[Download Queue] Added ${jobs.length} jobs to queue`);
+  logger.info({ jobCount: jobs.length }, 'Added jobs to download queue');
 }
 
 /**
@@ -477,7 +448,7 @@ export async function getQueueStats() {
 export async function pauseQueue(): Promise<void> {
   const queue = getDownloadQueue();
   await queue.pause();
-  console.log('[Download Queue] Queue paused');
+  logger.info('Download queue paused');
 }
 
 /**
@@ -486,7 +457,7 @@ export async function pauseQueue(): Promise<void> {
 export async function resumeQueue(): Promise<void> {
   const queue = getDownloadQueue();
   await queue.resume();
-  console.log('[Download Queue] Queue resumed');
+  logger.info('Download queue resumed');
 }
 
 /**
@@ -498,14 +469,14 @@ export async function cleanQueue(olderThanMs: number = 7 * 24 * 3600 * 1000): Pr
     queue.clean(olderThanMs, 1000, 'completed'),
     queue.clean(olderThanMs, 1000, 'failed'),
   ]);
-  console.log('[Download Queue] Queue cleaned');
+  logger.info('Download queue cleaned');
 }
 
 /**
  * Graceful shutdown
  */
 export async function shutdownWorker(): Promise<void> {
-  console.log('[Download Worker] Shutting down...');
+  logger.info('Download worker shutting down');
   if (_downloadWorker) {
     await _downloadWorker.close();
   }
@@ -515,7 +486,7 @@ export async function shutdownWorker(): Promise<void> {
   if (_downloadQueueEvents) {
     await _downloadQueueEvents.close();
   }
-  console.log('[Download Worker] Shutdown complete');
+  logger.info('Download worker shutdown complete');
 }
 
 /**
@@ -524,7 +495,7 @@ export async function shutdownWorker(): Promise<void> {
 export function startWorker(): void {
   getDownloadWorker();
   initQueueEvents();
-  console.log('[Download Worker] Worker started');
+  logger.info('Download worker started');
 }
 
 export default {

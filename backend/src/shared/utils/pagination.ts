@@ -11,6 +11,7 @@ export function getPaginationParams(params: PaginationParams) {
 export function paginate<T>(data: T[], total: number, params: PaginationParams): PaginatedResponse<T> {
   const { page, limit } = params;
   return {
+    success: true as const,
     data,
     total,
     page,

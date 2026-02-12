@@ -12,7 +12,7 @@ describe('JWT Utilities', () => {
   const testPayload = {
     userId: 'test-user-id',
     email: 'test@patchiq.io',
-    role: 'admin',
+    role: 'ADMIN',
   };
 
   describe('Token Signing', () => {

@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
+import { CloudUploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import { App,
   Button, Typography, Space, Card, Spin } from 'antd';
-import { CloudUploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/es/upload';
-import { settingsService } from '../../services/settings.service';
+import { useBrandingSettings, useUpdateBranding } from '../../hooks/useSettings';
 
 const { Title, Text } = Typography;
 
@@ -14,37 +14,26 @@ interface BrandingData {
 
 export const Branding = () => {
   const { message } = App.useApp();
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const { data: fetchedBranding, isLoading: loading } = useBrandingSettings();
+  const updateBrandingMutation = useUpdateBranding();
   const [logoFile, setLogoFile] = useState<RcFile | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [dragActive, setDragActive] = useState(false);
   const dragRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [initialized, setInitialized] = useState(false);
   const [brandingData, setBrandingData] = useState<BrandingData>({
     companyName: 'SkenzerIQ',
   });
 
-  useEffect(() => {
-    fetchBrandingData();
-  }, []);
-
-  const fetchBrandingData = async () => {
-    setLoading(true);
-    try {
-      const data = await settingsService.getBrandingSettings();
-      setBrandingData(data || { companyName: 'SkenzerIQ' });
-      if (data?.logoUrl) {
-        setLogoPreview(data.logoUrl);
-      }
-    } catch (error) {
-      console.error('Error fetching branding data:', error);
-      // Use default
-      setBrandingData({ companyName: 'SkenzerIQ' });
-    } finally {
-      setLoading(false);
+  // Sync fetched branding to local state once loaded
+  if (fetchedBranding && !initialized) {
+    setBrandingData(fetchedBranding || { companyName: 'SkenzerIQ' });
+    if (fetchedBranding?.logoUrl) {
+      setLogoPreview(fetchedBranding.logoUrl);
     }
-  };
+    setInitialized(true);
+  }
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -120,25 +109,17 @@ export const Branding = () => {
       return;
     }
 
-    setUploading(true);
     try {
-      // Create FormData for file upload
       const formData = new FormData();
       formData.append('logo', logoFile);
       formData.append('companyName', brandingData.companyName || 'SkenzerIQ');
 
-      // Upload the branding settings
-      await settingsService.updateBrandingSettings(formData);
+      await updateBrandingMutation.mutateAsync(formData);
       message.success('Branding settings updated successfully');
-
-      // Reset and reload
       setLogoFile(null);
-      await fetchBrandingData();
-    } catch (error) {
-      console.error('Error updating branding settings:', error);
+      setInitialized(false);
+    } catch {
       message.error('Failed to update branding settings');
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -266,7 +247,7 @@ export const Branding = () => {
                   danger
                   icon={<DeleteOutlined />}
                   onClick={handleRemoveLogo}
-                  disabled={uploading}
+                  disabled={updateBrandingMutation.isPending}
                 >
                   Remove
                 </Button>
@@ -274,7 +255,7 @@ export const Branding = () => {
               <Button
                 type="primary"
                 onClick={handleSubmit}
-                loading={uploading}
+                loading={updateBrandingMutation.isPending}
                 disabled={!logoFile}
               >
                 Update

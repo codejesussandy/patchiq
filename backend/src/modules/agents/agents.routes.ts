@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { AgentsController } from './agents.controller';
 import { authenticate } from '@middleware/auth';
 import { validateQuery } from '@middleware/validation';
+import { AgentsController } from './agents.controller';
 import { listAgentsQuerySchema } from './agents.validators';
 
 const router = Router();

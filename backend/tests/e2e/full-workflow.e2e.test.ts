@@ -26,7 +26,7 @@ describe('E2E: Complete User Journey', () => {
         email: testUserEmail,
         name: 'E2E Workflow User',
         passwordHash,
-        role: 'admin',
+        role: 'ADMIN',
         isActive: true,
         isOnboarded: true,
       },
@@ -139,7 +139,7 @@ describe('E2E: Complete User Journey', () => {
       expect(res.status).toBe(200);
       const agent = res.body.find((a: any) => a.id === testAgentId);
       expect(agent).toBeDefined();
-      expect(agent.status).toBe('Connected');
+      expect(agent.status).toBe('CONNECTED');
     });
   });
 
@@ -219,7 +219,7 @@ describe('E2E: Complete User Journey', () => {
           title: 'E2E Workflow Security Update',
           description: 'Test patch for E2E workflow',
           severity: 'High',
-          releaseDate: new Date().toISOString(),
+          publishedAt: new Date().toISOString(),
           rebootRequired: true,
           os: 'Windows',
           category: 'Security',
@@ -259,8 +259,7 @@ describe('E2E: Complete User Journey', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res.status).toBe(200);
-      // Backend returns 'Approved' with capital A
-      expect(res.body.approvalStatus).toBe('Approved');
+      expect(res.body.approvalStatus).toBe('APPROVED');
     });
 
     it('should create a deployment', async () => {
@@ -276,7 +275,7 @@ describe('E2E: Complete User Journey', () => {
         .send({
           name: 'E2E-Workflow Deployment',
           type: 'INSTALL',
-          scope: 'Endpoint',
+          scope: 'ENDPOINT',
           patches: [testPatchId],
         });
 
@@ -413,7 +412,7 @@ describe('E2E: Security Workflow - Zero Day Response', () => {
           email: 'admin@patchiq.io',
           name: 'Admin',
           passwordHash,
-          role: 'admin',
+          role: 'ADMIN',
           isActive: true,
           isOnboarded: true,
         },

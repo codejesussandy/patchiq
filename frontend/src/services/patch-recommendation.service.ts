@@ -1,10 +1,10 @@
-import { api } from './api.service';
 import type {
   PatchRecommendation,
   PatchRecommendationDashboardStats,
   ListRecommendationsParams,
   ListRecommendationsResponse,
 } from '../types/patch-recommendation.types';
+import { api } from './api.service';
 
 export const patchRecommendationService = {
   // List all recommendations with filters
@@ -60,7 +60,7 @@ export const patchRecommendationService = {
   // Deploy recommendation
   async deployRecommendation(
     id: string
-  ): Promise<{ recommendation: PatchRecommendation; deployment: any }> {
+  ): Promise<{ recommendation: PatchRecommendation; deployment: Record<string, unknown> }> {
     const response = await api.post(`/patch-recommendations/${id}/deploy`);
     return response.data.data;
   },

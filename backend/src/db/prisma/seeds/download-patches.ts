@@ -2,7 +2,7 @@
  * download-patches.ts — Download real patch binaries and upload to MinIO
  *
  * Downloads installers for 6 target apps (latest + N-1 + N-2) from official
- * sources, then uploads them to MinIO at the keys the PatchFileDetail records expect.
+ * sources, then uploads them to MinIO at the keys the PatchBundle records expect.
  *
  * Skips files already present in MinIO.
  *
@@ -10,11 +10,11 @@
  *   cd backend && npx tsx src/db/prisma/seeds/download-patches.ts
  */
 
-import * as Minio from 'minio';
 import * as fs from 'fs';
-import * as path from 'path';
-import * as https from 'https';
 import * as http from 'http';
+import * as https from 'https';
+import * as path from 'path';
+import * as Minio from 'minio';
 
 // ─── MinIO Client ─────────────────────────────────────────────────────
 
@@ -212,8 +212,9 @@ async function main() {
 
       // Cleanup temp file
       fs.unlinkSync(tempFile);
-    } catch (err: any) {
-      console.error(`       [FAIL] ${err.message}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`       [FAIL] ${message}`);
       if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
       failed++;
     }

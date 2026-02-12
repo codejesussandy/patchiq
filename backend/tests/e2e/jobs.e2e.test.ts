@@ -10,8 +10,6 @@ describe('E2E: Jobs Module', () => {
   let testUserId: string;
   let testPatchJobId: string;
   let testVulnerabilityJobId: string;
-  let testSoftwareCatalogId: string;
-  let testSoftwareBundleId: string;
   let testConfigCatalogId: string;
   let testConfigBundleId: string;
   let testDeploymentPolicyId: string;
@@ -26,7 +24,7 @@ describe('E2E: Jobs Module', () => {
         email: 'jobs-test-admin@patchiq.io',
         name: 'Jobs Test Admin',
         passwordHash,
-        role: 'admin',
+        role: 'ADMIN',
         isActive: true,
         isOnboarded: true,
       },
@@ -51,12 +49,6 @@ describe('E2E: Jobs Module', () => {
     }
     if (testConfigCatalogId) {
       await prisma.configCatalog.delete({ where: { id: testConfigCatalogId } }).catch(() => {});
-    }
-    if (testSoftwareBundleId) {
-      await prisma.softwareBundle.delete({ where: { id: testSoftwareBundleId } }).catch(() => {});
-    }
-    if (testSoftwareCatalogId) {
-      await prisma.softwareCatalog.delete({ where: { id: testSoftwareCatalogId } }).catch(() => {});
     }
     // Cleanup test user
     await prisma.refreshToken.deleteMany({ where: { userId: testUserId } });
@@ -83,7 +75,7 @@ describe('E2E: Jobs Module', () => {
           description: 'Test patch job for E2E testing',
           type: 'INSTANT',
           configType: 'INSTALL',
-          scope: 'Global',
+          scope: 'GLOBAL',
           patches: [],
           retryCount: 3,
         });
@@ -136,8 +128,8 @@ describe('E2E: Jobs Module', () => {
         .send({
           name: 'E2E-Test Vulnerability Scan',
           description: 'Test vulnerability job for E2E testing',
-          scope: 'Global',
-          scanType: 'instant',
+          scope: 'GLOBAL',
+          scanType: 'INSTANT',
         });
 
       expect(res.status).toBe(201);
@@ -175,107 +167,6 @@ describe('E2E: Jobs Module', () => {
 
       expect(res.status).toBe(200);
       testVulnerabilityJobId = ''; // Clear for cleanup
-    });
-  });
-
-  describe('Software Catalog - /v1/jobs/software/catalog', () => {
-    it('should list software catalog', async () => {
-      const res = await request(app)
-        .get('/v1/jobs/software/catalog')
-        .set('Authorization', `Bearer ${adminToken}`);
-
-      expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('data');
-      expect(Array.isArray(res.body.data)).toBe(true);
-    });
-
-    it('should create software catalog item', async () => {
-      const res = await request(app)
-        .post('/v1/jobs/software/catalog')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({
-          applicationName: 'E2E-Test Application',
-          description: 'Test application for E2E testing',
-          os: 'Windows',
-          version: '1.0.0',
-          applicationLocationType: 'URL',
-          selfService: true,
-          architecture: 'x64',
-          applicationType: 'EXE',
-        });
-
-      expect(res.status).toBe(201);
-      expect(res.body).toHaveProperty('id');
-      expect(res.body.applicationName).toBe('E2E-Test Application');
-
-      testSoftwareCatalogId = res.body.id;
-    });
-
-    it('should get software catalog item by ID', async () => {
-      if (!testSoftwareCatalogId) return;
-
-      const res = await request(app)
-        .get(`/v1/jobs/software/catalog/${testSoftwareCatalogId}`)
-        .set('Authorization', `Bearer ${adminToken}`);
-
-      expect(res.status).toBe(200);
-      expect(res.body.id).toBe(testSoftwareCatalogId);
-    });
-
-    it('should update software catalog item', async () => {
-      if (!testSoftwareCatalogId) return;
-
-      const res = await request(app)
-        .put(`/v1/jobs/software/catalog/${testSoftwareCatalogId}`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({
-          description: 'Updated description',
-        });
-
-      expect(res.status).toBe(200);
-      // Service returns limited fields, description is updated but not returned
-      expect(res.body).toHaveProperty('id');
-    });
-  });
-
-  describe('Software Bundles - /v1/jobs/software/bundles', () => {
-    it('should list software bundles', async () => {
-      const res = await request(app)
-        .get('/v1/jobs/software/bundles')
-        .set('Authorization', `Bearer ${adminToken}`);
-
-      expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('data');
-      expect(Array.isArray(res.body.data)).toBe(true);
-    });
-
-    it('should create software bundle', async () => {
-      const res = await request(app)
-        .post('/v1/jobs/software/bundles')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({
-          bundleName: 'E2E-Test Software Bundle',
-          os: 'Windows',
-          description: 'Test bundle for E2E testing',
-          applications: [],
-        });
-
-      expect(res.status).toBe(201);
-      expect(res.body).toHaveProperty('id');
-      expect(res.body.bundleName).toBe('E2E-Test Software Bundle');
-
-      testSoftwareBundleId = res.body.id;
-    });
-
-    it('should get software bundle by ID', async () => {
-      if (!testSoftwareBundleId) return;
-
-      const res = await request(app)
-        .get(`/v1/jobs/software/bundles/${testSoftwareBundleId}`)
-        .set('Authorization', `Bearer ${adminToken}`);
-
-      expect(res.status).toBe(200);
-      expect(res.body.id).toBe(testSoftwareBundleId);
     });
   });
 
@@ -448,28 +339,6 @@ describe('E2E: Jobs Module', () => {
   });
 
   describe('Cleanup', () => {
-    it('should delete software catalog item', async () => {
-      if (!testSoftwareCatalogId) return;
-
-      const res = await request(app)
-        .delete(`/v1/jobs/software/catalog/${testSoftwareCatalogId}`)
-        .set('Authorization', `Bearer ${adminToken}`);
-
-      expect(res.status).toBe(200);
-      testSoftwareCatalogId = '';
-    });
-
-    it('should delete software bundle', async () => {
-      if (!testSoftwareBundleId) return;
-
-      const res = await request(app)
-        .delete(`/v1/jobs/software/bundles/${testSoftwareBundleId}`)
-        .set('Authorization', `Bearer ${adminToken}`);
-
-      expect(res.status).toBe(200);
-      testSoftwareBundleId = '';
-    });
-
     it('should delete config catalog item', async () => {
       if (!testConfigCatalogId) return;
 
@@ -508,7 +377,7 @@ describe('E2E: Job Error Handling', () => {
         email: 'jobs-error-test@patchiq.io',
         name: 'Jobs Error Test',
         passwordHash,
-        role: 'admin',
+        role: 'ADMIN',
         isActive: true,
         isOnboarded: true,
       },
@@ -552,18 +421,6 @@ describe('E2E: Job Error Handling', () => {
     const res = await request(app).get('/v1/jobs/patch');
 
     expect(res.status).toBe(401);
-  });
-
-  it('should return 400/422 for invalid software catalog data', async () => {
-    const res = await request(app)
-      .post('/v1/jobs/software/catalog')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({
-        // Missing required fields
-        description: 'Invalid software',
-      });
-
-    expect([400, 422]).toContain(res.status);
   });
 
   it('should return 400/422 for invalid config catalog data', async () => {

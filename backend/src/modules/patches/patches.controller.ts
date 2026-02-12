@@ -1,12 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
+import { createLogger } from '@shared/services/logger';
+import { sendSuccess, sendError, typedQuery } from '@shared/utils';
 import * as patchesService from './patches.service';
+
+const logger = createLogger('patches-controller');
 import type {
   PatchListQuery,
   CreatePatchInput,
   UpdatePatchInput,
   TestPatchInput,
   RejectPatchInput,
-  ScanEndpointsInput,
   CreateDeploymentInput,
   DeploymentListQuery,
   CreatePatchTestInput,
@@ -15,15 +18,22 @@ import type {
   CreatePatchDeploymentFromUIInput,
 } from './patches.validator';
 
+// Inline types for validated query params (schemas defined in patches.validator.ts)
+import type { z } from 'zod';
+import type { testApproveQuerySchema, patchTestListQuerySchema, zeroTouchConfigListQuerySchema } from './patches.validator';
+type TestApproveQuery = z.infer<typeof testApproveQuerySchema>;
+type PatchTestListQuery = z.infer<typeof patchTestListQuerySchema>;
+type ZeroTouchConfigListQuery = z.infer<typeof zeroTouchConfigListQuerySchema>;
+
 // ============================================
 // Patches CRUD
 // ============================================
 
 export async function listPatches(req: Request, res: Response, next: NextFunction) {
   try {
-    const query = req.query as unknown as PatchListQuery;
+    const query = typedQuery<PatchListQuery>(req);
     const result = await patchesService.listPatches(query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -33,7 +43,7 @@ export async function getPatch(req: Request, res: Response, next: NextFunction) 
   try {
     const { id } = req.params;
     const result = await patchesService.getPatchById(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -44,7 +54,7 @@ export async function streamPatchBundle(req: Request, res: Response, next: NextF
     const { id } = req.params;
     const bundle = await patchesService.getPatchBundleByPatchId(id);
     if (!bundle?.bundleObjectKey) {
-      res.status(404).json({ error: 'No downloadable bundle for this patch' });
+      sendError(res, 404, 'NOT_FOUND', 'No downloadable bundle for this patch');
       return;
     }
 
@@ -80,11 +90,10 @@ export async function discoverPatches(req: Request, res: Response, next: NextFun
     // Re-resolve asset_software with null CPE in background (picks up new seed mappings)
     const { cpeMappingService } = await import('@shared/services/cpe-mapping.service');
     cpeMappingService.reResolveNullCpe().then(n => {
-      if (n > 0) console.log(`[Discover] Background CPE re-resolution: ${n} records updated`);
+      if (n > 0) logger.info({ recordsUpdated: n }, 'Background CPE re-resolution completed');
     }).catch(() => { /* background task, ignore errors */ });
 
-    res.json({
-      success: true,
+    sendSuccess(res, {
       patchesCreated,
       message: patchesCreated > 0
         ? `Created ${patchesCreated} new patches from Hub software`
@@ -99,7 +108,7 @@ export async function createPatch(req: Request, res: Response, next: NextFunctio
   try {
     const data = req.body as CreatePatchInput;
     const result = await patchesService.createPatch(data);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -110,7 +119,7 @@ export async function updatePatch(req: Request, res: Response, next: NextFunctio
     const { id } = req.params;
     const data = req.body as UpdatePatchInput;
     const result = await patchesService.updatePatch(id, data);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -134,7 +143,7 @@ export async function getSupersededPatches(req: Request, res: Response, next: Ne
   try {
     const { id } = req.params;
     const result = await patchesService.getSupersededPatches(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -144,7 +153,7 @@ export async function getSupersedingPatches(req: Request, res: Response, next: N
   try {
     const { id } = req.params;
     const result = await patchesService.getSupersedingPatches(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -154,7 +163,7 @@ export async function supersedePatch(req: Request, res: Response, next: NextFunc
   try {
     const { id, targetId } = req.params;
     const result = await patchesService.supersedePatch(targetId, id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -164,7 +173,7 @@ export async function removeSupersedence(req: Request, res: Response, next: Next
   try {
     const { id, targetId } = req.params;
     const result = await patchesService.removeSupersedence(targetId, id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -178,7 +187,7 @@ export async function getAffectedProducts(req: Request, res: Response, next: Nex
   try {
     const { id } = req.params;
     const result = await patchesService.getAffectedProducts(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -188,7 +197,7 @@ export async function addAffectedProduct(req: Request, res: Response, next: Next
   try {
     const { id } = req.params;
     const result = await patchesService.addAffectedProduct(id, req.body);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -198,17 +207,7 @@ export async function removeAffectedProduct(req: Request, res: Response, next: N
   try {
     const { id, productId } = req.params;
     const result = await patchesService.removeAffectedProduct(id, productId);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function getFileDetails(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { id } = req.params;
-    const result = await patchesService.getFileDetails(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -218,28 +217,7 @@ export async function getVulnerabilities(req: Request, res: Response, next: Next
   try {
     const { id } = req.params;
     const result = await patchesService.getVulnerabilities(id);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function getEndpoints(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { id } = req.params;
-    const result = await patchesService.getEndpoints(id);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function scanEndpoints(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { id } = req.params;
-    const data = req.body as ScanEndpointsInput;
-    const result = await patchesService.scanEndpoints(id, data);
-    res.status(202).json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -251,13 +229,13 @@ export async function scanEndpoints(req: Request, res: Response, next: NextFunct
 
 export async function getPatchesPendingTestApproval(req: Request, res: Response, next: NextFunction) {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
+    const query = typedQuery<TestApproveQuery>(req);
     const result = await patchesService.getPatchesPendingTestApproval({
-      status: status as string | undefined,
-      page: Number(page),
-      limit: Number(limit),
+      status: query.status,
+      page: query.page,
+      limit: query.limit,
     });
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -269,7 +247,7 @@ export async function testPatch(req: Request, res: Response, next: NextFunction)
     const userId = req.user!.id;
     const data = req.body as TestPatchInput;
     const result = await patchesService.testPatch(id, userId, data);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -280,7 +258,7 @@ export async function approvePatch(req: Request, res: Response, next: NextFuncti
     const { id } = req.params;
     const userId = req.user!.id;
     const result = await patchesService.approvePatch(id, userId);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -292,7 +270,7 @@ export async function rejectPatch(req: Request, res: Response, next: NextFunctio
     const userId = req.user!.id;
     const data = req.body as RejectPatchInput;
     const result = await patchesService.rejectPatch(id, userId, data);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -304,9 +282,9 @@ export async function rejectPatch(req: Request, res: Response, next: NextFunctio
 
 export async function listDeployments(req: Request, res: Response, next: NextFunction) {
   try {
-    const query = req.query as unknown as DeploymentListQuery;
+    const query = typedQuery<DeploymentListQuery>(req);
     const result = await patchesService.listDeployments(query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -316,7 +294,7 @@ export async function getDeployment(req: Request, res: Response, next: NextFunct
   try {
     const { id } = req.params;
     const result = await patchesService.getDeploymentById(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -327,7 +305,7 @@ export async function createDeployment(req: Request, res: Response, next: NextFu
     const userId = req.user!.id;
     const data = req.body as CreateDeploymentInput;
     const result = await patchesService.createDeployment(data, userId);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -349,7 +327,7 @@ export async function updateDeployment(req: Request, res: Response, next: NextFu
     const { id } = req.params;
     const { name, scheduledAt } = req.body;
     const result = await patchesService.updateDeployment(id, { name, scheduledAt });
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -360,7 +338,7 @@ export async function cancelDeployment(req: Request, res: Response, next: NextFu
     const { id } = req.params;
     const userId = req.user!.id;
     const result = await patchesService.cancelDeployment(id, userId);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -370,7 +348,7 @@ export async function getDeploymentPreview(req: Request, res: Response, next: Ne
   try {
     const { id } = req.params;
     const result = await patchesService.getDeploymentPreview(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -381,7 +359,7 @@ export async function executeDeployment(req: Request, res: Response, next: NextF
     const { id } = req.params;
     const userId = req.user!.id;
     const result = await patchesService.executeDeployment(id, userId);
-    res.status(202).json(result);
+    sendSuccess(res, result, 202);
   } catch (error) {
     next(error);
   }
@@ -396,7 +374,7 @@ export async function createPatchDeploymentFromUI(req: Request, res: Response, n
     const userId = req.user!.id;
     const data = req.body as CreatePatchDeploymentFromUIInput;
     const result = await patchesService.createPatchDeploymentFromUI(data, userId);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -408,13 +386,13 @@ export async function createPatchDeploymentFromUI(req: Request, res: Response, n
 
 export async function listPatchTests(req: Request, res: Response, next: NextFunction) {
   try {
-    const { page = 1, limit = 20, status } = req.query;
+    const query = typedQuery<PatchTestListQuery>(req);
     const result = await patchesService.listPatchTests({
-      page: Number(page),
-      limit: Number(limit),
-      status: status as string | undefined,
+      page: query.page,
+      limit: query.limit,
+      status: query.status,
     });
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -424,7 +402,7 @@ export async function getPatchTest(req: Request, res: Response, next: NextFuncti
   try {
     const { id } = req.params;
     const result = await patchesService.getPatchTestById(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -435,7 +413,7 @@ export async function createPatchTest(req: Request, res: Response, next: NextFun
     const userId = req.user!.id;
     const data = req.body as CreatePatchTestInput;
     const result = await patchesService.createPatchTest(data, userId);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -446,7 +424,7 @@ export async function approvePatchTest(req: Request, res: Response, next: NextFu
     const { id } = req.params;
     const userId = req.user!.id;
     const result = await patchesService.approvePatchTest(id, userId);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -468,13 +446,13 @@ export async function deletePatchTest(req: Request, res: Response, next: NextFun
 
 export async function listZeroTouchConfigs(req: Request, res: Response, next: NextFunction) {
   try {
-    const { page = 1, limit = 20, status } = req.query;
+    const query = typedQuery<ZeroTouchConfigListQuery>(req);
     const result = await patchesService.listZeroTouchConfigs({
-      page: Number(page),
-      limit: Number(limit),
-      status: status as string | undefined,
+      page: query.page,
+      limit: query.limit,
+      status: query.status,
     });
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -484,7 +462,7 @@ export async function getZeroTouchConfig(req: Request, res: Response, next: Next
   try {
     const { id } = req.params;
     const result = await patchesService.getZeroTouchConfigById(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -495,7 +473,7 @@ export async function createZeroTouchConfig(req: Request, res: Response, next: N
     const userId = req.user!.id;
     const data = req.body as CreateZeroTouchConfigInput;
     const result = await patchesService.createZeroTouchConfig(data, userId);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -506,7 +484,7 @@ export async function updateZeroTouchConfig(req: Request, res: Response, next: N
     const { id } = req.params;
     const data = req.body as UpdateZeroTouchConfigInput;
     const result = await patchesService.updateZeroTouchConfig(id, data);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }

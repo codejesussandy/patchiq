@@ -43,7 +43,7 @@ export async function ensureTestUser() {
         email: 'test-user@patchiq.io',
         passwordHash: '$2b$10$dummyHashForTestUserOnly',
         name: 'Test User',
-        role: 'admin',
+        role: 'ADMIN',
         isActive: true,
         isOnboarded: true,
         organizationId: TEST_ORGANIZATION_ID,
@@ -53,7 +53,7 @@ export async function ensureTestUser() {
 }
 
 // Generate test auth tokens
-export function generateTestTokens(userId: string = TEST_USER_ID, role: string = 'admin') {
+export function generateTestTokens(userId: string = TEST_USER_ID, role: string = 'ADMIN') {
   return generateTokenPair({
     userId,
     email: `${role}@patchiq.io`,
@@ -79,7 +79,7 @@ export function createTestUser(overrides: Partial<TestUserData> = {}): TestUserD
     id: 'test-user-id',
     email: 'test@patchiq.io',
     name: 'Test User',
-    role: 'admin',
+    role: 'ADMIN',
     ...overrides,
   };
 }

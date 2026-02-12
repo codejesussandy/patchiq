@@ -1,7 +1,7 @@
 import { Tag } from 'antd';
 
 type SeverityBadgeProps = {
-  severity: 'CRITICAL' | 'High' | 'Medium' | 'Low' | 'UNSPECIFIED';
+  severity: string;
 };
 
 export const SeverityBadge = ({ severity }: SeverityBadgeProps) => {

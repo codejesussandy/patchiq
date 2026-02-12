@@ -1,20 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import {
   App,
   Modal,
   Form,
   Input,
   Select,
-  Typography,
   Tag,
   Descriptions,
 } from 'antd';
-import { reportsService } from '../../../services/reports.service';
-import type { Report, ReportFormat } from '../../../types/reports.types';
+import { useSendReport } from '../../../hooks/useReports';
+import type { Report } from '../../../types/reports.types';
 import { REPORT_TYPE_LABELS, REPORT_FORMAT_LABELS } from '../../../types/reports.types';
 
 const { TextArea } = Input;
-const { Text } = Typography;
 
 interface SendReportModalProps {
   open: boolean;
@@ -31,7 +29,7 @@ export const SendReportModal = ({
 }: SendReportModalProps) => {
   const { message } = App.useApp();
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
+  const sendReport = useSendReport();
 
   useEffect(() => {
     if (open && report) {
@@ -47,25 +45,23 @@ export const SendReportModal = ({
   const handleSubmit = async () => {
     try {
       await form.validateFields();
-      setLoading(true);
-
       const values = form.getFieldsValue();
 
       if (report) {
-        await reportsService.sendReport(report.id, {
-          recipients: values.recipients,
-          subject: values.subject,
-          message: values.message,
-          format: values.format,
+        await sendReport.mutateAsync({
+          id: report.id,
+          data: {
+            recipients: values.recipients,
+            subject: values.subject,
+            message: values.message,
+            format: values.format,
+          },
         });
         message.success(`Report sent successfully to ${values.recipients.length} recipient(s)`);
         onSuccess();
       }
-    } catch (error) {
-      console.error('Failed to send report:', error);
+    } catch {
       message.error('Failed to send report');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -80,7 +76,7 @@ export const SendReportModal = ({
       open={open}
       onCancel={handleClose}
       onOk={handleSubmit}
-      confirmLoading={loading}
+      confirmLoading={sendReport.isPending}
       okText="Send"
       width={500}
       destroyOnClose

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { ArrowLeftOutlined, PlusOutlined, DownOutlined } from '@ant-design/icons';
 import {
   App,
   Form,
@@ -11,10 +11,11 @@ import {
   Space,
   Typography,
 } from 'antd';
-import { ArrowLeftOutlined, PlusOutlined, DownOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
-import { reportsService } from '../../services/reports.service';
+import { useNavigate } from 'react-router-dom';
+import { useCreateReport } from '../../hooks/useReports';
+import { isFormValidationError } from '../../utils/error';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -30,7 +31,7 @@ export const CreateReport = () => {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
+  const createReportMutation = useCreateReport();
   const [enableSchedule, setEnableSchedule] = useState(false);
   const [widgets, setWidgets] = useState<string[]>([]);
 
@@ -50,26 +51,23 @@ export const CreateReport = () => {
   const handleCreate = async () => {
     try {
       const values = await form.validateFields();
-      setLoading(true);
 
-      await reportsService.createReport({
+      await createReportMutation.mutateAsync({
         name: values.name,
         description: values.description || '',
-        type: 'vulnerability',
+        type: 'VULNERABILITY',
         downloadFormats: ['pdf'],
         createdBy: 'Admin',
       });
 
       message.success('Report created successfully');
       navigate('/reports');
-    } catch (error: any) {
-      if (error.errorFields) {
+    } catch (error: unknown) {
+      if (isFormValidationError(error)) {
         // Form validation error
         return;
       }
       message.error('Failed to create report');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -198,7 +196,7 @@ export const CreateReport = () => {
         paddingTop: 24,
         borderTop: '1px solid #f0f0f0'
       }}>
-        <Button size="large" onClick={handleCreate} loading={loading}>
+        <Button size="large" onClick={handleCreate} loading={createReportMutation.isPending}>
           Create
         </Button>
         <Button size="large" onClick={handleReset}>

@@ -128,7 +128,7 @@ export interface AssetDetailResponse {
 
   // Computed/derived fields
   assetId: string;
-  operationalStatus: 'Connected' | 'Disconnected';
+  operationalStatus: 'CONNECTED' | 'DISCONNECTED';
   operationalStatusSince: string | null;
   operationalStatusDuration: string | null;
 
@@ -168,7 +168,8 @@ export function transformHardwareForAPI(
   // If we have raw payload from agent, return it directly
   // The agent's Hardware struct matches frontend's ExpandedHardware type
   if (dbRecord.rawPayload) {
-    return dbRecord.rawPayload as unknown as HardwareResponse;
+    const payload: unknown = dbRecord.rawPayload;
+    return payload as HardwareResponse;
   }
 
   // Fall back to constructing from summary fields
@@ -255,8 +256,8 @@ export function transformAssetForAPI(
 
   // Determine operational status from agent (calculated from lastHeartbeat age)
   const computedStatus = calculateAgentStatus(dbRecord.agent);
-  const isConnected = computedStatus === 'Connected';
-  const operationalStatus = isConnected ? 'Connected' : 'Disconnected';
+  const isConnected = computedStatus === 'CONNECTED';
+  const operationalStatus = isConnected ? 'CONNECTED' : 'DISCONNECTED';
   const operationalStatusSince = dbRecord.agent?.lastHeartbeat?.toISOString() || null;
 
   return {

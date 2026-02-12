@@ -21,7 +21,7 @@ describe('E2E: Patch Management', () => {
         email: 'patches-test-admin@patchiq.io',
         name: 'Patches Test Admin',
         passwordHash,
-        role: 'admin',
+        role: 'ADMIN',
         isActive: true,
         isOnboarded: true,
       },
@@ -70,7 +70,7 @@ describe('E2E: Patch Management', () => {
           title: 'E2E Test Security Patch',
           description: 'Test patch for E2E testing',
           severity: 'High',
-          releaseDate: new Date().toISOString(),
+          publishedAt: new Date().toISOString(),
           rebootRequired: false,
           os: 'Windows',
           category: 'Security',
@@ -214,7 +214,7 @@ describe('E2E: Patch Management', () => {
         .send({
           name: 'E2E-Test Deployment',
           type: 'INSTALL',
-          scope: 'Endpoint',
+          scope: 'ENDPOINT',
           patches: [testPatchId],
         });
 
@@ -408,7 +408,7 @@ describe('E2E: Patch Management', () => {
           software: `E2E-TEST-REJECT-Software-${Date.now()}`,
           title: 'E2E Patch to Reject',
           severity: 'Low',
-          releaseDate: new Date().toISOString(),
+          publishedAt: new Date().toISOString(),
           rebootRequired: false,
         });
 
@@ -466,7 +466,7 @@ describe('E2E: Patch Error Handling', () => {
         email: 'patches-error-test@patchiq.io',
         name: 'Patches Error Test',
         passwordHash,
-        role: 'admin',
+        role: 'ADMIN',
         isActive: true,
         isOnboarded: true,
       },

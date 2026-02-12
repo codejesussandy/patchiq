@@ -132,10 +132,10 @@ describe('Vulnerabilities Validators', () => {
     it('should accept valid exception creation data', () => {
       const result = createExceptionBodySchema.safeParse({
         vulnerabilityIds: ['vuln-1', 'vuln-2'],
-        exceptionType: 'Acceptable Risk',
+        exceptionType: 'ACCEPTABLE_RISK',
         reasonForExclusion: 'Test reason',
-        scope: 'Global',
-        source: 'vulnerabilities',
+        scope: 'GLOBAL',
+        source: 'VULNERABILITIES',
       });
       expect(result.success).toBe(true);
     });
@@ -143,13 +143,13 @@ describe('Vulnerabilities Validators', () => {
     it('should require at least one vulnerability ID', () => {
       const result = createExceptionBodySchema.safeParse({
         vulnerabilityIds: [],
-        exceptionType: 'Acceptable Risk',
+        exceptionType: 'ACCEPTABLE_RISK',
       });
       expect(result.success).toBe(false);
     });
 
     it('should only accept valid exception types', () => {
-      const validTypes = ['Acceptable Risk', 'Not Applicable'];
+      const validTypes = ['ACCEPTABLE_RISK', 'NOT_APPLICABLE'];
       const invalidTypes = ['Invalid', 'Risk Accepted', 'N/A'];
 
       validTypes.forEach((type) => {
@@ -170,12 +170,12 @@ describe('Vulnerabilities Validators', () => {
     });
 
     it('should only accept valid scopes', () => {
-      const validScopes = ['Global', 'Group', 'Endpoint'];
+      const validScopes = ['GLOBAL', 'GROUP', 'ENDPOINT'];
 
       validScopes.forEach((scope) => {
         const result = createExceptionBodySchema.safeParse({
           vulnerabilityIds: ['vuln-1'],
-          exceptionType: 'Acceptable Risk',
+          exceptionType: 'ACCEPTABLE_RISK',
           scope,
         });
         expect(result.success).toBe(true);
@@ -185,8 +185,8 @@ describe('Vulnerabilities Validators', () => {
     it('should accept optional endpoints for Endpoint scope', () => {
       const result = createExceptionBodySchema.safeParse({
         vulnerabilityIds: ['vuln-1'],
-        exceptionType: 'Acceptable Risk',
-        scope: 'Endpoint',
+        exceptionType: 'ACCEPTABLE_RISK',
+        scope: 'ENDPOINT',
         endpoints: ['endpoint-1', 'endpoint-2'],
       });
       expect(result.success).toBe(true);
@@ -195,12 +195,12 @@ describe('Vulnerabilities Validators', () => {
     it('should use default values', () => {
       const result = createExceptionBodySchema.safeParse({
         vulnerabilityIds: ['vuln-1'],
-        exceptionType: 'Acceptable Risk',
+        exceptionType: 'ACCEPTABLE_RISK',
       });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.scope).toBe('Global');
-        expect(result.data.source).toBe('vulnerabilities');
+        expect(result.data.scope).toBe('GLOBAL');
+        expect(result.data.source).toBe('VULNERABILITIES');
       }
     });
   });
@@ -208,7 +208,7 @@ describe('Vulnerabilities Validators', () => {
   describe('updateExceptionBodySchema', () => {
     it('should accept partial updates', () => {
       const result = updateExceptionBodySchema.safeParse({
-        exceptionType: 'Not Applicable',
+        exceptionType: 'NOT_APPLICABLE',
       });
       expect(result.success).toBe(true);
     });
@@ -229,14 +229,14 @@ describe('Vulnerabilities Validators', () => {
   describe('scanVulnerabilitiesBodySchema', () => {
     it('should accept "all" scope', () => {
       const result = scanVulnerabilitiesBodySchema.safeParse({
-        scope: 'all',
+        scope: 'ALL',
       });
       expect(result.success).toBe(true);
     });
 
     it('should accept "selected" scope with endpoint IDs', () => {
       const result = scanVulnerabilitiesBodySchema.safeParse({
-        scope: 'selected',
+        scope: 'SELECTED',
         endpointIds: ['endpoint-1', 'endpoint-2'],
       });
       expect(result.success).toBe(true);
@@ -246,7 +246,7 @@ describe('Vulnerabilities Validators', () => {
       const result = scanVulnerabilitiesBodySchema.safeParse({});
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.scope).toBe('all');
+        expect(result.data.scope).toBe('ALL');
       }
     });
 

@@ -1,41 +1,31 @@
+import { useEffect } from 'react';
 import { App,
   Form, Input, Select, Checkbox, Button, Space, Typography, Divider, Switch } from 'antd';
-import { useState, useEffect } from 'react';
-import { settingsService } from '../../services/settings.service';
+import { useProxyServerConfig, useUpdateProxyServerConfig, useTestProxyServerConfig } from '../../hooks/useSettings';
 import type { ProxyServerConfig } from '../../types/settings.types';
+import { getErrorMessage } from '../../utils/error';
 
 const { Title } = Typography;
 
 export const ProxyServerConfiguration = () => {
   const { message } = App.useApp();
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
-  const [testLoading, setTestLoading] = useState(false);
-  const [config, setConfig] = useState<ProxyServerConfig | null>(null);
+  const { data: config } = useProxyServerConfig();
+  const updateConfigMutation = useUpdateProxyServerConfig();
+  const testConfigMutation = useTestProxyServerConfig();
 
   useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const data = await settingsService.getProxyServerConfig();
-        setConfig(data);
-        form.setFieldsValue(data);
-      } catch (error) {
-        console.error('Failed to fetch proxy server config:', error);
-      }
-    };
-    fetchConfig();
-  }, [form]);
+    if (config) {
+      form.setFieldsValue(config);
+    }
+  }, [config, form]);
 
-  const onFinish = async (values: any) => {
-    setLoading(true);
+  const onFinish = async (values: ProxyServerConfig) => {
     try {
-      await settingsService.updateProxyServerConfig(values);
+      await updateConfigMutation.mutateAsync(values);
       message.success('Proxy server configuration updated successfully');
-      setConfig(values);
-    } catch (error) {
+    } catch {
       message.error('Failed to update proxy server configuration');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -45,15 +35,11 @@ export const ProxyServerConfiguration = () => {
       message.warning('Please enter proxy host and port first');
       return;
     }
-    setTestLoading(true);
     try {
-      await settingsService.testProxyServerConfig(values);
+      await testConfigMutation.mutateAsync(values);
       message.success('Proxy server connection test successful!');
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || 'Proxy server connection test failed';
-      message.error(errorMessage);
-    } finally {
-      setTestLoading(false);
+    } catch (error: unknown) {
+      message.error(getErrorMessage(error, 'Proxy server connection test failed'));
     }
   };
 
@@ -160,10 +146,10 @@ export const ProxyServerConfiguration = () => {
 
         <Form.Item>
           <Space>
-            <Button type="primary" htmlType="submit" loading={loading}>
+            <Button type="primary" htmlType="submit" loading={updateConfigMutation.isPending}>
               Save
             </Button>
-            <Button loading={testLoading} onClick={handleTest}>
+            <Button loading={testConfigMutation.isPending} onClick={handleTest}>
               Test
             </Button>
             <Button onClick={handleReset}>

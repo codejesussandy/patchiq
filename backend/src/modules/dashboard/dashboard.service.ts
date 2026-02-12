@@ -1,5 +1,5 @@
-import { prisma } from '@/db/client';
 import type { Prisma } from '@prisma/client';
+import { prisma } from '@/db/client';
 import type {
   DashboardData,
   DashboardStats,
@@ -443,7 +443,7 @@ export class DashboardService {
       cve: v.cveId,
       score: v.cvss3BaseScore ?? v.epss ?? 0,
       affectedEndpoints: v._count.affectedAssets,
-      severity: v.severity.toLowerCase() as 'critical' | 'high' | 'medium' | 'low',
+      severity: v.severity.toUpperCase() as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
       description: v.title,
     });
 
@@ -466,7 +466,7 @@ export class DashboardService {
         where: {
           patchTasks: {
             every: {
-              status: 'completed',
+              status: 'COMPLETED',
             },
           },
         },
@@ -476,7 +476,7 @@ export class DashboardService {
         where: {
           patchTasks: {
             some: {
-              status: 'failed',
+              status: 'FAILED',
             },
           },
         },
@@ -486,7 +486,7 @@ export class DashboardService {
         where: {
           patchTasks: {
             some: {
-              status: 'pending',
+              status: 'PENDING',
             },
           },
         },
@@ -506,14 +506,14 @@ export class DashboardService {
       // Patches deployed in last 24 hours
       prisma.patchDeploymentTask.count({
         where: {
-          status: 'completed',
+          status: 'COMPLETED',
           completedAt: { gte: oneDayAgo },
         },
       }),
       // Patches failed in last 24 hours
       prisma.patchDeploymentTask.count({
         where: {
-          status: 'failed',
+          status: 'FAILED',
           completedAt: { gte: oneDayAgo },
         },
       }),
@@ -521,7 +521,7 @@ export class DashboardService {
       prisma.job.count({
         where: {
           type: 'vulnerability_scan',
-          status: 'completed',
+          status: 'COMPLETED',
           completedAt: { gte: oneDayAgo },
         },
       }),
@@ -529,7 +529,7 @@ export class DashboardService {
       prisma.job.findFirst({
         where: {
           type: 'vulnerability_scan',
-          status: 'completed',
+          status: 'COMPLETED',
         },
         orderBy: { completedAt: 'desc' },
         select: { completedAt: true },
@@ -725,7 +725,7 @@ export class DashboardService {
     let data: { label: string; count: number }[] = [];
 
     switch (groupBy) {
-      case 'severity':
+      case 'severity': {
         const bySeverity = await prisma.patch.groupBy({
           by: ['severity'],
           _count: true,
@@ -735,8 +735,9 @@ export class DashboardService {
           count: s._count,
         }));
         break;
+      }
 
-      case 'os':
+      case 'os': {
         const byOs = await prisma.patch.groupBy({
           by: ['os'],
           where: { os: { not: null } },
@@ -747,8 +748,9 @@ export class DashboardService {
           count: o._count,
         }));
         break;
+      }
 
-      case 'status':
+      case 'status': {
         const byStatus = await prisma.patch.groupBy({
           by: ['approvalStatus'],
           _count: true,
@@ -758,6 +760,7 @@ export class DashboardService {
           count: s._count,
         }));
         break;
+      }
     }
 
     return {

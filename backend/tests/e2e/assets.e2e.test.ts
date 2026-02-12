@@ -23,7 +23,7 @@ describe('E2E: Asset Management', () => {
         email: 'assets-test-admin@patchiq.io',
         name: 'Assets Test Admin',
         passwordHash,
-        role: 'admin',
+        role: 'ADMIN',
         isActive: true,
         isOnboarded: true,
       },
@@ -510,7 +510,7 @@ describe('E2E: Asset Management', () => {
           softwareName: 'Test Software',
           vendorName: 'Test Vendor',
           licenseCount: 10,
-          status: 'Available',
+          status: 'AVAILABLE',
         });
 
       expect(res.status).toBe(201);
@@ -576,7 +576,7 @@ describe('E2E: Asset Management', () => {
           osType: 'Windows 11 Pro',
           vendorName: 'Microsoft',
           licenseCount: 50,
-          status: 'Available',
+          status: 'AVAILABLE',
           licenseKey: 'E2E-TEST-KEY-XXXX-XXXX',
         });
 
@@ -676,7 +676,7 @@ describe('E2E: Asset Error Handling', () => {
         email: 'assets-error-test@patchiq.io',
         name: 'Assets Error Test',
         passwordHash,
-        role: 'admin',
+        role: 'ADMIN',
         isActive: true,
         isOnboarded: true,
       },

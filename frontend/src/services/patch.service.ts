@@ -1,8 +1,6 @@
-import { api } from './api.service';
 import type {
   Patch,
   AffectedSoftware,
-  FileDetail,
   Vulnerability,
   Endpoint,
   EndpointDetails,
@@ -14,13 +12,13 @@ import type {
   AssetRelatedPatch,
   AssetDeployment,
 } from '../types/patch.types';
+import { api } from './api.service';
 
 // Re-export types for backward compatibility
 export type {
   Patch,
   AffectedProduct,
   AffectedSoftware,
-  FileDetail,
   Vulnerability,
   Endpoint,
   EndpointDetails,
@@ -91,11 +89,6 @@ export const patchService = {
     await api.post(`/patches/${patchId}/scan-endpoints`, data);
   },
 
-  async getFileDetails(patchId: string): Promise<FileDetail[]> {
-    const response = await api.get(`/patches/${patchId}/file-details`);
-    return response.data;
-  },
-
   async getVulnerabilities(patchId: string): Promise<Vulnerability[]> {
     const response = await api.get(`/patches/${patchId}/vulnerabilities`);
     return response.data;
@@ -138,12 +131,12 @@ export const patchService = {
     return response.data.data || response.data;
   },
 
-  async listPatchDeployments(): Promise<any[]> {
+  async listPatchDeployments(): Promise<Record<string, unknown>[]> {
     const response = await api.get('/deployments/patch');
     return response.data.data || response.data || [];
   },
 
-  async getPatchDeploymentStatus(deploymentId: string): Promise<any> {
+  async getPatchDeploymentStatus(deploymentId: string): Promise<Record<string, unknown>> {
     const response = await api.get(`/deployments/patch/${deploymentId}`);
     return response.data.data || response.data;
   },
@@ -152,7 +145,7 @@ export const patchService = {
     await api.post(`/deployments/patch/${deploymentId}/cancel`);
   },
 
-  async retryPatchDeployment(deploymentId: string): Promise<any> {
+  async retryPatchDeployment(deploymentId: string): Promise<Record<string, unknown>> {
     const response = await api.post(`/deployments/patch/${deploymentId}/retry`);
     return response.data.data || response.data;
   },
@@ -161,12 +154,12 @@ export const patchService = {
     await api.delete(`/deployments/${id}`);
   },
 
-  async getDeploymentTasks(id: string): Promise<any[]> {
+  async getDeploymentTasks(id: string): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/deployments/${id}`);
     return response.data.tasks || [];
   },
 
-  async previewDeployment(id: string): Promise<any> {
+  async previewDeployment(id: string): Promise<Record<string, unknown>> {
     const response = await api.get(`/deployments/${id}/preview`);
     return response.data;
   },

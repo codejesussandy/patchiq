@@ -9,10 +9,13 @@
  * - Vulnerability scanning
  */
 
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { prisma } from '../../db/client';
+import { createLogger } from '../../shared/services/logger';
 
-interface SoftwareCatalogEntry {
+const logger = createLogger('software-catalog');
+
+interface _SoftwareCatalogEntry {
   name: string;
   displayName: string;
   vendor: string;
@@ -30,7 +33,7 @@ export class SoftwareCatalogPopulatorService {
    * Populate software catalog from Chocolatey (Windows)
    */
   async populateFromChocolatey(limit = 100): Promise<number> {
-    console.log(`Fetching top ${limit} packages from Chocolatey...`);
+    logger.info({ limit }, 'Fetching packages from Chocolatey');
 
     try {
       // Chocolatey OData API - get most popular packages
@@ -49,7 +52,7 @@ export class SoftwareCatalogPopulatorService {
       );
 
       const packages = response.data.value || [];
-      console.log(`Found ${packages.length} Chocolatey packages`);
+      logger.info({ count: packages.length }, 'Found Chocolatey packages');
 
       let created = 0;
       for (const pkg of packages) {
@@ -77,14 +80,15 @@ export class SoftwareCatalogPopulatorService {
           });
           created++;
         } catch (err) {
-          console.error(`Failed to insert ${pkg.Id}:`, err);
+          logger.error({ err, packageId: pkg.Id }, 'Failed to insert Chocolatey package');
         }
       }
 
-      console.log(`✓ Created/updated ${created} Chocolatey packages`);
+      logger.info({ created }, 'Chocolatey packages created/updated');
       return created;
-    } catch (error: any) {
-      console.error('Chocolatey fetch failed:', error.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error({ error: message }, 'Chocolatey fetch failed');
       throw error;
     }
   }
@@ -93,7 +97,7 @@ export class SoftwareCatalogPopulatorService {
    * Populate software catalog from Homebrew (macOS)
    */
   async populateFromHomebrew(limit = 100): Promise<number> {
-    console.log(`Fetching packages from Homebrew...`);
+    logger.info('Fetching packages from Homebrew');
 
     try {
       // Homebrew Formulae API
@@ -104,15 +108,23 @@ export class SoftwareCatalogPopulatorService {
 
       // Get top formulae by analytics
       const formulae = (formulaeRes.data || [])
-        .sort((a: any, b: any) => (b.analytics?.install['30d'] || 0) - (a.analytics?.install['30d'] || 0))
+        .sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+          const aAnalytics = a.analytics as Record<string, Record<string, number>> | undefined;
+          const bAnalytics = b.analytics as Record<string, Record<string, number>> | undefined;
+          return (bAnalytics?.install?.['30d'] || 0) - (aAnalytics?.install?.['30d'] || 0);
+        })
         .slice(0, limit);
 
       // Get top casks
       const casks = (casksRes.data || [])
-        .sort((a: any, b: any) => (b.analytics?.install['30d'] || 0) - (a.analytics?.install['30d'] || 0))
+        .sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+          const aAnalytics = a.analytics as Record<string, Record<string, number>> | undefined;
+          const bAnalytics = b.analytics as Record<string, Record<string, number>> | undefined;
+          return (bAnalytics?.install?.['30d'] || 0) - (aAnalytics?.install?.['30d'] || 0);
+        })
         .slice(0, limit);
 
-      console.log(`Found ${formulae.length} formulae, ${casks.length} casks`);
+      logger.info({ formulaeCount: formulae.length, caskCount: casks.length }, 'Found Homebrew packages');
 
       let created = 0;
 
@@ -142,7 +154,7 @@ export class SoftwareCatalogPopulatorService {
           });
           created++;
         } catch (err) {
-          console.error(`Failed to insert formula ${formula.name}:`, err);
+          logger.error({ err, formulaName: formula.name }, 'Failed to insert Homebrew formula');
         }
       }
 
@@ -172,14 +184,15 @@ export class SoftwareCatalogPopulatorService {
           });
           created++;
         } catch (err) {
-          console.error(`Failed to insert cask ${cask.token}:`, err);
+          logger.error({ err, caskToken: cask.token }, 'Failed to insert Homebrew cask');
         }
       }
 
-      console.log(`✓ Created/updated ${created} Homebrew packages`);
+      logger.info({ created }, 'Homebrew packages created/updated');
       return created;
-    } catch (error: any) {
-      console.error('Homebrew fetch failed:', error.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error({ error: message }, 'Homebrew fetch failed');
       throw error;
     }
   }
@@ -188,7 +201,7 @@ export class SoftwareCatalogPopulatorService {
    * Populate software catalog from npm (Node.js packages)
    */
   async populateFromNpm(packages: string[]): Promise<number> {
-    console.log(`Fetching ${packages.length} packages from npm...`);
+    logger.info({ count: packages.length }, 'Fetching packages from npm');
 
     let created = 0;
 
@@ -226,14 +239,15 @@ export class SoftwareCatalogPopulatorService {
           },
         });
         created++;
-      } catch (err: any) {
-        if (err.response?.status !== 404) {
-          console.error(`Failed to fetch npm package ${pkgName}:`, err.message);
+      } catch (err) {
+        if (!(err instanceof AxiosError) || err.response?.status !== 404) {
+          const message = err instanceof Error ? err.message : String(err);
+          logger.error({ packageName: pkgName, error: message }, 'Failed to fetch npm package');
         }
       }
     }
 
-    console.log(`✓ Created/updated ${created} npm packages`);
+    logger.info({ created }, 'npm packages created/updated');
     return created;
   }
 
@@ -241,7 +255,7 @@ export class SoftwareCatalogPopulatorService {
    * Populate software catalog from PyPI (Python packages)
    */
   async populateFromPyPI(packages: string[]): Promise<number> {
-    console.log(`Fetching ${packages.length} packages from PyPI...`);
+    logger.info({ count: packages.length }, 'Fetching packages from PyPI');
 
     let created = 0;
 
@@ -277,14 +291,15 @@ export class SoftwareCatalogPopulatorService {
           },
         });
         created++;
-      } catch (err: any) {
-        if (err.response?.status !== 404) {
-          console.error(`Failed to fetch PyPI package ${pkgName}:`, err.message);
+      } catch (err) {
+        if (!(err instanceof AxiosError) || err.response?.status !== 404) {
+          const message = err instanceof Error ? err.message : String(err);
+          logger.error({ packageName: pkgName, error: message }, 'Failed to fetch PyPI package');
         }
       }
     }
 
-    console.log(`✓ Created/updated ${created} PyPI packages`);
+    logger.info({ created }, 'PyPI packages created/updated');
     return created;
   }
 
@@ -292,7 +307,7 @@ export class SoftwareCatalogPopulatorService {
    * Populate all sources
    */
   async populateAll(): Promise<{ total: number; bySource: Record<string, number> }> {
-    console.log('=== Starting Software Catalog Population ===\n');
+    logger.info('Starting software catalog population');
 
     const results: Record<string, number> = {};
 
@@ -300,7 +315,7 @@ export class SoftwareCatalogPopulatorService {
     try {
       results.chocolatey = await this.populateFromChocolatey(100);
     } catch (err) {
-      console.error('Chocolatey population failed:', err);
+      logger.error({ err }, 'Chocolatey population failed');
       results.chocolatey = 0;
     }
 
@@ -308,7 +323,7 @@ export class SoftwareCatalogPopulatorService {
     try {
       results.homebrew = await this.populateFromHomebrew(50);
     } catch (err) {
-      console.error('Homebrew population failed:', err);
+      logger.error({ err }, 'Homebrew population failed');
       results.homebrew = 0;
     }
 
@@ -321,7 +336,7 @@ export class SoftwareCatalogPopulatorService {
     try {
       results.npm = await this.populateFromNpm(popularNpmPackages);
     } catch (err) {
-      console.error('npm population failed:', err);
+      logger.error({ err }, 'npm population failed');
       results.npm = 0;
     }
 
@@ -334,15 +349,13 @@ export class SoftwareCatalogPopulatorService {
     try {
       results.pypi = await this.populateFromPyPI(popularPyPIPackages);
     } catch (err) {
-      console.error('PyPI population failed:', err);
+      logger.error({ err }, 'PyPI population failed');
       results.pypi = 0;
     }
 
     const total = Object.values(results).reduce((sum, count) => sum + count, 0);
 
-    console.log('\n=== Software Catalog Population Complete ===');
-    console.log(`Total packages: ${total}`);
-    console.log('By source:', results);
+    logger.info({ total, results }, 'Software catalog population complete');
 
     return { total, bySource: results };
   }

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { App,
   Form, Button, Typography, Radio, Space } from 'antd';
-import { settingsService } from '../../services/settings.service';
+import { useAgentApprovalSettings, useUpdateAgentApprovalSettings } from '../../hooks/useSettings';
 
 const { Title } = Typography;
 
@@ -13,44 +13,29 @@ interface AgentApprovalSettingsData {
 export const AgentApprovalSettings = () => {
   const { message } = App.useApp();
   const [form] = Form.useForm<AgentApprovalSettingsData>();
-  const [loading, setLoading] = useState(false);
-  const [initialValues, setInitialValues] = useState<AgentApprovalSettingsData>({
-    approvalType: 'auto',
-    autoApprovalBasedOn: 'all',
-  });
+  const { data: settings } = useAgentApprovalSettings();
+  const updateSettingsMutation = useUpdateAgentApprovalSettings();
 
   useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    setLoading(true);
-    try {
-      const data = await settingsService.getAgentApprovalSettings();
-      setInitialValues(data);
-      form.setFieldsValue(data);
-    } catch (error) {
-      console.error('Error fetching agent approval settings:', error);
-      message.error('Failed to fetch agent approval settings');
-    } finally {
-      setLoading(false);
+    if (settings) {
+      form.setFieldsValue(settings);
     }
-  };
+  }, [settings, form]);
 
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
-      await settingsService.updateAgentApprovalSettings(values);
+      await updateSettingsMutation.mutateAsync(values);
       message.success('Agent approval settings updated successfully');
-      setInitialValues(values);
-    } catch (error) {
-      console.error('Error saving agent approval settings:', error);
+    } catch {
       message.error('Failed to save agent approval settings');
     }
   };
 
   const handleReset = () => {
-    form.setFieldsValue(initialValues);
+    if (settings) {
+      form.setFieldsValue(settings);
+    }
   };
 
   return (
@@ -100,7 +85,7 @@ export const AgentApprovalSettings = () => {
       </Form>
 
       <div style={{ marginTop: '24px', display: 'flex', gap: '8px' }}>
-        <Button onClick={handleSave} type="primary" loading={loading}>
+        <Button onClick={handleSave} type="primary" loading={updateSettingsMutation.isPending}>
           Save
         </Button>
         <Button onClick={handleReset}>

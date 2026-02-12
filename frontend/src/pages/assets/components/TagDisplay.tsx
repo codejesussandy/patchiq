@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Tag as AntTag, Tooltip, Space } from 'antd';
+import { useTags } from '../../../hooks/useAssets';
 import type { Tag as TagType } from '../../../types/asset.types';
-import { tagService } from '../../../services/tag.service';
 
 interface TagDisplayProps {
   tagIds: string[];
@@ -18,31 +18,16 @@ const TagDisplay: React.FC<TagDisplayProps> = ({
   clickable = false,
   onTagClick,
 }) => {
-  const [tags, setTags] = React.useState<Record<string, TagType>>({});
-  const [loading, setLoading] = React.useState(false);
+  const { data: allTags, isLoading: loading } = useTags();
 
-  // Fetch tag details on mount or when tagIds change
-  React.useEffect(() => {
-    if (tagIds.length === 0) {
-      setTags({});
-      return;
-    }
-
-    setLoading(true);
-    tagService
-      .getTags()
-      .then((allTags) => {
-        const tagMap: Record<string, TagType> = {};
-        allTags.forEach((tag) => {
-          tagMap[tag.id] = tag;
-        });
-        setTags(tagMap);
-      })
-      .catch(() => {
-        // Tags will remain empty on error
-      })
-      .finally(() => setLoading(false));
-  }, [tagIds]);
+  const tags: Record<string, TagType> = useMemo(() => {
+    if (!allTags || tagIds.length === 0) return {};
+    const tagMap: Record<string, TagType> = {};
+    allTags.forEach((tag: TagType) => {
+      tagMap[tag.id] = tag;
+    });
+    return tagMap;
+  }, [allTags, tagIds]);
 
   // Memoize visible and hidden tags
   const { visibleTagIds, hiddenCount } = useMemo(() => {

@@ -144,7 +144,7 @@ describe('Agent Validators', () => {
   describe('commandResultSchema', () => {
     it('should validate completed status', () => {
       const result = commandResultSchema.safeParse({
-        status: 'completed',
+        status: 'COMPLETED',
         result: 'Success',
       });
       expect(result.success).toBe(true);
@@ -152,7 +152,7 @@ describe('Agent Validators', () => {
 
     it('should validate failed status', () => {
       const result = commandResultSchema.safeParse({
-        status: 'failed',
+        status: 'FAILED',
         errorMessage: 'Command timed out',
       });
       expect(result.success).toBe(true);
@@ -160,7 +160,7 @@ describe('Agent Validators', () => {
 
     it('should reject invalid status', () => {
       const result = commandResultSchema.safeParse({
-        status: 'pending',
+        status: 'PENDING',
       });
       expect(result.success).toBe(false);
     });
@@ -177,7 +177,7 @@ describe('Agent Validators', () => {
     });
 
     it('should accept valid status filter', () => {
-      const result = listAgentsQuerySchema.safeParse({ status: 'Connected' });
+      const result = listAgentsQuerySchema.safeParse({ status: 'CONNECTED' });
       expect(result.success).toBe(true);
     });
 

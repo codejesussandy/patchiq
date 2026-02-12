@@ -1,8 +1,8 @@
 import { Router } from 'express';
+import { deploymentController } from '@modules/deployments';
 import { authenticate } from '@middleware/auth';
 import { validateBody, validateQuery, validateParams } from '@middleware/validation';
 import * as controller from './patches.controller';
-import { deploymentController } from '@modules/deployments';
 import {
   createPatchSchema,
   updatePatchSchema,
@@ -11,7 +11,6 @@ import {
   testPatchSchema,
   rejectPatchSchema,
   testApproveQuerySchema,
-  scanEndpointsSchema,
   createDeploymentSchema,
   deploymentIdParamSchema,
   deploymentListQuerySchema,
@@ -123,14 +122,6 @@ router.get(
   controller.streamPatchBundle
 );
 
-// GET /v1/patches/:id/file-details - Get file details
-router.get(
-  '/:id/file-details',
-  authenticate,
-  validateParams(patchIdParamSchema),
-  controller.getFileDetails
-);
-
 // GET /v1/patches/:id/vulnerabilities - Get related vulnerabilities
 router.get(
   '/:id/vulnerabilities',
@@ -148,23 +139,6 @@ router.get(
     const { listPatchRecommendations } = await import('./asset-patch-recommendation.controller');
     return listPatchRecommendations(req, res);
   }
-);
-
-// GET /v1/patches/:id/endpoints - Get affected endpoints
-router.get(
-  '/:id/endpoints',
-  authenticate,
-  validateParams(patchIdParamSchema),
-  controller.getEndpoints
-);
-
-// POST /v1/patches/:id/scan-endpoints - Scan endpoints for patch
-router.post(
-  '/:id/scan-endpoints',
-  authenticate,
-  validateParams(patchIdParamSchema),
-  validateBody(scanEndpointsSchema),
-  controller.scanEndpoints
 );
 
 // ============================================

@@ -1,4 +1,8 @@
+import { createLogger } from '@shared/services/logger';
+import { withTransaction } from '@shared/utils/transaction';
 import { prisma } from '@db/client';
+
+const logger = createLogger('auth');
 import {
   hashPassword,
   comparePassword,
@@ -13,14 +17,13 @@ import {
   BadRequestError,
   ForbiddenError,
 } from '@shared/errors';
-import type { CompleteOnboardingInput } from './auth.validators';
 import type {
   LoginResponse,
   RefreshResponse,
-  UserMeResponse,
-  OnboardingResponse,
+    OnboardingResponse,
   UserPublic,
 } from './auth.types';
+import type { CompleteOnboardingInput } from './auth.validators';
 import type { User } from '@prisma/client';
 
 // Helper to transform DB user to frontend-compatible format
@@ -216,7 +219,7 @@ export class AuthService {
 
     // TODO: Send email with reset link
     // EmailService.sendPasswordResetEmail(user.email, resetToken);
-    console.log(`[DEV] Password reset token for ${email}: ${resetToken}`);
+    logger.info({ email }, 'Password reset token generated');
   }
 
   /**
@@ -243,21 +246,21 @@ export class AuthService {
     const passwordHash = await hashPassword(newPassword);
 
     // Update password and mark token as used
-    await prisma.$transaction([
-      prisma.user.update({
+    await withTransaction('resetPassword', async (tx) => {
+      await tx.user.update({
         where: { id: resetToken.userId },
         data: { passwordHash },
-      }),
-      prisma.passwordResetToken.update({
+      });
+      await tx.passwordResetToken.update({
         where: { id: resetToken.id },
         data: { usedAt: new Date() },
-      }),
+      });
       // Revoke all refresh tokens
-      prisma.refreshToken.updateMany({
+      await tx.refreshToken.updateMany({
         where: { userId: resetToken.userId, revokedAt: null },
         data: { revokedAt: new Date() },
-      }),
-    ]);
+      });
+    });
   }
 
   /**

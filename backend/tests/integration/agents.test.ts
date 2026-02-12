@@ -19,7 +19,7 @@ describe('Agents Module', () => {
         name: 'Test Agent',
         os: 'Windows',
         osVersion: '11 Pro',
-        status: 'Connected',
+        status: 'CONNECTED',
         hostname: 'test-host',
         ipAddress: '192.168.1.100',
         agentVersion: '2.1.0',
@@ -71,7 +71,7 @@ describe('Agents Module', () => {
       data: {
         agentId: testAgentId,
         type: 'scan',
-        status: 'completed',
+        status: 'COMPLETED',
         result: 'Scan completed: 45 patches available',
         executedAt: new Date(),
       },
@@ -101,7 +101,7 @@ describe('Agents Module', () => {
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
       response.body.forEach((agent: { status: string }) => {
-        expect(agent.status).toBe('Connected');
+        expect(agent.status).toBe('CONNECTED');
       });
     });
 
@@ -145,7 +145,7 @@ describe('Agents Module', () => {
       expect(response.body.id).toBe(testAgentId);
       expect(response.body.machineId).toBe(testAgentMachineId);
       expect(response.body.name).toBe('Test Agent');
-      expect(response.body.status).toBe('Connected');
+      expect(response.body.status).toBe('CONNECTED');
       expect(response.body.os).toBe('Windows');
       expect(response.body).toHaveProperty('lastHeartbeatRelative');
       expect(response.body).toHaveProperty('registeredAt');
@@ -224,7 +224,7 @@ describe('Agents Module', () => {
           machineId: deleteAgentMachineId,
           name: 'Delete Test',
           os: 'MacOS',
-          status: 'Disconnected',
+          status: 'DISCONNECTED',
         },
       });
 
@@ -369,7 +369,7 @@ describe('Agent API (Agent-facing)', () => {
         data: {
           agentId: testAgentId,
           type: 'scan',
-          status: 'pending',
+          status: 'PENDING',
         },
       });
 

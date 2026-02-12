@@ -1,9 +1,13 @@
-import { Request, Response, NextFunction } from 'express';
-import archiver from 'archiver';
 import crypto from 'crypto';
-import { AgentsService } from './agents.service';
+import archiver from 'archiver';
+import { Request, Response, NextFunction } from 'express';
+import { createLogger } from '@shared/services/logger';
 import { minioStorage } from '@shared/services/minio.service';
+import { sendSuccess, sendError, typedQuery } from '@shared/utils';
 import { env } from '@config/env';
+import { AgentsService } from './agents.service';
+
+const logger = createLogger('agents-controller');
 import type { ListAgentsQuery } from './agents.validators';
 
 // Bucket for agent binaries
@@ -22,7 +26,7 @@ export class AgentsController {
    */
   listAgents = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const query = req.query as unknown as ListAgentsQuery;
+      const query = typedQuery<ListAgentsQuery>(req);
 
       const result = await this.agentsService.listAgents({
         status: query.status,
@@ -32,8 +36,7 @@ export class AgentsController {
         limit: query.limit,
       });
 
-      // Return array directly to match MSW handler behavior
-      res.json(result.data);
+      sendSuccess(res, result.data);
     } catch (error) {
       next(error);
     }
@@ -47,7 +50,7 @@ export class AgentsController {
     try {
       const { id } = req.params;
       const agent = await this.agentsService.getAgentById(id);
-      res.json(agent);
+      sendSuccess(res, agent);
     } catch (error) {
       next(error);
     }
@@ -62,7 +65,7 @@ export class AgentsController {
       const { id } = req.params;
       const { name, tags } = req.body;
       const agent = await this.agentsService.updateAgent(id, { name, tags });
-      res.json(agent);
+      sendSuccess(res, agent);
     } catch (error) {
       next(error);
     }
@@ -76,7 +79,7 @@ export class AgentsController {
     try {
       const { id } = req.params;
       await this.agentsService.deleteAgent(id);
-      res.json({ success: true, message: 'Agent deleted successfully' });
+      sendSuccess(res, { message: 'Agent deleted successfully' });
     } catch (error) {
       next(error);
     }
@@ -90,7 +93,7 @@ export class AgentsController {
     try {
       const { id } = req.params;
       const commands = await this.agentsService.getAgentCommands(id);
-      res.json(commands);
+      sendSuccess(res, commands);
     } catch (error) {
       next(error);
     }
@@ -106,7 +109,7 @@ export class AgentsController {
       const { type } = req.body; // 'inventory', 'telemetry', or 'all'
 
       const result = await this.agentsService.triggerCollection(id, type || 'all');
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -120,7 +123,7 @@ export class AgentsController {
     try {
       const { id } = req.params;
       const telemetry = await this.agentsService.getLatestTelemetry(id);
-      res.json(telemetry);
+      sendSuccess(res, telemetry);
     } catch (error) {
       next(error);
     }
@@ -181,7 +184,7 @@ export class AgentsController {
   getAgentDownloads = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const downloads = await this.agentsService.getAgentDownloads();
-      res.json(downloads);
+      sendSuccess(res, downloads);
     } catch (error) {
       next(error);
     }
@@ -194,7 +197,7 @@ export class AgentsController {
   getAgentVersions = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const versions = await this.agentsService.getAgentVersions();
-      res.json(versions);
+      sendSuccess(res, versions);
     } catch (error) {
       next(error);
     }
@@ -211,10 +214,7 @@ export class AgentsController {
 
       // Check if we have a file path in the database (uploaded to MinIO)
       if (!version.filePath) {
-        res.status(404).json({
-          error: 'Agent binary not found',
-          message: `No binary available for ${version.platform}/${version.architecture} v${version.version}. Please contact administrator.`,
-        });
+        sendError(res, 404, 'NOT_FOUND', `No binary available for ${version.platform}/${version.architecture} v${version.version}. Please contact administrator.`);
         return;
       }
 
@@ -232,9 +232,9 @@ export class AgentsController {
           const msiStream = await minioStorage.downloadStream(version.filePath, AGENTS_BUCKET);
           msiStream.pipe(res);
         } catch (streamError) {
-          console.error('MinIO stream error:', streamError);
+          logger.error({ err: streamError }, 'MinIO stream error for MSI installer');
           if (!res.headersSent) {
-            res.status(500).json({ error: 'Failed to fetch MSI installer' });
+            sendError(res, 500, 'STREAM_ERROR', 'Failed to fetch MSI installer');
           }
         }
         return;
@@ -328,9 +328,9 @@ echo "Starting PatchIQ Agent..."
       const archive = archiver('zip', { zlib: { level: 6 } });
 
       archive.on('error', (err: Error) => {
-        console.error('Archive error:', err);
+        logger.error({ err }, 'Archive error');
         if (!res.headersSent) {
-          res.status(500).json({ error: 'Failed to create archive' });
+          sendError(res, 500, 'ARCHIVE_ERROR', 'Failed to create archive');
         }
       });
 
@@ -352,10 +352,10 @@ echo "Starting PatchIQ Agent..."
         const agentStream = await minioStorage.downloadStream(version.filePath, AGENTS_BUCKET);
         archive.append(agentStream, { name: agentFilename, mode: isWindows ? undefined : 0o755 });
       } catch (streamError) {
-        console.error('MinIO stream error:', streamError);
+        logger.error({ err: streamError }, 'MinIO stream error for agent binary');
         archive.abort();
         if (!res.headersSent) {
-          res.status(500).json({ error: 'Failed to fetch agent binary' });
+          sendError(res, 500, 'STREAM_ERROR', 'Failed to fetch agent binary');
         }
         return;
       }
@@ -386,7 +386,7 @@ echo "Starting PatchIQ Agent..."
         : await this.agentsService.getLatestAgentVersion(agent.os || 'Windows');
 
       if (!targetVersion || !targetVersion.filePath) {
-        res.status(404).json({ error: 'No agent binary available for this platform' });
+        sendError(res, 404, 'NOT_FOUND', 'No agent binary available for this platform');
         return;
       }
 
@@ -401,7 +401,7 @@ echo "Starting PatchIQ Agent..."
         version: targetVersion.version,
       });
 
-      res.json({
+      sendSuccess(res, {
         message: `Agent update to v${targetVersion.version} queued`,
         ...result,
         targetVersion: targetVersion.version,
@@ -424,7 +424,7 @@ echo "Starting PatchIQ Agent..."
       const buffer = Buffer.concat(chunks);
 
       if (buffer.length === 0) {
-        res.status(400).json({ error: 'No file data received' });
+        sendError(res, 400, 'BAD_REQUEST', 'No file data received');
         return;
       }
 
@@ -441,13 +441,7 @@ echo "Starting PatchIQ Agent..."
       await minioStorage.initialize();
 
       // Ensure agents bucket exists
-      const minioClient = (minioStorage as any).client;
-      if (minioClient) {
-        const exists = await minioClient.bucketExists(AGENTS_BUCKET);
-        if (!exists) {
-          await minioClient.makeBucket(AGENTS_BUCKET, 'us-east-1');
-        }
-      }
+      await minioStorage.ensureBucket(AGENTS_BUCKET);
 
       await minioStorage.uploadBuffer(objectKey, buffer, {
         bucket: AGENTS_BUCKET,
@@ -463,7 +457,7 @@ echo "Starting PatchIQ Agent..."
       // Update database record
       await this.agentsService.updateAgentVersionFile(id, objectKey, buffer.length, checksum);
 
-      res.json({
+      sendSuccess(res, {
         message: `Agent binary uploaded for ${version.platform}/${version.architecture} v${version.version}`,
         objectKey,
         size: buffer.length,

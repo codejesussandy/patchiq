@@ -1,4 +1,3 @@
-import { api } from './api.service';
 import type {
   Branch,
   BranchFormData,
@@ -41,6 +40,7 @@ import type {
   DistributionServer,
   DistributionServerFormData,
 } from '../types/settings.types';
+import { api } from './api.service';
 
 export const settingsService = {
   // Branch Location APIs
@@ -107,7 +107,7 @@ export const settingsService = {
     await api.post(`/settings/users/${id}/suspend`);
   },
 
-  async getAuditLog(id: string): Promise<any[]> {
+  async getAuditLog(id: string): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/settings/users/${id}/audit-log`);
     return response.data;
   },
@@ -177,28 +177,28 @@ export const settingsService = {
     return response.data;
   },
 
-  async getPolicyAudit(id: string): Promise<any[]> {
+  async getPolicyAudit(id: string): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/settings/alerts/${id}/audit`);
     return response.data;
   },
 
   // Organization Management APIs
-  async getOrganizations(): Promise<any[]> {
+  async getOrganizations(): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/settings/organizations`);
     return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
-  async getOrganization(id: string): Promise<any> {
+  async getOrganization(id: string): Promise<Record<string, unknown>> {
     const response = await api.get(`/settings/organizations/${id}`);
     return response.data;
   },
 
-  async createOrganization(data: any): Promise<any> {
+  async createOrganization(data: Record<string, unknown>): Promise<Record<string, unknown>> {
     const response = await api.post(`/settings/organizations`, data);
     return response.data;
   },
 
-  async updateOrganization(id: string, data: any): Promise<any> {
+  async updateOrganization(id: string, data: Record<string, unknown>): Promise<Record<string, unknown>> {
     const response = await api.put(`/settings/organizations/${id}`, data);
     return response.data;
   },
@@ -208,22 +208,22 @@ export const settingsService = {
   },
 
   // Location Management APIs
-  async getLocations(): Promise<any[]> {
+  async getLocations(): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/settings/locations`);
     return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
-  async getLocation(id: string): Promise<any> {
+  async getLocation(id: string): Promise<Record<string, unknown>> {
     const response = await api.get(`/settings/locations/${id}`);
     return response.data;
   },
 
-  async createLocation(data: any): Promise<any> {
+  async createLocation(data: Record<string, unknown>): Promise<Record<string, unknown>> {
     const response = await api.post(`/settings/locations`, data);
     return response.data;
   },
 
-  async updateLocation(id: string, data: any): Promise<any> {
+  async updateLocation(id: string, data: Record<string, unknown>): Promise<Record<string, unknown>> {
     const response = await api.put(`/settings/locations/${id}`, data);
     return response.data;
   },
@@ -233,22 +233,22 @@ export const settingsService = {
   },
 
   // Department Management APIs
-  async getDepartments(): Promise<any[]> {
+  async getDepartments(): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/settings/departments`);
     return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
-  async getDepartment(id: string): Promise<any> {
+  async getDepartment(id: string): Promise<Record<string, unknown>> {
     const response = await api.get(`/settings/departments/${id}`);
     return response.data;
   },
 
-  async createDepartment(data: any): Promise<any> {
+  async createDepartment(data: Record<string, unknown>): Promise<Record<string, unknown>> {
     const response = await api.post(`/settings/departments`, data);
     return response.data;
   },
 
-  async updateDepartment(id: string, data: any): Promise<any> {
+  async updateDepartment(id: string, data: Record<string, unknown>): Promise<Record<string, unknown>> {
     const response = await api.put(`/settings/departments/${id}`, data);
     return response.data;
   },
@@ -258,12 +258,12 @@ export const settingsService = {
   },
 
   // Branding Management APIs
-  async getBrandingSettings(): Promise<any> {
+  async getBrandingSettings(): Promise<Record<string, unknown>> {
     const response = await api.get(`/settings/branding`);
     return response.data;
   },
 
-  async updateBrandingSettings(data: FormData): Promise<any> {
+  async updateBrandingSettings(data: FormData): Promise<Record<string, unknown>> {
     const response = await api.post(`/settings/branding`, data, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -283,7 +283,7 @@ export const settingsService = {
     return response.data;
   },
 
-  async testMailServerConfig(data: MailServerConfig): Promise<any> {
+  async testMailServerConfig(data: MailServerConfig): Promise<Record<string, unknown>> {
     const response = await api.post(`/settings/mail-server/test`, data);
     return response.data;
   },
@@ -299,23 +299,23 @@ export const settingsService = {
     return response.data;
   },
 
-  async testProxyServerConfig(data: ProxyServerConfig): Promise<any> {
+  async testProxyServerConfig(data: ProxyServerConfig): Promise<Record<string, unknown>> {
     const response = await api.post(`/settings/proxy-server/test`, data);
     return response.data;
   },
 
   // Vendor Logo APIs
-  async getVendorLogos(): Promise<any[]> {
+  async getVendorLogos(): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/settings/vendor-logos`);
     return Array.isArray(response.data) ? response.data : (response.data.data || []);
   },
 
-  async getVendorLogo(id: string): Promise<any> {
+  async getVendorLogo(id: string): Promise<Record<string, unknown>> {
     const response = await api.get(`/settings/vendor-logos/${id}`);
     return response.data;
   },
 
-  async createVendorLogo(data: FormData): Promise<any> {
+  async createVendorLogo(data: FormData): Promise<Record<string, unknown>> {
     const response = await api.post(`/settings/vendor-logos`, data, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -324,7 +324,7 @@ export const settingsService = {
     return response.data;
   },
 
-  async updateVendorLogo(id: string, data: FormData): Promise<any> {
+  async updateVendorLogo(id: string, data: FormData): Promise<Record<string, unknown>> {
     const response = await api.put(`/settings/vendor-logos/${id}`, data, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -362,7 +362,7 @@ export const settingsService = {
     await api.delete(`/settings/ldap-configs/${id}`);
   },
 
-  async testLDAPServerConfig(id: string): Promise<any> {
+  async testLDAPServerConfig(id: string): Promise<Record<string, unknown>> {
     const response = await api.post(`/settings/ldap-configs/${id}/test`);
     return response.data;
   },
@@ -635,11 +635,11 @@ export const settingsService = {
   },
 
   // Audit Log APIs
-  async getAuditLogs(): Promise<any[]> {
+  async getAuditLogs(): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/settings/audit`);
     const rawData = Array.isArray(response.data) ? response.data : (response.data.data || []);
     // Transform backend fields to frontend expected format
-    return rawData.map((log: any) => ({
+    return rawData.map((log: Record<string, unknown>) => ({
       id: log.id,
       module: log.resource || '',
       operation: log.action || '',
@@ -662,17 +662,17 @@ export const settingsService = {
     return {
       modules: data.resources || [],
       operations: data.actions || [],
-      users: Array.isArray(data.users) ? data.users.map((u: any) => typeof u === 'string' ? u : u.email) : [],
+      users: Array.isArray(data.users) ? data.users.map((u: unknown) => typeof u === 'string' ? u : (u as Record<string, unknown>).email as string) : [],
     };
   },
 
   // Platform License APIs
-  async getPlatformLicense(): Promise<any> {
+  async getPlatformLicense(): Promise<Record<string, unknown>> {
     const response = await api.get(`/settings/platform-license`);
     return response.data;
   },
 
-  async updatePlatformLicense(data: { licenseCode: string }): Promise<any> {
+  async updatePlatformLicense(data: { licenseCode: string }): Promise<Record<string, unknown>> {
     const response = await api.put(`/settings/platform-license`, data);
     return response.data;
   },

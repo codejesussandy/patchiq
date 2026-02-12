@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           const currentUser = await authService.getCurrentUser();
           setUser(currentUser);
-        } catch (error) {
+        } catch {
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
         }
@@ -33,10 +33,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string) => {
     try {
       const response = await authService.login({ email, password });
-      setUser(response.data.user);
-      message.success(response.message);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error?.message || 'Login failed';
+      setUser(response.user);
+      message.success('Login successful');
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { error?: { message?: string } } } };
+      const errorMessage = axiosErr.response?.data?.error?.message || 'Login failed';
       message.error(errorMessage);
       throw error;
     }
@@ -57,8 +58,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await authService.forgotPassword({ email });
       message.success(response.message);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error?.message || 'Failed to send reset email';
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { error?: { message?: string } } } };
+      const errorMessage = axiosErr.response?.data?.error?.message || 'Failed to send reset email';
       message.error(errorMessage);
       throw error;
     }
@@ -68,8 +70,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await authService.resetPassword({ token, password, confirmPassword });
       message.success(response.message);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error?.message || 'Failed to reset password';
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { error?: { message?: string } } } };
+      const errorMessage = axiosErr.response?.data?.error?.message || 'Failed to reset password';
       message.error(errorMessage);
       throw error;
     }
@@ -78,10 +81,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const completeOnboarding = async (name: string, contactNumber: string, password: string, confirmPassword: string) => {
     try {
       const response = await authService.completeOnboarding({ name, contactNumber, password, confirmPassword });
-      setUser(response.data.user);
+      // OnboardingResponseData has { message, user: { id, email, name, ... } }
+      // The User type in AuthContext is broader; construct from available fields
+      const currentUser = await authService.getCurrentUser();
+      setUser(currentUser);
       message.success(response.message);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error?.message || 'Failed to complete onboarding';
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { error?: { message?: string } } } };
+      const errorMessage = axiosErr.response?.data?.error?.message || 'Failed to complete onboarding';
       message.error(errorMessage);
       throw error;
     }
@@ -101,6 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

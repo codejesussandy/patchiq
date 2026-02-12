@@ -1,7 +1,7 @@
 import request from 'supertest';
+import { hashPassword } from '@shared/utils/crypto';
 import { createApp } from '@/app';
 import { prisma } from '@db/client';
-import { hashPassword } from '@shared/utils/crypto';
 
 const app = createApp();
 
@@ -26,7 +26,7 @@ describe('Tags API Integration Tests', () => {
         email: testEmail,
         passwordHash: await hashPassword(testPassword),
         name: 'Tags Test User',
-        role: 'admin',
+        role: 'ADMIN',
         isActive: true,
         isOnboarded: true,
       },
@@ -166,7 +166,7 @@ describe('Tags API Integration Tests', () => {
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(response.status).toBe(200);
-      response.body.data.forEach((tag: any) => {
+      response.body.data.forEach((tag: Record<string, unknown>) => {
         expect(tag).toHaveProperty('assetCount');
         expect(typeof tag.assetCount).toBe('number');
       });
@@ -178,7 +178,7 @@ describe('Tags API Integration Tests', () => {
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.data.some((tag: any) => tag.name.includes('Production'))).toBe(true);
+      expect(response.body.data.some((tag: Record<string, unknown>) => (tag.name as string).includes('Production'))).toBe(true);
     });
 
     it('should support pagination', async () => {
@@ -314,7 +314,7 @@ describe('Tags API Integration Tests', () => {
 
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.some((tag: any) => tag.id === newTagId)).toBe(true);
+      expect(response.body.some((tag: Record<string, unknown>) => tag.id === newTagId)).toBe(true);
     });
 
     it('should ignore duplicate tags', async () => {

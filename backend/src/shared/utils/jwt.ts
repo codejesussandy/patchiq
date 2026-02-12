@@ -1,8 +1,8 @@
-import jwt, { SignOptions } from 'jsonwebtoken';
 import crypto from 'crypto';
-import { config } from '@config/index';
-import { TokenPayload, TokenPair } from '@shared/types';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { UnauthorizedError } from '@shared/errors';
+import { TokenPayload, TokenPair } from '@shared/types';
+import { config } from '@config/index';
 
 /**
  * Generate a unique JWT ID (jti) to ensure token uniqueness

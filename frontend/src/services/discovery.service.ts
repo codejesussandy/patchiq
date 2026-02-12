@@ -1,4 +1,3 @@
-import { api } from './api.service';
 import type {
   Agent,
   AgentFormData,
@@ -7,6 +6,7 @@ import type {
   DeviceCredential,
   DeviceCredentialFormData,
 } from '../types/discovery.types';
+import { api } from './api.service';
 
 export const discoveryService = {
   // Agent APIs
@@ -61,7 +61,7 @@ export const discoveryService = {
     await api.delete(`/discovery/ip-ranges/${id}`);
   },
 
-  async scanIPRange(id: string): Promise<any> {
+  async scanIPRange(id: string): Promise<Record<string, unknown>> {
     const response = await api.post(`/discovery/ip-ranges/${id}/scan`);
     return response.data;
   },
@@ -92,7 +92,7 @@ export const discoveryService = {
     await api.delete(`/discovery/credentials/${id}`);
   },
 
-  async testCredential(id: string): Promise<any> {
+  async testCredential(id: string): Promise<Record<string, unknown>> {
     const response = await api.post(`/discovery/credentials/${id}/test`);
     return response.data;
   },

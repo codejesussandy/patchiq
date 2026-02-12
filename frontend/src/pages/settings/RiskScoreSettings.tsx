@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { App,
   Form, Button, Typography, Checkbox, Slider, Row, Col } from 'antd';
-import { settingsService } from '../../services/settings.service';
-import type { RiskScore, RiskScoreFormData } from '../../types/settings.types';
+import { useRiskScore, useUpdateRiskScore } from '../../hooks/useSettings';
+import type { RiskScoreFormData } from '../../types/settings.types';
 
 const { Title } = Typography;
 
@@ -16,37 +16,21 @@ interface RiskScoreFormValues {
 
 export const RiskScoreSettings = () => {
   const { message } = App.useApp();
-  const [loading, setLoading] = useState(false);
   const [form] = Form.useForm<RiskScoreFormValues>();
-  const [_currentRiskScore, setCurrentRiskScore] = useState<RiskScore | null>(null);
-  const [originalFormValues, setOriginalFormValues] = useState<RiskScoreFormValues | null>(null);
+  const { data: riskScore, isLoading: loading } = useRiskScore();
+  const updateRiskScoreMutation = useUpdateRiskScore();
 
   useEffect(() => {
-    fetchRiskScore();
-  }, []);
-
-  const fetchRiskScore = async () => {
-    setLoading(true);
-    try {
-      const riskScore = await settingsService.getRiskScore();
-      setCurrentRiskScore(riskScore);
-
-      const formData: RiskScoreFormValues = {
+    if (riskScore) {
+      form.setFieldsValue({
         applyDefaultSettings: riskScore.applyDefaultSettings,
         vulnerabilityScoreWeight: riskScore.vulnerabilityScoreWeight,
         vulnerabilitySeverityWeight: riskScore.vulnerabilitySeverityWeight,
         threatsWeight: riskScore.threatsWeight,
         endpointVisitsWeight: riskScore.endpointVisitsWeight,
-      };
-
-      form.setFieldsValue(formData);
-      setOriginalFormValues(formData);
-    } catch (error) {
-      message.error('Failed to fetch risk score settings');
-    } finally {
-      setLoading(false);
+      });
     }
-  };
+  }, [riskScore, form]);
 
   const handleSubmit = async () => {
     try {
@@ -60,17 +44,22 @@ export const RiskScoreSettings = () => {
         endpointVisitsWeight: values.endpointVisitsWeight,
       };
 
-      await settingsService.updateRiskScore(formData);
-      setOriginalFormValues(values);
+      await updateRiskScoreMutation.mutateAsync(formData);
       message.success('Risk score settings updated successfully');
-    } catch (error) {
+    } catch {
       message.error('Failed to update risk score settings');
     }
   };
 
   const handleReset = () => {
-    if (originalFormValues) {
-      form.setFieldsValue(originalFormValues);
+    if (riskScore) {
+      form.setFieldsValue({
+        applyDefaultSettings: riskScore.applyDefaultSettings,
+        vulnerabilityScoreWeight: riskScore.vulnerabilityScoreWeight,
+        vulnerabilitySeverityWeight: riskScore.vulnerabilitySeverityWeight,
+        threatsWeight: riskScore.threatsWeight,
+        endpointVisitsWeight: riskScore.endpointVisitsWeight,
+      });
     }
   };
 

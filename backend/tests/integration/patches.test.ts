@@ -31,7 +31,7 @@ describe('Patches API', () => {
           category: 'Security Updates',
           bulletinId: 'MS25-001',
           kbNumber: 'KB5041571',
-          releaseDate: '2025-08-13',
+          publishedAt: '2025-08-13',
           architecture: '64 BIT',
           referenceUrl: 'https://support.microsoft.com/kb/5041571',
           languagesSupported: ['English'],
@@ -230,16 +230,16 @@ describe('Patches API', () => {
           .post(`/v1/patches/${testPatchId}/test`)
           .set('Authorization', `Bearer ${authToken}`)
           .send({
-            status: 'failed',
+            status: 'FAILED',
             notes: 'Causes BSOD on certain configurations',
             testEnvironment: 'Windows Server 2019',
           })
           .expect(200);
 
-        expect(response.body.testStatus).toBe('Test Failed');
-        expect(response.body.testResult).toBe('failed');
+        expect(response.body.testStatus).toBe('TEST_FAILED');
+        expect(response.body.testResult).toBe('FAILED');
         // When test fails, approval should be automatically rejected
-        expect(response.body.approvalStatus).toBe('Rejected');
+        expect(response.body.approvalStatus).toBe('REJECTED');
       });
     });
 
@@ -249,8 +249,8 @@ describe('Patches API', () => {
         await prisma.patch.update({
           where: { id: testPatchId },
           data: {
-            testStatus: 'Tested',
-            testResult: 'passed',
+            testStatus: 'TESTED',
+            testResult: 'PASSED',
           },
         });
 
@@ -259,7 +259,7 @@ describe('Patches API', () => {
           .set('Authorization', `Bearer ${authToken}`)
           .expect(200);
 
-        expect(response.body.approvalStatus).toBe('Approved');
+        expect(response.body.approvalStatus).toBe('APPROVED');
         expect(response.body.approvedBy).toBeTruthy();
         expect(response.body.approvedAt).toBeTruthy();
       });
@@ -276,8 +276,8 @@ describe('Patches API', () => {
         await prisma.patch.update({
           where: { id: testPatchId },
           data: {
-            testStatus: 'Tested',
-            testResult: 'failed',
+            testStatus: 'TESTED',
+            testResult: 'FAILED',
           },
         });
 
@@ -299,7 +299,7 @@ describe('Patches API', () => {
           })
           .expect(200);
 
-        expect(response.body.approvalStatus).toBe('Rejected');
+        expect(response.body.approvalStatus).toBe('REJECTED');
         expect(response.body.rejectionReason).toBe('Known compatibility issues with our software');
         expect(response.body.rejectedBy).toBeTruthy();
         expect(response.body.rejectedAt).toBeTruthy();
@@ -327,8 +327,8 @@ describe('Patches API', () => {
           title: 'Test Patch for Deployment',
           software: 'Test Software',
           severity: 'CRITICAL',
-          testStatus: 'Tested',
-          testResult: 'passed',
+          testStatus: 'TESTED',
+          testResult: 'PASSED',
           approvalStatus: 'Approved',
         },
       });
@@ -350,7 +350,6 @@ describe('Patches API', () => {
           name: 'Critical Security Patches - Test',
           description: 'Deploy critical security patches',
           type: 'INSTALL',
-          targetGroups: ['all', 'windows'],
           patches: [testPatchId],
         };
 
@@ -362,7 +361,7 @@ describe('Patches API', () => {
 
         expect(response.body.name).toBe(deploymentData.name);
         expect(response.body.deploymentId).toMatch(/DEP-\d+/);
-        expect(response.body.stage).toBe('IN_PROGRESS');
+        expect(response.body.status).toBe('IN_PROGRESS');
         testDeploymentId = response.body.id;
       });
 
@@ -464,7 +463,7 @@ describe('Patches API', () => {
           .set('Authorization', `Bearer ${authToken}`)
           .expect(200);
 
-        expect(response.body.status).toBe('Approved');
+        expect(response.body.status).toBe('APPROVED');
       });
     });
 

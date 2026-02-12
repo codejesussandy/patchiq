@@ -1,0 +1,25 @@
+{
+  "name": "patchiq",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PatchIQ - Patch and Vulnerability Management Platform",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "backend/src/**/*.ts": [
+      "bash -c 'cd backend && npx eslint --fix --max-warnings=0'"
+    ],
+    "frontend/src/**/*.{ts,tsx}": [
+      "bash -c 'cd frontend && npx eslint --fix --max-warnings=0'"
+    ],
+    "shared/types/**/*.ts": [
+      "bash -c 'cd backend && npx tsc --noEmit --incremental'",
+      "bash -c 'cd frontend && npx tsc --noEmit --incremental'"
+    ]
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7"
+  }
+}

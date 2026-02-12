@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
-const notificationCategoryEnum = z.enum(['agent', 'deployment', 'vulnerability', 'alert', 'system']);
+const notificationCategoryEnum = z.enum(['AGENT', 'DEPLOYMENT', 'VULNERABILITY', 'ALERT', 'SYSTEM']);
 
 export const listNotificationsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
-  type: z.enum(['info', 'success', 'warning', 'error']).optional(),
+  type: z.enum(['INFO', 'SUCCESS', 'WARNING', 'ERROR']).optional(),
   category: notificationCategoryEnum.optional(),
   read: z
     .enum(['true', 'false'])
@@ -20,7 +20,7 @@ export const notificationIdParamSchema = z.object({
 export const notificationHistoryQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
-  type: z.enum(['info', 'success', 'warning', 'error']).optional(),
+  type: z.enum(['INFO', 'SUCCESS', 'WARNING', 'ERROR']).optional(),
   category: notificationCategoryEnum.optional(),
   read: z
     .enum(['true', 'false'])
@@ -54,3 +54,10 @@ export type ListNotificationsQuery = z.infer<typeof listNotificationsQuerySchema
 export type NotificationHistoryQuery = z.infer<typeof notificationHistoryQuerySchema>;
 export type BulkNotificationInput = z.infer<typeof bulkNotificationSchema>;
 export type NotificationPreferencesInput = z.infer<typeof notificationPreferencesSchema>;
+
+// SSE stream token query
+export const sseTokenQuerySchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+});
+
+export type SseTokenQuery = z.infer<typeof sseTokenQuerySchema>;

@@ -2,31 +2,32 @@
  * Reports Module Types - Aligned with backend types
  */
 
-// Core type definitions
-export type ReportType = 'patch' | 'asset' | 'vulnerability' | 'compliance' | 'audit' | 'custom';
-export type ReportFormat = 'PDF' | 'CSV' | 'Excel';
-export type ReportStatus = 'draft' | 'generating' | 'completed' | 'failed';
-export type ScheduleFrequency = 'daily' | 'weekly' | 'monthly';
+import type {
+  ReportFrequency,
+  ReportType,
+  ReportFormat,
+  ReportStatus,
+} from '@shared/types';
 
-// Filter interface
-export interface ReportFilters {
-  dateRange?: {
-    start: string;
-    end: string;
-  };
-  severity?: string[];
-  status?: string[];
-  category?: string[];
-  [key: string]: unknown;
-}
+// Re-export shared types
+export type {
+  ReportFilters,
+  ReportPreview,
+  ReportTemplate,
+  ReportType,
+  ReportFormat,
+  ReportStatus,
+} from '@shared/types';
 
-// Schedule interface
+export type ScheduleFrequency = ReportFrequency;
+
+// Schedule interface (UI version with extra fields)
 export interface ReportSchedule {
   enabled: boolean;
   frequency: ScheduleFrequency;
-  time?: string; // HH:mm format
-  dayOfWeek?: number; // 0-6 for weekly
-  dayOfMonth?: number; // 1-31 for monthly
+  time?: string;
+  dayOfWeek?: number;
+  dayOfMonth?: number;
   recipients: string[];
   nextRunAt?: string;
   lastRunAt?: string;
@@ -40,7 +41,7 @@ export interface Report {
   type: ReportType;
   format: ReportFormat;
   status: ReportStatus;
-  filters?: ReportFilters;
+  filters?: import('@shared/types').ReportFilters;
   columns?: string[];
   schedule?: ReportSchedule;
   filePath?: string;
@@ -52,18 +53,7 @@ export interface Report {
   updatedAt?: string;
 }
 
-// Report Template interface
-export interface ReportTemplate {
-  id: string;
-  name: string;
-  type: ReportType;
-  description: string;
-  availableColumns: string[];
-  defaultColumns: string[];
-  availableFilters: string[];
-}
-
-// Wizard Step interfaces
+// Wizard Step interfaces (UI-only)
 export interface CreateReportStep1Data {
   type: ReportType;
   name: string;
@@ -77,23 +67,18 @@ export interface CreateReportStep1Response {
 }
 
 export interface CreateReportStep2Data {
-  filters?: ReportFilters;
+  filters?: import('@shared/types').ReportFilters;
   columns?: string[];
 }
 
 export interface CreateReportStep2Response {
   reportId: string;
-  preview: ReportPreview;
+  preview: import('@shared/types').ReportPreview;
 }
 
 export interface CreateReportStep3Data {
   format: ReportFormat;
   schedule?: Omit<ReportSchedule, 'nextRunAt' | 'lastRunAt'>;
-}
-
-export interface ReportPreview {
-  rowCount: number;
-  sampleData: Record<string, unknown>[];
 }
 
 // Simple create (all-in-one)
@@ -102,7 +87,7 @@ export interface CreateReportData {
   type: ReportType;
   description?: string;
   format: ReportFormat;
-  filters?: ReportFilters;
+  filters?: import('@shared/types').ReportFilters;
   columns?: string[];
   schedule?: Omit<ReportSchedule, 'nextRunAt' | 'lastRunAt'>;
 }
@@ -111,7 +96,7 @@ export interface CreateReportData {
 export interface UpdateReportData {
   name?: string;
   description?: string;
-  filters?: ReportFilters;
+  filters?: import('@shared/types').ReportFilters;
   columns?: string[];
   format?: ReportFormat;
   schedule?: Omit<ReportSchedule, 'nextRunAt' | 'lastRunAt'>;
@@ -187,22 +172,23 @@ export interface SendReportData {
 }
 
 // Column definitions for each report type (for UI display)
-export const REPORT_COLUMNS: Record<ReportType, string[]> = {
-  patch: [
+// Keys use shared UPPERCASE ReportType values
+export const REPORT_COLUMNS: Partial<Record<ReportType, string[]>> = {
+  PATCH: [
     'patchId',
     'software',
     'category',
     'severity',
     'os',
     'status',
-    'releaseDate',
+    'publishedAt',
     'kbNumber',
     'affectedEndpoints',
     'installedEndpoints',
     'pendingEndpoints',
     'failedEndpoints',
   ],
-  asset: [
+  ASSET: [
     'assetId',
     'name',
     'category',
@@ -214,7 +200,7 @@ export const REPORT_COLUMNS: Record<ReportType, string[]> = {
     'ipAddress',
     'lastSeen',
   ],
-  vulnerability: [
+  VULNERABILITY: [
     'cve',
     'severity',
     'epss',
@@ -225,7 +211,7 @@ export const REPORT_COLUMNS: Record<ReportType, string[]> = {
     'affectedSoftwares',
     'published',
   ],
-  compliance: [
+  COMPLIANCE: [
     'assetName',
     'complianceScore',
     'patchesInstalled',
@@ -235,7 +221,7 @@ export const REPORT_COLUMNS: Record<ReportType, string[]> = {
     'highVulnerabilities',
     'lastAuditDate',
   ],
-  audit: [
+  AUDIT: [
     'timestamp',
     'module',
     'operation',
@@ -244,42 +230,45 @@ export const REPORT_COLUMNS: Record<ReportType, string[]> = {
     'message',
     'ipAddress',
   ],
-  custom: [],
+  CUSTOM: [],
 };
 
 // Filter definitions for each report type
-export const REPORT_FILTERS: Record<ReportType, string[]> = {
-  patch: ['severity', 'os', 'status', 'category', 'dateRange'],
-  asset: ['category', 'status', 'operationalStatus', 'osType'],
-  vulnerability: ['severity', 'exploitable', 'riskScoreRange', 'cvssRange', 'publishedDateRange'],
-  compliance: ['complianceScoreRange', 'auditDateRange'],
-  audit: ['module', 'operation', 'user', 'status', 'dateRange'],
-  custom: [],
+export const REPORT_FILTERS: Partial<Record<ReportType, string[]>> = {
+  PATCH: ['severity', 'os', 'status', 'category', 'dateRange'],
+  ASSET: ['category', 'status', 'operationalStatus', 'osType'],
+  VULNERABILITY: ['severity', 'exploitable', 'riskScoreRange', 'cvssRange', 'publishedDateRange'],
+  COMPLIANCE: ['complianceScoreRange', 'auditDateRange'],
+  AUDIT: ['module', 'operation', 'user', 'status', 'dateRange'],
+  CUSTOM: [],
 };
 
 // Report type labels for UI display
-export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
-  patch: 'Patch',
-  asset: 'Asset',
-  vulnerability: 'Vulnerability',
-  compliance: 'Compliance',
-  audit: 'Audit',
-  custom: 'Custom',
+export const REPORT_TYPE_LABELS: Partial<Record<ReportType, string>> = {
+  VULNERABILITY: 'Vulnerability',
+  PATCH: 'Patch',
+  COMPLIANCE: 'Compliance',
+  ASSET: 'Asset',
+  ENDPOINT: 'Endpoint',
+  HARDWARE: 'Hardware',
+  AUDIT: 'Audit',
+  CUSTOM: 'Custom',
 };
 
 // Report status labels and colors for UI display
 export const REPORT_STATUS_CONFIG: Record<ReportStatus, { label: string; color: string }> = {
-  draft: { label: 'Draft', color: 'default' },
-  generating: { label: 'Generating', color: 'processing' },
-  completed: { label: 'Completed', color: 'success' },
-  failed: { label: 'Failed', color: 'error' },
+  PENDING: { label: 'Pending', color: 'default' },
+  PROCESSING: { label: 'Processing', color: 'processing' },
+  COMPLETED: { label: 'Completed', color: 'success' },
+  FAILED: { label: 'Failed', color: 'error' },
 };
 
 // Report format labels for UI display
 export const REPORT_FORMAT_LABELS: Record<ReportFormat, string> = {
   PDF: 'PDF',
   CSV: 'CSV',
-  Excel: 'Excel',
+  XLSX: 'Excel',
+  JSON: 'JSON',
 };
 
 // Legacy types (kept for backward compatibility)

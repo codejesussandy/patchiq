@@ -1,6 +1,6 @@
 import rateLimit from 'express-rate-limit';
-import { config } from '@config/index';
 import { TooManyRequestsError } from '@shared/errors';
+import { config } from '@config/index';
 
 export const defaultRateLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,

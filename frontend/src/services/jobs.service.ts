@@ -126,39 +126,12 @@ export interface VulnerabilityJob {
 export interface CreateVulnerabilityJobInput {
   name: string;
   description?: string;
-  scope?: 'Global' | 'Group' | 'Endpoint';
+  scope?: 'GLOBAL' | 'GROUP' | 'ENDPOINT';
   endpoints?: string[];
-  scanType?: 'instant' | 'scheduled';
+  scanType?: 'INSTANT' | 'SCHEDULED';
   scheduleDate?: string;
   scheduleTime?: string;
-  recurrence?: 'once' | 'daily' | 'weekly' | 'monthly';
-}
-
-// Types for Software Catalog
-export interface SoftwareCatalogItem {
-  id: string;
-  deploymentId: string;
-  name: string;
-  description?: string;
-  version?: string;
-  type: 'MSI' | 'EXE' | 'APPLICATION';
-  os: 'Windows' | 'Mac' | 'Linux';
-  tags?: string[];
-  createdBy: string;
-  createdOn?: string;
-}
-
-// Types for Software Bundle
-export interface SoftwareBundle {
-  id: string;
-  bundleId: string;
-  name: string;
-  description?: string;
-  os: 'Windows' | 'Mac' | 'Linux';
-  softwareCount: number;
-  softwaresList?: string[];
-  createdBy: string;
-  createdOn?: string;
+  recurrence?: 'ONCE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
 }
 
 // Paginated response type
@@ -238,7 +211,7 @@ export const jobsService = {
     return response.data;
   },
 
-  async getConfigDeploymentTasks(id: string): Promise<any[]> {
+  async getConfigDeploymentTasks(id: string): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/jobs/config/deployed/${id}/tasks`);
     return response.data.tasks || response.data || [];
   },
@@ -314,68 +287,14 @@ export const jobsService = {
   },
 
   // ==========================================
-  // Software Catalog
-  // ==========================================
-  async getSoftwareCatalog(): Promise<SoftwareCatalogItem[]> {
-    const response = await api.get<PaginatedResponse<SoftwareCatalogItem>>('/jobs/software/catalog');
-    return response.data.data || [];
-  },
-
-  async getSoftwareCatalogItem(id: string): Promise<SoftwareCatalogItem> {
-    const response = await api.get<SoftwareCatalogItem>(`/jobs/software/catalog/${id}`);
-    return response.data;
-  },
-
-  async createSoftwareCatalog(data: Partial<SoftwareCatalogItem>): Promise<SoftwareCatalogItem> {
-    const response = await api.post<SoftwareCatalogItem>('/jobs/software/catalog', data);
-    return response.data;
-  },
-
-  async updateSoftwareCatalog(id: string, data: Partial<SoftwareCatalogItem>): Promise<SoftwareCatalogItem> {
-    const response = await api.put<SoftwareCatalogItem>(`/jobs/software/catalog/${id}`, data);
-    return response.data;
-  },
-
-  async deleteSoftwareCatalog(id: string): Promise<void> {
-    await api.delete(`/jobs/software/catalog/${id}`);
-  },
-
-  // ==========================================
-  // Software Bundles
-  // ==========================================
-  async getSoftwareBundles(): Promise<SoftwareBundle[]> {
-    const response = await api.get<PaginatedResponse<SoftwareBundle>>('/jobs/software/bundles');
-    return response.data.data || [];
-  },
-
-  async getSoftwareBundle(id: string): Promise<SoftwareBundle> {
-    const response = await api.get<SoftwareBundle>(`/jobs/software/bundles/${id}`);
-    return response.data;
-  },
-
-  async createSoftwareBundle(data: Partial<SoftwareBundle>): Promise<SoftwareBundle> {
-    const response = await api.post<SoftwareBundle>('/jobs/software/bundles', data);
-    return response.data;
-  },
-
-  async updateSoftwareBundle(id: string, data: Partial<SoftwareBundle>): Promise<SoftwareBundle> {
-    const response = await api.put<SoftwareBundle>(`/jobs/software/bundles/${id}`, data);
-    return response.data;
-  },
-
-  async deleteSoftwareBundle(id: string): Promise<void> {
-    await api.delete(`/jobs/software/bundles/${id}`);
-  },
-
-  // ==========================================
   // Software Deployments
   // ==========================================
-  async getSoftwareDeployments(): Promise<any[]> {
+  async getSoftwareDeployments(): Promise<Record<string, unknown>[]> {
     const response = await api.get('/jobs/software/deployed');
     return response.data.data || [];
   },
 
-  async getSoftwareDeploymentTasks(id: string): Promise<any[]> {
+  async getSoftwareDeploymentTasks(id: string): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/jobs/software/deployed/${id}/tasks`);
     return response.data.tasks || response.data || [];
   },

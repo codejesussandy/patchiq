@@ -1,35 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
-  App,
-  Card,
-  Row,
-  Col,
-  Tag,
-  Table,
-  Typography,
-  Space,
-  Spin,
-  Empty,
-  Progress,
-  Timeline,
-  Badge,
-  Button,
-} from 'antd';
-import {
-  SafetyOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  ClockCircleOutlined,
-  SyncOutlined,
-  WarningOutlined,
-  HistoryOutlined,
-  DeploymentUnitOutlined,
+  SafetyOutlined, CheckCircleOutlined, CloseCircleOutlined,
+  ClockCircleOutlined, SyncOutlined, WarningOutlined,
+  HistoryOutlined, DeploymentUnitOutlined,
 } from '@ant-design/icons';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
+import {
+  App, Card, Row, Col, Tag, Typography, Space, Spin, Empty, Badge, Timeline, Button,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import type { AssetRelatedPatch, AssetDeployment, PatchSummary } from '../../../../types/asset.types';
-import { assetService } from '../../../../services/asset.service';
+import { DataTable } from '../../../../components/shared/DataTable';
+import { useAssetPatches, useAssetDeployments } from '../../../../hooks/useAssets';
 import { patchService } from '../../../../services/patch.service';
+import type { AssetRelatedPatch, AssetDeployment, PatchSummary } from '../../../../types/asset.types';
+import { getErrorMessage } from '../../../../utils/error';
+import { PatchesSummaryCards } from './PatchesSummaryCards';
 
 const { Text } = Typography;
 
@@ -41,499 +25,142 @@ interface PatchesTabProps {
 
 const getSeverityColor = (severity: string) => {
   switch (severity.toLowerCase()) {
-    case 'critical':
-      return 'red';
-    case 'high':
-      return 'orange';
-    case 'medium':
-      return 'gold';
-    case 'low':
-      return 'green';
-    default:
-      return 'default';
+    case 'critical': return 'red';
+    case 'high': return 'orange';
+    case 'medium': return 'gold';
+    case 'low': return 'green';
+    default: return 'default';
   }
 };
 
 const getStatusIcon = (status: string) => {
   switch (status) {
-    case 'Installed':
-      return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
-    case 'Missing':
-      return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
-    case 'Pending':
-      return <SyncOutlined spin style={{ color: '#1890ff' }} />;
-    case 'Failed':
-      return <WarningOutlined style={{ color: '#fa8c16' }} />;
-    default:
-      return <ClockCircleOutlined />;
+    case 'INSTALLED': return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
+    case 'MISSING': return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
+    case 'PENDING': return <SyncOutlined spin style={{ color: '#1890ff' }} />;
+    case 'FAILED': return <WarningOutlined style={{ color: '#fa8c16' }} />;
+    default: return <ClockCircleOutlined />;
   }
 };
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'Installed':
-    case 'Success':
-      return 'success';
-    case 'Missing':
-    case 'Failed':
-      return 'error';
-    case 'Pending':
-      return 'processing';
-    default:
-      return 'default';
+    case 'INSTALLED': case 'SUCCESS': return 'success';
+    case 'MISSING': case 'FAILED': return 'error';
+    case 'PENDING': return 'processing';
+    default: return 'default';
   }
-};
-
-const CHART_COLORS = {
-  installed: '#52c41a',
-  missing: '#ff4d4f',
-  pending: '#1890ff',
-  failed: '#fa8c16',
 };
 
 export const PatchesTab = ({ assetId, agentId, patchSummary: initialSummary }: PatchesTabProps) => {
   const { message } = App.useApp();
-  const [patches, setPatches] = useState<AssetRelatedPatch[]>([]);
-  const [deployments, setDeployments] = useState<AssetDeployment[]>([]);
-  const [summary, setSummary] = useState<PatchSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: patchesResult, isLoading: loadingPatches, isError: patchesError, refetch: refetchPatches } = useAssetPatches(assetId);
+  const { data: deploymentsData, isLoading: loadingDeployments } = useAssetDeployments(assetId);
   const [deploying, setDeploying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchPatchData();
-  }, [assetId]);
-
-  const fetchPatchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [patchesResult, deploymentsData] = await Promise.all([
-        assetService.getAssetPatches(assetId),
-        assetService.getAssetDeployments(assetId),
-      ]);
-      setPatches(patchesResult.data);
-      setSummary(patchesResult.summary);
-      setDeployments(deploymentsData);
-    } catch {
-      setError('Failed to load patch information');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const patches: AssetRelatedPatch[] = patchesResult?.data || [];
+  const summary: PatchSummary | null = patchesResult?.summary || null;
+  const deployments: AssetDeployment[] = deploymentsData || [];
 
   const handleDeploy = async (patchList: { id: string; name?: string }[]) => {
-    if (!agentId) {
-      message.warning('No agent connected to this asset');
-      return;
-    }
+    if (!agentId) { message.warning('No agent connected to this asset'); return; }
     setDeploying(true);
     try {
       await patchService.createDeployment({
-        name: patchList.length === 1
-          ? `Deploy ${patchList[0].name || 'Patch'}`
-          : `Deploy ${patchList.length} Missing Patches`,
-        targetAgentIds: [agentId],
-        patches: patchList.map(p => ({ id: p.id })),
-        skipApprovalCheck: true,
+        name: patchList.length === 1 ? `Deploy ${patchList[0].name || 'Patch'}` : `Deploy ${patchList.length} Missing Patches`,
+        targetAgentIds: [agentId], patches: patchList.map(p => ({ id: p.id })), skipApprovalCheck: true,
       });
-      message.success(patchList.length === 1
-        ? `Deployment created for ${patchList[0].name}`
-        : `Deployment created for ${patchList.length} patches`);
-      fetchPatchData();
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || 'Failed to create deployment');
-    } finally {
-      setDeploying(false);
-    }
+      message.success(patchList.length === 1 ? `Deployment created for ${patchList[0].name}` : `Deployment created for ${patchList.length} patches`);
+      refetchPatches();
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, 'Failed to create deployment'));
+    } finally { setDeploying(false); }
   };
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}>
-        <Spin size="large" />
-      </div>
-    );
+  if (loadingPatches || loadingDeployments) {
+    return <div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}><Spin size="large" /></div>;
   }
-
-  if (error) {
-    return <Empty description={error} />;
-  }
+  if (patchesError) return <Empty description="Failed to load patch information" />;
 
   const patchSummary = summary || initialSummary;
-
-  // Prepare chart data
-  const chartData = patchSummary
-    ? [
-        { name: 'Installed', value: patchSummary.installed, color: CHART_COLORS.installed },
-        { name: 'Missing', value: patchSummary.missing, color: CHART_COLORS.missing },
-        { name: 'Pending', value: patchSummary.pending, color: CHART_COLORS.pending },
-        { name: 'Failed', value: patchSummary.failed, color: CHART_COLORS.failed },
-      ].filter((d) => d.value > 0)
-    : [];
-
-  const compliancePercent = patchSummary
-    ? patchSummary.total > 0
-      ? Math.round((patchSummary.installed / patchSummary.total) * 100)
-      : 100
-    : 0;
+  const missingPatches = patches.filter((p) => p.status === 'MISSING');
 
   const patchColumns: ColumnsType<AssetRelatedPatch> = [
-    {
-      title: 'Patch',
-      key: 'patch',
-      render: (_, record) => (
+    { title: 'Patch', key: 'patch', render: (_, record) => (
         <Space direction="vertical" size={0}>
-          <Space>
-            {getStatusIcon(record.status)}
-            <Text strong>{record.name}</Text>
-          </Space>
-          {record.kbNumber && (
-            <Text type="secondary" style={{ fontSize: '12px', marginLeft: 22 }}>
-              {record.kbNumber}
-            </Text>
-          )}
+          <Space>{getStatusIcon(record.status)}<Text strong>{record.name}</Text></Space>
+          {record.kbNumber && <Text type="secondary" style={{ fontSize: '12px', marginLeft: 22 }}>{record.kbNumber}</Text>}
         </Space>
       ),
     },
-    {
-      title: 'Severity',
-      dataIndex: 'severity',
-      key: 'severity',
-      width: 100,
-      filters: [
-        { text: 'Critical', value: 'CRITICAL' },
-        { text: 'High', value: 'High' },
-        { text: 'Medium', value: 'Medium' },
-        { text: 'Low', value: 'Low' },
-      ],
+    { title: 'Severity', dataIndex: 'severity', key: 'severity', width: 100,
+      filters: [{ text: 'Critical', value: 'CRITICAL' }, { text: 'High', value: 'HIGH' }, { text: 'Medium', value: 'MEDIUM' }, { text: 'Low', value: 'LOW' }],
       onFilter: (value, record) => record.severity === value,
-      render: (severity: string) => (
-        <Tag color={getSeverityColor(severity)}>{severity}</Tag>
-      ),
+      render: (severity: string) => <Tag color={getSeverityColor(severity)}>{severity}</Tag>,
     },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      filters: [
-        { text: 'Installed', value: 'Installed' },
-        { text: 'Missing', value: 'Missing' },
-        { text: 'Pending', value: 'Pending' },
-        { text: 'Failed', value: 'Failed' },
-      ],
+    { title: 'Status', dataIndex: 'status', key: 'status', width: 100,
+      filters: [{ text: 'Installed', value: 'INSTALLED' }, { text: 'Missing', value: 'MISSING' }, { text: 'Pending', value: 'PENDING' }, { text: 'Failed', value: 'FAILED' }],
       onFilter: (value, record) => record.status === value,
-      render: (status: string) => (
-        <Badge status={getStatusColor(status)} text={status} />
-      ),
+      render: (status: string) => <Badge status={getStatusColor(status)} text={status} />,
     },
-    {
-      title: 'Release Date',
-      dataIndex: 'releaseDate',
-      key: 'releaseDate',
-      width: 120,
-      sorter: (a, b) => {
-        if (!a.releaseDate || !b.releaseDate) return 0;
-        return new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime();
-      },
-      render: (date?: string) =>
-        date ? new Date(date).toLocaleDateString() : '—',
+    { title: 'Release Date', dataIndex: 'publishedAt', key: 'publishedAt', width: 120,
+      sorter: (a, b) => { if (!a.publishedAt || !b.publishedAt) return 0; return new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime(); },
+      render: (date?: string) => date ? new Date(date).toLocaleDateString() : '\u2014',
     },
-    {
-      title: 'Action',
-      key: 'action',
-      width: 100,
-      render: (_, record) => {
-        if (record.status === 'Missing' || record.status === 'Failed') {
-          return (
-            <Button
-              type="primary"
-              size="small"
-              icon={<DeploymentUnitOutlined />}
-              disabled={!agentId || deploying}
-              loading={deploying}
-              title={!agentId ? 'No agent connected to this asset' : undefined}
-              onClick={() => handleDeploy([{ id: record.id, name: record.name }])}
-            >
-              Deploy
-            </Button>
-          );
-        }
-        return null;
-      },
+    { title: 'Action', key: 'action', width: 100,
+      render: (_, record) => (record.status === 'MISSING' || record.status === 'FAILED') ? (
+        <Button type="primary" size="small" icon={<DeploymentUnitOutlined />} disabled={!agentId || deploying} loading={deploying}
+          title={!agentId ? 'No agent connected to this asset' : undefined}
+          onClick={() => handleDeploy([{ id: record.id, name: record.name }])}>Deploy</Button>
+      ) : null,
     },
   ];
 
   const deploymentColumns: ColumnsType<AssetDeployment> = [
-    {
-      title: 'Patch',
-      dataIndex: 'patchName',
-      key: 'patchName',
-      render: (name: string) => <Text strong>{name}</Text>,
-    },
-    {
-      title: 'Date',
-      dataIndex: 'date',
-      key: 'date',
-      width: 150,
-      sorter: (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-      defaultSortOrder: 'descend',
-      render: (date: string) => new Date(date).toLocaleString(),
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (status: string) => (
-        <Badge status={getStatusColor(status)} text={status} />
-      ),
-    },
+    { title: 'Patch', dataIndex: 'patchName', key: 'patchName', render: (name: string) => <Text strong>{name}</Text> },
+    { title: 'Date', dataIndex: 'date', key: 'date', width: 150, sorter: (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(), defaultSortOrder: 'descend', render: (date: string) => new Date(date).toLocaleString() },
+    { title: 'Status', dataIndex: 'status', key: 'status', width: 100, render: (status: string) => <Badge status={getStatusColor(status)} text={status} /> },
   ];
-
-  // Separate patches by status
-  const missingPatches = patches.filter((p) => p.status === 'Missing');
-  const failedPatches = patches.filter((p) => p.status === 'Failed');
-  const pendingPatches = patches.filter((p) => p.status === 'Pending');
 
   return (
     <div>
-      {/* Summary Cards */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col span={8}>
-          <Card size="small">
-            <Row gutter={16} align="middle">
-              <Col span={12}>
-                <div style={{ textAlign: 'center' }}>
-                  <Progress
-                    type="circle"
-                    percent={compliancePercent}
-                    width={100}
-                    strokeColor={compliancePercent >= 90 ? '#52c41a' : compliancePercent >= 70 ? '#faad14' : '#ff4d4f'}
-                    format={(percent) => (
-                      <div>
-                        <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{percent}%</div>
-                        <div style={{ fontSize: '11px', color: '#999' }}>Compliance</div>
-                      </div>
-                    )}
-                  />
-                </div>
-              </Col>
-              <Col span={12}>
-                {patchSummary && (
-                  <Space direction="vertical" size={4}>
-                    <div>
-                      <Badge status="success" text={<Text type="secondary">Installed: {patchSummary.installed}</Text>} />
-                    </div>
-                    <div>
-                      <Badge status="error" text={<Text type="secondary">Missing: {patchSummary.missing}</Text>} />
-                    </div>
-                    <div>
-                      <Badge status="processing" text={<Text type="secondary">Pending: {patchSummary.pending}</Text>} />
-                    </div>
-                    <div>
-                      <Badge status="warning" text={<Text type="secondary">Failed: {patchSummary.failed}</Text>} />
-                    </div>
-                  </Space>
-                )}
-              </Col>
-            </Row>
-          </Card>
-        </Col>
+      {patchSummary && <PatchesSummaryCards patchSummary={patchSummary} patches={patches} />}
 
-        <Col span={8}>
-          <Card size="small" title="Patch Distribution">
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={150}>
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={60}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Legend
-                    layout="vertical"
-                    align="right"
-                    verticalAlign="middle"
-                    iconSize={8}
-                    wrapperStyle={{ fontSize: '11px' }}
-                  />
-                  <RechartsTooltip
-                    formatter={(value: number | undefined, name: string | undefined) => [`${value ?? 0} patches`, name ?? '']}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <Empty description="No patch data" style={{ height: 150 }} />
-            )}
-          </Card>
-        </Col>
-
-        <Col span={8}>
-          <Card size="small" title="Quick Stats">
-            <Row gutter={[16, 16]}>
-              <Col span={12}>
-                <Card
-                  size="small"
-                  style={{
-                    textAlign: 'center',
-                    background: missingPatches.filter((p) => p.severity === 'CRITICAL').length > 0 ? '#fff1f0' : '#f6ffed',
-                    border: 'none',
-                  }}
-                >
-                  <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff4d4f' }}>
-                    {missingPatches.filter((p) => p.severity === 'CRITICAL').length}
-                  </div>
-                  <Text type="secondary" style={{ fontSize: '11px' }}>Critical Missing</Text>
-                </Card>
-              </Col>
-              <Col span={12}>
-                <Card
-                  size="small"
-                  style={{
-                    textAlign: 'center',
-                    background: missingPatches.filter((p) => p.severity === 'High').length > 0 ? '#fff7e6' : '#f6ffed',
-                    border: 'none',
-                  }}
-                >
-                  <div style={{ fontSize: 24, fontWeight: 'bold', color: '#fa8c16' }}>
-                    {missingPatches.filter((p) => p.severity === 'High').length}
-                  </div>
-                  <Text type="secondary" style={{ fontSize: '11px' }}>High Missing</Text>
-                </Card>
-              </Col>
-              <Col span={12}>
-                <Card size="small" style={{ textAlign: 'center', background: '#f0f5ff', border: 'none' }}>
-                  <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1890ff' }}>
-                    {pendingPatches.length}
-                  </div>
-                  <Text type="secondary" style={{ fontSize: '11px' }}>Pending</Text>
-                </Card>
-              </Col>
-              <Col span={12}>
-                <Card size="small" style={{ textAlign: 'center', background: failedPatches.length > 0 ? '#fff7e6' : '#f6ffed', border: 'none' }}>
-                  <div style={{ fontSize: 24, fontWeight: 'bold', color: '#fa8c16' }}>
-                    {failedPatches.length}
-                  </div>
-                  <Text type="secondary" style={{ fontSize: '11px' }}>Failed</Text>
-                </Card>
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Patches Table */}
-      <Card
-        title={
-          <Space>
-            <SafetyOutlined />
-            <span>All Patches ({patches.length})</span>
-          </Space>
-        }
-        size="small"
-        style={{ marginBottom: 16 }}
-        extra={
-          missingPatches.length > 0 && (
-            <Button
-              type="primary"
-              icon={<DeploymentUnitOutlined />}
-              disabled={!agentId || deploying}
-              loading={deploying}
-              title={!agentId ? 'No agent connected to this asset' : undefined}
-              onClick={() => handleDeploy(missingPatches.map(p => ({ id: p.id, name: p.name })))}
-            >
-              Deploy All Missing
-            </Button>
-          )
-        }
-      >
+      <Card title={<Space><SafetyOutlined /><span>All Patches ({patches.length})</span></Space>} size="small" style={{ marginBottom: 16 }}
+        extra={missingPatches.length > 0 && (
+          <Button type="primary" icon={<DeploymentUnitOutlined />} disabled={!agentId || deploying} loading={deploying}
+            title={!agentId ? 'No agent connected to this asset' : undefined}
+            onClick={() => handleDeploy(missingPatches.map(p => ({ id: p.id, name: p.name })))}>Deploy All Missing</Button>
+        )}>
         {patches.length > 0 ? (
-          <Table
-            columns={patchColumns}
-            dataSource={patches}
-            rowKey="id"
-            pagination={{ pageSize: 10, showSizeChanger: true }}
-            size="small"
-          />
+          <DataTable columns={patchColumns} data={patches} rowKey="id" pagination={{ pageSize: 10, showSizeChanger: true }} size="small" />
         ) : (
           <Empty description="No patches found for this asset" />
         )}
       </Card>
 
-      {/* Deployment History */}
       <Row gutter={[16, 16]}>
         <Col span={12}>
-          <Card
-            title={
-              <Space>
-                <HistoryOutlined />
-                <span>Recent Deployments</span>
-              </Space>
-            }
-            size="small"
-          >
+          <Card title={<Space><HistoryOutlined /><span>Recent Deployments</span></Space>} size="small">
             {deployments.length > 0 ? (
-              <Table
-                columns={deploymentColumns}
-                dataSource={deployments.slice(0, 5)}
-                rowKey="id"
-                pagination={false}
-                size="small"
-              />
-            ) : (
-              <Empty description="No deployment history" />
-            )}
+              <DataTable columns={deploymentColumns} data={deployments.slice(0, 5)} rowKey="id" pagination={false} size="small" />
+            ) : (<Empty description="No deployment history" />)}
           </Card>
         </Col>
-
         <Col span={12}>
-          <Card
-            title={
-              <Space>
-                <ClockCircleOutlined />
-                <span>Deployment Timeline</span>
-              </Space>
-            }
-            size="small"
-          >
+          <Card title={<Space><ClockCircleOutlined /><span>Deployment Timeline</span></Space>} size="small">
             {deployments.length > 0 ? (
-              <Timeline
-                style={{ marginTop: 16, maxHeight: 250, overflowY: 'auto' }}
+              <Timeline style={{ marginTop: 16, maxHeight: 250, overflowY: 'auto' }}
                 items={deployments.slice(0, 5).map((deployment) => ({
-                  color:
-                    deployment.status === 'Success'
-                      ? 'green'
-                      : deployment.status === 'Failed'
-                        ? 'red'
-                        : 'blue',
+                  color: deployment.status === 'SUCCESS' ? 'green' : deployment.status === 'FAILED' ? 'red' : 'blue',
                   children: (
-                    <div>
-                      <Space direction="vertical" size={0}>
-                        <Space>
-                          <Text strong>{deployment.patchName}</Text>
-                          <Tag color={getStatusColor(deployment.status)}>{deployment.status}</Tag>
-                        </Space>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                          {new Date(deployment.date).toLocaleString()}
-                        </Text>
-                      </Space>
-                    </div>
+                    <div><Space direction="vertical" size={0}>
+                      <Space><Text strong>{deployment.patchName}</Text><Tag color={getStatusColor(deployment.status)}>{deployment.status}</Tag></Space>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>{new Date(deployment.date).toLocaleString()}</Text>
+                    </Space></div>
                   ),
-                }))}
-              />
-            ) : (
-              <Empty description="No deployment history" />
-            )}
+                }))} />
+            ) : (<Empty description="No deployment history" />)}
           </Card>
         </Col>
       </Row>

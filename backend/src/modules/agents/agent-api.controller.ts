@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { AgentsService } from './agents.service';
 import { BadRequestError } from '@shared/errors';
+import { createLogger } from '@shared/services/logger';
 import { minioStorage } from '@shared/services/minio.service';
+import { sendSuccess, sendError } from '@shared/utils/response';
+import { AgentsService } from './agents.service';
+
+const logger = createLogger('agent-api');
 
 const AGENTS_BUCKET = 'agents';
 import type {
@@ -35,7 +39,7 @@ export class AgentApiController {
 
       // Return 200 for re-registration, 201 for new registration
       const statusCode = result.isReRegistration ? 200 : 201;
-      res.status(statusCode).json(result);
+      sendSuccess(res, result, statusCode);
     } catch (error) {
       next(error);
     }
@@ -63,9 +67,9 @@ export class AgentApiController {
         ...result,
       };
       if (result.commandsPending) {
-        console.log(`[HEARTBEAT] Agent ${agentId} has pending commands`);
+        logger.info({ agentId }, 'Agent has pending commands');
       }
-      res.json(response);
+      sendSuccess(res, response);
     } catch (error) {
       next(error);
     }
@@ -84,7 +88,7 @@ export class AgentApiController {
       }
 
       const commands = await this.agentsService.getPendingCommands(agentId);
-      res.json(commands);
+      sendSuccess(res, commands);
     } catch (error) {
       next(error);
     }
@@ -100,7 +104,7 @@ export class AgentApiController {
       const input: CommandResultInput = req.body;
 
       await this.agentsService.updateCommandResult(id, input);
-      res.json({ success: true });
+      sendSuccess(res, null);
     } catch (error) {
       next(error);
     }
@@ -119,7 +123,7 @@ export class AgentApiController {
       }
 
       const config = await this.agentsService.getAgentConfig(agentId);
-      res.json(config);
+      sendSuccess(res, config);
     } catch (error) {
       next(error);
     }
@@ -139,7 +143,7 @@ export class AgentApiController {
 
       const inventory: InventoryInput = req.body;
       await this.agentsService.processInventory(agentId, inventory);
-      res.json({ success: true });
+      sendSuccess(res, null);
     } catch (error) {
       next(error);
     }
@@ -159,7 +163,7 @@ export class AgentApiController {
 
       const telemetry: TelemetryInput = req.body;
       await this.agentsService.processTelemetry(agentId, telemetry);
-      res.json({ success: true });
+      sendSuccess(res, null);
     } catch (error) {
       next(error);
     }
@@ -175,7 +179,7 @@ export class AgentApiController {
       const version = await this.agentsService.getAgentVersionById(versionId);
 
       if (!version.filePath) {
-        res.status(404).json({ error: 'Agent binary not found' });
+        sendError(res, 404, 'NOT_FOUND', 'Agent binary not found');
         return;
       }
 
@@ -206,7 +210,7 @@ export class AgentApiController {
       }
 
       const result = await this.agentsService.refreshAgentToken(refreshToken);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }

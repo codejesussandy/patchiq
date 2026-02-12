@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Dropdown, Badge, List, Typography, Button, Empty, Spin, Tag } from 'antd';
 import {
   BellOutlined,
   CheckOutlined,
@@ -9,9 +8,10 @@ import {
   InfoCircleFilled,
   CloseCircleFilled,
 } from '@ant-design/icons';
+import { Dropdown, Badge, List, Typography, Button, Empty, Spin, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { notificationService, type Notification, type NotificationType } from '../services/notification.service';
 import { useNotificationSSE } from '../hooks/useNotificationSSE';
+import { notificationService, type Notification, type NotificationType } from '../services/notification.service';
 
 const { Text } = Typography;
 
@@ -76,8 +76,8 @@ export const NotificationDropdown = () => {
       const list = Array.isArray(data) ? data : [];
       setNotifications(list);
       setUnreadCount(list.filter((n) => !n.read).length);
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+    } catch {
+      // silently fail — notification list won't update
     } finally {
       setLoading(false);
     }
@@ -125,8 +125,8 @@ export const NotificationDropdown = () => {
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
       setUnreadCount((c) => Math.max(0, c - 1));
-    } catch (error) {
-      console.error('Failed to mark as read:', error);
+    } catch {
+      // silently fail
     }
   };
 
@@ -137,8 +137,8 @@ export const NotificationDropdown = () => {
       await notificationService.deleteNotification(id);
       setNotifications((prev) => prev.filter((n) => n.id !== id));
       if (wasUnread) setUnreadCount((c) => Math.max(0, c - 1));
-    } catch (error) {
-      console.error('Failed to delete notification:', error);
+    } catch {
+      // silently fail
     }
   };
 
@@ -147,8 +147,8 @@ export const NotificationDropdown = () => {
       await notificationService.markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
-    } catch (error) {
-      console.error('Failed to mark all as read:', error);
+    } catch {
+      // silently fail
     }
   };
 

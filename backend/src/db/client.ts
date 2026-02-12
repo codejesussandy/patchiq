@@ -1,18 +1,17 @@
 import { PrismaClient } from '@prisma/client';
 import { config } from '@config/index';
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+const g: unknown = globalThis;
+const globalStore = g as Record<string, PrismaClient | undefined>;
 
 export const prisma =
-  globalForPrisma.prisma ??
+  globalStore['__prisma'] ??
   new PrismaClient({
     log: config.isDevelopment ? ['query', 'info', 'warn', 'error'] : ['error'],
   });
 
 if (!config.isProduction) {
-  globalForPrisma.prisma = prisma;
+  globalStore['__prisma'] = prisma;
 }
 
 export default prisma;

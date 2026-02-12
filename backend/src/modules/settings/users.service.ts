@@ -1,8 +1,12 @@
-import { prisma } from '@db/client';
 import { NotFoundError, BadRequestError, ConflictError } from '@shared/errors';
-import { paginate, getPaginationParams } from '@shared/utils/pagination';
+import { createLogger } from '@shared/services/logger';
 import { hashPassword, generateToken, hashString } from '@shared/utils/crypto';
 import { addDuration } from '@shared/utils/date';
+import { paginate, getPaginationParams } from '@shared/utils/pagination';
+import { withTransaction } from '@shared/utils/transaction';
+import { prisma } from '@db/client';
+
+const logger = createLogger('users');
 import type {
   UserListItem,
   UserDetailResponse,
@@ -301,7 +305,7 @@ export class UsersService {
     });
 
     // TODO: Send invitation email
-    console.log(`[DEV] Invitation for ${input.email}: token=${inviteToken}`);
+    logger.info({ email: input.email }, 'User invitation created');
 
     return { message: 'Invitation sent successfully' };
   }
@@ -392,7 +396,7 @@ export class UsersService {
     });
 
     // TODO: Send password reset email
-    console.log(`[DEV] Password reset for ${user.email}: token=${resetToken}`);
+    logger.info({ email: user.email }, 'Password reset requested');
 
     return { message: 'Password reset email sent successfully' };
   }
@@ -597,27 +601,31 @@ export class UsersService {
       throw new BadRequestError('Cannot modify system role name');
     }
 
-    // Check for duplicate name
-    if (input.name && input.name !== role.name) {
-      const existing = await prisma.role.findUnique({
-        where: { name: input.name },
-      });
-      if (existing) {
-        throw new ConflictError('Role name already exists');
+    const { updated, userCount } = await withTransaction('updateRole', async (tx) => {
+      // Check for duplicate name
+      if (input.name && input.name !== role.name) {
+        const existing = await tx.role.findUnique({
+          where: { name: input.name },
+        });
+        if (existing) {
+          throw new ConflictError('Role name already exists');
+        }
       }
-    }
 
-    const updated = await prisma.role.update({
-      where: { id },
-      data: {
-        name: input.name,
-        description: input.description,
-        permissions: input.permissions ? JSON.parse(JSON.stringify(input.permissions)) : undefined,
-      },
-    });
+      const updated = await tx.role.update({
+        where: { id },
+        data: {
+          name: input.name,
+          description: input.description,
+          permissions: input.permissions ? JSON.parse(JSON.stringify(input.permissions)) : undefined,
+        },
+      });
 
-    const userCount = await prisma.user.count({
-      where: { role: updated.name, deletedAt: null },
+      const userCount = await tx.user.count({
+        where: { role: updated.name, deletedAt: null },
+      });
+
+      return { updated, userCount };
     });
 
     return this.transformRole(updated, userCount);

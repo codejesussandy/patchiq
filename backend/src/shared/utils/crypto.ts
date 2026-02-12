@@ -1,5 +1,5 @@
-import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { config } from '@config/index';
 
 const SALT_ROUNDS = 12;

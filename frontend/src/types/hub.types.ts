@@ -2,6 +2,22 @@
  * Hub (Software Package Repository) Types
  */
 
+// Re-export shared API types
+export type {
+  CreatePackageInput,
+  UpdatePackageInput,
+  PackageListFilters,
+  PackageResponse,
+  PackageDownloadUrl,
+  CreateBundleInput,
+  BundleResponse,
+  GroupedPackageResponse,
+  PackageVersionSummary,
+  ScriptManifest,
+  BundleDownloadResponse,
+} from '@shared/types';
+
+// UI-specific SoftwarePackage type (uses bigint for fileSizeBytes, differs from shared PackageResponse)
 export interface SoftwarePackage {
   id: string;
   packageId: string;
@@ -20,8 +36,8 @@ export interface SoftwarePackage {
   fileSize: string | null;
   fileSizeBytes: bigint | null;
   hasFile: boolean;
-  hasBundle: boolean;           // True if this is a script-based bundle
-  scriptsIncluded: boolean;     // True if scripts are included
+  hasBundle: boolean;
+  scriptsIncluded: boolean;
   downloadUrl: string | null;
   description: string | null;
   tags: string[];
@@ -32,46 +48,10 @@ export interface SoftwarePackage {
   updatedAt: string;
 }
 
-export interface CreatePackageInput {
-  name: string;
-  displayName: string;
-  version: string;
-  platform: string;
-  installSource: string;
-  vendor?: string;
-  category?: string;
-  architecture?: string;
-  installCommand?: string;
-  installArgs?: string;
-  silentInstall?: boolean;
-  requiresReboot?: boolean;
-  downloadUrl?: string;
-  description?: string;
-  releaseNotes?: string;
-  iconUrl?: string;
-  tags?: string[];
-  preInstallScript?: string;
-  postInstallScript?: string;
-  uninstallCommand?: string;
-  supportsRollback?: boolean;
-  rollbackCommand?: string;
-}
+// UI-specific bundle type (alias for shared BundleResponse)
+export type HubBundle = import('@shared/types').BundleResponse;
 
-export interface UpdatePackageInput extends Partial<CreatePackageInput> {
-  isActive?: boolean;
-  isVerified?: boolean;
-}
-
-export interface PackageListFilters {
-  page?: number;
-  limit?: number;
-  search?: string;
-  platform?: string;
-  category?: string;
-  vendor?: string;
-  isActive?: boolean;
-}
-
+// UI-specific list responses
 export interface PackageListResponse {
   data: SoftwarePackage[];
   total: number;
@@ -80,40 +60,15 @@ export interface PackageListResponse {
   totalPages: number;
 }
 
-export interface PackageDownloadUrl {
-  packageId: string;
-  fileName: string;
-  presignedUrl: string;
-  expiresAt: string;
-  checksum: string | null;
-  checksumType: string | null;
+export interface GroupedPackageListResponse {
+  data: import('@shared/types').GroupedPackageResponse[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
-export interface HubBundle {
-  id: string;
-  bundleId: string;
-  name: string;
-  description: string | null;
-  platform: string;
-  packages: {
-    id: string;
-    packageId: string;
-    name: string;
-    displayName: string;
-    version: string;
-    order: number;
-  }[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateBundleInput {
-  name: string;
-  description?: string;
-  platform: string;
-  packageIds: string[];
-}
-
+// UI-specific stats type
 export interface HubStats {
   totalPackages: number;
   totalApplications: number;
@@ -124,45 +79,17 @@ export interface HubStats {
   totalBundles: number;
 }
 
-// Grouped package types
-export interface GroupedPackageResponse {
-  name: string;
-  displayName: string;
-  vendor: string | null;
-  category: string | null;
-  platform: string;
-  tags: string[];
-  description: string | null;
-  latestVersion: string;
-  latestPackageId: string;
-  totalVersions: number;
-  hasFile: boolean;
-  isActive: boolean;
-  versions: PackageVersionSummary[];
-}
-
-export interface PackageVersionSummary {
-  id: string;
+// UI-specific bundle upload result
+export interface BundleUploadResult {
   packageId: string;
-  version: string;
-  hasFile: boolean;
-  hasBundle: boolean;
-  isActive: boolean;
-  isVerified: boolean;
-  installSource: string;
-  fileSize: string | null;
-  createdAt: string;
+  bundleObjectKey: string;
+  bundleChecksum: string;
+  bundleSize: number;
+  manifest: import('@shared/types').ScriptManifest;
+  scriptsFound: string[];
 }
 
-export interface GroupedPackageListResponse {
-  data: GroupedPackageResponse[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-// Platform options
+// Platform options (UI display)
 export const PLATFORM_OPTIONS = [
   { value: 'windows', label: 'Windows' },
   { value: 'macos', label: 'macOS' },
@@ -170,7 +97,7 @@ export const PLATFORM_OPTIONS = [
   { value: 'cross-platform', label: 'Cross-Platform' },
 ];
 
-// Install source options
+// Install source options (UI display)
 export const INSTALL_SOURCE_OPTIONS = [
   { value: 'bundle', label: 'Script Bundle (Recommended)' },
   { value: 'apt', label: 'APT (Debian/Ubuntu)' },
@@ -186,48 +113,7 @@ export const INSTALL_SOURCE_OPTIONS = [
   { value: 'flatpak', label: 'Flatpak' },
 ];
 
-// ============================================
-// Script Bundle Types
-// ============================================
-
-export interface BundleUploadResult {
-  packageId: string;
-  bundleObjectKey: string;
-  bundleChecksum: string;
-  bundleSize: number;
-  manifest: ScriptManifest;
-  scriptsFound: string[];
-}
-
-export interface ScriptManifest {
-  id: string;
-  name: string;
-  displayName: string;
-  version: string;
-  vendor?: string;
-  category?: string;
-  platform: 'windows' | 'macos' | 'linux' | 'cross-platform';
-  architecture?: string;
-  description?: string;
-  requiresRoot?: boolean;
-  requiresReboot?: boolean;
-  scripts: {
-    install?: string;
-    update?: string;
-    rollback?: string;
-    uninstall?: string;
-  };
-  files?: Array<{
-    name: string;
-    checksum: string;
-    size: number;
-  }>;
-  environment?: Record<string, string>;
-  dependencies?: string[];
-  conflicts?: string[];
-}
-
-// Category options
+// Category options (UI display)
 export const CATEGORY_OPTIONS = [
   { value: 'browser', label: 'Browser' },
   { value: 'utility', label: 'Utility' },
@@ -241,7 +127,7 @@ export const CATEGORY_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-// Architecture options
+// Architecture options (UI display)
 export const ARCHITECTURE_OPTIONS = [
   { value: 'x64', label: 'x64 (64-bit)' },
   { value: 'x86', label: 'x86 (32-bit)' },

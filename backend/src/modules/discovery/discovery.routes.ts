@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { DiscoveryController } from './discovery.controller';
 import { authenticate } from '@middleware/auth';
 import { validateBody, validateQuery } from '@middleware/validation';
+import { DiscoveryController } from './discovery.controller';
 import {
   listIPRangesQuerySchema,
   createIPRangeSchema,
@@ -10,6 +10,7 @@ import {
   createCredentialSchema,
   updateCredentialSchema,
   testCredentialSchema,
+  getCredentialQuerySchema,
   getScanResultsQuerySchema,
   listDiscoveredDevicesQuerySchema,
   enrollDeviceSchema,
@@ -75,7 +76,7 @@ router.get(
 );
 
 // GET /v1/discovery/credentials/:id - Get a single credential
-router.get('/credentials/:id', controller.getCredential);
+router.get('/credentials/:id', validateQuery(getCredentialQuerySchema), controller.getCredential);
 
 // POST /v1/discovery/credentials - Create a new credential
 router.post(

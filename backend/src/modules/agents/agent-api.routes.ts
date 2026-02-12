@@ -1,15 +1,14 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { AgentApiController } from './agent-api.controller';
-import { validateBody } from '@middleware/validation';
-import { verifyToken } from '@shared/utils/jwt';
 import { UnauthorizedError } from '@shared/errors';
+import { verifyToken } from '@shared/utils/jwt';
+import { validateBody } from '@middleware/validation';
+import { AgentApiController } from './agent-api.controller';
 import {
   registerAgentSchema,
   heartbeatSchema,
   commandResultSchema,
   inventorySchema,
-  telemetrySchema,
-} from './agents.validators';
+  } from './agents.validators';
 
 /**
  * Middleware to authenticate agent requests using JWT.

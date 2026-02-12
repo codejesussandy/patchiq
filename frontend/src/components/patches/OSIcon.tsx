@@ -1,7 +1,7 @@
 import { WindowsOutlined, AppleOutlined } from '@ant-design/icons';
 
 type OSIconProps = {
-  os: 'Windows' | 'MacOS' | 'Ubuntu' | 'Linux';
+  os: string;
 };
 
 export const OSIcon = ({ os }: OSIconProps) => {

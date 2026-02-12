@@ -4,13 +4,13 @@ import { z } from 'zod';
 // Common Schemas
 // ============================================
 
-const severitySchema = z.enum(['CRITICAL', 'High', 'Medium', 'Low', 'UNSPECIFIED']);
-const osSchema = z.enum(['Windows', 'MacOS', 'Ubuntu', 'Linux']);
-const testStatusSchema = z.enum(['Not Tested', 'Tested', 'Test Failed']);
-const testResultSchema = z.enum(['passed', 'failed']);
-const approvalStatusSchema = z.enum(['Pending', 'Approved', 'Rejected']);
+const severitySchema = z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'UNSPECIFIED']);
+const osSchema = z.enum(['WINDOWS', 'MACOS', 'UBUNTU', 'LINUX']);
+const _testStatusSchema = z.enum(['NOT_TESTED', 'TESTED', 'TEST_FAILED']);
+const testResultSchema = z.enum(['PASSED', 'FAILED']);
+const _approvalStatusSchema = z.enum(['PENDING', 'APPROVED', 'REJECTED']);
 const deploymentTypeSchema = z.enum(['INSTALL', 'ROLLBACK']);
-const deploymentStageSchema = z.enum(['IN_PROGRESS', 'COMPLETED', 'FAILED', 'INSTALLED', 'PENDING']);
+const deploymentStatusSchema = z.enum(['IN_PROGRESS', 'COMPLETED', 'FAILED', 'INSTALLED', 'PENDING']);
 const applicationTypeSchema = z.enum(['ALL', 'INCLUDE', 'EXCLUDE']);
 const scopeTypeSchema = z.enum(['ALL_COMPUTERS', 'SCOPE', 'SPECIFIC_GROUPS']);
 
@@ -116,7 +116,7 @@ export const rejectPatchSchema = z.object({
 });
 
 export const testApproveQuerySchema = z.object({
-  status: z.enum(['pending-test', 'pending-approval']).optional(),
+  status: z.enum(['PENDING_TEST', 'PENDING_APPROVAL']).optional(),
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(100).optional().default(20),
 });
@@ -126,7 +126,7 @@ export const testApproveQuerySchema = z.object({
 // ============================================
 
 export const scanEndpointsSchema = z.object({
-  scope: z.enum(['All End Points', 'Specific Groups']),
+  scope: z.enum(['ALL_END_POINTS', 'SPECIFIC_GROUPS']),
   endpointIds: z.array(z.string()).optional().default([]),
 });
 
@@ -139,12 +139,12 @@ export const createDeploymentSchema = z.object({
   description: z.string().optional(),
   type: deploymentTypeSchema,
   configType: z.enum(['INSTALL', 'ROLLBACK']).optional().default('INSTALL'),
-  scope: z.enum(['Global', 'Group', 'Endpoint']).optional().default('Endpoint'),
+  scope: z.enum(['GLOBAL', 'GROUP', 'ENDPOINT']).optional().default('ENDPOINT'),
   schedule: z.string().optional(),
   targetGroups: z.array(z.string()).optional().default([]),
   patches: z.array(z.string().uuid()).min(1, 'At least one patch is required'),
   skipApprovalCheck: z.boolean().optional().default(false),
-  triggerType: z.enum(['manual', 'scheduled', 'zero-touch', 'policy']).optional().default('manual'),
+  triggerType: z.enum(['MANUAL', 'SCHEDULED', 'ZERO_TOUCH', 'POLICY']).optional().default('MANUAL'),
   autoRollback: z.boolean().optional().default(false),
 });
 
@@ -156,7 +156,7 @@ export const deploymentListQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(100).optional().default(20),
   type: deploymentTypeSchema.optional(),
-  stage: deploymentStageSchema.optional(),
+  status: deploymentStatusSchema.optional(),
 });
 
 // ============================================
@@ -240,7 +240,7 @@ export const updateZeroTouchConfigSchema = z.object({
   computers: z.array(z.string()).optional(),
   groups: z.array(z.string()).optional(),
   autoDeploymentRules: autoDeploymentRulesSchema.optional(),
-  status: z.enum(['Active', 'Inactive', 'Draft']).optional(),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'DRAFT']).optional(),
 });
 
 export const zeroTouchConfigIdParamSchema = z.object({

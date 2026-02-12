@@ -22,6 +22,8 @@ import {
   assetIdParamSchema,
   assetQuerySchema,
   bulkDeleteSchema,
+  subCategoryListQuerySchema,
+  lifecycleQuerySchema,
   softwareLicenseCreateSchema,
   softwareLicenseUpdateSchema,
   softwareLicenseIdParamSchema,
@@ -48,7 +50,7 @@ router.delete('/categories/:id', validateParams(categoryIdParamSchema), controll
 // ============================================
 // SubCategories Routes
 // ============================================
-router.get('/subcategories', controller.listSubCategories);
+router.get('/subcategories', validateQuery(subCategoryListQuerySchema), controller.listSubCategories);
 router.get('/subcategories/:id', validateParams(subCategoryIdParamSchema), controller.getSubCategoryById);
 router.post('/subcategories', validateBody(subCategoryCreateSchema), controller.createSubCategory);
 router.put('/subcategories/:id', validateParams(subCategoryIdParamSchema), validateBody(subCategoryUpdateSchema), controller.updateSubCategory);
@@ -81,7 +83,7 @@ router.put('/assets/:id', validateParams(assetIdParamSchema), validateBody(asset
 router.delete('/assets/:id', validateParams(assetIdParamSchema), controller.deleteAsset);
 
 // Asset detail tabs
-router.get('/assets/:id/lifecycle', validateParams(assetIdParamSchema), controller.getAssetLifeCycle);
+router.get('/assets/:id/lifecycle', validateParams(assetIdParamSchema), validateQuery(lifecycleQuerySchema), controller.getAssetLifeCycle);
 router.get('/assets/:id/hardware', validateParams(assetIdParamSchema), controller.getAssetHardware);
 router.get('/assets/:id/hardware/expanded', validateParams(assetIdParamSchema), controller.getAssetHardwareExpanded);
 router.get('/assets/:id/software', validateParams(assetIdParamSchema), controller.getAssetSoftware);

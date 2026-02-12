@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { AuthController } from './auth.controller';
-import { validateBody } from '@middleware/validation';
+import { audit, AuditAction, AuditResource } from '@middleware/audit';
 import { authenticate } from '@middleware/auth';
 import { authRateLimiter, passwordResetRateLimiter } from '@middleware/rateLimit';
-import { audit, AuditAction, AuditResource } from '@middleware/audit';
+import { validateBody } from '@middleware/validation';
+import { AuthController } from './auth.controller';
 import {
   loginSchema,
   refreshTokenSchema,

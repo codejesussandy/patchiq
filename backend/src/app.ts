@@ -1,27 +1,31 @@
-import express, { Application } from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
+import { auditLoggerMiddleware } from '@middleware/audit-logger';
 import { apiReference } from '@scalar/express-api-reference';
-import { config } from '@config/index';
-import { errorHandler, notFoundHandler, defaultRateLimiter } from '@middleware/index';
-import { authRoutes, userRoutes } from '@modules/auth';
+import cors from 'cors';
+import express, { Application } from 'express';
+import helmet from 'helmet';
+
+const logger = createLogger('app');
 import { agentsRoutes, agentApiRoutes, agentVersionsRoutes } from '@modules/agents';
-import { vulnerabilityRoutes } from '@modules/vulnerabilities';
-import cveSyncRoutes from '@modules/vulnerabilities/cve-sync.routes';
 import { assetsRoutes } from '@modules/assets';
-import { patchRoutes, deploymentRoutes, patchTestRoutes, zeroTouchConfigRoutes, assetPatchRecommendationRoutes } from '@modules/patches';
-import { discoveryRoutes } from '@modules/discovery';
-import { jobsRoutes, deploymentPoliciesRoutes } from '@modules/jobs';
+import { authRoutes, userRoutes } from '@modules/auth';
 import { dashboardRoutes } from '@modules/dashboard';
-import { reportsRoutes } from '@modules/reports';
-import { settingsRoutes } from '@modules/settings';
+import { discoveryRoutes } from '@modules/discovery';
+import { hubRoutes } from '@modules/hub';
+import { jobsRoutes, deploymentPoliciesRoutes } from '@modules/jobs';
+import { notificationsRoutes, notificationsController } from '@modules/notifications';
 import { patchRepositoryRoutes } from '@modules/patch-repository';
 import { patchTemplateRoutes } from '@modules/patch-templates';
-import { hubRoutes } from '@modules/hub';
-import { notificationsRoutes, notificationsController } from '@modules/notifications';
+import { patchRoutes, deploymentRoutes, patchTestRoutes, zeroTouchConfigRoutes, assetPatchRecommendationRoutes } from '@modules/patches';
+import { reportsRoutes } from '@modules/reports';
+import { settingsRoutes } from '@modules/settings';
+import { vulnerabilityRoutes } from '@modules/vulnerabilities';
+import cveSyncRoutes from '@modules/vulnerabilities/cve-sync.routes';
+import { createLogger } from '@shared/services/logger';
+import { config } from '@config/index';
+import { errorHandler, notFoundHandler, defaultRateLimiter } from '@middleware/index';
+import { requestIdMiddleware } from '@middleware/request-logger';
 
 export function createApp(): Application {
   const app = express();
@@ -45,17 +49,16 @@ export function createApp(): Application {
     })
   );
 
+  // Request ID middleware (early, before everything else that logs)
+  app.use(requestIdMiddleware);
+  app.use(auditLoggerMiddleware);
+
   // Rate limiting
   app.use(defaultRateLimiter);
 
   // Parsing middleware
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
-
-  // Logging (skip in test environment)
-  if (!config.isTest) {
-    app.use(morgan(config.isDevelopment ? 'dev' : 'combined'));
-  }
 
   // Health check endpoint
   app.get('/health', (_req, res) => {
@@ -138,7 +141,7 @@ export function createApp(): Application {
 
   // Public bundle download endpoint (must be before assets routes which have global auth)
   app.get(`/${config.apiVersion}/bundles/:packageId/download`, (req, res, next) => {
-    console.log(`[BUNDLE] Public download request for package: ${req.params.packageId}`);
+    logger.info({ packageId: req.params.packageId }, 'Public bundle download request');
     import('@modules/hub/hub.service').then(({ hubService }) => {
       const { packageId } = req.params;
       return hubService.getBundleStream(packageId).then((stream) => {
@@ -151,7 +154,7 @@ export function createApp(): Application {
 
   // Public patch bundle stream (for agents to download installers without auth)
   app.get(`/${config.apiVersion}/patches/:id/bundle/stream`, (req, res, next) => {
-    console.log(`[PATCH-BUNDLE] Download request for patch: ${req.params.id}`);
+    logger.info({ patchId: req.params.id }, 'Patch bundle download request');
     import('@modules/patches/patches.service').then(({ getPatchBundleByPatchId }) => {
       return getPatchBundleByPatchId(req.params.id).then(async (bundle) => {
         if (!bundle?.bundleObjectKey) {

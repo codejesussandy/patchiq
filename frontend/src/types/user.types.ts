@@ -1,3 +1,5 @@
+import type { UserRole } from '@shared/types';
+
 // Comprehensive User type combining auth and settings contexts
 export type User = {
   // Core fields
@@ -6,7 +8,7 @@ export type User = {
   username?: string;
   firstName: string;
   lastName: string;
-  role: 'admin' | 'user' | 'manager' | string; // Support both enum and string
+  role: UserRole;
 
   // Profile fields
   avatar?: string;

@@ -110,14 +110,15 @@ export type UserAccounts = {
 };
 
 // Patch Status Types (for security context)
-export type PatchSeverity = 'Critical' | 'Important' | 'Moderate' | 'Low' | 'Unspecified';
+import type { PatchSeverity as SharedPatchSeverity } from '@shared/types';
+export type PatchSeverity = SharedPatchSeverity;
 
 export type MissingPatch = {
   id: string;
   kbNumber?: string;
   title: string;
   severity: PatchSeverity;
-  releaseDate?: string;
+  publishedAt?: string;
   rebootRequired?: boolean;
 };
 

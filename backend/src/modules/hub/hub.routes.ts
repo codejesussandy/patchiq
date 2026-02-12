@@ -5,8 +5,10 @@
 
 import { Router } from 'express';
 import multer from 'multer';
-import { hubController } from './hub.controller';
 import { authenticate } from '@/middleware/auth';
+import { validateQuery, validateParams } from '@/middleware/validation';
+import { hubController } from './hub.controller';
+import { listPackagesQuerySchema, listBundlesQuerySchema, executionPayloadParamsSchema } from './hub.validators';
 
 const router = Router();
 
@@ -33,10 +35,10 @@ router.get('/stats', hubController.getStats.bind(hubController));
 // ============================================
 
 // List packages (grouped by name + platform)
-router.get('/packages/grouped', hubController.listPackagesGrouped.bind(hubController));
+router.get('/packages/grouped', validateQuery(listPackagesQuerySchema), hubController.listPackagesGrouped.bind(hubController));
 
 // List packages
-router.get('/packages', hubController.listPackages.bind(hubController));
+router.get('/packages', validateQuery(listPackagesQuerySchema), hubController.listPackages.bind(hubController));
 
 // Create package (legacy)
 router.post('/packages', hubController.createPackage.bind(hubController));
@@ -76,14 +78,14 @@ router.get('/packages/:packageId/bundle', hubController.getBundleDownloadInfo.bi
 // Note: Bundle download route is defined above (before auth middleware) for agent access
 
 // Get execution payload for agent (returns script or bundle info based on package type)
-router.get('/packages/:packageId/execution-payload/:operationType', hubController.getExecutionPayload.bind(hubController));
+router.get('/packages/:packageId/execution-payload/:operationType', validateParams(executionPayloadParamsSchema), hubController.getExecutionPayload.bind(hubController));
 
 // ============================================
 // Bundle Routes
 // ============================================
 
 // List bundles
-router.get('/bundles', hubController.listBundles.bind(hubController));
+router.get('/bundles', validateQuery(listBundlesQuerySchema), hubController.listBundles.bind(hubController));
 
 // Create bundle
 router.post('/bundles', hubController.createBundle.bind(hubController));

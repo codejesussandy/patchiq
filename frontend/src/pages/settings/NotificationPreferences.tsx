@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Typography, Switch, Button, App, Spin, Table } from 'antd';
+import { useState } from 'react';
 import { SaveOutlined } from '@ant-design/icons';
-import { notificationService, type NotificationPreferences as Prefs } from '../../services/notification.service';
+import { Typography, Switch, Button, App, Spin } from 'antd';
+import { DataTable } from '../../components/shared/DataTable';
+import { useNotificationPreferences, useUpdateNotificationPreferences } from '../../hooks/useNotifications';
+import type { NotificationPreferences as Prefs } from '../../services/notification.service';
 
 const { Title, Text } = Typography;
 
@@ -23,42 +25,32 @@ const defaultPrefs: Prefs = {
   alertInApp: true,
   alertEmail: true,
   systemInApp: true,
-  systemEmail: false,
-};
+  systemEmail: false };
 
 export const NotificationPreferences = () => {
   const { message } = App.useApp();
+  const { data: fetchedPrefs, isLoading: loading } = useNotificationPreferences();
+  const updatePrefsMutation = useUpdateNotificationPreferences();
   const [prefs, setPrefs] = useState<Prefs>(defaultPrefs);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await notificationService.getPreferences();
-        setPrefs(data);
-      } catch {
-        // Use defaults
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  // Sync fetched prefs to local state once loaded
+  if (fetchedPrefs && !initialized) {
+    setPrefs(fetchedPrefs);
+    setInitialized(true);
+  }
 
   const handleToggle = (key: keyof Prefs, value: boolean) => {
     setPrefs((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSave = async () => {
-    setSaving(true);
     try {
-      const updated = await notificationService.updatePreferences(prefs);
-      setPrefs(updated);
+      const updated = await updatePrefsMutation.mutateAsync(prefs);
+      if (updated) setPrefs(updated);
       message.success('Notification preferences saved');
     } catch {
       message.error('Failed to save preferences');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -75,8 +67,7 @@ export const NotificationPreferences = () => {
     category: cat.label,
     description: cat.description,
     inAppKey: `${cat.key}InApp` as keyof Prefs,
-    emailKey: `${cat.key}Email` as keyof Prefs,
-  }));
+    emailKey: `${cat.key}Email` as keyof Prefs }));
 
   const columns = [
     {
@@ -89,8 +80,7 @@ export const NotificationPreferences = () => {
           <br />
           <Text type="secondary" style={{ fontSize: 12 }}>{record.description}</Text>
         </div>
-      ),
-    },
+      ) },
     {
       title: 'In-App',
       width: 80,
@@ -100,8 +90,7 @@ export const NotificationPreferences = () => {
           checked={prefs[record.inAppKey]}
           onChange={(v) => handleToggle(record.inAppKey, v)}
         />
-      ),
-    },
+      ) },
     {
       title: 'Email',
       width: 80,
@@ -111,8 +100,7 @@ export const NotificationPreferences = () => {
           checked={prefs[record.emailKey]}
           onChange={(v) => handleToggle(record.emailKey, v)}
         />
-      ),
-    },
+      ) },
   ];
 
   return (
@@ -122,13 +110,13 @@ export const NotificationPreferences = () => {
           <Title level={4} style={{ margin: 0 }}>Notification Preferences</Title>
           <Text type="secondary">Choose how you receive notifications for each category</Text>
         </div>
-        <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>
+        <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={updatePrefsMutation.isPending}>
           Save Preferences
         </Button>
       </div>
 
-      <Table
-        dataSource={tableData}
+      <DataTable
+        data={tableData}
         columns={columns}
         pagination={false}
         size="middle"

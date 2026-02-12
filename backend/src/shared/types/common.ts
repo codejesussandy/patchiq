@@ -1,24 +1,7 @@
-export interface PaginationParams {
-  page: number;
-  limit: number;
-  sort?: string;
-  order?: 'asc' | 'desc';
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-}
+/**
+ * Backend-internal common types.
+ * Generic API types (PaginationParams, ApiResponse, etc.) are in api.types.ts.
+ */
 
 export interface TokenPayload {
   userId: string;

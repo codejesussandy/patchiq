@@ -1,4 +1,3 @@
-import { api } from './api.service';
 import type {
   Report,
   ReportTemplate,
@@ -18,6 +17,7 @@ import type {
   SendReportData,
   VulnerabilityReportData,
 } from '../types/reports.types';
+import { api } from './api.service';
 
 export const reportsService = {
   // ============================================
@@ -235,7 +235,8 @@ export function getFileExtension(format: ReportFormat): string {
   const extensions: Record<ReportFormat, string> = {
     PDF: 'pdf',
     CSV: 'csv',
-    Excel: 'xlsx',
+    XLSX: 'xlsx',
+    JSON: 'json',
   };
   return extensions[format] || 'csv';
 }

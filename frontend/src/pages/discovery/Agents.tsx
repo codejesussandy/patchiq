@@ -1,8 +1,15 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import {
+  SearchOutlined,
+  MoreOutlined,
+  DownloadOutlined,
+  WindowsOutlined,
+  AppleOutlined,
+  LinkOutlined } from '@ant-design/icons';
+import { formatEnum } from '@shared/types';
+import type { MenuProps } from 'antd';
 import {
   App,
-  Table,
   Input,
   Button,
   Dropdown,
@@ -10,21 +17,15 @@ import {
   Space,
   Typography,
   Card,
-  Modal,
-} from 'antd';
-import {
-  SearchOutlined,
-  MoreOutlined,
-  DownloadOutlined,
-  WindowsOutlined,
-  AppleOutlined,
-  LinkOutlined,
-} from '@ant-design/icons';
+  Modal } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import type { MenuProps } from 'antd';
-import { agentService } from '../../services/agent.service';
-import type { Agent } from '../../types/agent.types';
+import { useNavigate } from 'react-router-dom';
 import { AgentDetailsDrawer } from '../../components/agents/AgentDetailsDrawer';
+import { ConfirmModal } from '../../components/shared/ConfirmModal';
+import { DataTable } from '../../components/shared/DataTable';
+import { useAgents, useAgentDownloads, useDeleteAgent } from '../../hooks/useAgents';
+import { useModal } from '../../hooks/useModal';
+import type { Agent } from '../../types/agent.types';
 
 const { Title, Text } = Typography;
 
@@ -38,39 +39,14 @@ type AgentDownload = {
 export const Agents = () => {
   const { message } = App.useApp();
   const navigate = useNavigate();
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { data: agents = [], isLoading: loading } = useAgents();
+  const { data: agentDownloads = [] } = useAgentDownloads();
+  const deleteAgentMutation = useDeleteAgent();
+  const deleteModal = useModal<Agent>();
   const [searchText, setSearchText] = useState('');
   const [downloadModalVisible, setDownloadModalVisible] = useState(false);
-  const [agentDownloads, setAgentDownloads] = useState<AgentDownload[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-
-  useEffect(() => {
-    fetchAgents();
-    fetchAgentDownloads();
-  }, []);
-
-  const fetchAgents = async () => {
-    setLoading(true);
-    try {
-      const data = await agentService.getAgents();
-      setAgents(data);
-    } catch (error) {
-      message.error('Failed to fetch agents');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAgentDownloads = async () => {
-    try {
-      const data = await agentService.getAgentDownloads();
-      setAgentDownloads(data);
-    } catch (error) {
-      message.error('Failed to fetch agent downloads');
-    }
-  };
 
   const handleView = (agent: Agent) => {
     setSelectedAgent(agent);
@@ -82,21 +58,18 @@ export const Agents = () => {
   };
 
   const handleDelete = (agent: Agent) => {
-    Modal.confirm({
-      title: 'Delete Agent',
-      content: `Are you sure you want to delete ${agent.name}?`,
-      okText: 'Delete',
-      okType: 'danger',
-      onOk: async () => {
-        try {
-          await agentService.deleteAgent(agent.id);
-          message.success(`${agent.name} deleted successfully`);
-          fetchAgents();
-        } catch (error) {
-          message.error('Failed to delete agent');
-        }
-      },
-    });
+    deleteModal.onOpen(agent);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal.selectedItem) return;
+    try {
+      await deleteAgentMutation.mutateAsync(deleteModal.selectedItem.id);
+      message.success(`${deleteModal.selectedItem.name} deleted successfully`);
+      deleteModal.onClose();
+    } catch {
+      message.error('Failed to delete agent');
+    }
   };
 
   const handleDownloadAgent = (download: AgentDownload) => {
@@ -109,33 +82,29 @@ export const Agents = () => {
     {
       key: 'view',
       label: 'View',
-      onClick: () => handleView(agent),
-    },
+      onClick: () => handleView(agent) },
     {
       key: 'edit',
       label: 'Edit',
-      onClick: () => handleEdit(agent),
-    },
+      onClick: () => handleEdit(agent) },
     {
-      type: 'divider',
-    },
+      type: 'divider' },
     {
       key: 'delete',
       label: 'Delete',
       danger: true,
-      onClick: () => handleDelete(agent),
-    },
+      onClick: () => handleDelete(agent) },
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Connected':
+      case 'CONNECTED':
         return 'success';
-      case 'Disconnected':
+      case 'DISCONNECTED':
         return 'default';
-      case 'Pending':
+      case 'PENDING':
         return 'processing';
-      case 'Error':
+      case 'ERROR':
         return 'error';
       default:
         return 'default';
@@ -147,8 +116,7 @@ export const Agents = () => {
       title: 'Agent Name',
       dataIndex: 'name',
       key: 'name',
-      sorter: (a, b) => a.name.localeCompare(b.name),
-    },
+      sorter: (a, b) => a.name.localeCompare(b.name) },
     {
       title: 'Status',
       dataIndex: 'status',
@@ -156,38 +124,34 @@ export const Agents = () => {
       width: 100,
       render: (status: string) => (
         <Tag color={getStatusColor(status)}>
-          {status}
+          {formatEnum(status)}
         </Tag>
       ),
       filters: [
-        { text: 'Connected', value: 'Connected' },
-        { text: 'Disconnected', value: 'Disconnected' },
-        { text: 'Pending', value: 'Pending' },
-        { text: 'Error', value: 'Error' },
+        { text: 'Connected', value: 'CONNECTED' },
+        { text: 'Disconnected', value: 'DISCONNECTED' },
+        { text: 'Pending', value: 'PENDING' },
+        { text: 'Error', value: 'ERROR' },
       ],
-      onFilter: (value, record) => record.status === value,
-    },
+      onFilter: (value, record) => record.status === value },
     {
       title: 'Last Heartbeat',
       dataIndex: 'lastHeartbeatRelative',
       key: 'lastHeartbeatRelative',
       width: 120,
-      sorter: (a, b) => new Date(a.lastHeartbeat).getTime() - new Date(b.lastHeartbeat).getTime(),
-    },
+      sorter: (a, b) => new Date(a.lastHeartbeat).getTime() - new Date(b.lastHeartbeat).getTime() },
     {
       title: 'IP Address',
       dataIndex: 'ipAddress',
       key: 'ipAddress',
       width: 130,
-      render: (ip?: string) => ip ? <Text copyable>{ip}</Text> : '—',
-    },
+      render: (ip?: string) => ip ? <Text copyable>{ip}</Text> : '—' },
     {
       title: 'Hostname',
       dataIndex: 'hostname',
       key: 'hostname',
       width: 150,
-      render: (hostname?: string) => hostname || '—',
-    },
+      render: (hostname?: string) => hostname || '—' },
     {
       title: 'OS',
       dataIndex: 'os',
@@ -198,14 +162,12 @@ export const Agents = () => {
         { text: 'MacOS', value: 'MacOS' },
         { text: 'Linux', value: 'Linux' },
       ],
-      onFilter: (value, record) => record.os === value,
-    },
+      onFilter: (value, record) => record.os === value },
     {
       title: 'Version',
       dataIndex: 'agentVersion',
       key: 'agentVersion',
-      width: 100,
-    },
+      width: 100 },
     {
       title: 'Groups',
       dataIndex: 'groups',
@@ -223,8 +185,7 @@ export const Agents = () => {
             {groups.length > 2 && <Text type="secondary">+{groups.length - 2} more</Text>}
           </Space>
         );
-      },
-    },
+      } },
     {
       title: 'Asset',
       dataIndex: 'assetId',
@@ -242,8 +203,7 @@ export const Agents = () => {
             View
           </Button>
         );
-      },
-    },
+      } },
     {
       title: '',
       key: 'action',
@@ -252,8 +212,7 @@ export const Agents = () => {
         <Dropdown menu={{ items: getActionMenuItems(record) }} trigger={['click']}>
           <Button type="text" icon={<MoreOutlined />} />
         </Dropdown>
-      ),
-    },
+      ) },
   ];
 
   const filteredAgents = agents.filter((agent) =>
@@ -287,9 +246,9 @@ export const Agents = () => {
         />
       </div>
 
-      <Table
+      <DataTable
         columns={columns}
-        dataSource={filteredAgents}
+        data={filteredAgents}
         rowKey="id"
         loading={loading}
         pagination={false}
@@ -340,6 +299,18 @@ export const Agents = () => {
           ))}
         </Space>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        title="Delete Agent"
+        description={`Are you sure you want to delete ${deleteModal.selectedItem?.name}?`}
+        open={deleteModal.open}
+        onConfirm={handleDeleteConfirm}
+        onCancel={deleteModal.onClose}
+        loading={deleteAgentMutation.isPending}
+        confirmText="Delete"
+        danger
+      />
 
       {/* Agent Details Drawer */}
       <AgentDetailsDrawer

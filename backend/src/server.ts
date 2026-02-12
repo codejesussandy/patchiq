@@ -1,12 +1,15 @@
 import './types';
-import { createApp } from './app';
-import { config } from '@config/index';
-import { prisma } from '@db/client';
+import { setSseManager, setEmailSender } from '@modules/notifications';
 import { startWorker, shutdownWorker, patchRepositoryService } from '@modules/patch-repository';
 import { executeDeployment } from '@modules/patches/patches.service';
-import { setSseManager, setEmailSender } from '@modules/notifications';
-import { sseManager } from '@shared/services/sse.service';
+import { createLogger } from '@shared/services/logger';
 import { maybeSendNotificationEmail } from '@shared/services/notification-email.service';
+import { sseManager } from '@shared/services/sse.service';
+import { config } from '@config/index';
+import { prisma } from '@db/client';
+import { createApp } from './app';
+
+const logger = createLogger('server');
 
 let schedulerInterval: ReturnType<typeof setInterval> | null = null;
 let syncSchedulerInterval: ReturnType<typeof setInterval> | null = null;
@@ -20,7 +23,7 @@ async function checkScheduledDeployments() {
   try {
     const due = await prisma.patchDeployment.findMany({
       where: {
-        stage: 'PENDING',
+        status: 'PENDING',
         scheduledAt: { lte: new Date() },
       },
       select: { id: true, name: true },
@@ -29,13 +32,13 @@ async function checkScheduledDeployments() {
     for (const deployment of due) {
       try {
         await executeDeployment(deployment.id, 'system');
-        console.log(`[scheduler] Executed scheduled deployment: ${deployment.name} (${deployment.id})`);
+        logger.info({ deploymentId: deployment.id, name: deployment.name }, 'Executed scheduled deployment');
       } catch (err) {
-        console.error(`[scheduler] Failed to execute deployment ${deployment.id}:`, err);
+        logger.error({ err, deploymentId: deployment.id }, 'Failed to execute scheduled deployment');
       }
     }
   } catch (err) {
-    console.error('[scheduler] Error checking scheduled deployments:', err);
+    logger.error({ err }, 'Error checking scheduled deployments');
   }
 }
 
@@ -67,26 +70,23 @@ async function checkScheduledSyncs() {
         const isDue = !source.lastSyncAt || source.lastSyncAt < prevTick;
 
         if (isDue) {
-          console.log(`[sync-scheduler] Source "${source.name}" (${source.vendor}) is due for sync`);
+          logger.info({ sourceName: source.name, vendor: source.vendor }, 'Source is due for sync');
           try {
             const results = await patchRepositoryService.triggerSync({ sourceIds: [source.id] });
             const r = results[0];
             if (r) {
-              console.log(
-                `[sync-scheduler] Synced "${source.name}": ${r.patchesFound} found, ` +
-                `${r.patchesDownloaded} downloaded, ${r.patchesFailed} failed (${r.duration}ms)`,
-              );
+              logger.info({ sourceName: source.name, patchesFound: r.patchesFound, patchesDownloaded: r.patchesDownloaded, patchesFailed: r.patchesFailed, durationMs: r.duration }, 'Sync completed');
             }
           } catch (err) {
-            console.error(`[sync-scheduler] Failed to sync source "${source.name}":`, err);
+            logger.error({ err, sourceName: source.name }, 'Failed to sync source');
           }
         }
       } catch (cronErr) {
-        console.error(`[sync-scheduler] Invalid cron "${source.syncSchedule}" for "${source.name}":`, cronErr);
+        logger.error({ err: cronErr, syncSchedule: source.syncSchedule, sourceName: source.name }, 'Invalid cron expression');
       }
     }
   } catch (err) {
-    console.error('[sync-scheduler] Error checking scheduled syncs:', err);
+    logger.error({ err }, 'Error checking scheduled syncs');
   }
 }
 
@@ -113,16 +113,16 @@ async function checkScheduledVulnerabilityJobs() {
           data: { status: 'RUNNING' },
         });
 
-        console.log(`[vuln-scheduler] Executing scheduled vulnerability job: ${job.name} (${job.jobId})`);
+        logger.info({ jobName: job.name, jobId: job.jobId }, 'Executing scheduled vulnerability job');
         executeAndTrackScan(job.id, job.scope, job.endpoints, job.createdBy || 'system').catch((err) => {
-          console.error(`[vuln-scheduler] Failed to execute vulnerability job ${job.jobId}:`, err);
+          logger.error({ err, jobId: job.jobId }, 'Failed to execute vulnerability job');
         });
       } catch (err) {
-        console.error(`[vuln-scheduler] Error starting job ${job.jobId}:`, err);
+        logger.error({ err, jobId: job.jobId }, 'Error starting vulnerability job');
       }
     }
   } catch (err) {
-    console.error('[vuln-scheduler] Error checking scheduled vulnerability jobs:', err);
+    logger.error({ err }, 'Error checking scheduled vulnerability jobs');
   }
 }
 
@@ -151,11 +151,11 @@ async function checkCveDatabaseSync() {
 
     if (hoursSinceSync < intervalHours) return;
 
-    console.log(`[cve-scheduler] Starting CVE database sync (last sync: ${lastSync ? lastSync.toISOString() : 'never'}, interval: ${intervalHours}h)`);
+    logger.info({ lastSync: lastSync?.toISOString() ?? 'never', intervalHours }, 'Starting CVE database sync');
     const result = await cveDatabase.syncAll();
-    console.log(`[cve-scheduler] CVE sync ${result.success ? 'completed' : 'completed with errors'}: ${JSON.stringify(result.stats)}`);
+    logger.info({ success: result.success, stats: result.stats }, 'CVE sync completed');
   } catch (err) {
-    console.error('[cve-scheduler] Error during CVE database sync:', err);
+    logger.error({ err }, 'Error during CVE database sync');
   }
 }
 
@@ -165,108 +165,98 @@ async function main() {
   // Verify database connection
   try {
     await prisma.$connect();
-    console.log('Database connected successfully');
+    logger.info('Database connected successfully');
   } catch (error) {
-    console.error('Failed to connect to database:', error);
+    logger.error({ err: error }, 'Failed to connect to database');
     process.exit(1);
   }
 
   // Wire notification hooks (SSE + email)
   setSseManager(sseManager);
   setEmailSender(maybeSendNotificationEmail);
-  console.log('Notification hooks initialized (SSE + email)');
+  logger.info('Notification hooks initialized (SSE + email)');
 
   // Start background workers
   try {
     startWorker();
-    console.log('Download worker started');
+    logger.info('Download worker started');
   } catch (error) {
-    console.error('Failed to start download worker:', error);
+    logger.error({ err: error }, 'Failed to start download worker');
   }
 
   // Start scheduled deployment checker (every 60 seconds)
   schedulerInterval = setInterval(checkScheduledDeployments, 60_000);
-  console.log('Deployment scheduler started (60s interval)');
+  logger.info('Deployment scheduler started (60s interval)');
 
   // Start vendor catalog sync scheduler (every 5 minutes)
   syncSchedulerInterval = setInterval(checkScheduledSyncs, 5 * 60_000);
   setTimeout(checkScheduledSyncs, 30_000); // Run once after 30s startup delay
-  console.log('Vendor sync scheduler started (5min interval)');
+  logger.info('Vendor sync scheduler started (5min interval)');
 
   // Start vulnerability job scheduler (every 60 seconds)
   vulnJobSchedulerInterval = setInterval(checkScheduledVulnerabilityJobs, 60_000);
-  console.log('Vulnerability job scheduler started (60s interval)');
+  logger.info('Vulnerability job scheduler started (60s interval)');
 
   // Start CVE database sync scheduler (check every 15 minutes, sync based on configured interval)
   cveSyncSchedulerInterval = setInterval(checkCveDatabaseSync, 15 * 60_000);
   setTimeout(checkCveDatabaseSync, 60_000); // First check 60s after startup
-  console.log('CVE database sync scheduler started (checks every 15min)');
+  logger.info('CVE database sync scheduler started (checks every 15min)');
 
   const server = app.listen(config.port, '0.0.0.0', () => {
-    console.log(`
-    =============================================
-    PatchIQ Backend Server
-    =============================================
-    Environment: ${config.nodeEnv}
-    Port:        ${config.port}
-    API Version: ${config.apiVersion}
-    Health:      http://localhost:${config.port}/health
-    API:         http://localhost:${config.port}/${config.apiVersion}
-    =============================================
-    `);
+    logger.info({ environment: config.nodeEnv, port: config.port, apiVersion: config.apiVersion }, 'PatchIQ Backend Server started');
   });
 
   // Graceful shutdown handling
   const shutdown = async (signal: string) => {
-    console.log(`\nReceived ${signal}. Starting graceful shutdown...`);
+    logger.info({ signal }, 'Starting graceful shutdown');
 
     server.close(async () => {
-      console.log('HTTP server closed');
+      logger.info('HTTP server closed');
 
       // Stop schedulers
       if (schedulerInterval) {
         clearInterval(schedulerInterval);
         schedulerInterval = null;
-        console.log('Deployment scheduler stopped');
+        logger.info('Deployment scheduler stopped');
       }
       if (syncSchedulerInterval) {
         clearInterval(syncSchedulerInterval);
         syncSchedulerInterval = null;
-        console.log('Vendor sync scheduler stopped');
+        logger.info('Vendor sync scheduler stopped');
       }
       if (vulnJobSchedulerInterval) {
         clearInterval(vulnJobSchedulerInterval);
         vulnJobSchedulerInterval = null;
-        console.log('Vulnerability job scheduler stopped');
+        logger.info('Vulnerability job scheduler stopped');
       }
       if (cveSyncSchedulerInterval) {
         clearInterval(cveSyncSchedulerInterval);
         cveSyncSchedulerInterval = null;
-        console.log('CVE sync scheduler stopped');
+        logger.info('CVE sync scheduler stopped');
       }
 
       // Stop download worker
       try {
         await shutdownWorker();
-        console.log('Download worker stopped');
+        logger.info('Download worker stopped');
       } catch (error) {
-        console.error('Error shutting down download worker:', error);
+        logger.error({ err: error }, 'Error shutting down download worker');
       }
 
       try {
         await prisma.$disconnect();
-        console.log('Database connection closed');
+        logger.info('Database connection closed');
       } catch (error) {
-        console.error('Error disconnecting from database:', error);
+        logger.error({ err: error }, 'Error disconnecting from database');
       }
 
-      console.log('Shutdown complete');
+      logger.info('Shutdown complete');
       process.exit(0);
     });
 
     // Force close after 30 seconds
     setTimeout(() => {
-      console.error('Forced shutdown after timeout');
+      logger.error('Forced shutdown after timeout');
       process.exit(1);
     }, 30000);
   };
@@ -276,16 +266,16 @@ async function main() {
 
   // Handle uncaught errors
   process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', error);
-    shutdown('uncaughtException');
+    logger.error({ err: error }, 'Uncaught Exception');
+    void shutdown('uncaughtException');
   });
 
   process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    logger.error({ err: reason, promise }, 'Unhandled Rejection');
   });
 }
 
 main().catch((error) => {
-  console.error('Failed to start server:', error);
+  logger.error({ err: error }, 'Failed to start server');
   process.exit(1);
 });

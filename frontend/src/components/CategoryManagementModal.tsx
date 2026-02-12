@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  MoreOutlined,
+} from '@ant-design/icons';
+import {
   App,
   Modal,
   Button,
@@ -9,12 +15,6 @@ import {
   Tree,
   Dropdown,
 } from 'antd';
-import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  MoreOutlined,
-} from '@ant-design/icons';
 import { categoryService } from '../services/category.service';
 import type { Category, SubCategory } from '../types/asset.types';
 
@@ -38,12 +38,6 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   const [categoryForm] = Form.useForm();
   const [subCategoryForm] = Form.useForm();
 
-  useEffect(() => {
-    if (open) {
-      fetchCategories();
-    }
-  }, [open]);
-
   const fetchCategories = async () => {
     try {
       const [cats, subs] = await Promise.all([
@@ -52,10 +46,18 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       ]);
       setCategories(cats);
       setSubCategories(subs);
-    } catch (error) {
+    } catch {
       message.error('Failed to fetch categories');
     }
   };
+
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  useEffect(() => {
+    if (open) {
+      fetchCategories();
+    }
+  }, [open]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   const handleSaveCategory = async () => {
     try {
@@ -71,7 +73,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       setEditModalVisible(false);
       setEditingCategory(null);
       categoryForm.resetFields();
-    } catch (error) {
+    } catch {
       message.error('Failed to save category');
     }
   };
@@ -100,7 +102,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       setSubCategoryModalVisible(false);
       setEditingSubCategory(null);
       subCategoryForm.resetFields();
-    } catch (error) {
+    } catch {
       message.error('Failed to save sub-category');
     }
   };
@@ -116,7 +118,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
           await categoryService.deleteCategory(id);
           message.success('Category deleted successfully');
           fetchCategories();
-        } catch (error) {
+        } catch {
           message.error('Failed to delete category');
         }
       },
@@ -134,7 +136,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
           await categoryService.deleteSubCategory(id);
           message.success('Sub-category deleted successfully');
           fetchCategories();
-        } catch (error) {
+        } catch {
           message.error('Failed to delete sub-category');
         }
       },

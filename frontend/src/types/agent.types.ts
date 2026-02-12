@@ -1,6 +1,17 @@
-export type AgentStatus = 'Connected' | 'Disconnected' | 'Pending' | 'Error';
-export type OSFamily = 'Windows' | 'MacOS' | 'Linux';
+import type { AgentStatus, OSFamily } from '@shared/types';
 
+// Re-export shared types for backward compatibility
+export type { AgentStatus, OSFamily };
+
+// Re-export shared API response types
+export type {
+  AgentResponse,
+  AgentDownloadResponse,
+  AgentVersionResponse,
+  CommandResponse,
+} from '@shared/types';
+
+// Frontend Agent type (used in UI tables/forms - differs from shared AgentResponse)
 export type Agent = {
   // Core identifiers
   id: string;
@@ -38,6 +49,7 @@ export type Agent = {
   capabilities?: string[];
 };
 
+// UI-specific types (simpler than shared API types)
 export type AgentDownload = {
   os: 'Windows 11' | 'MacOS' | 'Linux';
   version: string;
@@ -48,8 +60,8 @@ export type AgentDownload = {
 export type Command = {
   id: string;
   agentId: string;
-  type: 'scan' | 'update' | 'deploy' | 'reboot';
-  status: 'pending' | 'sent' | 'completed' | 'failed';
+  type: 'SCAN' | 'UPDATE' | 'DEPLOY' | 'REBOOT';
+  status: 'PENDING' | 'SENT' | 'COMPLETED' | 'FAILED';
   createdAt: string;
   executedAt?: string;
   result?: string;

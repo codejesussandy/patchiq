@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { useNavigate, useLocation, Routes, Route } from 'react-router-dom';
 import { Typography, Tabs } from 'antd';
-import { SoftwareJobsCatalog } from './SoftwareJobsCatalog';
-import { SoftwareJobsBundle } from './SoftwareJobsBundle';
-import { SoftwareJobsDeployed } from './SoftwareJobsDeployed';
+import { useNavigate, useLocation, Routes, Route } from 'react-router-dom';
 import { PatchJobsDeployed } from './PatchJobsDeployed';
+import { SoftwareJobsBundle } from './SoftwareJobsBundle';
+import { SoftwareJobsCatalog } from './SoftwareJobsCatalog';
+import { SoftwareJobsDeployed } from './SoftwareJobsDeployed';
 
 const { Title } = Typography;
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import {
   App,
   Modal,
@@ -11,7 +11,7 @@ import {
   Descriptions,
 } from 'antd';
 import dayjs from 'dayjs';
-import { reportsService } from '../../../services/reports.service';
+import { useCreateSchedule } from '../../../hooks/useReports';
 import type { Report, ScheduleFrequency } from '../../../types/reports.types';
 import { REPORT_TYPE_LABELS } from '../../../types/reports.types';
 
@@ -32,13 +32,13 @@ export const ScheduleReportModal = ({
 }: ScheduleReportModalProps) => {
   const { message } = App.useApp();
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
+  const createSchedule = useCreateSchedule();
 
   useEffect(() => {
     if (open && report) {
       form.setFieldsValue({
         enabled: report.schedule?.enabled || false,
-        frequency: report.schedule?.frequency || 'daily',
+        frequency: report.schedule?.frequency || 'DAILY',
         time: report.schedule?.time ? dayjs(report.schedule.time, 'HH:mm') : undefined,
         dayOfWeek: report.schedule?.dayOfWeek,
         dayOfMonth: report.schedule?.dayOfMonth,
@@ -50,12 +50,10 @@ export const ScheduleReportModal = ({
   const handleSubmit = async () => {
     try {
       await form.validateFields();
-      setLoading(true);
-
       const values = form.getFieldsValue();
 
       if (report) {
-        await reportsService.createSchedule({
+        await createSchedule.mutateAsync({
           reportId: report.id,
           enabled: values.enabled,
           frequency: values.frequency,
@@ -67,11 +65,8 @@ export const ScheduleReportModal = ({
         message.success('Schedule saved successfully');
         onSuccess();
       }
-    } catch (error) {
-      console.error('Failed to save schedule:', error);
+    } catch {
       message.error('Failed to save schedule');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -90,7 +85,7 @@ export const ScheduleReportModal = ({
     const now = dayjs();
     let nextRun = now;
 
-    if (frequency === 'daily') {
+    if (frequency === 'DAILY') {
       if (time) {
         nextRun = now.hour(time.hour()).minute(time.minute()).second(0);
         if (nextRun.isBefore(now)) {
@@ -99,7 +94,7 @@ export const ScheduleReportModal = ({
       } else {
         nextRun = now.add(1, 'day').startOf('day');
       }
-    } else if (frequency === 'weekly') {
+    } else if (frequency === 'WEEKLY') {
       const dayOfWeek = form.getFieldValue('dayOfWeek') || 1;
       nextRun = now.day(dayOfWeek);
       if (nextRun.isBefore(now) || nextRun.isSame(now, 'day')) {
@@ -108,7 +103,7 @@ export const ScheduleReportModal = ({
       if (time) {
         nextRun = nextRun.hour(time.hour()).minute(time.minute()).second(0);
       }
-    } else if (frequency === 'monthly') {
+    } else if (frequency === 'MONTHLY') {
       const dayOfMonth = form.getFieldValue('dayOfMonth') || 1;
       nextRun = now.date(dayOfMonth);
       if (nextRun.isBefore(now)) {
@@ -131,7 +126,7 @@ export const ScheduleReportModal = ({
       open={open}
       onCancel={handleClose}
       onOk={handleSubmit}
-      confirmLoading={loading}
+      confirmLoading={createSchedule.isPending}
       okText="Save"
       width={500}
       destroyOnClose
@@ -158,9 +153,9 @@ export const ScheduleReportModal = ({
               rules={[{ required: true, message: 'Please select frequency' }]}
             >
               <Select placeholder="Select frequency">
-                <Select.Option value="daily">Daily</Select.Option>
-                <Select.Option value="weekly">Weekly</Select.Option>
-                <Select.Option value="monthly">Monthly</Select.Option>
+                <Select.Option value="DAILY">Daily</Select.Option>
+                <Select.Option value="WEEKLY">Weekly</Select.Option>
+                <Select.Option value="MONTHLY">Monthly</Select.Option>
               </Select>
             </Form.Item>
 
@@ -168,7 +163,7 @@ export const ScheduleReportModal = ({
               <TimePicker format="HH:mm" style={{ width: '100%' }} />
             </Form.Item>
 
-            {frequency === 'weekly' && (
+            {frequency === 'WEEKLY' && (
               <Form.Item
                 label="Day of Week"
                 name="dayOfWeek"
@@ -186,7 +181,7 @@ export const ScheduleReportModal = ({
               </Form.Item>
             )}
 
-            {frequency === 'monthly' && (
+            {frequency === 'MONTHLY' && (
               <Form.Item
                 label="Day of Month"
                 name="dayOfMonth"

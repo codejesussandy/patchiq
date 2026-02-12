@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
-import { verifyToken } from '@shared/utils/jwt';
 import { UnauthorizedError, ForbiddenError } from '@shared/errors';
+import { verifyToken } from '@shared/utils/jwt';
 
 export const authenticate: RequestHandler = (
   req: Request,
@@ -77,5 +77,5 @@ export function requireRole(...roles: string[]): RequestHandler {
   };
 }
 
-export const requireAdmin = requireRole('admin');
-export const requireUser = requireRole('admin', 'user');
+export const requireAdmin = requireRole('ADMIN');
+export const requireUser = requireRole('ADMIN', 'USER');

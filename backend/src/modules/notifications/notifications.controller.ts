@@ -1,16 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
-import { notificationsService } from './notifications.service';
 import { sseManager } from '@shared/services/sse.service';
+import { sendSuccess, sendError, typedQuery } from '@shared/utils';
 import { verifyToken } from '@shared/utils/jwt';
-import type { ListNotificationsQuery, NotificationHistoryQuery } from './notifications.validators';
+import { notificationsService } from './notifications.service';
+import type { ListNotificationsQuery, NotificationHistoryQuery, SseTokenQuery } from './notifications.validators';
 
 export class NotificationsController {
   listNotifications = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.user!.id;
-      const params = req.query as unknown as ListNotificationsQuery;
+      const params = typedQuery<ListNotificationsQuery>(req);
       const notifications = await notificationsService.getNotifications(userId, params);
-      res.json(notifications);
+      sendSuccess(res, notifications);
     } catch (error) {
       next(error);
     }
@@ -20,7 +21,7 @@ export class NotificationsController {
     try {
       const userId = req.user!.id;
       const result = await notificationsService.getUnreadCount(userId);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -30,7 +31,7 @@ export class NotificationsController {
     try {
       const userId = req.user!.id;
       await notificationsService.markAsRead(userId, req.params.id);
-      res.json({ success: true });
+      sendSuccess(res, { success: true });
     } catch (error) {
       next(error);
     }
@@ -40,7 +41,7 @@ export class NotificationsController {
     try {
       const userId = req.user!.id;
       await notificationsService.markAllAsRead(userId);
-      res.json({ success: true });
+      sendSuccess(res, { success: true });
     } catch (error) {
       next(error);
     }
@@ -72,9 +73,9 @@ export class NotificationsController {
 
   sseStream = async (req: Request, res: Response): Promise<void> => {
     // Auth via query param (EventSource can't send headers)
-    const token = req.query.token as string;
+    const { token } = typedQuery<SseTokenQuery>(req);
     if (!token) {
-      res.status(401).json({ error: 'Token required' });
+      sendError(res, 401, 'UNAUTHORIZED', 'Token required');
       return;
     }
 
@@ -82,12 +83,12 @@ export class NotificationsController {
     try {
       const payload = verifyToken(token);
       if (payload.type !== 'access') {
-        res.status(401).json({ error: 'Invalid token' });
+        sendError(res, 401, 'UNAUTHORIZED', 'Invalid token');
         return;
       }
       userId = payload.userId;
     } catch {
-      res.status(401).json({ error: 'Invalid token' });
+      sendError(res, 401, 'UNAUTHORIZED', 'Invalid token');
       return;
     }
 
@@ -121,9 +122,9 @@ export class NotificationsController {
   getHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.user!.id;
-      const params = req.query as unknown as NotificationHistoryQuery;
+      const params = typedQuery<NotificationHistoryQuery>(req);
       const result = await notificationsService.getHistory(userId, params);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -133,7 +134,7 @@ export class NotificationsController {
     try {
       const userId = req.user!.id;
       await notificationsService.bulkMarkAsRead(userId, req.body.ids);
-      res.json({ success: true });
+      sendSuccess(res, { success: true });
     } catch (error) {
       next(error);
     }
@@ -143,7 +144,7 @@ export class NotificationsController {
     try {
       const userId = req.user!.id;
       await notificationsService.bulkDelete(userId, req.body.ids);
-      res.json({ success: true });
+      sendSuccess(res, { success: true });
     } catch (error) {
       next(error);
     }
@@ -157,7 +158,7 @@ export class NotificationsController {
     try {
       const userId = req.user!.id;
       const prefs = await notificationsService.getPreferences(userId);
-      res.json(prefs);
+      sendSuccess(res, prefs);
     } catch (error) {
       next(error);
     }
@@ -168,7 +169,7 @@ export class NotificationsController {
       const userId = req.user!.id;
       await notificationsService.updatePreferences(userId, req.body);
       const prefs = await notificationsService.getPreferences(userId);
-      res.json(prefs);
+      sendSuccess(res, prefs);
     } catch (error) {
       next(error);
     }

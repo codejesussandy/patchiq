@@ -1,8 +1,9 @@
 import React from 'react';
-import { Select, Tag as AntTag, Space, Spin, Button } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import type { Tag as TagType } from '../../../types/asset.types';
+import { Select, Tag as AntTag, Space, Spin, Button } from 'antd';
+import { useTags } from '../../../hooks/useAssets';
 import { tagService } from '../../../services/tag.service';
+import type { Tag as TagType } from '../../../types/asset.types';
 import CreateTagModal from './CreateTagModal';
 
 interface TagSelectorProps {
@@ -22,45 +23,29 @@ const TagSelector: React.FC<TagSelectorProps> = ({
   maxTags = 20,
   showCreateButton = false,
 }) => {
-  const [tags, setTags] = React.useState<TagType[]>([]);
-  const [loading, setLoading] = React.useState(false);
+  const { data: tagsData, isLoading: loading } = useTags();
+  const [searchResults, setSearchResults] = React.useState<TagType[] | null>(null);
   const [modalVisible, setModalVisible] = React.useState(false);
 
-  // Fetch all tags on mount
-  React.useEffect(() => {
-    fetchTags();
-  }, []);
-
-  const fetchTags = async () => {
-    setLoading(true);
-    try {
-      const allTags = await tagService.getTags();
-      // Ensure tags is always an array to prevent .map() errors
-      setTags(Array.isArray(allTags) ? allTags : []);
-    } catch {
-      setTags([]); // Reset to empty array on error
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use search results if available, otherwise fall back to all tags from React Query
+  const tags: TagType[] = searchResults ?? (Array.isArray(tagsData) ? tagsData : []);
 
   const handleSearch = async (searchValue: string) => {
     if (searchValue.trim().length === 0) {
-      await fetchTags();
+      setSearchResults(null); // Reset to use React Query data
       return;
     }
 
     try {
       const results = await tagService.searchTags(searchValue);
-      // Ensure results is always an array
-      setTags(Array.isArray(results) ? results : []);
+      setSearchResults(Array.isArray(results) ? results : []);
     } catch {
-      setTags([]); // Reset to empty array on error
+      setSearchResults([]);
     }
   };
 
   const handleTagCreated = async (newTag: TagType) => {
-    setTags([...tags, newTag]);
+    setSearchResults(null); // Reset to let React Query refetch
     if (onChange) {
       const updatedValues = [...value, newTag.id];
       onChange(updatedValues);

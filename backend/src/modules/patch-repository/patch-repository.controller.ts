@@ -1,12 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { patchRepositoryService } from './patch-repository.service';
-import {
-  CreatePatchSourceDto,
-  UpdatePatchSourceDto,
-  CreateDownloadJobDto,
-  BulkDownloadRequest,
-  AgentPatchDownloadRequest,
-} from './patch-repository.types';
+import { sendSuccess, sendError, typedQuery } from '@shared/utils';
 import {
   queueDownloadJob,
   queueBulkDownloadJobs,
@@ -16,6 +9,21 @@ import {
   cleanQueue,
   DownloadJobData,
 } from './download.worker';
+import { patchRepositoryService } from './patch-repository.service';
+import {
+  CreatePatchSourceDto,
+  UpdatePatchSourceDto,
+  CreateDownloadJobDto,
+  BulkDownloadRequest,
+  AgentPatchDownloadRequest,
+  DownloadJobStatus,
+} from './patch-repository.types';
+import type {
+  ListPatchSourcesQuery,
+  ListDownloadJobsQuery,
+  CleanQueueQuery,
+  StartPendingQuery,
+} from './patch-repository.validators';
 
 // ============================================
 // Patch Source Controllers
@@ -30,10 +38,7 @@ export async function createPatchSource(
     const data: CreatePatchSourceDto = req.body;
     const source = await patchRepositoryService.createPatchSource(data);
 
-    res.status(201).json({
-      success: true,
-      data: source,
-    });
+    sendSuccess(res, source, 201);
   } catch (error) {
     next(error);
   }
@@ -49,10 +54,7 @@ export async function updatePatchSource(
     const data: UpdatePatchSourceDto = req.body;
     const source = await patchRepositoryService.updatePatchSource(id, data);
 
-    res.json({
-      success: true,
-      data: source,
-    });
+    sendSuccess(res, source);
   } catch (error) {
     next(error);
   }
@@ -67,10 +69,7 @@ export async function deletePatchSource(
     const { id } = req.params;
     await patchRepositoryService.deletePatchSource(id);
 
-    res.json({
-      success: true,
-      message: 'Patch source deleted',
-    });
+    sendSuccess(res, { message: 'Patch source deleted' });
   } catch (error) {
     next(error);
   }
@@ -85,10 +84,7 @@ export async function getPatchSource(
     const { id } = req.params;
     const source = await patchRepositoryService.getPatchSource(id);
 
-    res.json({
-      success: true,
-      data: source,
-    });
+    sendSuccess(res, source);
   } catch (error) {
     next(error);
   }
@@ -100,20 +96,16 @@ export async function listPatchSources(
   next: NextFunction
 ) {
   try {
-    const { vendor, category, platform, isEnabled } = req.query;
+    const { vendor, category, platform, isEnabled } = typedQuery<ListPatchSourcesQuery>(req);
 
     const sources = await patchRepositoryService.listPatchSources({
-      vendor: vendor as string,
-      category: category as string,
-      platform: platform as string,
-      isEnabled: isEnabled === 'true' ? true : isEnabled === 'false' ? false : undefined,
+      vendor,
+      category,
+      platform,
+      isEnabled,
     });
 
-    res.json({
-      success: true,
-      data: sources,
-      total: sources.length,
-    });
+    sendSuccess(res, { sources, total: sources.length });
   } catch (error) {
     next(error);
   }
@@ -129,10 +121,7 @@ export async function togglePatchSource(
     const { isEnabled } = req.body;
     const source = await patchRepositoryService.togglePatchSource(id, isEnabled);
 
-    res.json({
-      success: true,
-      data: source,
-    });
+    sendSuccess(res, source);
   } catch (error) {
     next(error);
   }
@@ -149,13 +138,13 @@ export async function createDownloadJob(
 ) {
   try {
     const data: CreateDownloadJobDto = req.body;
-    const { startImmediately } = req.query;
+    const startImmediately = req.query.startImmediately === 'true';
 
     // Create the job in database
     const job = await patchRepositoryService.createDownloadJob(data);
 
     // Optionally start download immediately
-    if (startImmediately === 'true') {
+    if (startImmediately) {
       const jobData: DownloadJobData = {
         jobId: job.jobId,
         sourceUrl: job.sourceUrl,
@@ -170,11 +159,7 @@ export async function createDownloadJob(
       await queueDownloadJob(jobData);
     }
 
-    res.status(201).json({
-      success: true,
-      data: job,
-      queued: startImmediately === 'true',
-    });
+    sendSuccess(res, { ...job, queued: startImmediately }, 201);
   } catch (error) {
     next(error);
   }
@@ -189,11 +174,7 @@ export async function createBulkDownloadJobs(
     const { downloads }: BulkDownloadRequest = req.body;
     const jobs = await patchRepositoryService.createBulkDownloadJobs(downloads);
 
-    res.status(201).json({
-      success: true,
-      data: jobs,
-      total: jobs.length,
-    });
+    sendSuccess(res, { jobs, total: jobs.length }, 201);
   } catch (error) {
     next(error);
   }
@@ -208,10 +189,7 @@ export async function getDownloadJob(
     const { jobId } = req.params;
     const job = await patchRepositoryService.getDownloadJob(jobId);
 
-    res.json({
-      success: true,
-      data: job,
-    });
+    sendSuccess(res, job);
   } catch (error) {
     next(error);
   }
@@ -223,21 +201,17 @@ export async function listDownloadJobs(
   next: NextFunction
 ) {
   try {
-    const { status, sourceId, patchId, limit, offset } = req.query;
+    const query = typedQuery<ListDownloadJobsQuery>(req);
 
     const result = await patchRepositoryService.listDownloadJobs({
-      status: status as string as any,
-      sourceId: sourceId as string,
-      patchId: patchId as string,
-      limit: limit ? parseInt(limit as string) : undefined,
-      offset: offset ? parseInt(offset as string) : undefined,
+      status: query.status as DownloadJobStatus | undefined,
+      sourceId: query.sourceId,
+      patchId: query.patchId,
+      limit: query.limit,
+      offset: query.offset,
     });
 
-    res.json({
-      success: true,
-      data: result.jobs,
-      total: result.total,
-    });
+    sendSuccess(res, { jobs: result.jobs, total: result.total });
   } catch (error) {
     next(error);
   }
@@ -252,10 +226,7 @@ export async function retryDownloadJob(
     const { jobId } = req.params;
     const job = await patchRepositoryService.retryDownloadJob(jobId);
 
-    res.json({
-      success: true,
-      data: job,
-    });
+    sendSuccess(res, job);
   } catch (error) {
     next(error);
   }
@@ -270,10 +241,7 @@ export async function cancelDownloadJob(
     const { jobId } = req.params;
     const job = await patchRepositoryService.cancelDownloadJob(jobId);
 
-    res.json({
-      success: true,
-      data: job,
-    });
+    sendSuccess(res, job);
   } catch (error) {
     next(error);
   }
@@ -290,24 +258,17 @@ export async function getPatchDownloadUrl(
 ) {
   try {
     const { patchId } = req.params;
-    const { fileDetailId } = req.query;
 
     const downloadUrl = await patchRepositoryService.getPatchDownloadUrl(
-      patchId,
-      fileDetailId as string
+      patchId
     );
 
     if (!downloadUrl) {
-      return res.status(404).json({
-        success: false,
-        error: 'Patch file not available for download',
-      });
+      sendError(res, 404, 'NOT_FOUND', 'Patch file not available for download');
+      return;
     }
 
-    res.json({
-      success: true,
-      data: downloadUrl,
-    });
+    sendSuccess(res, downloadUrl);
   } catch (error) {
     next(error);
   }
@@ -326,10 +287,7 @@ export async function getAgentPatchDownloads(
       patchIds
     );
 
-    res.json({
-      success: true,
-      data: downloads,
-    });
+    sendSuccess(res, downloads);
   } catch (error) {
     next(error);
   }
@@ -348,12 +306,9 @@ export async function getRepositoryStats(
     const stats = await patchRepositoryService.getRepositoryStats();
 
     // Convert BigInt to string for JSON serialization
-    res.json({
-      success: true,
-      data: {
-        ...stats,
-        totalSize: stats.totalSize.toString(),
-      },
+    sendSuccess(res, {
+      ...stats,
+      totalSize: stats.totalSize.toString(),
     });
   } catch (error) {
     next(error);
@@ -376,10 +331,7 @@ export async function triggerSync(
       dryRun,
     });
 
-    res.json({
-      success: true,
-      data: results,
-    });
+    sendSuccess(res, results);
   } catch (error) {
     next(error);
   }
@@ -394,10 +346,7 @@ export async function getSyncStatus(
     const { sourceId } = req.params;
     const status = await patchRepositoryService.getSyncStatus(sourceId);
 
-    res.json({
-      success: true,
-      data: status,
-    });
+    sendSuccess(res, status);
   } catch (error) {
     next(error);
   }
@@ -416,13 +365,7 @@ export async function validateUrl(
     const { url } = req.body;
     const isWhitelisted = await patchRepositoryService.isUrlWhitelisted(url);
 
-    res.json({
-      success: true,
-      data: {
-        url,
-        isWhitelisted,
-      },
-    });
+    sendSuccess(res, { url, isWhitelisted });
   } catch (error) {
     next(error);
   }
@@ -440,10 +383,7 @@ export async function getDownloadQueueStats(
   try {
     const stats = await getQueueStats();
 
-    res.json({
-      success: true,
-      data: stats,
-    });
+    sendSuccess(res, stats);
   } catch (error) {
     next(error);
   }
@@ -457,10 +397,7 @@ export async function pauseDownloadQueue(
   try {
     await pauseQueue();
 
-    res.json({
-      success: true,
-      message: 'Download queue paused',
-    });
+    sendSuccess(res, { message: 'Download queue paused' });
   } catch (error) {
     next(error);
   }
@@ -474,10 +411,7 @@ export async function resumeDownloadQueue(
   try {
     await resumeQueue();
 
-    res.json({
-      success: true,
-      message: 'Download queue resumed',
-    });
+    sendSuccess(res, { message: 'Download queue resumed' });
   } catch (error) {
     next(error);
   }
@@ -489,17 +423,13 @@ export async function cleanDownloadQueue(
   next: NextFunction
 ) {
   try {
-    const { olderThanDays } = req.query;
-    const olderThanMs = olderThanDays
-      ? parseInt(olderThanDays as string, 10) * 24 * 3600 * 1000
-      : 7 * 24 * 3600 * 1000;
+    const { olderThanDays } = typedQuery<CleanQueueQuery>(req);
+    const days = olderThanDays ?? 7;
+    const olderThanMs = days * 24 * 3600 * 1000;
 
     await cleanQueue(olderThanMs);
 
-    res.json({
-      success: true,
-      message: `Download queue cleaned (jobs older than ${olderThanDays || 7} days removed)`,
-    });
+    sendSuccess(res, { message: `Download queue cleaned (jobs older than ${days} days removed)` });
   } catch (error) {
     next(error);
   }
@@ -511,21 +441,18 @@ export async function startPendingDownloads(
   next: NextFunction
 ) {
   try {
-    const { limit } = req.query;
-    const maxJobs = limit ? parseInt(limit as string, 10) : 50;
+    const { limit: queryLimit } = typedQuery<StartPendingQuery>(req);
+    const maxJobs = queryLimit ?? 50;
 
     // Get pending jobs from database
     const { jobs } = await patchRepositoryService.listDownloadJobs({
-      status: 'pending',
+      status: 'PENDING',
       limit: maxJobs,
     });
 
     if (jobs.length === 0) {
-      return res.json({
-        success: true,
-        message: 'No pending jobs to queue',
-        queued: 0,
-      });
+      sendSuccess(res, { message: 'No pending jobs to queue', queued: 0 });
+      return;
     }
 
     // Queue them all
@@ -543,11 +470,7 @@ export async function startPendingDownloads(
 
     await queueBulkDownloadJobs(jobDataArray);
 
-    res.json({
-      success: true,
-      message: `Queued ${jobs.length} pending download jobs`,
-      queued: jobs.length,
-    });
+    sendSuccess(res, { message: `Queued ${jobs.length} pending download jobs`, queued: jobs.length });
   } catch (error) {
     next(error);
   }

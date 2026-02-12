@@ -1,26 +1,27 @@
-import { PatchSource, PatchDownloadJob, PatchFileDetail, Prisma } from '@prisma/client';
+import { PatchSource, PatchDownloadJob, Prisma } from '@prisma/client';
+
+// Re-export shared enum types
+export type { PatchSourceCategory, PatchSourceAuthType, DownloadJobStatus } from '@shared/types';
+
+// Re-export shared API types
+export type {
+  AgentPatchDownloadRequest,
+  SyncOptions as SharedSyncOptions,
+  SyncResult,
+} from '@shared/types';
+
+// Keep internal type aliases used across this module
+export type PatchSourcePlatform = 'WINDOWS' | 'MACOS' | 'LINUX' | 'CROSS_PLATFORM';
+export type AuthType = 'BASIC' | 'BEARER' | 'API_KEY';
 
 // ============================================
-// Patch Source Types
+// Internal Prisma-specific types (use bigint, Date, Prisma.InputJsonValue)
 // ============================================
-
-export type PatchSourceCategory =
-  | 'os'
-  | 'firmware'
-  | 'enterprise'
-  | 'runtime'
-  | 'security'
-  | 'browser'
-  | 'utility';
-
-export type PatchSourcePlatform = 'windows' | 'macos' | 'linux' | 'cross-platform';
-
-export type AuthType = 'basic' | 'bearer' | 'api_key';
 
 export interface CreatePatchSourceDto {
   name: string;
   vendor: string;
-  category: PatchSourceCategory;
+  category: import('@shared/types').PatchSourceCategory;
   platform?: PatchSourcePlatform;
   baseUrl: string;
   urlPatterns?: string[];
@@ -35,7 +36,7 @@ export interface CreatePatchSourceDto {
 
 export interface UpdatePatchSourceDto {
   name?: string;
-  category?: PatchSourceCategory;
+  category?: import('@shared/types').PatchSourceCategory;
   platform?: PatchSourcePlatform;
   baseUrl?: string;
   urlPatterns?: string[];
@@ -54,19 +55,6 @@ export interface PatchSourceWithStats extends PatchSource {
   totalSize?: bigint;
 }
 
-// ============================================
-// Patch Download Job Types
-// ============================================
-
-export type DownloadJobStatus =
-  | 'pending'
-  | 'queued'
-  | 'downloading'
-  | 'verifying'
-  | 'completed'
-  | 'failed'
-  | 'cancelled';
-
 export interface CreateDownloadJobDto {
   sourceId?: string;
   patchId?: string;
@@ -82,7 +70,7 @@ export interface CreateDownloadJobDto {
 
 export interface DownloadJobProgress {
   jobId: string;
-  status: DownloadJobStatus;
+  status: import('@shared/types').DownloadJobStatus;
   progress: number;
   downloadedBytes: bigint | null;
   totalBytes: bigint | null;
@@ -94,33 +82,18 @@ export interface BulkDownloadRequest {
   priority?: number;
 }
 
-// ============================================
-// Patch File Detail Types (with MinIO)
-// ============================================
-
-export interface PatchFileWithMinioInfo extends PatchFileDetail {
-  presignedUrl?: string;
-  isAvailable: boolean;
-}
-
 export interface DownloadPatchRequest {
   patchId: string;
-  fileDetailId?: string;
 }
 
 export interface PatchDownloadUrl {
   patchId: string;
-  fileDetailId: string;
   fileName: string;
   presignedUrl: string;
   expiresAt: Date;
   size: bigint | null;
   checksum: string | null;
 }
-
-// ============================================
-// Whitelist Configuration
-// ============================================
 
 export interface WhitelistDomain {
   domain: string;
@@ -130,14 +103,10 @@ export interface WhitelistDomain {
 
 export interface WhitelistVendor {
   vendor: string;
-  category: PatchSourceCategory;
+  category: import('@shared/types').PatchSourceCategory;
   platform?: PatchSourcePlatform;
   domains: WhitelistDomain[];
 }
-
-// ============================================
-// Repository Statistics
-// ============================================
 
 export interface RepositoryStats {
   totalPatches: number;
@@ -150,36 +119,12 @@ export interface RepositoryStats {
   lastSyncAt: Date | null;
 }
 
-// ============================================
-// Sync Configuration
-// ============================================
-
 export interface SyncOptions {
   sourceIds?: string[];
   vendors?: string[];
   platforms?: PatchSourcePlatform[];
   force?: boolean;
   dryRun?: boolean;
-}
-
-export interface SyncResult {
-  sourceId: string;
-  vendor: string;
-  status: 'success' | 'partial' | 'failed';
-  patchesFound: number;
-  patchesDownloaded: number;
-  patchesFailed: number;
-  errors: string[];
-  duration: number;
-}
-
-// ============================================
-// Agent Download Types
-// ============================================
-
-export interface AgentPatchDownloadRequest {
-  agentId: string;
-  patchIds: string[];
 }
 
 export interface AgentPatchDownloadResponse {

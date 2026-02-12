@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Drawer, Tabs, Table, Tag, Space, Spin, Empty, Button, Divider, Statistic, Row, Col, Typography, Badge } from 'antd';
 import { LinkOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { Drawer, Tabs, Tag, Space, Spin, Empty, Button, Divider, Statistic, Row, Col, Typography, Badge } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import type { Agent, Command } from '../../types/agent.types';
+import { useNavigate } from 'react-router-dom';
 import { agentService } from '../../services/agent.service';
+import type { Agent, Command } from '../../types/agent.types';
+import { DataTable } from '../shared/DataTable';
 
 const { Text, Paragraph } = Typography;
 
@@ -16,13 +17,13 @@ interface AgentDetailsDrawerProps {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'Connected':
+    case 'CONNECTED':
       return 'success';
-    case 'Disconnected':
+    case 'DISCONNECTED':
       return 'default';
-    case 'Pending':
+    case 'PENDING':
       return 'processing';
-    case 'Error':
+    case 'ERROR':
       return 'error';
     default:
       return 'default';
@@ -31,13 +32,13 @@ const getStatusColor = (status: string) => {
 
 const getCommandStatusColor = (status: string) => {
   switch (status) {
-    case 'completed':
+    case 'COMPLETED':
       return 'success';
-    case 'pending':
+    case 'PENDING':
       return 'processing';
-    case 'sent':
+    case 'SENT':
       return 'blue';
-    case 'failed':
+    case 'FAILED':
       return 'error';
     default:
       return 'default';
@@ -49,24 +50,24 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
   const [commands, setCommands] = useState<Command[]>([]);
   const [commandsLoading, setCommandsLoading] = useState(false);
 
-  useEffect(() => {
-    if (agent && open) {
-      fetchCommands();
-    }
-  }, [agent, open]);
-
   const fetchCommands = async () => {
     if (!agent) return;
     setCommandsLoading(true);
     try {
       const data = await agentService.getAgentCommands(agent.id);
       setCommands(data);
-    } catch (error) {
-      console.error('Failed to fetch commands', error);
+    } catch {
+      // silently fail
     } finally {
       setCommandsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (agent && open) {
+      fetchCommands();
+    }
+  }, [agent, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!agent) {
     return null;
@@ -78,8 +79,7 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
       dataIndex: 'type',
       key: 'type',
       width: 100,
-      render: (type: string) => <Tag>{type.toUpperCase()}</Tag>,
-    },
+      render: (type: string) => <Tag>{type.toUpperCase()}</Tag> },
     {
       title: 'Status',
       dataIndex: 'status',
@@ -87,21 +87,18 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
       width: 100,
       render: (status: string) => (
         <Tag color={getCommandStatusColor(status)}>{status.toUpperCase()}</Tag>
-      ),
-    },
+      ) },
     {
       title: 'Created',
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 180,
-      render: (date: string) => new Date(date).toLocaleString(),
-    },
+      render: (date: string) => new Date(date).toLocaleString() },
     {
       title: 'Result',
       dataIndex: 'result',
       key: 'result',
-      render: (result?: string) => result || '—',
-    },
+      render: (result?: string) => result || '—' },
   ];
 
   const tabItems = [
@@ -192,8 +189,7 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
             </>
           )}
         </Space>
-      ),
-    },
+      ) },
     {
       key: 'linked',
       label: 'Linked',
@@ -259,17 +255,16 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
             </>
           )}
         </Space>
-      ),
-    },
+      ) },
     {
       key: 'commands',
       label: 'Commands',
       children: (
         <Spin spinning={commandsLoading}>
           {commands.length > 0 ? (
-            <Table
+            <DataTable
               columns={commandColumns}
-              dataSource={commands}
+              data={commands}
               rowKey="id"
               pagination={false}
               size="small"
@@ -278,8 +273,7 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
             <Empty description="No commands" />
           )}
         </Spin>
-      ),
-    },
+      ) },
   ];
 
   return (

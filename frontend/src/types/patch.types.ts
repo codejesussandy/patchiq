@@ -1,10 +1,41 @@
+import type { PatchOS, PatchSeverity } from '@shared/types';
+export type {
+  AffectedProduct,
+  PatchVulnerabilityInfo as Vulnerability,
+  CreatePatchInput,
+  UpdatePatchInput,
+  PatchListParams,
+  TestPatchInput,
+  RejectPatchInput,
+  CreatePatchDeploymentInput,
+  DeploymentPreview,
+  CreatePatchTestInput,
+  AutoDeploymentRules,
+  CreateZeroTouchConfigInput,
+  UpdateZeroTouchConfigInput,
+  ScanEndpointsInput,
+  DeploymentTaskResponse,
+} from '@shared/types';
+import type {
+  Asset,
+  AssetPatchStatus,
+  AssetRelatedPatch,
+  AssetDeployment,
+  AssetGroup,
+  PatchSummary,
+} from './asset.types';
+
+// Re-export Asset types for use in patch context
+export type { Asset, AssetPatchStatus, AssetRelatedPatch, AssetDeployment, AssetGroup, PatchSummary };
+
+// Frontend Patch type (used in UI - broader than shared model)
 export type Patch = {
   id: string;
   software: string;
   patchId: string;
   endpoints: number;
-  os: 'Windows' | 'MacOS' | 'Ubuntu' | 'Linux';
-  severity: 'CRITICAL' | 'High' | 'Medium' | 'Low' | 'UNSPECIFIED';
+  os: PatchOS;
+  severity: PatchSeverity;
   operationalStatusSince: string;
   platform: string;
   description: string;
@@ -13,7 +44,7 @@ export type Patch = {
   product?: string;
   bulletinId: string;
   kbNumber: string;
-  releaseDate: string;
+  publishedAt: string;
   rebootRequired: boolean;
   supportUninstallation: boolean;
   supportsRollback?: boolean;
@@ -32,8 +63,6 @@ export type Patch = {
   updatedAt?: string;
   lastUpdatedAt?: string; // @deprecated - use updatedAt
   source?: string;
-  releasedOn?: string;
-  downloadedOn?: string;
   supersededBy?: string[];
   supersedes?: string[];
   // Bundle info for hub-centric deployments
@@ -46,50 +75,18 @@ export type Patch = {
   } | null;
 };
 
-export type AffectedProduct = {
-  id: string;
-  name: string;
-  vendor: string;
-  version: string;
-};
-
+// UI-specific types
 export type AffectedSoftware = {
   id: string;
   softwareName: string;
   version: string;
   vendor: string;
-  installedOn: number; // Number of endpoints with this software installed
+  installedOn: number;
   platform: string;
 };
 
-export type FileDetail = {
-  id: string;
-  fileName: string;
-  version: string;
-  size: string;
-  path: string;
-};
-
-export type Vulnerability = {
-  id: string;
-  cveNumber: string;
-  severity: string;
-  description: string;
-  publishedDate: string;
-};
-
-import type {
-  Asset,
-  AssetPatchStatus,
-  AssetRelatedPatch,
-  AssetDeployment,
-  AssetGroup,
-  PatchSummary,
-  AgentLink,
-} from './asset.types';
-
-// Re-export Asset types for use in patch context
-export type { Asset, AssetPatchStatus, AssetRelatedPatch, AssetDeployment, AssetGroup, PatchSummary, AgentLink };
+// Re-export AgentLink type
+export type { AgentLink } from './asset.types';
 
 // Simple endpoint reference (used in patch endpoints list)
 export type Endpoint = {
@@ -100,19 +97,14 @@ export type Endpoint = {
   lastSeen: string;
 };
 
-// Backward compatibility aliases - these map to the new Asset types
+// Backward compatibility aliases
 export type EndpointPatchStatus = AssetPatchStatus;
 export type EndpointRelatedPatch = AssetRelatedPatch;
 export type EndpointDeployment = AssetDeployment;
 
 /**
  * EndpointDetails - Now unified with Asset type
- *
- * This type represents an asset/endpoint with full details including
- * agent info, patch compliance, and deployment history.
- *
  * @deprecated Use Asset type from asset.types.ts for new code.
- * This type is kept for backward compatibility.
  */
 export type EndpointDetails = {
   id: string;
@@ -121,42 +113,35 @@ export type EndpointDetails = {
   osVersion: string;
   status: 'Online' | 'Offline';
   lastSeen: string;
-
-  // Agent info (flattened from AgentLink for convenience)
   agentId?: string;
   agentName?: string;
   agentVersion?: string;
-  agentStatus?: 'Connected' | 'Disconnected' | 'Pending' | 'Error';
-
-  // Asset link (when endpoint is linked to an asset)
+  agentStatus?: 'CONNECTED' | 'DISCONNECTED' | 'PENDING' | 'ERROR';
   assetId?: string;
   assetName?: string;
-
-  // Groups for deployment targeting
   groups?: AssetGroup[];
-
-  // Network
   ipAddress?: string;
   macAddress?: string;
   hostname?: string;
-
-  // Hardware summary
   manufacturer?: string;
   model?: string;
   serialNumber?: string;
-
-  // Location
   location?: string;
   department?: string;
   owner?: string;
-
-  // Patch summary
-  patchSummary: PatchSummary;
-
-  // Related patches for this endpoint
+  patchSummary: {
+    total: number;
+    installed: number;
+    missing: number;
+    failed: number;
+    pending: number;
+    criticalMissing?: number;
+    securityMissing?: number;
+    lastScanDate: string;
+    lastScanRelative?: string;
+    compliancePercent?: number;
+  };
   relatedPatches: AssetRelatedPatch[];
-
-  // Recent deployment history
   recentDeployments: AssetDeployment[];
 };
 
@@ -165,7 +150,7 @@ export type Deployment = {
   name: string;
   deploymentId: string;
   type: 'INSTALL' | 'ROLLBACK';
-  stage: 'INSTALLED' | 'COMPLETED' | 'IN_PROGRESS' | 'FAILED';
+  status: 'INSTALLED' | 'COMPLETED' | 'IN_PROGRESS' | 'FAILED';
   pending: number;
   succeeded: number;
   failed: number;

@@ -177,7 +177,7 @@ function generateTimeline(
   calculateValueAtYear: (year: number) => number
 ): DepreciationPoint[] {
   const timeline: DepreciationPoint[] = [];
-  const { purchaseDate, usefulLifeYears, purchaseCost, salvageValue } = input;
+  const { purchaseDate, usefulLifeYears, purchaseCost } = input;
   const currentDate = input.currentDate || new Date();
   const yearsElapsed = yearsBetween(purchaseDate, currentDate);
 

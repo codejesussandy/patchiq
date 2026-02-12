@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { App,
   Form, Button, Typography, Row, Col, TimePicker, Checkbox, Radio, Space, Select } from 'antd';
 import dayjs from 'dayjs';
-import customParseFormat from 'dayjs/plugin/customParseFormat';
-import { settingsService } from '../../services/settings.service';
-import type { PatchPreference, PatchPreferenceFormData } from '../../types/settings.types';
 import type { Dayjs } from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+import { usePatchPreference, useUpdatePatchPreference, useSyncPatchNow } from '../../hooks/useSettings';
+import type { PatchPreferenceFormData } from '../../types/settings.types';
 
 dayjs.extend(customParseFormat);
 
@@ -21,61 +21,38 @@ type FormValues = Omit<PatchPreferenceFormData, 'patchApprovalScheduleTime' | 's
 export const PatchPreferences = () => {
   const { message } = App.useApp();
   const [form] = Form.useForm<FormValues>();
-  const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [data, setData] = useState<PatchPreference | null>(null);
-  const [originalFormValues, setOriginalFormValues] = useState<PatchPreferenceFormData | null>(null);
+  const { data, isLoading: loading } = usePatchPreference();
+  const updatePrefMutation = useUpdatePatchPreference();
+  const syncNowMutation = useSyncPatchNow();
   const [scheduleFrequency, setScheduleFrequency] = useState<string>('Daily');
   const [zeroTouchFrequency, setZeroTouchFrequency] = useState<string>('Daily');
 
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const response = await settingsService.getPatchPreference();
-      setData(response);
-      const formData: PatchPreferenceFormData = {
-        enablePatching: response.enablePatching,
-        corridorOnlyApprovedPatch: response.corridorOnlyApprovedPatch,
-        patchSyncForOS: response.patchSyncForOS,
-        patchApprovalPolicy: response.patchApprovalPolicy,
-        enableThirdPartyPatching: response.enableThirdPartyPatching,
-        patchApprovalScheduleTime: response.patchApprovalScheduleTime,
-        scheduleTime: response.scheduleTime,
-        zeroTouchDeploymentScheduleTime: response.zeroTouchDeploymentScheduleTime,
-      };
+    if (data) {
       form.setFieldsValue({
-        enablePatching: formData.enablePatching,
-        corridorOnlyApprovedPatch: formData.corridorOnlyApprovedPatch,
-        patchSyncForOS: formData.patchSyncForOS,
-        patchApprovalPolicy: formData.patchApprovalPolicy,
-        enableThirdPartyPatching: formData.enableThirdPartyPatching,
-        patchApprovalScheduleTime: dayjs(formData.patchApprovalScheduleTime, 'HH:mm:ss'),
-        scheduleTime: dayjs(formData.scheduleTime, 'HH:mm:ss'),
-        zeroTouchDeploymentScheduleTime: dayjs(formData.zeroTouchDeploymentScheduleTime, 'HH:mm:ss'),
+        enablePatching: data.enablePatching,
+        corridorOnlyApprovedPatch: data.corridorOnlyApprovedPatch,
+        patchSyncForOS: data.patchSyncForOS,
+        patchApprovalPolicy: data.patchApprovalPolicy,
+        enableThirdPartyPatching: data.enableThirdPartyPatching,
+        patchApprovalScheduleTime: dayjs(data.patchApprovalScheduleTime, 'HH:mm:ss'),
+        scheduleTime: dayjs(data.scheduleTime, 'HH:mm:ss'),
+        zeroTouchDeploymentScheduleTime: dayjs(data.zeroTouchDeploymentScheduleTime, 'HH:mm:ss'),
       });
-      setOriginalFormValues(formData);
-    } catch (error) {
-      message.error('Failed to fetch patch preferences');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [data, form]);
 
   const handleReset = () => {
-    if (originalFormValues) {
+    if (data) {
       form.setFieldsValue({
-        enablePatching: originalFormValues.enablePatching,
-        corridorOnlyApprovedPatch: originalFormValues.corridorOnlyApprovedPatch,
-        patchSyncForOS: originalFormValues.patchSyncForOS,
-        patchApprovalPolicy: originalFormValues.patchApprovalPolicy,
-        enableThirdPartyPatching: originalFormValues.enableThirdPartyPatching,
-        patchApprovalScheduleTime: dayjs(originalFormValues.patchApprovalScheduleTime, 'HH:mm:ss'),
-        scheduleTime: dayjs(originalFormValues.scheduleTime, 'HH:mm:ss'),
-        zeroTouchDeploymentScheduleTime: dayjs(originalFormValues.zeroTouchDeploymentScheduleTime, 'HH:mm:ss'),
+        enablePatching: data.enablePatching,
+        corridorOnlyApprovedPatch: data.corridorOnlyApprovedPatch,
+        patchSyncForOS: data.patchSyncForOS,
+        patchApprovalPolicy: data.patchApprovalPolicy,
+        enableThirdPartyPatching: data.enableThirdPartyPatching,
+        patchApprovalScheduleTime: dayjs(data.patchApprovalScheduleTime, 'HH:mm:ss'),
+        scheduleTime: dayjs(data.scheduleTime, 'HH:mm:ss'),
+        zeroTouchDeploymentScheduleTime: dayjs(data.zeroTouchDeploymentScheduleTime, 'HH:mm:ss'),
       });
     }
   };
@@ -93,25 +70,19 @@ export const PatchPreferences = () => {
         scheduleTime: values.scheduleTime.format('HH:mm:ss'),
         zeroTouchDeploymentScheduleTime: values.zeroTouchDeploymentScheduleTime.format('HH:mm:ss'),
       };
-      await settingsService.updatePatchPreference(submitData);
-      setOriginalFormValues(submitData);
+      await updatePrefMutation.mutateAsync(submitData);
       message.success('Patch preferences updated successfully');
-      await fetchData();
-    } catch (error) {
+    } catch {
       message.error('Failed to update patch preferences');
     }
   };
 
   const handleSyncNow = async () => {
-    setSyncing(true);
     try {
-      await settingsService.syncPatchNow();
+      await syncNowMutation.mutateAsync();
       message.success('Patch sync initiated successfully');
-      await fetchData();
-    } catch (error) {
+    } catch {
       message.error('Failed to sync patches');
-    } finally {
-      setSyncing(false);
     }
   };
 
@@ -188,7 +159,7 @@ export const PatchPreferences = () => {
 
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: '12px' }}>
-              <Button onClick={handleSyncNow} loading={syncing}>
+              <Button onClick={handleSyncNow} loading={syncNowMutation.isPending}>
                 Sync Now
               </Button>
               <Button onClick={handleReset} loading={loading}>

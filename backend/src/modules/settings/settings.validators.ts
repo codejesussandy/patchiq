@@ -16,6 +16,21 @@ export const idParamSchema = z.object({
   id: z.string().uuid(),
 });
 
+// List query schemas for organizations, branches, etc.
+export const listOrganizationsQuerySchema = paginationSchema;
+
+export const listBranchesQuerySchema = paginationSchema.extend({
+  organizationId: z.string().uuid().optional(),
+});
+
+export const listDepartmentsQuerySchema = paginationSchema.extend({
+  branchId: z.string().uuid().optional(),
+});
+
+export type ListOrganizationsQuery = z.infer<typeof listOrganizationsQuerySchema>;
+export type ListBranchesQuery = z.infer<typeof listBranchesQuerySchema>;
+export type ListDepartmentsQuery = z.infer<typeof listDepartmentsQuerySchema>;
+
 // ============================================
 // Organization Validators
 // ============================================
@@ -119,7 +134,7 @@ export const createUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1).max(100),
   password: z.string().min(8).max(128).optional(),
-  role: z.string().default('user'),
+  role: z.string().default('USER'),
   organizationId: z.string().uuid().optional(),
   departmentId: z.string().uuid().optional(),
   locationId: z.string().uuid().optional(),
@@ -138,7 +153,7 @@ export const updateUserSchema = z.object({
 export const inviteUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1).max(100).optional(),
-  role: z.string().default('user'),
+  role: z.string().default('USER'),
   organizationId: z.string().uuid().optional(),
   departmentId: z.string().uuid().optional(),
   locationId: z.string().uuid().optional(),
@@ -154,6 +169,7 @@ export const userListQuerySchema = paginationSchema.extend({
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type InviteUserInput = z.infer<typeof inviteUserSchema>;
+export type UserListQuery = z.infer<typeof userListQuerySchema>;
 
 // ============================================
 // Role Validators
@@ -533,8 +549,8 @@ export type UpdatePatchPreferenceInput = z.infer<typeof updatePatchPreferenceSch
 // ============================================
 
 export const updateAgentApprovalSettingsSchema = z.object({
-  approvalType: z.enum(['auto', 'manual']).optional(),
-  autoApprovalBasedOn: z.enum(['all', 'criteria']).optional(),
+  approvalType: z.enum(['AUTO', 'MANUAL']).optional(),
+  autoApprovalBasedOn: z.enum(['ALL', 'CRITERIA']).optional(),
 });
 
 export type UpdateAgentApprovalSettingsInput = z.infer<typeof updateAgentApprovalSettingsSchema>;
@@ -568,7 +584,7 @@ export type UpdateDistributionServerInput = z.infer<typeof updateDistributionSer
 
 export const updateRedHatNominationSchema = z.object({
   scheduledTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
-  status: z.enum(['pending', 'approved', 'rejected']).optional(),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
 });
 
 export type UpdateRedHatNominationInput = z.infer<typeof updateRedHatNominationSchema>;

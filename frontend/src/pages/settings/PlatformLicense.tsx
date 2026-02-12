@@ -1,4 +1,7 @@
-import { useState, useEffect } from 'react';
+import {
+  CopyOutlined,
+  ReloadOutlined,
+} from '@ant-design/icons';
 import {
   App,
   Card,
@@ -13,15 +16,11 @@ import {
   Space,
   Tag,
 } from 'antd';
-import {
-  CopyOutlined,
-  ReloadOutlined,
-} from '@ant-design/icons';
-import { settingsService } from '../../services/settings.service';
+import { usePlatformLicense, useUpdatePlatformLicense } from '../../hooks/useSettings';
 
 const { Title, Text } = Typography;
 
-interface License {
+interface _License {
   licenseTo: string;
   productCode: string;
   licenseType: string;
@@ -42,29 +41,8 @@ interface License {
 export const PlatformLicense = () => {
   const { message } = App.useApp();
   const [form] = Form.useForm();
-  const [license, setLicense] = useState<License | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [updating, setUpdating] = useState(false);
-
-  useEffect(() => {
-    fetchLicense();
-  }, []);
-
-  const fetchLicense = async () => {
-    setLoading(true);
-    try {
-      const data = await settingsService.getPlatformLicense();
-      setLicense(data);
-      form.setFieldsValue({
-        licenseCode: '',
-      });
-    } catch (error) {
-      console.error('Error fetching license:', error);
-      message.error('Failed to fetch license information');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: license = null, isLoading: loading, refetch } = usePlatformLicense();
+  const updateLicenseMutation = useUpdatePlatformLicense();
 
   const handleCopyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -74,17 +52,13 @@ export const PlatformLicense = () => {
   const handleSubmitLicenseCode = async () => {
     try {
       const values = await form.validateFields();
-      setUpdating(true);
-      await settingsService.updatePlatformLicense({
+      await updateLicenseMutation.mutateAsync({
         licenseCode: values.licenseCode,
       });
       message.success('License updated successfully');
       form.resetFields();
-      fetchLicense();
-    } catch (error) {
+    } catch {
       message.error('Failed to update license');
-    } finally {
-      setUpdating(false);
     }
   };
 
@@ -115,7 +89,7 @@ export const PlatformLicense = () => {
         <Title level={2} style={{ margin: 0 }}>Platform License</Title>
         <Button
           icon={<ReloadOutlined />}
-          onClick={fetchLicense}
+          onClick={() => refetch()}
           loading={loading}
         >
           Refresh
@@ -254,7 +228,7 @@ export const PlatformLicense = () => {
                   <Button
                     type="primary"
                     htmlType="submit"
-                    loading={updating}
+                    loading={updateLicenseMutation.isPending}
                   >
                     Update License
                   </Button>

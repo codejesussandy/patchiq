@@ -12,11 +12,11 @@ const OFFLINE_THRESHOLD_SECONDS = 180; // 3 minutes (3 missed heartbeats)
 
 export function calculateAgentStatus(
   agent: { lastHeartbeat: Date | null; status: string } | null | undefined
-): 'Connected' | 'Disconnected' | 'Error' | 'Pending' {
-  if (!agent) return 'Disconnected';
+): 'CONNECTED' | 'DISCONNECTED' | 'ERROR' | 'PENDING' {
+  if (!agent) return 'DISCONNECTED';
 
   // Never received a heartbeat
-  if (!agent.lastHeartbeat) return 'Pending';
+  if (!agent.lastHeartbeat) return 'PENDING';
 
   const now = new Date();
   const lastHeartbeatTime = new Date(agent.lastHeartbeat);
@@ -24,13 +24,13 @@ export function calculateAgentStatus(
 
   // If heartbeat is stale, agent is disconnected
   if (timeSinceHeartbeat > OFFLINE_THRESHOLD_SECONDS) {
-    return 'Disconnected';
+    return 'DISCONNECTED';
   }
 
-  // If database status is 'Error', respect that (agent reported an error)
-  if (agent.status === 'Error') {
-    return 'Error';
+  // If database status is 'ERROR', respect that (agent reported an error)
+  if (agent.status === 'ERROR') {
+    return 'ERROR';
   }
 
-  return 'Connected';
+  return 'CONNECTED';
 }

@@ -190,7 +190,7 @@ describe('Vulnerabilities API', () => {
           .set('Authorization', `Bearer ${authToken}`)
           .send({
             vulnerabilityIds: [],
-            exceptionType: 'Acceptable Risk',
+            exceptionType: 'ACCEPTABLE_RISK',
             reasonForExclusion: 'Test reason',
           });
         expect(response.status).toBe(400);
@@ -216,7 +216,7 @@ describe('Vulnerabilities API', () => {
           .put(`/v1/vulnerabilities/exceptions/${fakeUUID}`)
           .set('Authorization', `Bearer ${authToken}`)
           .send({
-            exceptionType: 'Not Applicable',
+            exceptionType: 'NOT_APPLICABLE',
           });
         expect(response.status).toBe(404);
       });
@@ -238,7 +238,7 @@ describe('Vulnerabilities API', () => {
       const response = await request(app)
         .post('/v1/vulnerabilities/scan')
         .set('Authorization', `Bearer ${authToken}`)
-        .send({ scope: 'all' });
+        .send({ scope: 'ALL' });
       expect(response.status).toBe(202);
       expect(response.body).toHaveProperty('jobId');
       expect(response.body).toHaveProperty('status', 'initiated');
@@ -250,7 +250,7 @@ describe('Vulnerabilities API', () => {
         .post('/v1/vulnerabilities/scan')
         .set('Authorization', `Bearer ${authToken}`)
         .send({
-          scope: 'selected',
+          scope: 'SELECTED',
           endpointIds: ['endpoint-1', 'endpoint-2'],
         });
       expect(response.status).toBe(202);

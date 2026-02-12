@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Form, Input, Button, Typography, Select, Space } from 'antd';
 import { EyeInvisibleOutlined, EyeTwoTone, ArrowRightOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Typography, Select, Space } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './Login.css';
@@ -27,7 +27,7 @@ export const UserOnboarding = () => {
       const fullContactNumber = `${values.countryCode}${values.contactNumber}`;
       await completeOnboarding(values.name, fullContactNumber, values.password, values.confirmPassword);
       navigate('/dashboard');
-    } catch (error) {
+    } catch {
       // Error is handled in AuthContext with message.error
     } finally {
       setLoading(false);

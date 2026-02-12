@@ -1,5 +1,5 @@
-import { api } from './api.service';
 import type { Category, SubCategory } from '../types/asset.types';
+import { api } from './api.service';
 
 export const categoryService = {
   // Get all categories
@@ -62,13 +62,13 @@ export const categoryService = {
   },
 
   // Get assets in a category
-  async getAssetsByCategory(categoryId: string): Promise<any[]> {
+  async getAssetsByCategory(categoryId: string): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/categories/${categoryId}/assets`);
     return response.data;
   },
 
   // Get assets in a sub-category
-  async getAssetsBySubCategory(subCategoryId: string): Promise<any[]> {
+  async getAssetsBySubCategory(subCategoryId: string): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/subcategories/${subCategoryId}/assets`);
     return response.data;
   },

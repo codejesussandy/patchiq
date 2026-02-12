@@ -1,26 +1,41 @@
 // Re-export the canonical Agent type from agent.types.ts
-// Note: Discovery module uses the same Agent type as the main agent module
 export type { Agent, AgentStatus } from './agent.types';
 
+// Re-export shared API types
+export type {
+  IPRangeResponse,
+  DeviceCredentialResponse,
+  ScanResponse,
+  DiscoveredDeviceResponse,
+  ListIPRangesParams,
+  ListCredentialsParams,
+  ListDiscoveredDevicesParams,
+  TriggerScanResponse,
+  EnrollDeviceResponse,
+  TestCredentialResponse,
+  ScanSchedule,
+  CredentialBasicInfo,
+} from '@shared/types';
+
 // Legacy/simplified agent type for discovery listing (backwards compatibility)
-// This is used by discovery handlers that have simplified mock data
 export type DiscoveryAgent = {
   id: string;
   name: string;
-  status: 'Connected' | 'Disconnected' | 'Offline';
+  status: 'CONNECTED' | 'DISCONNECTED' | 'Offline';
   lastConnectedTime: string;
   os: string;
   version: string;
   createdAt?: string;
 };
 
+// UI-specific form data
 export type AgentFormData = {
   name: string;
   os: string;
   version: string;
 };
 
-// IP Range Types
+// UI-specific IP Range type (simpler than shared IPRangeResponse)
 export type IPRange = {
   id: string;
   name: string;
@@ -33,11 +48,11 @@ export type IPRange = {
 
 export type IPRangeFormData = Omit<IPRange, 'id' | 'lastScanned' | 'deviceCount' | 'createdAt'>;
 
-// Device Credential Types
+// UI-specific Device Credential type (simpler than shared)
 export type DeviceCredential = {
   id: string;
   name: string;
-  type: 'SSH' | 'Windows' | 'SNMP';
+  type: 'SSH' | 'WINDOWS' | 'SNMP';
   username: string;
   password?: string;
   description?: string;
@@ -47,7 +62,7 @@ export type DeviceCredential = {
 
 export type DeviceCredentialFormData = Omit<DeviceCredential, 'id' | 'lastUsed' | 'createdAt'>;
 
-// Filter States
+// UI Filter States
 export type AgentFilterState = {
   showId: boolean;
   showName: boolean;

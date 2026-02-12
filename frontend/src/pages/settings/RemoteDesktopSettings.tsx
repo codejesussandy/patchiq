@@ -1,43 +1,31 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { App,
   Button, Typography, Switch, Spin, Segmented } from 'antd';
-import { settingsService } from '../../services/settings.service';
-import type { RemoteDesktopSettings as RemoteDesktopSettingsType } from '../../types/settings.types';
+import { useRemoteDesktopSettings, useUpdateRemoteDesktopSettings, useResetRemoteDesktopSettings } from '../../hooks/useSettings';
 
 const { Title, Text } = Typography;
 
 export const RemoteDesktopSettings = () => {
   const { message } = App.useApp();
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [_settings, setSettings] = useState<RemoteDesktopSettingsType | null>(null);
+  const { data: settings, isLoading: loading } = useRemoteDesktopSettings();
+  const updateSettingsMutation = useUpdateRemoteDesktopSettings();
+  const resetSettingsMutation = useResetRemoteDesktopSettings();
   const [formData, setFormData] = useState({
     connectionType: 'Local' as 'Local' | 'Remote',
     remoteSessionIndicator: false,
     userConsent: false,
   });
+  const [initialized, setInitialized] = useState(false);
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    setLoading(true);
-    try {
-      const data = await settingsService.getRemoteDesktopSettings();
-      setSettings(data);
-      setFormData({
-        connectionType: data.connectionType,
-        remoteSessionIndicator: data.remoteSessionIndicator,
-        userConsent: data.userConsent,
-      });
-    } catch (error) {
-      console.error('Error fetching remote desktop settings:', error);
-      message.error('Failed to load remote desktop settings');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Sync fetched settings to local state once loaded
+  if (settings && !initialized) {
+    setFormData({
+      connectionType: settings.connectionType,
+      remoteSessionIndicator: settings.remoteSessionIndicator,
+      userConsent: settings.userConsent,
+    });
+    setInitialized(true);
+  }
 
   const handleConnectionTypeChange = (value: string | number) => {
     setFormData({
@@ -61,26 +49,20 @@ export const RemoteDesktopSettings = () => {
   };
 
   const handleSave = async () => {
-    setSaving(true);
     try {
-      await settingsService.updateRemoteDesktopSettings(formData);
+      await updateSettingsMutation.mutateAsync(formData);
       message.success('Remote Desktop Settings updated successfully');
-      await fetchSettings();
-    } catch (error) {
-      console.error('Error updating remote desktop settings:', error);
+    } catch {
       message.error('Failed to update remote desktop settings');
-    } finally {
-      setSaving(false);
     }
   };
 
   const handleReset = async () => {
     try {
-      await settingsService.resetRemoteDesktopSettings();
+      await resetSettingsMutation.mutateAsync();
       message.success('Remote Desktop Settings reset to defaults');
-      await fetchSettings();
-    } catch (error) {
-      console.error('Error resetting remote desktop settings:', error);
+      setInitialized(false);
+    } catch {
       message.error('Failed to reset remote desktop settings');
     }
   };
@@ -140,13 +122,13 @@ export const RemoteDesktopSettings = () => {
             <Button
               onClick={handleSave}
               type="primary"
-              loading={saving}
+              loading={updateSettingsMutation.isPending}
             >
               Save
             </Button>
             <Button
               onClick={handleReset}
-              disabled={saving}
+              disabled={updateSettingsMutation.isPending}
             >
               Reset
             </Button>

@@ -1,4 +1,3 @@
-import { api } from './api.service';
 import type {
   Asset,
   AssetLifeCycle,
@@ -14,10 +13,11 @@ import type {
   ExpandedHardware,
   PatchSummary,
 } from '../types/asset.types';
-import type { SecurityCompliance } from '../types/security.types';
 import type { NetworkConfiguration } from '../types/network.types';
 import type { PeripheralInventory } from '../types/peripheral.types';
+import type { SecurityCompliance } from '../types/security.types';
 import type { TelemetryPayload, TelemetryHistory, SystemErrors } from '../types/telemetry.types';
+import { api } from './api.service';
 
 // Re-export types for convenience
 export type {

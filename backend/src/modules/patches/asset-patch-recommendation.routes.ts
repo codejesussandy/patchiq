@@ -5,8 +5,8 @@
  */
 
 import { Router } from 'express';
-import * as controller from './asset-patch-recommendation.controller';
 import { authenticate } from '@middleware/auth';
+import * as controller from './asset-patch-recommendation.controller';
 
 const router = Router();
 

@@ -1,38 +1,39 @@
 /**
- * Shared Enums - Generated from Prisma Schema
- * Source of Truth: backend/src/db/prisma/schema.prisma
+ * Shared Enums - Single Source of Truth
+ * Source: backend/src/db/prisma/schema.prisma
  *
- * These enums match the string values used in the Prisma schema.
- * When Prisma schema changes, regenerate these enums.
+ * Convention: ALL enum values use UPPERCASE_SNAKE_CASE.
+ * Frontend display formatting is handled by formatEnum() utility.
+ * Both backend and frontend import from this file — no redefinitions allowed.
  */
 
 // ============================================
 // User & Authentication Enums
 // ============================================
 
-export type UserRole = 'admin' | 'user' | 'manager';
+export type UserRole = 'ADMIN' | 'USER' | 'MANAGER';
 
 // ============================================
 // Agent Enums
 // ============================================
 
-export type AgentStatus = 'Pending' | 'Connected' | 'Disconnected' | 'Error';
+export type AgentStatus = 'PENDING' | 'CONNECTED' | 'DISCONNECTED' | 'ERROR';
 
-export type AgentCommandType = 'scan' | 'update' | 'deploy' | 'reboot' | 'collect_inventory' | 'collect_telemetry';
+export type AgentCommandType = 'SCAN' | 'UPDATE' | 'DEPLOY' | 'REBOOT' | 'COLLECT_INVENTORY' | 'COLLECT_TELEMETRY';
 
-export type AgentCommandStatus = 'pending' | 'sent' | 'completed' | 'failed';
+export type AgentCommandStatus = 'PENDING' | 'SENT' | 'COMPLETED' | 'FAILED';
 
-export type OSFamily = 'Windows' | 'MacOS' | 'Linux';
+export type OSFamily = 'WINDOWS' | 'MACOS' | 'LINUX';
 
 // ============================================
 // Asset Enums
 // ============================================
 
-export type AssetType = 'Endpoint' | 'Server' | 'Mobile' | 'Virtual Machine' | 'Workstation';
+export type AssetType = 'ENDPOINT' | 'SERVER' | 'MOBILE' | 'VIRTUAL_MACHINE' | 'WORKSTATION';
 
-export type AssetStatus = 'In Use' | 'Available' | 'Under Maintenance' | 'Retired';
+export type AssetStatus = 'IN_USE' | 'AVAILABLE' | 'UNDER_MAINTENANCE' | 'RETIRED';
 
-export type OperationalStatus = 'Connected' | 'Disconnected';
+export type OperationalStatus = 'CONNECTED' | 'DISCONNECTED';
 
 // ============================================
 // Vulnerability Enums
@@ -40,27 +41,27 @@ export type OperationalStatus = 'Connected' | 'Disconnected';
 
 export type VulnerabilitySeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
-export type VulnerabilityStatus = 'Open' | 'Resolved' | 'Mitigated' | 'Accepted';
+export type VulnerabilityStatus = 'OPEN' | 'RESOLVED' | 'MITIGATED' | 'ACCEPTED';
 
-export type ExceptionType = 'False Positive' | 'Risk Accepted' | 'Compensating Control' | 'Pending Fix';
+export type ExceptionType = 'FALSE_POSITIVE' | 'RISK_ACCEPTED' | 'COMPENSATING_CONTROL' | 'PENDING_FIX';
 
-export type ExceptionScope = 'Global' | 'Specific Endpoints';
+export type ExceptionScope = 'GLOBAL' | 'SPECIFIC_ENDPOINTS';
 
 // ============================================
 // Patch Enums
 // ============================================
 
-export type PatchSeverity = 'CRITICAL' | 'High' | 'Medium' | 'Low' | 'UNSPECIFIED';
+export type PatchSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNSPECIFIED';
 
-export type PatchOS = 'Windows' | 'MacOS' | 'Ubuntu' | 'Linux';
+export type PatchOS = 'WINDOWS' | 'MACOS' | 'UBUNTU' | 'LINUX';
 
-export type PatchStatus = 'Draft' | 'Active' | 'Superseded' | 'Retired';
+export type PatchStatus = 'DRAFT' | 'ACTIVE' | 'SUPERSEDED' | 'RETIRED';
 
-export type PatchDownloadStatus = 'None' | 'Pending' | 'Downloading' | 'Completed' | 'Failed';
+export type PatchDownloadStatus = 'NONE' | 'PENDING' | 'DOWNLOADING' | 'COMPLETED' | 'FAILED';
 
-export type TestStatus = 'Not Tested' | 'Tested' | 'Test Failed';
+export type TestStatus = 'NOT_TESTED' | 'TESTED' | 'TEST_FAILED';
 
-export type ApprovalStatus = 'Pending' | 'Approved' | 'Rejected';
+export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 // ============================================
 // Deployment Enums
@@ -70,27 +71,25 @@ export type DeploymentType = 'INSTANT' | 'SCHEDULE';
 
 export type DeploymentConfigType = 'INSTALL' | 'ROLLBACK';
 
-export type DeploymentScope = 'Global' | 'Group' | 'Endpoint';
+export type DeploymentScope = 'GLOBAL' | 'GROUP' | 'ENDPOINT';
 
-export type DeploymentStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+export type DeploymentStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
-export type DeploymentStage = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'INSTALLED' | 'FAILED';
-
-export type DeploymentTaskStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
+export type DeploymentTaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
 
 // ============================================
 // Discovery Enums
 // ============================================
 
-export type ScanScheduleType = 'once' | 'daily' | 'weekly';
+export type ScanScheduleType = 'ONCE' | 'DAILY' | 'WEEKLY';
 
-export type ScanStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
+export type ScanStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
 
-export type DiscoveredDeviceStatus = 'discovered' | 'enrolled' | 'ignored';
+export type DiscoveredDeviceStatus = 'DISCOVERED' | 'ENROLLED' | 'IGNORED';
 
-export type CredentialType = 'SSH' | 'Windows' | 'SNMP' | 'WinRM';
+export type CredentialType = 'SSH' | 'WINDOWS' | 'SNMP' | 'WINRM';
 
-export type SNMPVersion = 'v2c' | 'v3';
+export type SNMPVersion = 'V2C' | 'V3';
 
 // ============================================
 // Job Enums
@@ -98,49 +97,49 @@ export type SNMPVersion = 'v2c' | 'v3';
 
 export type JobType = 'SCHEDULE' | 'INSTANT';
 
-export type JobStatus = 'pending' | 'running' | 'completed' | 'failed';
+export type JobStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
 
-export type VulnerabilityScanType = 'instant' | 'scheduled';
+export type VulnerabilityScanType = 'INSTANT' | 'SCHEDULED';
 
 export type VulnerabilityJobStatus = 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SCHEDULED';
 
-export type Recurrence = 'once' | 'daily' | 'weekly' | 'monthly';
+export type Recurrence = 'ONCE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
 
 // ============================================
 // Software Deployment Enums
 // ============================================
 
-export type ApplicationLocationType = 'Local Directory' | 'Network Share' | 'URL';
+export type ApplicationLocationType = 'LOCAL_DIRECTORY' | 'NETWORK_SHARE' | 'URL';
 
 export type ApplicationType = 'MSI' | 'EXE' | 'APPLICATION' | 'ZIP';
 
-export type SoftwareDeploymentType = 'install' | 'uninstall' | 'upgrade';
+export type SoftwareDeploymentType = 'INSTALL' | 'UNINSTALL' | 'UPGRADE' | 'ROLLBACK';
 
-export type SelectionType = 'application' | 'bundle';
+export type SelectionType = 'APPLICATION' | 'BUNDLE';
 
-export type NotifyTo = 'admin' | 'user';
+export type NotifyTo = 'ADMIN' | 'USER';
 
 // ============================================
 // Configuration Enums
 // ============================================
 
-export type ConfigurationType = 'command' | 'policy' | 'script';
+export type ConfigurationType = 'COMMAND' | 'POLICY' | 'SCRIPT';
 
-export type CommandType = 'powershell' | 'cmd' | 'bash' | 'sh';
+export type CommandType = 'POWERSHELL' | 'CMD' | 'BASH' | 'SH';
 
-export type Architecture = 'x64' | 'x86' | 'ARM64';
+export type Architecture = 'X64' | 'X86' | 'ARM64';
 
 // ============================================
 // Report Enums
 // ============================================
 
-export type ReportType = 'vulnerability' | 'patch' | 'compliance' | 'asset' | 'endpoint' | 'hardware';
+export type ReportType = 'VULNERABILITY' | 'PATCH' | 'COMPLIANCE' | 'ASSET' | 'ENDPOINT' | 'HARDWARE' | 'AUDIT' | 'CUSTOM';
 
 export type ReportFormat = 'CSV' | 'PDF' | 'XLSX' | 'JSON';
 
-export type ReportStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type ReportStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
-export type ReportFrequency = 'daily' | 'weekly' | 'monthly';
+export type ReportFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY';
 
 // ============================================
 // Patch Test & Zero Touch Enums
@@ -154,7 +153,7 @@ export type ScopeFilterType = 'ALL_COMPUTERS' | 'SCOPE' | 'SPECIFIC_GROUPS';
 // License Enums
 // ============================================
 
-export type LicenseStatus = 'Allocated' | 'Available' | 'Expired';
+export type LicenseStatus = 'ALLOCATED' | 'AVAILABLE' | 'EXPIRED';
 
 // ============================================
 // Policy Enums
@@ -162,16 +161,35 @@ export type LicenseStatus = 'Allocated' | 'Available' | 'Expired';
 
 export type PolicyType = 'SCHEDULE' | 'INSTANT';
 
-export type SupportedModule = 'All' | 'Patch' | 'Update' | 'Security';
+export type SupportedModule = 'ALL' | 'PATCH' | 'UPDATE' | 'SECURITY';
 
-export type RelatedType = 'No Relation' | 'Critical' | 'Important' | 'Optional';
+export type RelatedType = 'NO_RELATION' | 'CRITICAL' | 'IMPORTANT' | 'OPTIONAL';
 
 // ============================================
 // Patch Source Enums
 // ============================================
 
-export type PatchSourceCategory = 'os' | 'firmware' | 'enterprise' | 'runtime' | 'security' | 'browser' | 'utility';
+export type PatchSourceCategory = 'OS' | 'FIRMWARE' | 'ENTERPRISE' | 'RUNTIME' | 'SECURITY' | 'BROWSER' | 'UTILITY';
 
-export type PatchSourceAuthType = 'basic' | 'bearer' | 'api_key';
+export type PatchSourceAuthType = 'BASIC' | 'BEARER' | 'API_KEY';
 
-export type DownloadJobStatus = 'pending' | 'queued' | 'downloading' | 'verifying' | 'completed' | 'failed' | 'cancelled';
+export type DownloadJobStatus = 'PENDING' | 'QUEUED' | 'DOWNLOADING' | 'VERIFYING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+
+// ============================================
+// Enum Display Utility
+// ============================================
+
+/**
+ * Convert an UPPERCASE_SNAKE_CASE enum value to human-readable Title Case.
+ * Examples:
+ *   formatEnum('IN_PROGRESS') → 'In Progress'
+ *   formatEnum('CRITICAL') → 'Critical'
+ *   formatEnum('NOT_TESTED') → 'Not Tested'
+ *   formatEnum('UNDER_MAINTENANCE') → 'Under Maintenance'
+ */
+export function formatEnum(value: string): string {
+  return value
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}

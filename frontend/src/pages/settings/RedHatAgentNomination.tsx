@@ -1,78 +1,40 @@
-import { useState, useEffect } from 'react';
-import { App,
-  Table, Button, Space, Input, Tag, Spin, Modal, Form, Select, Tooltip } from 'antd';
+import { useState, useMemo } from 'react';
 import { ReloadOutlined, DownloadOutlined, SearchOutlined, EditOutlined } from '@ant-design/icons';
+import { App,
+  Button, Space, Input, Tag, Spin, Modal, Form, Select, Tooltip } from 'antd';
+import type { ColumnsType} from 'antd/es/table';
+import { DataTable } from '../../components/shared/DataTable';
+import { useRedHatAgentNominations, useUpdateRedHatAgentNomination } from '../../hooks/useSettings';
 import { settingsService } from '../../services/settings.service';
 import type { RedHatAgentNomination as RedHatAgentNominationType } from '../../types/settings.types';
-import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 
 const statusColors: Record<string, string> = {
   pending: 'processing',
   approved: 'success',
-  rejected: 'error',
-};
+  rejected: 'error' };
 
 export const RedHatAgentNomination = () => {
   const { message } = App.useApp();
-  const [nominations, setNominations] = useState<RedHatAgentNominationType[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { data: nominations = [], isLoading: loading, refetch } = useRedHatAgentNominations();
+  const updateNominationMutation = useUpdateRedHatAgentNomination();
   const [searchText, setSearchText] = useState('');
-  const [filteredData, setFilteredData] = useState<RedHatAgentNominationType[]>([]);
-  const [pagination, setPagination] = useState<TablePaginationConfig>({
+  const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
-    total: 0,
-  });
+    total: 0 });
   const [modalVisible, setModalVisible] = useState(false);
   const [editingNomination, setEditingNomination] = useState<RedHatAgentNominationType | null>(null);
   const [editForm] = Form.useForm();
 
-  useEffect(() => {
-    fetchNominations();
-  }, []);
-
-  useEffect(() => {
-    filterData();
+  const filteredData = useMemo(() => {
+    if (!searchText) return nominations;
+    const searchLower = searchText.toLowerCase();
+    return nominations.filter((nomination: RedHatAgentNominationType) =>
+      nomination.name.toLowerCase().includes(searchLower) ||
+      nomination.status.toLowerCase().includes(searchLower) ||
+      nomination.updatedBy.toLowerCase().includes(searchLower)
+    );
   }, [searchText, nominations]);
-
-  const fetchNominations = async () => {
-    setLoading(true);
-    try {
-      const data = await settingsService.getRedHatAgentNominations();
-      setNominations(data);
-      setPagination((prev) => ({
-        ...prev,
-        total: data.length,
-      }));
-    } catch (error) {
-      console.error('Error fetching Red Hat agent nominations:', error);
-      message.error('Failed to fetch Red Hat agent nominations');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterData = () => {
-    if (!searchText) {
-      setFilteredData(nominations);
-      return;
-    }
-
-    const filtered = nominations.filter((nomination) => {
-      const searchLower = searchText.toLowerCase();
-      return (
-        nomination.name.toLowerCase().includes(searchLower) ||
-        nomination.status.toLowerCase().includes(searchLower) ||
-        nomination.updatedBy.toLowerCase().includes(searchLower)
-      );
-    });
-    setFilteredData(filtered);
-    setPagination((prev) => ({
-      ...prev,
-      current: 1,
-      total: filtered.length,
-    }));
-  };
 
   const handleExport = async () => {
     try {
@@ -86,8 +48,7 @@ export const RedHatAgentNomination = () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       message.success('Red Hat nominations exported successfully');
-    } catch (error) {
-      console.error('Error exporting Red Hat nominations:', error);
+    } catch {
       message.error('Failed to export Red Hat nominations');
     }
   };
@@ -98,8 +59,7 @@ export const RedHatAgentNomination = () => {
       name: nomination.name,
       status: nomination.status,
       endpoint: nomination.endpoint,
-      scheduledTime: nomination.scheduledTime || '',
-    });
+      scheduledTime: nomination.scheduledTime || '' });
     setModalVisible(true);
   };
 
@@ -113,17 +73,17 @@ export const RedHatAgentNomination = () => {
     try {
       const values = await editForm.validateFields();
       if (editingNomination) {
-        await settingsService.updateRedHatAgentNomination(editingNomination.id, {
-          name: values.name,
-          status: values.status,
-          endpoint: values.endpoint,
-          scheduledTime: values.scheduledTime || undefined,
-        });
+        await updateNominationMutation.mutateAsync({
+          id: editingNomination.id,
+          data: {
+            name: values.name,
+            status: values.status,
+            endpoint: values.endpoint,
+            scheduledTime: values.scheduledTime || undefined } });
         message.success('Red Hat nomination updated successfully');
-        fetchNominations();
         handleModalClose();
       }
-    } catch (error) {
+    } catch {
       message.error('Failed to update Red Hat nomination');
     }
   };
@@ -133,8 +93,7 @@ export const RedHatAgentNomination = () => {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
-      width: '20%',
-    },
+      width: '20%' },
     {
       title: 'Status',
       dataIndex: 'status',
@@ -142,35 +101,30 @@ export const RedHatAgentNomination = () => {
       width: '12%',
       render: (status: string) => (
         <Tag color={statusColors[status] || 'default'}>{status}</Tag>
-      ),
-    },
+      ) },
     {
       title: 'Endpoint',
       dataIndex: 'endpoint',
       key: 'endpoint',
       width: '10%',
-      align: 'center' as const,
-    },
+      align: 'center' as const },
     {
       title: 'Last Sync Time',
       dataIndex: 'lastSyncTime',
       key: 'lastSyncTime',
       width: '18%',
-      render: (text) => <span style={{ fontSize: '12px' }}>{text}</span>,
-    },
+      render: (text) => <span style={{ fontSize: '12px' }}>{text}</span> },
     {
       title: 'Updated By',
       dataIndex: 'updatedBy',
       key: 'updatedBy',
-      width: '12%',
-    },
+      width: '12%' },
     {
       title: 'Updated At',
       dataIndex: 'updatedAt',
       key: 'updatedAt',
       width: '18%',
-      render: (text) => <span style={{ fontSize: '12px' }}>{text}</span>,
-    },
+      render: (text) => <span style={{ fontSize: '12px' }}>{text}</span> },
     {
       title: 'Actions',
       key: 'actions',
@@ -185,17 +139,17 @@ export const RedHatAgentNomination = () => {
             onClick={() => handleEdit(record)}
           />
         </Tooltip>
-      ),
-    },
+      ) },
   ];
 
+  const total = filteredData.length;
   const paginatedData = filteredData.slice(
     ((pagination.current || 1) - 1) * (pagination.pageSize || 10),
     ((pagination.current || 1) * (pagination.pageSize || 10))
   );
 
   const startIndex = ((pagination.current || 1) - 1) * (pagination.pageSize || 10) + 1;
-  const endIndex = Math.min((pagination.current || 1) * (pagination.pageSize || 10), pagination.total || 0);
+  const endIndex = Math.min((pagination.current || 1) * (pagination.pageSize || 10), total);
 
   return (
     <div style={{ padding: '24px' }}>
@@ -212,7 +166,7 @@ export const RedHatAgentNomination = () => {
           />
           <Button
             icon={<ReloadOutlined />}
-            onClick={fetchNominations}
+            onClick={() => refetch()}
             loading={loading}
           >
             Refresh
@@ -227,26 +181,25 @@ export const RedHatAgentNomination = () => {
       </div>
 
       <Spin spinning={loading}>
-        <Table<RedHatAgentNominationType>
+        <DataTable<RedHatAgentNominationType>
           columns={columns}
-          dataSource={paginatedData}
+          data={paginatedData}
           rowKey="id"
           pagination={{
             current: pagination.current,
             pageSize: pagination.pageSize,
-            total: pagination.total,
+            total,
             onChange: (page, pageSize) => {
-              setPagination({ current: page, pageSize, total: pagination.total });
+              setPagination({ current: page, pageSize, total });
             },
             showSizeChanger: true,
             showQuickJumper: true,
             pageSizeOptions: ['5', '10', '20', '50'],
             showTotal: () => (
               <span style={{ marginRight: '16px' }}>
-                Showing {startIndex}-{endIndex} of {pagination.total} items
+                Showing {startIndex}-{endIndex} of {total} items
               </span>
-            ),
-          }}
+            ) }}
           style={{ marginTop: '16px' }}
           size="small"
         />
@@ -292,9 +245,9 @@ export const RedHatAgentNomination = () => {
             <Select
               placeholder="Select Status"
               options={[
-                { label: 'Pending', value: 'pending' },
-                { label: 'Approved', value: 'approved' },
-                { label: 'Rejected', value: 'rejected' },
+                { label: 'Pending', value: 'PENDING' },
+                { label: 'Approved', value: 'APPROVED' },
+                { label: 'Rejected', value: 'REJECTED' },
               ]}
             />
           </Form.Item>

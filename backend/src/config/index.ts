@@ -1,5 +1,5 @@
-import { env } from './env';
 import { databaseConfig } from './database';
+import { env } from './env';
 
 export const config = {
   // Server

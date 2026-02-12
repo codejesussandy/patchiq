@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { sendSuccess } from '@shared/utils';
 import { AuthService } from './auth.service';
 import type {
   LoginInput,
@@ -20,7 +21,7 @@ export class AuthController {
       const input: LoginInput = req.body;
       const result = await this.authService.login(input.email, input.password);
 
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -34,7 +35,7 @@ export class AuthController {
     try {
       await this.authService.logout(req.user!.id);
 
-      res.json({ message: 'Logged out successfully' });
+      sendSuccess(res, { message: 'Logged out successfully' });
     } catch (error) {
       next(error);
     }
@@ -49,7 +50,7 @@ export class AuthController {
       const input: RefreshTokenInput = req.body;
       const result = await this.authService.refreshToken(input.refreshToken);
 
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -59,16 +60,16 @@ export class AuthController {
    * POST /v1/auth/forgot-password
    * Request password reset email
    */
-  forgotPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  forgotPassword = async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     try {
       const input: ForgotPasswordInput = req.body;
       await this.authService.forgotPassword(input.email);
 
       // Always return success for security (don't reveal if email exists)
-      res.json({ message: 'Password reset instructions sent to email' });
+      sendSuccess(res, { message: 'Password reset instructions sent to email' });
     } catch (error) {
       // Still return success even if an error occurred (security)
-      res.json({ message: 'Password reset instructions sent to email' });
+      sendSuccess(res, { message: 'Password reset instructions sent to email' });
     }
   };
 
@@ -81,7 +82,7 @@ export class AuthController {
       const input: ResetPasswordInput = req.body;
       await this.authService.resetPassword(input.token, input.password);
 
-      res.json({ message: 'Password reset successfully' });
+      sendSuccess(res, { message: 'Password reset successfully' });
     } catch (error) {
       next(error);
     }
@@ -96,7 +97,7 @@ export class AuthController {
       const input: CompleteOnboardingInput = req.body;
       const result = await this.authService.completeOnboarding(req.user!.id, input);
 
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -110,7 +111,7 @@ export class AuthController {
     try {
       const user = await this.authService.getUserById(req.user!.id);
 
-      res.json(user);
+      sendSuccess(res, user);
     } catch (error) {
       next(error);
     }

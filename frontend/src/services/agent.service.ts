@@ -1,5 +1,5 @@
-import { api } from './api.service';
 import type { Agent, AgentDownload, Command, AgentVersion } from '../types/agent.types';
+import { api } from './api.service';
 
 export type { Agent, AgentDownload, Command, AgentVersion } from '../types/agent.types';
 

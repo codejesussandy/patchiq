@@ -238,7 +238,7 @@ describe('Assets Module', () => {
           .set('Authorization', `Bearer ${accessToken}`)
           .send({
             name: `Test Asset ${randomString()}`,
-            status: 'Available',
+            status: 'AVAILABLE',
             manufacturer: 'Test Manufacturer',
             model: 'Test Model',
             serialNumber: randomString(15),
@@ -293,11 +293,11 @@ describe('Assets Module', () => {
         const res = await request(app)
           .get('/v1/assets')
           .set('Authorization', `Bearer ${accessToken}`)
-          .query({ status: 'Available' });
+          .query({ status: 'AVAILABLE' });
 
         expect(res.status).toBe(200);
         if (res.body.data.length > 0) {
-          expect(res.body.data[0].status).toBe('Available');
+          expect(res.body.data[0].status).toBe('AVAILABLE');
         }
       });
 
@@ -358,11 +358,11 @@ describe('Assets Module', () => {
           .set('Authorization', `Bearer ${accessToken}`)
           .send({
             name: `Updated Asset ${randomString()}`,
-            status: 'In Use',
+            status: 'IN_USE',
           });
 
         expect(res.status).toBe(200);
-        expect(res.body.status).toBe('In Use');
+        expect(res.body.status).toBe('IN_USE');
       });
     });
 
@@ -513,7 +513,7 @@ describe('Assets Module', () => {
             softwareName: 'Test Software',
             licenseCount: 10,
             vendorName: 'Test Vendor',
-            status: 'Available',
+            status: 'AVAILABLE',
           });
 
         expect(res.status).toBe(201);
@@ -561,7 +561,7 @@ describe('Assets Module', () => {
             softwareName: 'Test Software',
             licenseCount: 5,
             vendorName: 'Test Vendor',
-            status: 'Available',
+            status: 'AVAILABLE',
           });
 
         const res = await request(app)
@@ -584,7 +584,7 @@ describe('Assets Module', () => {
           .send({
             licenseName: `Test OS License ${randomString()}`,
             osType: 'Windows 11 Pro',
-            status: 'Available',
+            status: 'AVAILABLE',
             licenseCount: 50,
             vendorName: 'Microsoft',
           });
@@ -632,7 +632,7 @@ describe('Assets Module', () => {
           .send({
             licenseName: `Delete OS License ${randomString()}`,
             osType: 'MacOS',
-            status: 'Available',
+            status: 'AVAILABLE',
             licenseCount: 10,
             vendorName: 'Apple',
           });

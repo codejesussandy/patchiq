@@ -1,34 +1,25 @@
-import { api } from './api.service';
 import type {
   LoginRequest,
-  LoginResponse,
+  LoginResponseData,
   ForgotPasswordRequest,
-  ForgotPasswordResponse,
   ResetPasswordRequest,
-  ResetPasswordResponse,
   OnboardingRequest,
-  OnboardingResponse,
+  OnboardingResponseData,
+  MessageResponse,
   User,
 } from '../types/auth.types';
+import { api } from './api.service';
 
 export const authService = {
-  login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-    const response = await api.post<{ accessToken: string; refreshToken: string; user: User }>('/auth/login', credentials);
+  login: async (credentials: LoginRequest): Promise<LoginResponseData> => {
+    const response = await api.post<LoginResponseData>('/auth/login', credentials);
+    const data = response.data;
 
     // Store tokens in localStorage
-    localStorage.setItem('accessToken', response.data.accessToken);
-    localStorage.setItem('refreshToken', response.data.refreshToken);
+    localStorage.setItem('accessToken', data.accessToken);
+    localStorage.setItem('refreshToken', data.refreshToken);
 
-    // Transform to expected format
-    return {
-      success: true,
-      data: {
-        accessToken: response.data.accessToken,
-        refreshToken: response.data.refreshToken,
-        user: response.data.user,
-      },
-      message: 'Login successful',
-    };
+    return data;
   },
 
   logout: async (): Promise<void> => {
@@ -37,13 +28,13 @@ export const authService = {
     localStorage.removeItem('refreshToken');
   },
 
-  forgotPassword: async (data: ForgotPasswordRequest): Promise<ForgotPasswordResponse> => {
-    const response = await api.post<ForgotPasswordResponse>('/auth/forgot-password', data);
+  forgotPassword: async (data: ForgotPasswordRequest): Promise<MessageResponse> => {
+    const response = await api.post<MessageResponse>('/auth/forgot-password', data);
     return response.data;
   },
 
-  resetPassword: async (data: ResetPasswordRequest): Promise<ResetPasswordResponse> => {
-    const response = await api.post<ResetPasswordResponse>('/auth/reset-password', data);
+  resetPassword: async (data: ResetPasswordRequest): Promise<MessageResponse> => {
+    const response = await api.post<MessageResponse>('/auth/reset-password', data);
     return response.data;
   },
 
@@ -52,8 +43,8 @@ export const authService = {
     return response.data;
   },
 
-  completeOnboarding: async (data: OnboardingRequest): Promise<OnboardingResponse> => {
-    const response = await api.post<OnboardingResponse>('/user/onboarding', data);
+  completeOnboarding: async (data: OnboardingRequest): Promise<OnboardingResponseData> => {
+    const response = await api.post<OnboardingResponseData>('/user/onboarding', data);
     return response.data;
   },
 };

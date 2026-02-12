@@ -6,8 +6,20 @@
 
 import { prisma } from '@/db/client';
 import { v4 as uuidv4 } from 'uuid';
-import { minioStorage } from '@shared/services/minio.service';
+
+const logger = createLogger('hub');
+import crypto from 'crypto';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { pipeline } from 'stream';
+import { promisify } from 'util';
+import * as tar from 'tar';
 import { NotFoundError, BadRequestError } from '@shared/errors';
+import { createLogger } from '@shared/services/logger';
+import { minioStorage } from '@shared/services/minio.service';
+import { typedJson } from '@shared/utils';
+import { withTransaction } from '@shared/utils/transaction';
 import {
   CreatePackageInput,
   UpdatePackageInput,
@@ -24,16 +36,8 @@ import {
   GroupedPackageResponse,
   PackageVersionSummary,
 } from './hub.types';
-import crypto from 'crypto';
-import * as tar from 'tar';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import { promisify } from 'util';
-import { pipeline } from 'stream';
-import { createGunzip } from 'zlib';
 
-const pipelineAsync = promisify(pipeline);
+const _pipelineAsync = promisify(pipeline);
 
 class HubService {
   // ============================================
@@ -367,14 +371,14 @@ class HubService {
       pkg.minioBucket || undefined
     );
 
-    const manifest = pkg.manifestJson as unknown as PackageManifest;
+    const manifest = typedJson<PackageManifest>(pkg.manifestJson);
 
     return {
       packageId,
       bundleUrl,
       bundleChecksum: pkg.bundleChecksum || '',
       bundleSize: Number(pkg.bundleSize || 0),
-      manifest,
+      manifest: manifest!,
       expiresAt: new Date(Date.now() + 3600 * 1000),
     };
   }
@@ -423,7 +427,7 @@ class HubService {
         pkg.minioBucket || undefined
       );
 
-      const manifest = pkg.manifestJson as unknown as PackageManifest;
+      const manifest = typedJson<PackageManifest>(pkg.manifestJson);
 
       return {
         operationType,
@@ -432,9 +436,9 @@ class HubService {
         version: pkg.version,
         bundleUrl,
         bundleChecksum: pkg.bundleChecksum || undefined,
-        manifest,
+        manifest: manifest!,
         requiresRoot: pkg.requiresRoot,
-        environment: manifest.environment,
+        environment: manifest?.environment,
       };
     }
 
@@ -587,7 +591,7 @@ class HubService {
       try {
         await minioStorage.deleteObject(pkg.minioObjectKey);
       } catch (error) {
-        console.error('Failed to delete file from MinIO:', error);
+        logger.error({ err: error }, 'Failed to delete file from MinIO');
         // Continue with package deletion even if file deletion fails
       }
     }
@@ -826,35 +830,37 @@ class HubService {
   async createBundle(input: CreateBundleInput, createdBy?: string): Promise<BundleResponse> {
     const bundleId = `HUB-${uuidv4().slice(0, 8).toUpperCase()}`;
 
-    // Verify all packages exist
-    const packages = await prisma.softwarePackage.findMany({
-      where: { id: { in: input.packageIds } },
-    });
+    const bundle = await withTransaction('createBundle', async (tx) => {
+      // Verify all packages exist
+      const packages = await tx.softwarePackage.findMany({
+        where: { id: { in: input.packageIds } },
+      });
 
-    if (packages.length !== input.packageIds.length) {
-      throw new BadRequestError('Some packages not found');
-    }
+      if (packages.length !== input.packageIds.length) {
+        throw new BadRequestError('Some packages not found');
+      }
 
-    const bundle = await prisma.hubBundle.create({
-      data: {
-        bundleId,
-        name: input.name,
-        description: input.description,
-        platform: input.platform,
-        createdBy,
-        items: {
-          create: input.packageIds.map((pkgId, index) => ({
-            packageId: pkgId,
-            order: index,
-          })),
+      return tx.hubBundle.create({
+        data: {
+          bundleId,
+          name: input.name,
+          description: input.description,
+          platform: input.platform,
+          createdBy,
+          items: {
+            create: input.packageIds.map((pkgId, index) => ({
+              packageId: pkgId,
+              order: index,
+            })),
+          },
         },
-      },
-      include: {
-        items: {
-          include: { package: true },
-          orderBy: { order: 'asc' },
+        include: {
+          items: {
+            include: { package: true },
+            orderBy: { order: 'asc' },
+          },
         },
-      },
+      });
     });
 
     return this.formatBundleResponse(bundle);

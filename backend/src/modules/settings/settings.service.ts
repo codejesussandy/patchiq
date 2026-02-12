@@ -3,9 +3,12 @@ import { NotFoundError, BadRequestError } from '@shared/errors';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import { encrypt, decrypt } from '@shared/utils/crypto';
 import { emailService, type MailServerConfig } from '@shared/services/email.service';
+import { createLogger } from '@shared/services/logger';
+
+const logger = createLogger('settings');
 import { ldapService, type LdapConfig } from '@shared/services/ldap.service';
-import { proxyService, type ProxyConfig } from '@shared/services/proxy.service';
 import { minioStorage } from '@shared/services/minio.service';
+import { proxyService, type ProxyConfig } from '@shared/services/proxy.service';
 import type {
   AlertConfigResponse,
   LdapConfigResponse,
@@ -170,10 +173,9 @@ export class SettingsService {
   }
 
   async createLdapConfig(input: CreateLdapConfigInput): Promise<LdapConfigResponse> {
-    // Normalize field names (support both old and new naming conventions)
-    const baseDn = input.baseDn || (input as any).baseDN;
-    const bindDn = input.bindDn || (input as any).username;
-    const bindPassword = input.bindPassword || (input as any).password;
+    const baseDn = input.baseDn || input.baseDN || '';
+    const bindDn = input.bindDn || input.username || '';
+    const bindPassword = input.bindPassword || input.password || '';
 
     // Encrypt sensitive fields
     const bindDnEnc = encrypt(bindDn);
@@ -204,10 +206,9 @@ export class SettingsService {
       throw new NotFoundError('LDAP configuration not found');
     }
 
-    // Normalize field names (support both old and new naming conventions)
-    const baseDn = input.baseDn || (input as any).baseDN;
-    const bindDn = input.bindDn || (input as any).username;
-    const bindPassword = input.bindPassword || (input as any).password;
+    const baseDn = input.baseDn || input.baseDN;
+    const bindDn = input.bindDn || input.username;
+    const bindPassword = input.bindPassword || input.password;
 
     const updateData: Record<string, unknown> = {
       name: input.name,
@@ -260,8 +261,7 @@ export class SettingsService {
     const bindDn = decrypt(config.bindDnEnc);
     const bindPassword = decrypt(config.bindPasswordEnc);
 
-    console.log(`[LDAP Test] Testing connection to ${config.host}:${config.port}`);
-    console.log(`[LDAP Test] Base DN: ${config.baseDn}, Bind DN: ${bindDn}`);
+    logger.info({ host: config.host, port: config.port, baseDn: config.baseDn, bindDn }, 'Testing LDAP connection');
 
     // Perform actual LDAP connection test
     const ldapConfig: LdapConfig = {
@@ -444,7 +444,7 @@ export class SettingsService {
     const port = Number(input.port);
     const protocol = (input.protocol as 'HTTP' | 'HTTPS' | 'SOCKS5') || 'HTTP';
 
-    console.log(`[Proxy Test] Testing proxy connection to ${host}:${port} (${protocol})`);
+    logger.info({ host, port, protocol }, 'Testing proxy connection');
 
     const proxyConfig: ProxyConfig = {
       host,
@@ -614,8 +614,7 @@ export class SettingsService {
       fromName: input.fromName as string | undefined,
     };
 
-    console.log(`[Mail Test] Testing mail server ${host}:${port} (secure: ${secure})`);
-    console.log(`[Mail Test] Sending test email to ${testEmail}`);
+    logger.info({ host, port, secure, testEmail }, 'Testing mail server connection');
 
     // Send actual test email
     const result = await emailService.sendTestEmail(mailConfig, testEmail);
@@ -785,7 +784,7 @@ export class SettingsService {
 
   async syncVulnerabilityDatabase(): Promise<SuccessResponse> {
     // TODO: Trigger actual CVE database sync job
-    console.log('[DEV] Triggering CVE database sync');
+    logger.info('Triggering CVE database sync');
 
     // Update last sync time
     const dbSync = await prisma.vulnerabilityDBSync.findFirst();
@@ -848,7 +847,7 @@ export class SettingsService {
 
   async updatePlatformLicense(licenseCode: string): Promise<Record<string, unknown>> {
     // TODO: Validate license code with license server
-    console.log(`[DEV] Validating license code: ${licenseCode}`);
+    logger.info({ licenseCode }, 'Validating license code');
 
     // For now, simulate a valid license
     const licenseData = {

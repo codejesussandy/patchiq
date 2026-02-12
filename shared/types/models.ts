@@ -24,7 +24,7 @@ export type {
   ApprovalStatus,
   DeploymentType,
   DeploymentScope,
-  DeploymentStage,
+  DeploymentStatus,
   ScanStatus,
   DiscoveredDeviceStatus,
   CredentialType,
@@ -296,11 +296,7 @@ export interface Asset {
   depreciationRate: string | null; // Decimal as string
   invoiceNumber: string | null;
 
-  // NEW: Dual location support
-  baseLocationId: string | null;
-  installedLocationId: string | null;
-
-  // Existing relations
+  // Relations
   organizationId: string | null;
   locationId: string | null;
 
@@ -504,9 +500,7 @@ export interface Patch {
   architecture: string | null;
   kbNumber: string | null;
   bulletinId: string | null;
-  releaseDate: string | null;
-  releasedOn: string | null;
-  downloadedOn: string | null;
+  publishedAt: string | null;
   size: string | null; // BigInt as string
   sizeFormatted: string | null;
   downloadUrl: string | null;
@@ -549,11 +543,14 @@ export interface PatchDeployment {
   configType: string;
   scope: string;
   status: string;
-  stage: string;
   pending: number;
   succeeded: number;
   failed: number;
-  targetGroups: string[];
+  targetGroupIds: string[];
+  targetAgentIds: string[];
+  retryCount: number;
+  retryDelay: number;
+  autoRollback: boolean;
   scheduledAt: string | null;
   startedAt: string | null;
   completedAt: string | null;
@@ -582,24 +579,7 @@ export interface PatchAffectedProduct {
   platform: string | null;
 }
 
-export interface PatchFileDetail {
-  id: string;
-  patchId: string;
-  fileName: string;
-  version: string | null;
-  size: string | null;
-  sizeBytes: string | null; // BigInt as string
-  path: string | null;
-  minioObjectKey: string | null;
-  minioBucket: string | null;
-  checksum: string | null;
-  checksumType: string | null;
-  sourceUrl: string | null;
-  downloadStatus: string;
-  downloadedAt: string | null;
-  downloadError: string | null;
-  retryCount: number;
-}
+// PatchFileDetail removed — replaced by PatchBundle
 
 export interface PatchSource {
   id: string;
@@ -657,15 +637,7 @@ export interface PatchVulnerability {
   publishedDate: string | null;
 }
 
-export interface PatchEndpoint {
-  id: string;
-  patchId: string;
-  assetId: string | null;
-  name: string;
-  os: string | null;
-  status: string;
-  lastSeen: string | null;
-}
+// PatchEndpoint removed — replaced by Agent/Asset relations via PatchDeploymentTask
 
 export interface PatchTest {
   id: string;
@@ -983,44 +955,8 @@ export interface VulnerabilityDBSync {
   updatedAt: string;
 }
 
-export interface SoftwareCatalog {
-  id: string;
-  deploymentId: string;
-  applicationName: string;
-  description: string | null;
-  tags: string[];
-  os: string;
-  version: string;
-  applicationLocationType: string;
-  installationCommand: string | null;
-  uninstallationCommand: string | null;
-  upgradeCommand: string | null;
-  iconUrl: string | null;
-  selfService: boolean;
-  architecture: string;
-  applicationType: string;
-  applicationFileUrl: string | null;
-  createdBy: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SoftwareBundle {
-  id: string;
-  bundleId: string;
-  bundleName: string;
-  os: string;
-  description: string | null;
-  createdBy: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SoftwareBundleItem {
-  id: string;
-  bundleId: string;
-  softwareId: string;
-}
+// SoftwareCatalog, SoftwareBundle, SoftwareBundleItem removed
+// Replaced by SoftwarePackage + HubBundle + HubBundleItem in Hub module
 
 export interface SoftwareDeployment {
   id: string;
@@ -1035,7 +971,7 @@ export interface SoftwareDeployment {
   deploymentPolicy: string | null;
   retryCount: number;
   notifyTo: string;
-  stage: string;
+  status: string;
   pending: number;
   succeeded: number;
   failed: number;
@@ -1047,10 +983,10 @@ export interface SoftwareDeployment {
 export interface SoftwareDeploymentTask {
   id: string;
   deploymentId: string;
-  endpointId: string | null;
-  endpointName: string;
-  endpointOs: string;
-  itemName: string;
+  agentId: string | null;
+  agentName: string;
+  agentOs: string;
+  packageName: string;
   status: string;
   createdBy: string | null;
   createdAt: string;
@@ -1103,7 +1039,7 @@ export interface ConfigDeployment {
   deploymentPolicy: string | null;
   retryCount: number;
   notifyTo: string;
-  stage: string;
+  status: string;
   pending: number;
   succeeded: number;
   failed: number;
@@ -1115,10 +1051,10 @@ export interface ConfigDeployment {
 export interface ConfigDeploymentTask {
   id: string;
   deploymentId: string;
-  endpointId: string | null;
-  endpointName: string;
-  endpointOs: string;
-  itemName: string;
+  agentId: string | null;
+  agentName: string;
+  agentOs: string;
+  configName: string;
   status: string;
   createdBy: string | null;
   createdAt: string;

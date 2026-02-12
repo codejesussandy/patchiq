@@ -1,7 +1,7 @@
 import request from 'supertest';
+import { hashPassword } from '@shared/utils/crypto';
 import { createApp } from '@/app';
 import { prisma } from '@db/client';
-import { hashPassword } from '@shared/utils/crypto';
 
 const app = createApp();
 
@@ -21,7 +21,7 @@ describe('Auth Integration Tests', () => {
         email: testEmail,
         passwordHash: await hashPassword(testPassword),
         name: 'Test User',
-        role: 'user',
+        role: 'USER',
         isActive: true,
         isOnboarded: true,
       },
@@ -185,7 +185,7 @@ describe('Auth Integration Tests', () => {
       expect(response.status).toBe(200);
       expect(response.body.email).toBe(testEmail);
       expect(response.body.name).toBe('Test User');
-      expect(response.body.role).toBe('user');
+      expect(response.body.role).toBe('USER');
       expect(response.body).toHaveProperty('createdAt');
     });
 
@@ -354,7 +354,7 @@ describe('Auth Integration Tests', () => {
           email: onboardingEmail,
           passwordHash: await hashPassword('TempPassword123'),
           name: null,
-          role: 'user',
+          role: 'USER',
           isActive: true,
           isOnboarded: false,
         },

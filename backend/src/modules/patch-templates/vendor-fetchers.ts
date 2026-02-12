@@ -1,5 +1,20 @@
 import type { SoftwareTemplate } from './catalog';
 
+interface GitHubReleaseAsset {
+  name: string;
+  browser_download_url: string;
+  size: number;
+}
+
+interface GitHubRelease {
+  tag_name: string;
+  name: string;
+  html_url: string;
+  published_at: string;
+  body: string;
+  assets: GitHubReleaseAsset[];
+}
+
 export interface VendorFetchResult {
   latestVersion: string;
   downloadUrl: string;
@@ -36,13 +51,13 @@ function mapArch(arch: string): { x64: boolean; arm64: boolean } {
   };
 }
 
-async function fetchJson(url: string): Promise<any> {
+async function fetchJson<T = unknown>(url: string): Promise<T> {
   const resp = await fetch(url, {
     headers: { 'User-Agent': 'PatchIQ/1.0' },
     signal: AbortSignal.timeout(15000),
   });
   if (!resp.ok) throw new Error(`HTTP ${resp.status} from ${url}`);
-  return resp.json();
+  return resp.json() as Promise<T>;
 }
 
 async function fetchText(url: string): Promise<string> {
@@ -58,9 +73,9 @@ async function fetchText(url: string): Promise<string> {
 // Parser: Node.js
 // ============================================
 const nodejsParser: ParserFn = async (_tmpl, os, arch) => {
-  const data = await fetchJson('https://nodejs.org/dist/index.json');
+  const data = await fetchJson<Array<{ version: string; lts: string | false; date: string }>>('https://nodejs.org/dist/index.json');
   // Find latest LTS version
-  const lts = data.find((r: any) => r.lts !== false);
+  const lts = data.find((r) => r.lts !== false);
   if (!lts) throw new Error('No LTS version found');
 
   const { win, mac } = mapOs(os);
@@ -95,7 +110,7 @@ const nodejsParser: ParserFn = async (_tmpl, os, arch) => {
 // Parser: Go
 // ============================================
 const golangParser: ParserFn = async (_tmpl, os, arch) => {
-  const data = await fetchJson('https://go.dev/dl/?mode=json');
+  const data = await fetchJson<Array<{ version: string; files?: Array<{ filename: string; sha256: string; size: number }> }>>('https://go.dev/dl/?mode=json');
   const latest = data[0];
   if (!latest) throw new Error('No Go release found');
 
@@ -109,7 +124,7 @@ const golangParser: ParserFn = async (_tmpl, os, arch) => {
   const fileName = `${latest.version}.${osKey}-${archKey}${ext}`;
 
   // Find matching file in release
-  const file = latest.files?.find((f: any) => f.filename === fileName);
+  const file = latest.files?.find((f) => f.filename === fileName);
 
   return {
     latestVersion: version,
@@ -172,18 +187,22 @@ const temurinParser: ParserFn = async (_tmpl, os, arch) => {
   const osKey = win ? 'windows' : mac ? 'mac' : 'linux';
   const archKey = arm64 ? 'aarch64' : 'x64';
 
-  const data = await fetchJson(
+  const data = await fetchJson<Array<{
+    version?: { semver: string };
+    release_name?: string;
+    binary?: { package?: { link: string; name: string; size: number; checksum: string }; updated_at?: string };
+  }>>(
     `https://api.adoptium.net/v3/assets/latest/21/hotspot?os=${osKey}&architecture=${archKey}&image_type=jdk`
   );
 
-  if (!data || data.length === 0) throw new Error('No Temurin release found');
+  if (!data || !Array.isArray(data) || data.length === 0) throw new Error('No Temurin release found');
 
   const release = data[0];
   const binary = release.binary;
   const pkg = binary?.package;
 
   return {
-    latestVersion: release.version?.semver || release.release_name,
+    latestVersion: release.version?.semver || release.release_name || 'unknown',
     downloadUrl: pkg?.link || '',
     fileName: pkg?.name,
     checksumSha256: pkg?.checksum,
@@ -231,7 +250,7 @@ const sevenZipParser: ParserFn = async (_tmpl, os, arch) => {
 // Parser: GitHub Releases (reusable)
 // ============================================
 const githubReleasesParser: ParserFn = async (tmpl, os, arch) => {
-  const data = await fetchJson(tmpl.apiUrl);
+  const data = await fetchJson<GitHubRelease>(tmpl.apiUrl);
   const version = (data.tag_name || data.name || '').replace(/^v/, '');
   if (!version) throw new Error('No version found in GitHub release');
 
@@ -239,20 +258,20 @@ const githubReleasesParser: ParserFn = async (tmpl, os, arch) => {
   const { arm64 } = mapArch(arch);
 
   // Find matching asset
-  const assets: any[] = data.assets || [];
-  let asset: any = null;
+  const assets: GitHubReleaseAsset[] = data.assets || [];
+  let asset: GitHubReleaseAsset | undefined;
 
   if (win) {
     const archPattern = arm64 ? /arm64/i : /x64|64-bit|amd64/i;
     asset = assets.find(
-      (a: any) => /\.exe$/i.test(a.name) && archPattern.test(a.name)
-    ) || assets.find((a: any) => /\.exe$/i.test(a.name));
+      (a) => /\.exe$/i.test(a.name) && archPattern.test(a.name)
+    ) || assets.find((a) => /\.exe$/i.test(a.name));
   } else if (mac) {
-    asset = assets.find((a: any) => /\.(dmg|pkg)/i.test(a.name));
+    asset = assets.find((a) => /\.(dmg|pkg)/i.test(a.name));
   } else {
     asset = assets.find(
-      (a: any) => /\.(tar\.gz|AppImage|deb)/i.test(a.name) && /x64|amd64|x86_64/i.test(a.name)
-    ) || assets.find((a: any) => /\.(tar\.gz|AppImage|deb)/i.test(a.name));
+      (a) => /\.(tar\.gz|AppImage|deb)/i.test(a.name) && /x64|amd64|x86_64/i.test(a.name)
+    ) || assets.find((a) => /\.(tar\.gz|AppImage|deb)/i.test(a.name));
   }
 
   return {
@@ -271,7 +290,7 @@ const githubReleasesParser: ParserFn = async (tmpl, os, arch) => {
 // Parser: VS Code
 // ============================================
 const vscodeParser: ParserFn = async (_tmpl, os, arch) => {
-  const versions = await fetchJson('https://update.code.visualstudio.com/api/releases/stable');
+  const versions = await fetchJson<string[]>('https://update.code.visualstudio.com/api/releases/stable');
   const version = versions?.[0];
   if (!version) throw new Error('No VS Code version found');
 
@@ -299,7 +318,7 @@ const vscodeParser: ParserFn = async (_tmpl, os, arch) => {
 // Parser: Firefox
 // ============================================
 const firefoxParser: ParserFn = async (_tmpl, os, arch) => {
-  const data = await fetchJson('https://product-details.mozilla.org/1.0/firefox_versions.json');
+  const data = await fetchJson<{ LATEST_FIREFOX_VERSION?: string }>('https://product-details.mozilla.org/1.0/firefox_versions.json');
   const version = data.LATEST_FIREFOX_VERSION;
   if (!version) throw new Error('No Firefox version found');
 
@@ -466,22 +485,22 @@ const postmanParser: ParserFn = async (_tmpl, os, arch) => {
 // Parser: Brave Browser (GitHub releases)
 // ============================================
 const braveParser: ParserFn = async (_tmpl, os, arch) => {
-  const data = await fetchJson('https://api.github.com/repos/brave/brave-browser/releases/latest');
+  const data = await fetchJson<GitHubRelease>('https://api.github.com/repos/brave/brave-browser/releases/latest');
   const version = (data.tag_name || '').replace(/^v/, '');
   if (!version) throw new Error('No Brave version found');
 
   const { win, mac } = mapOs(os);
   const { arm64 } = mapArch(arch);
-  const assets: any[] = data.assets || [];
+  const assets: GitHubReleaseAsset[] = data.assets || [];
 
-  let asset: any;
+  let asset: GitHubReleaseAsset | undefined;
   if (win) {
-    asset = assets.find((a: any) => /BraveBrowserStandalone.*Setup.*\.exe$/i.test(a.name) && (arm64 ? /arm64/i.test(a.name) : !/arm64/i.test(a.name)));
-    if (!asset) asset = assets.find((a: any) => /BraveBrowser.*\.exe$/i.test(a.name));
+    asset = assets.find((a) => /BraveBrowserStandalone.*Setup.*\.exe$/i.test(a.name) && (arm64 ? /arm64/i.test(a.name) : !/arm64/i.test(a.name)));
+    if (!asset) asset = assets.find((a) => /BraveBrowser.*\.exe$/i.test(a.name));
   } else if (mac) {
-    asset = assets.find((a: any) => /\.dmg$/i.test(a.name) && (arm64 ? /arm64/i.test(a.name) : !/arm64/i.test(a.name)));
+    asset = assets.find((a) => /\.dmg$/i.test(a.name) && (arm64 ? /arm64/i.test(a.name) : !/arm64/i.test(a.name)));
   } else {
-    asset = assets.find((a: any) => /\.deb$/i.test(a.name) && /amd64/i.test(a.name));
+    asset = assets.find((a) => /\.deb$/i.test(a.name) && /amd64/i.test(a.name));
   }
 
   return {
@@ -565,7 +584,7 @@ const teamsParser: ParserFn = async (_tmpl, os, arch) => {
   let version = 'latest';
   try {
     const resp = await fetch(downloadUrl, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(10000) });
-    const vMatch = resp.url.match(/(\d+\.\d+\.\d+[\.\d]*)/);
+    const vMatch = resp.url.match(/(\d+\.\d+\.\d+[.\d]*)/);
     if (vMatch) version = vMatch[1];
   } catch { /* use latest */ }
 
@@ -668,7 +687,7 @@ const virtualboxParser: ParserFn = async (_tmpl, os, _arch) => {
       const versionHtml = await fetchText(`https://download.virtualbox.org/virtualbox/${version}/`);
       const macMatch = versionHtml.match(/href="(VirtualBox-[\d.]+-\d+-(macOS|OSX)\.dmg)"/i);
       if (macMatch) fileName = macMatch[1];
-    } catch {}
+    } catch { /* ignore */ }
     downloadUrl = `https://download.virtualbox.org/virtualbox/${version}/${fileName}`;
   } else {
     // Linux .deb filenames include build number and distro; scrape the directory listing
@@ -695,9 +714,9 @@ const filezillaParser: ParserFn = async (_tmpl, os, _arch) => {
   let version = 'latest';
   try {
     const html = await fetchText('https://filezilla-project.org/download.php?show_all=1');
-    const vMatch = html.match(/FileZilla_(\d+\.\d+[\.\d]*)/);
+    const vMatch = html.match(/FileZilla_(\d+\.\d+[.\d]*)/);
     if (vMatch) version = vMatch[1];
-  } catch {}
+  } catch { /* ignore */ }
 
   // Use SourceForge mirror which doesn't require tokens
   let downloadUrl: string;
@@ -749,7 +768,7 @@ const dockerParser: ParserFn = async (_tmpl, os, arch) => {
     const xml = await fetchText('https://desktop.docker.com/win/main/amd64/appcast.xml');
     const vMatch = xml.match(/sparkle:shortVersionString="(\d+\.\d+\.\d+)"/);
     if (vMatch) version = vMatch[1];
-  } catch {}
+  } catch { /* ignore */ }
 
   return { latestVersion: version, downloadUrl, fileName, os, architecture: arm64 ? 'arm64' : 'x64' };
 };
@@ -767,7 +786,7 @@ const wiresharkParser: ParserFn = async (_tmpl, os, arch) => {
     const html = await fetchText('https://www.wireshark.org/download.html');
     const vMatch = html.match(/Wireshark[- ]*(\d+\.\d+\.\d+)/i) || html.match(/(\d+\.\d+\.\d+)/);
     if (vMatch) version = vMatch[1];
-  } catch {}
+  } catch { /* ignore */ }
 
   let downloadUrl: string;
   let fileName: string;
@@ -915,7 +934,7 @@ const awscliParser: ParserFn = async (_tmpl, os, _arch) => {
     const changelog = await fetchText('https://raw.githubusercontent.com/aws/aws-cli/v2/CHANGELOG.rst');
     const vMatch = changelog.match(/^(\d+\.\d+\.\d+)/m);
     if (vMatch) version = vMatch[1];
-  } catch {}
+  } catch { /* ignore */ }
 
   return { latestVersion: version, downloadUrl, fileName, os };
 };
@@ -928,12 +947,12 @@ const dotnetParser: ParserFn = async (_tmpl, os, arch) => {
   const { arm64 } = mapArch(arch);
 
   // Use the releases index API
-  const data = await fetchJson('https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/releases-index.json');
+  const data = await fetchJson<{ 'releases-index'?: Array<{ 'support-phase': string; 'channel-version': string; 'latest-runtime': string }> }>('https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/releases-index.json');
   // Find latest LTS
-  const lts = data['releases-index']?.find((r: any) => r['support-phase'] === 'active');
+  const lts = data['releases-index']?.find((r) => r['support-phase'] === 'active');
   if (!lts) throw new Error('No .NET LTS release found');
 
-  const channel = lts['channel-version']; // e.g. "8.0"
+  const _channel = lts['channel-version']; // e.g. "8.0"
   const version = lts['latest-runtime']; // e.g. "8.0.12"
 
   const rid = win ? (arm64 ? 'win-arm64' : 'win-x64') :

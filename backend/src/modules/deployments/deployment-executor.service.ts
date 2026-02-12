@@ -13,6 +13,14 @@ import { prisma } from '@/db/client';
 import { Prisma } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { NotFoundError, BadRequestError } from '@shared/errors';
+import { toJsonInput, typedJson } from '@shared/utils';
+import { createLogger } from '@shared/services/logger';
+import { withTransaction } from '@shared/utils/transaction';
+
+const logger = createLogger('deployment-executor');
+import { hubService } from '@modules/hub/hub.service';
+import { env } from '@/config/env';
+import { notificationsService } from '@/modules/notifications/notifications.service';
 import {
   CreateSoftwareDeploymentOptions,
   CreatePatchDeploymentOptions,
@@ -24,9 +32,6 @@ import {
   ScriptBundlePayload,
   ScriptManifest,
 } from './deployment-executor.types';
-import { hubService } from '@modules/hub/hub.service';
-import { env } from '@/config/env';
-import { notificationsService } from '@/modules/notifications/notifications.service';
 
 class DeploymentExecutorService {
   /**
@@ -133,7 +138,7 @@ class DeploymentExecutorService {
         }
       } catch (err) {
         // Package not found in Hub, fall back to legacy mode
-        console.log(`Package ${pkgPayload.packageId} not found in Hub, using legacy mode`);
+        logger.info({ packageId: pkgPayload.packageId }, 'Package not found in Hub, using legacy mode');
       }
     }
 
@@ -145,20 +150,20 @@ class DeploymentExecutorService {
       // Hub-centric mode: use script bundle commands
       // Map deployment type to operation type
       let operationType: 'install' | 'update' | 'rollback' | 'uninstall' = 'install';
-      if (deploymentType === 'uninstall') {
+      if (deploymentType === 'UNINSTALL') {
         operationType = 'uninstall';
-      } else if (deploymentType === 'upgrade') {
+      } else if (deploymentType === 'UPGRADE') {
         operationType = 'update';
-      } else if (deploymentType === 'rollback') {
+      } else if (deploymentType === 'ROLLBACK') {
         operationType = 'rollback';
       }
 
       // Map deployment type to command type
-      if (deploymentType === 'uninstall') {
+      if (deploymentType === 'UNINSTALL') {
         commandType = COMMAND_TYPES.HUB_UNINSTALL;
-      } else if (deploymentType === 'upgrade') {
+      } else if (deploymentType === 'UPGRADE') {
         commandType = COMMAND_TYPES.HUB_UPDATE;
-      } else if (deploymentType === 'rollback') {
+      } else if (deploymentType === 'ROLLBACK') {
         commandType = COMMAND_TYPES.HUB_ROLLBACK;
       } else {
         commandType = COMMAND_TYPES.HUB_INSTALL;
@@ -179,21 +184,21 @@ class DeploymentExecutorService {
         requiresRoot: hubPackage.requiresRoot || false,
       };
 
-      commandPayload = bundlePayload as unknown as Prisma.InputJsonValue;
+      commandPayload = toJsonInput(bundlePayload);
     } else {
       // Legacy mode: use package manager commands
       // Fix source if it's "bundle" (Hub packages without scripts) - map to platform-appropriate source
       const pkg = packageInfo as SoftwareInstallPayload & { packageId?: string };
-      if (pkg.source === 'bundle' as any || !pkg.source) {
+      if ((pkg.source as string) === 'bundle' || !pkg.source) {
         // Will be resolved per-agent below based on agent OS
       }
-      commandType = deploymentType === 'uninstall'
+      commandType = deploymentType === 'UNINSTALL'
         ? COMMAND_TYPES.SOFTWARE_UNINSTALL
         : COMMAND_TYPES.SOFTWARE_INSTALL;
-      commandPayload = packageInfo as unknown as Prisma.InputJsonValue;
+      commandPayload = toJsonInput(packageInfo);
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await withTransaction('createSoftwareDeployment', async (tx) => {
       // 1. Create the deployment record
       const deployment = await tx.softwareDeployment.create({
         data: {
@@ -201,13 +206,13 @@ class DeploymentExecutorService {
           deploymentName: name,
           description,
           deploymentType,
-          selectionType: 'application',
+          selectionType: 'APPLICATION',
           selectedItems: [(packageInfo as SoftwareInstallPayload).name],
           scope: 'custom',
           endpoints: targetAgentIds,
           retryCount,
           notifyTo: 'admin',
-          stage: 'IN_PROGRESS',
+          status: 'IN_PROGRESS',
           pending: agents.length,
           succeeded: 0,
           failed: 0,
@@ -223,13 +228,13 @@ class DeploymentExecutorService {
         // resolve to platform-appropriate package manager for legacy installs
         let agentPayload = commandPayload;
         const pkgInfo = packageInfo as SoftwareInstallPayload;
-        if (!hubPackage?.scriptsIncluded && (pkgInfo.source === 'bundle' as any || !pkgInfo.source)) {
+        if (!hubPackage?.scriptsIncluded && ((pkgInfo.source as string) === 'bundle' || !pkgInfo.source)) {
           const osSource = this.getDefaultSourceForOS(agent.os || 'Unknown');
           // Use installCommand (winget ID like "7zip.7zip") if available, otherwise display name
           const pkgName = hubInstallCommand || pkgInfo.name;
           // Don't pass version for package manager installs — Hub version strings
           // (e.g. "23.01") often don't match package manager versions and cause failures
-          agentPayload = { name: pkgName, source: osSource } as unknown as Prisma.InputJsonValue;
+          agentPayload = toJsonInput({ name: pkgName, source: osSource });
         }
 
         // Create the agent command
@@ -238,7 +243,7 @@ class DeploymentExecutorService {
             agentId: agent.id,
             type: commandType,
             payload: agentPayload,
-            status: 'pending',
+            status: 'PENDING',
             scheduledAt: new Date(),
           },
         });
@@ -247,11 +252,11 @@ class DeploymentExecutorService {
         await tx.softwareDeploymentTask.create({
           data: {
             deploymentId: deployment.id,
-            endpointId: agent.id,
+            agentId: agent.id,
             assetId: agent.assetId || undefined, // Link to asset for tracking
-            endpointName: agent.hostname || agent.name || agent.id,
-            endpointOs: agent.os || 'Unknown',
-            itemName: (packageInfo as SoftwareInstallPayload).name,
+            agentName: agent.hostname || agent.name || agent.id,
+            agentOs: agent.os || 'Unknown',
+            packageName: (packageInfo as SoftwareInstallPayload).name,
             status: 'PENDING',
             commandId: command.id,
             createdBy,
@@ -270,7 +275,7 @@ class DeploymentExecutorService {
 
     return {
       ...result,
-      status: errors.length > 0 ? 'partial' : 'created',
+      status: errors.length > 0 ? 'PARTIAL' : 'CREATED',
       errors: errors.length > 0 ? errors : undefined,
     };
   }
@@ -326,7 +331,10 @@ class DeploymentExecutorService {
     }
 
     // Get patch IDs from the payload (handle both {id} and {patchId} formats)
-    const patchIds = patches.map(p => (p as any).id || (p as any).patchId).filter(Boolean);
+    const patchIds = patches.map(p => {
+      const patch = p as Record<string, string>;
+      return patch.id || patch.patchId;
+    }).filter(Boolean);
 
     // Fetch patches with their bundles to determine command type
     const patchesWithBundles = await prisma.patch.findMany({
@@ -338,7 +346,7 @@ class DeploymentExecutorService {
 
     const deploymentId = `PD-${uuidv4().slice(0, 8).toUpperCase()}`;
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await withTransaction('createPatchDeployment', async (tx) => {
       // 1. Create the patch deployment record
       const deployment = await tx.patchDeployment.create({
         data: {
@@ -347,9 +355,8 @@ class DeploymentExecutorService {
           description,
           type: 'INSTANT',
           configType: 'INSTALL',
-          scope: 'Endpoint',
-          status: 'PENDING',
-          stage: 'IN_PROGRESS',
+          scope: 'ENDPOINT',
+          status: 'IN_PROGRESS',
           pending: agentsWithAssets.length,
           succeeded: 0,
           failed: 0,
@@ -386,7 +393,7 @@ class DeploymentExecutorService {
               version: patch.kbNumber || patch.patchId || '1.0.0',
               bundleUrl,
               bundleChecksum: patch.bundle.bundleChecksum,
-              manifest: patch.bundle.manifestJson as unknown as ScriptManifest | undefined,
+              manifest: typedJson<ScriptManifest>(patch.bundle.manifestJson) ?? undefined,
               script: patch.bundle.scriptInstall || undefined,
               requiresRoot: true, // Patches typically require elevation
               patchId: patch.patchId,
@@ -414,9 +421,9 @@ class DeploymentExecutorService {
             agentId: agent.id,
             type: commandType,
             payload: useHubCommand
-              ? (patchPayloads.length === 1 ? patchPayloads[0] : { patches: patchPayloads }) as unknown as Prisma.InputJsonValue
-              : { patches: patchPayloads } as unknown as Prisma.InputJsonValue,
-            status: 'pending',
+              ? toJsonInput(patchPayloads.length === 1 ? patchPayloads[0] : { patches: patchPayloads })
+              : toJsonInput({ patches: patchPayloads }),
+            status: 'PENDING',
             scheduledAt: new Date(),
           },
         });
@@ -426,7 +433,7 @@ class DeploymentExecutorService {
           data: {
             deploymentId: deployment.id,
             assetId: agent.assetId!,
-            status: 'pending',
+            status: 'PENDING',
             commandId: command.id,
           },
         });
@@ -437,10 +444,10 @@ class DeploymentExecutorService {
             where: {
               assetId: agent.assetId!,
               patchId: patch.id,
-              status: { in: ['recommended', 'accepted'] },
+              status: { in: ['RECOMMENDED', 'ACCEPTED'] },
             },
             data: {
-              status: 'deployed',
+              status: 'DEPLOYED',
               deployedAt: new Date(),
               deploymentTaskId: task.id,
             },
@@ -459,7 +466,7 @@ class DeploymentExecutorService {
 
     return {
       ...result,
-      status: errors.length > 0 ? 'partial' : 'created',
+      status: errors.length > 0 ? 'PARTIAL' : 'CREATED',
       errors: errors.length > 0 ? errors : undefined,
     };
   }
@@ -469,18 +476,19 @@ class DeploymentExecutorService {
    * Called when agents report command completion
    */
   async processCommandResult(update: TaskStatusUpdate): Promise<void> {
-    let { commandId, status, result, errorMessage, output } = update;
+    const { commandId, result } = update;
+    let { status, errorMessage, output } = update;
 
     // Winget "already installed" (0x8a15002b) — treat as success with informational message
-    if (status === 'failed' && errorMessage?.includes('0x8a15002b')) {
-      status = 'completed';
+    if (status === 'FAILED' && errorMessage?.includes('0x8a15002b')) {
+      status = 'COMPLETED';
       errorMessage = undefined;
       output = 'Package is already installed (up to date)';
     }
 
     // Map command status to task status
-    const taskStatus = status === 'completed' ? 'SUCCESS'
-      : status === 'failed' ? 'FAILED'
+    const taskStatus = status === 'COMPLETED' ? 'SUCCESS'
+      : status === 'FAILED' ? 'FAILED'
       : 'IN_PROGRESS';
 
     // Update the command status
@@ -490,8 +498,8 @@ class DeploymentExecutorService {
         status,
         result: result as Prisma.InputJsonValue | undefined,
         errorMessage,
-        executedAt: status === 'in_progress' ? new Date() : undefined,
-        completedAt: ['completed', 'failed'].includes(status) ? new Date() : undefined,
+        executedAt: status === 'IN_PROGRESS' ? new Date() : undefined,
+        completedAt: ['COMPLETED', 'FAILED'].includes(status) ? new Date() : undefined,
       },
     });
 
@@ -516,9 +524,9 @@ class DeploymentExecutorService {
       await this.updatePatchDeploymentTask(patchTask.id, status, errorMessage, output);
 
       // If task failed, trigger auto-retry or rollback logic
-      if (status === 'failed') {
+      if (status === 'FAILED') {
         this.processTaskFailure(patchTask.id).catch((err) => {
-          console.error(`[Task Failure] ${patchTask.id}:`, err);
+          logger.error({ err, taskId: patchTask.id }, 'Task failure processing error');
         });
       }
       return;
@@ -563,7 +571,7 @@ class DeploymentExecutorService {
 
     const previousStatus = task.status;
 
-    await prisma.$transaction(async (tx) => {
+    await withTransaction('updateSoftwareDeploymentTask', async (tx) => {
       // Update the task
       await tx.softwareDeploymentTask.update({
         where: { id: taskId },
@@ -605,23 +613,23 @@ class DeploymentExecutorService {
         });
 
         if (deployment && deployment.pending === 0) {
-          const finalStage = deployment.failed > 0 ? 'FAILED' : 'COMPLETED';
+          const finalStatus = deployment.failed > 0 ? 'FAILED' : 'COMPLETED';
           await tx.softwareDeployment.update({
             where: { id: task.deploymentId },
             data: {
-              stage: finalStage,
+              status: finalStatus,
             },
           });
 
           // Notify the deployment creator
           if (deployment.createdBy) {
-            const isSuccess = finalStage === 'COMPLETED';
+            const isSuccess = finalStatus === 'COMPLETED';
             notificationsService.create({
               userId: deployment.createdBy,
               title: isSuccess ? 'Deployment Complete' : 'Deployment Failed',
               message: `Software deployment "${deployment.deploymentName}" ${isSuccess ? 'completed successfully' : 'has failed'}`,
-              type: isSuccess ? 'success' : 'error',
-              category: 'deployment',
+              type: isSuccess ? 'SUCCESS' : 'ERROR',
+              category: 'DEPLOYMENT',
               link: '/patches/deployed/deployed',
             }).catch(() => {});
           }
@@ -655,7 +663,7 @@ class DeploymentExecutorService {
 
     const previousStatus = task.status;
 
-    await prisma.$transaction(async (tx) => {
+    await withTransaction('updatePatchDeploymentTask', async (tx) => {
       // Update the task
       await tx.patchDeploymentTask.update({
         where: { id: taskId },
@@ -663,13 +671,13 @@ class DeploymentExecutorService {
           status,
           errorMessage,
           output,
-          startedAt: status === 'in_progress' && !task.startedAt ? new Date() : task.startedAt,
-          completedAt: ['completed', 'failed'].includes(status) ? new Date() : null,
+          startedAt: status === 'IN_PROGRESS' && !task.startedAt ? new Date() : task.startedAt,
+          completedAt: ['COMPLETED', 'FAILED'].includes(status) ? new Date() : null,
         },
       });
 
       // Update associated patch recommendations
-      if (status === 'completed') {
+      if (status === 'COMPLETED') {
         // Check if any deployed patches have verify scripts
         const hasVerifyScript = await this.schedulePostInstallVerification(tx, task);
         if (!hasVerifyScript) {
@@ -677,17 +685,17 @@ class DeploymentExecutorService {
           await tx.assetPatchRecommendation.updateMany({
             where: { deploymentTaskId: taskId },
             data: {
-              status: 'verified',
+              status: 'VERIFIED',
               verifiedAt: new Date(),
             },
           });
         }
-        // If verify script exists, recommendations stay as 'deployed' until verify completes
-      } else if (status === 'failed') {
+        // If verify script exists, recommendations stay as 'DEPLOYED' until verify completes
+      } else if (status === 'FAILED') {
         await tx.assetPatchRecommendation.updateMany({
           where: { deploymentTaskId: taskId },
           data: {
-            status: 'failed',
+            status: 'FAILED',
             failedAt: new Date(),
             failureReason: errorMessage || 'Deployment failed',
           },
@@ -695,7 +703,7 @@ class DeploymentExecutorService {
       }
 
       // If patch deployment completed successfully, resolve asset vulnerabilities
-      if (status === 'completed' && task.assetId && task.deployment.patches) {
+      if (status === 'COMPLETED' && task.assetId && task.deployment.patches) {
         await this.resolveAssetVulnerabilitiesForPatches(tx, task.assetId, task.deployment.patches);
       }
 
@@ -704,14 +712,14 @@ class DeploymentExecutorService {
         const countUpdates: Record<string, number> = {};
 
         // Decrement previous status count
-        if (previousStatus === 'pending') countUpdates.pending = -1;
-        else if (previousStatus === 'completed') countUpdates.succeeded = -1;
-        else if (previousStatus === 'failed') countUpdates.failed = -1;
+        if (previousStatus === 'PENDING') countUpdates.pending = -1;
+        else if (previousStatus === 'COMPLETED') countUpdates.succeeded = -1;
+        else if (previousStatus === 'FAILED') countUpdates.failed = -1;
 
         // Increment new status count
-        if (status === 'pending') countUpdates.pending = (countUpdates.pending || 0) + 1;
-        else if (status === 'completed') countUpdates.succeeded = (countUpdates.succeeded || 0) + 1;
-        else if (status === 'failed') countUpdates.failed = (countUpdates.failed || 0) + 1;
+        if (status === 'PENDING') countUpdates.pending = (countUpdates.pending || 0) + 1;
+        else if (status === 'COMPLETED') countUpdates.succeeded = (countUpdates.succeeded || 0) + 1;
+        else if (status === 'FAILED') countUpdates.failed = (countUpdates.failed || 0) + 1;
 
         await tx.patchDeployment.update({
           where: { id: task.deploymentId },
@@ -728,7 +736,7 @@ class DeploymentExecutorService {
           where: { id: task.deploymentId },
         });
 
-        if (deployment && deployment.pending === 0 && status !== 'failed') {
+        if (deployment && deployment.pending === 0 && status !== 'FAILED') {
           await this.finalizePatchDeployment(tx, deployment);
         }
       }
@@ -753,7 +761,7 @@ class DeploymentExecutorService {
 
     const previousStatus = task.status;
 
-    await prisma.$transaction(async (tx) => {
+    await withTransaction('updateConfigDeploymentTask', async (tx) => {
       await tx.configDeploymentTask.update({
         where: { id: taskId },
         data: {
@@ -790,20 +798,20 @@ class DeploymentExecutorService {
         });
 
         if (deployment && deployment.pending === 0) {
-          const finalStage = deployment.failed > 0 ? 'FAILED' : 'COMPLETED';
+          const finalStatus = deployment.failed > 0 ? 'FAILED' : 'COMPLETED';
           await tx.configDeployment.update({
             where: { id: task.deploymentId },
-            data: { stage: finalStage },
+            data: { status: finalStatus },
           });
 
           if (deployment.createdBy) {
-            const isSuccess = finalStage === 'COMPLETED';
+            const isSuccess = finalStatus === 'COMPLETED';
             notificationsService.create({
               userId: deployment.createdBy,
               title: isSuccess ? 'Config Deployment Complete' : 'Config Deployment Failed',
               message: `Configuration deployment "${deployment.deploymentName}" ${isSuccess ? 'completed successfully' : 'has failed'}`,
-              type: isSuccess ? 'success' : 'error',
-              category: 'deployment',
+              type: isSuccess ? 'SUCCESS' : 'ERROR',
+              category: 'DEPLOYMENT',
               link: '/patches/deployed/config-deployed',
             }).catch(() => {});
           }
@@ -846,7 +854,7 @@ class DeploymentExecutorService {
       name: deployment.deploymentName,
       description: deployment.description,
       type: deployment.deploymentType,
-      stage: deployment.stage,
+      status: deployment.status,
       pending: deployment.pending,
       succeeded: deployment.succeeded,
       failed: deployment.failed,
@@ -857,18 +865,11 @@ class DeploymentExecutorService {
       createdAt: deployment.createdAt,
       tasks: deployment.tasks.map(task => ({
         id: task.id,
-        // Return both field name formats for frontend compatibility
-        endpointId: task.endpointId,
-        endpointName: task.endpointName,
-        endpointOs: task.endpointOs,
-        itemName: task.itemName,
-        // Frontend-expected field names (aliases)
-        agentId: task.endpointId,
-        agentName: task.endpointName,
-        agentOs: task.endpointOs,
-        packageName: task.itemName,
-        // Normalize status to lowercase for frontend compatibility
-        status: task.status.toLowerCase(),
+        agentId: task.agentId,
+        agentName: task.agentName,
+        agentOs: task.agentOs,
+        packageName: task.packageName,
+        status: task.status,
         startedAt: task.startedAt,
         completedAt: task.completedAt,
         errorMessage: task.errorMessage,
@@ -920,7 +921,7 @@ class DeploymentExecutorService {
       name: deployment.name,
       description: deployment.description,
       type: deployment.configType,
-      stage: deployment.stage,
+      status: deployment.status,
       pending: deployment.pending,
       succeeded: deployment.succeeded,
       failed: deployment.failed,
@@ -937,18 +938,12 @@ class DeploymentExecutorService {
       patches: deployment.patches,
       tasks: deployment.tasks.map(task => ({
         id: task.id,
-        // Return both field name formats for frontend compatibility
         assetId: task.assetId,
-        endpointId: task.assetId,
         assetName: task.asset?.hostname || task.assetId,
-        endpointName: task.asset?.hostname || task.assetId,
-        assetOs: task.asset?.os || 'Unknown',
-        endpointOs: task.asset?.os || 'Unknown',
         agentId: task.agentId,
         agentName: task.asset?.hostname || task.agentId || task.assetId,
         agentOs: task.asset?.os || 'Unknown',
-        // Normalize status to lowercase for frontend compatibility
-        status: (task.status || 'pending').toLowerCase(),
+        status: task.status || 'PENDING',
         startedAt: task.startedAt,
         completedAt: task.completedAt,
         errorMessage: task.errorMessage,
@@ -985,7 +980,7 @@ class DeploymentExecutorService {
       name: d.name,
       description: d.description,
       type: d.configType,
-      stage: d.stage,
+      status: d.status,
       pending: d.pending,
       succeeded: d.succeeded,
       failed: d.failed,
@@ -1009,7 +1004,7 @@ class DeploymentExecutorService {
       where: { OR: [{ deploymentId }, { id: deploymentId }] },
       include: {
         tasks: {
-          where: { status: 'pending' },
+          where: { status: 'PENDING' },
           include: { command: true },
         },
       },
@@ -1019,25 +1014,24 @@ class DeploymentExecutorService {
       throw new NotFoundError('Patch deployment not found');
     }
 
-    await prisma.$transaction(async (tx) => {
+    await withTransaction('retryPatchDeployment', async (tx) => {
       for (const task of deployment.tasks) {
         if (task.commandId) {
           await tx.agentCommand.update({
             where: { id: task.commandId },
-            data: { status: 'cancelled' },
+            data: { status: 'CANCELLED' },
           });
         }
 
         await tx.patchDeploymentTask.update({
           where: { id: task.id },
-          data: { status: 'cancelled' },
+          data: { status: 'CANCELLED' },
         });
       }
 
       await tx.patchDeployment.update({
         where: { id: deployment.id },
         data: {
-          stage: 'CANCELLED',
           status: 'CANCELLED',
           pending: 0,
         },
@@ -1083,16 +1077,16 @@ class DeploymentExecutorService {
     if (patchIds.length === 0) {
       // Extract patch IDs from command payloads
       for (const task of deployment.tasks) {
-        const payload = task.command?.payload as any;
+        const payload = typedJson<Record<string, unknown>>(task.command?.payload ?? null);
         if (!payload) continue;
-        if (payload.patchId) {
+        if (payload?.patchId) {
           // Look up patch by patchId string (e.g. "7ZIP-24.01")
-          const patch = await prisma.patch.findFirst({ where: { patchId: payload.patchId }, select: { id: true } });
+          const patch = await prisma.patch.findFirst({ where: { patchId: String(payload.patchId) }, select: { id: true } });
           if (patch) patchIds.push(patch.id);
-        } else if (payload.patches) {
-          for (const p of payload.patches) {
+        } else if (Array.isArray(payload.patches)) {
+          for (const p of payload.patches as Record<string, unknown>[]) {
             if (p.patchId) {
-              const patch = await prisma.patch.findFirst({ where: { patchId: p.patchId }, select: { id: true } });
+              const patch = await prisma.patch.findFirst({ where: { patchId: String(p.patchId) }, select: { id: true } });
               if (patch) patchIds.push(patch.id);
             }
           }
@@ -1130,7 +1124,7 @@ class DeploymentExecutorService {
       targetAgentIds,
       configurationIds,
       bundleIds,
-      selectionType = 'configuration',
+      selectionType = 'CONFIGURATION',
       retryCount = 1,
       createdBy,
     } = options;
@@ -1142,7 +1136,7 @@ class DeploymentExecutorService {
     // Resolve configuration items
     let configItems: { id: string; name: string; command: string; commandType: string; os: string }[] = [];
 
-    if (selectionType === 'bundle' && bundleIds && bundleIds.length > 0) {
+    if (selectionType === 'BUNDLE' && bundleIds && bundleIds.length > 0) {
       // Resolve bundles to individual configs
       const bundles = await prisma.configBundle.findMany({
         where: { id: { in: bundleIds } },
@@ -1195,7 +1189,7 @@ class DeploymentExecutorService {
       errors.push(`Agents not found: ${missingAgents.join(', ')}`);
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await withTransaction('createConfigDeployment', async (tx) => {
       // 1. Create deployment record
       const deployment = await tx.configDeployment.create({
         data: {
@@ -1208,7 +1202,7 @@ class DeploymentExecutorService {
           endpoints: targetAgentIds,
           retryCount,
           notifyTo: 'admin',
-          stage: 'IN_PROGRESS',
+          status: 'IN_PROGRESS',
           pending: agents.length * configItems.length,
           succeeded: 0,
           failed: 0,
@@ -1231,14 +1225,14 @@ class DeploymentExecutorService {
             data: {
               agentId: agent.id,
               type: COMMAND_TYPES.SCRIPT_INLINE,
-              payload: {
+              payload: toJsonInput({
                 script,
                 scriptType: config.commandType, // powershell, cmd, bash, sh
                 configName: config.name,
                 configId: config.id,
                 requiresRoot: config.commandType === 'bash' || config.commandType === 'sh',
-              } as unknown as Prisma.InputJsonValue,
-              status: 'pending',
+              }),
+              status: 'PENDING',
               scheduledAt: new Date(),
             },
           });
@@ -1246,10 +1240,10 @@ class DeploymentExecutorService {
           await tx.configDeploymentTask.create({
             data: {
               deploymentId: deployment.id,
-              endpointId: agent.id,
-              endpointName: agent.hostname || agent.name || agent.id,
-              endpointOs: agent.os || 'Unknown',
-              itemName: config.name,
+              agentId: agent.id,
+              agentName: agent.hostname || agent.name || agent.id,
+              agentOs: agent.os || 'Unknown',
+              configName: config.name,
               status: 'PENDING',
               commandId: command.id,
               createdBy,
@@ -1269,7 +1263,7 @@ class DeploymentExecutorService {
 
     return {
       ...result,
-      status: errors.length > 0 ? 'partial' : 'created',
+      status: errors.length > 0 ? 'PARTIAL' : 'CREATED',
       errors: errors.length > 0 ? errors : undefined,
     };
   }
@@ -1307,7 +1301,7 @@ class DeploymentExecutorService {
       deploymentId: deployment.deploymentId,
       name: deployment.deploymentName,
       description: deployment.description,
-      stage: deployment.stage,
+      status: deployment.status,
       pending: deployment.pending,
       succeeded: deployment.succeeded,
       failed: deployment.failed,
@@ -1319,15 +1313,11 @@ class DeploymentExecutorService {
       createdAt: deployment.createdAt,
       tasks: deployment.tasks.map(task => ({
         id: task.id,
-        endpointId: task.endpointId,
-        endpointName: task.endpointName,
-        endpointOs: task.endpointOs,
-        itemName: task.itemName,
-        agentId: task.endpointId,
-        agentName: task.endpointName,
-        agentOs: task.endpointOs,
-        configName: task.itemName,
-        status: task.status.toLowerCase(),
+        agentId: task.agentId,
+        agentName: task.agentName,
+        agentOs: task.agentOs,
+        configName: task.configName,
+        status: task.status,
         startedAt: task.startedAt,
         completedAt: task.completedAt,
         errorMessage: task.errorMessage,
@@ -1357,13 +1347,13 @@ class DeploymentExecutorService {
       throw new NotFoundError('Deployment not found');
     }
 
-    await prisma.$transaction(async (tx) => {
+    await withTransaction('cancelDeployment', async (tx) => {
       // Cancel all pending commands
       for (const task of deployment.tasks) {
         if (task.commandId) {
           await tx.agentCommand.update({
             where: { id: task.commandId },
-            data: { status: 'cancelled' },
+            data: { status: 'CANCELLED' },
           });
         }
 
@@ -1377,7 +1367,7 @@ class DeploymentExecutorService {
       await tx.softwareDeployment.update({
         where: { id: deployment.id },
         data: {
-          stage: 'CANCELLED',
+          status: 'CANCELLED',
           pending: 0,
         },
       });
@@ -1390,7 +1380,7 @@ class DeploymentExecutorService {
    */
   private async schedulePostInstallVerification(
     tx: Prisma.TransactionClient,
-    task: { id: string; assetId: string; deployment: { patches: any[] }; commandId: string | null }
+    task: { id: string; assetId: string; deployment: { patches: { id: string }[] }; commandId: string | null }
   ): Promise<boolean> {
     if (!task.commandId) return false;
 
@@ -1403,7 +1393,7 @@ class DeploymentExecutorService {
     if (!originalCommand) return false;
 
     // Get patch IDs from the deployment
-    const patchIds = task.deployment.patches.map((p: any) => p.id);
+    const patchIds = task.deployment.patches.map((p) => p.id);
     if (patchIds.length === 0) return false;
 
     // Check if any of these patches have a bundle with a verify script
@@ -1431,20 +1421,20 @@ class DeploymentExecutorService {
       data: {
         agentId: originalCommand.agentId,
         type: COMMAND_TYPES.HUB_PATCH_VERIFY,
-        payload: {
+        payload: toJsonInput({
           operationType: 'verify',
           script: combinedScript,
           requiresRoot: true,
           // Metadata to link back to the original task
           verifyTaskId: task.id,
           patchIds,
-        } as unknown as Prisma.InputJsonValue,
-        status: 'pending',
+        }),
+        status: 'PENDING',
         scheduledAt: new Date(Date.now() + 10_000), // 10s delay for install to settle
       },
     });
 
-    console.log(`[Patch Verify] Scheduled verification for task ${task.id} (${patchesWithVerify.length} patches with verify scripts)`);
+    logger.info({ taskId: task.id, patchCount: patchesWithVerify.length }, 'Scheduled patch verification');
     return true;
   }
 
@@ -1453,37 +1443,37 @@ class DeploymentExecutorService {
    * Updates recommendation status to 'verified' on success or 'failed' on failure.
    */
   private async processVerifyCommandResult(
-    command: { id: string; payload: any },
+    command: { id: string; payload: Prisma.JsonValue | null },
     status: string,
     errorMessage?: string
   ): Promise<void> {
-    const payload = command.payload as any;
+    const payload = typedJson<Record<string, string>>(command.payload);
     const taskId = payload?.verifyTaskId;
 
     if (!taskId) {
-      console.warn(`[Patch Verify] Verify command ${command.id} has no verifyTaskId in payload`);
+      logger.warn({ commandId: command.id }, 'Verify command has no verifyTaskId in payload');
       return;
     }
 
-    if (status === 'completed') {
+    if (status === 'COMPLETED') {
       await prisma.assetPatchRecommendation.updateMany({
-        where: { deploymentTaskId: taskId, status: 'deployed' },
+        where: { deploymentTaskId: taskId, status: 'DEPLOYED' },
         data: {
-          status: 'verified',
+          status: 'VERIFIED',
           verifiedAt: new Date(),
         },
       });
-      console.log(`[Patch Verify] Task ${taskId} verification passed — recommendations marked verified`);
-    } else if (status === 'failed') {
+      logger.info({ taskId }, 'Patch verification passed, recommendations marked verified');
+    } else if (status === 'FAILED') {
       await prisma.assetPatchRecommendation.updateMany({
-        where: { deploymentTaskId: taskId, status: 'deployed' },
+        where: { deploymentTaskId: taskId, status: 'DEPLOYED' },
         data: {
-          status: 'failed',
+          status: 'FAILED',
           failedAt: new Date(),
           failureReason: `Verification failed: ${errorMessage || 'verify script returned non-zero exit code'}`,
         },
       });
-      console.log(`[Patch Verify] Task ${taskId} verification failed — recommendations marked failed`);
+      logger.info({ taskId }, 'Patch verification failed, recommendations marked failed');
     }
   }
 
@@ -1535,32 +1525,31 @@ class DeploymentExecutorService {
 
     if (result.count > 0) {
       const cveList = vulnerabilities.map(v => v.cveId).join(', ');
-      console.log(`[Patch Deploy] Resolved ${result.count} vulnerabilities for asset ${assetId}: ${cveList}`);
+      logger.info({ assetId, resolvedCount: result.count, cveList }, 'Resolved vulnerabilities for asset');
     }
   }
 
   /**
    * Finalize a patch deployment when all tasks are done (no pending tasks remain).
    */
-  private async finalizePatchDeployment(tx: any, deployment: any): Promise<void> {
-    const finalStage = deployment.failed > 0 ? 'FAILED' : 'COMPLETED';
+  private async finalizePatchDeployment(tx: Prisma.TransactionClient, deployment: { id: string; name: string; failed: number; createdBy: string | null }): Promise<void> {
+    const finalStatus = deployment.failed > 0 ? 'FAILED' : 'COMPLETED';
     await tx.patchDeployment.update({
       where: { id: deployment.id },
       data: {
-        stage: finalStage,
-        status: 'COMPLETED',
+        status: finalStatus,
         completedAt: new Date(),
       },
     });
 
     if (deployment.createdBy) {
-      const isSuccess = finalStage === 'COMPLETED';
+      const isSuccess = finalStatus === 'COMPLETED';
       notificationsService.create({
         userId: deployment.createdBy,
         title: isSuccess ? 'Patch Deployment Complete' : 'Patch Deployment Failed',
         message: `Patch deployment "${deployment.name}" ${isSuccess ? 'completed successfully' : 'has failed'}`,
-        type: isSuccess ? 'success' : 'error',
-        category: 'deployment',
+        type: isSuccess ? 'SUCCESS' : 'ERROR',
+        category: 'DEPLOYMENT',
         link: '/patches/deployed/deployed',
       }).catch(() => {});
     }
@@ -1575,8 +1564,8 @@ class DeploymentExecutorService {
       where: { id: deploymentId },
     });
 
-    if (deployment && deployment.pending === 0 && deployment.stage !== 'COMPLETED' && deployment.stage !== 'FAILED') {
-      await prisma.$transaction(async (tx) => {
+    if (deployment && deployment.pending === 0 && deployment.status !== 'COMPLETED' && deployment.status !== 'FAILED') {
+      await withTransaction('finalizePatchDeployment', async (tx) => {
         // Re-fetch inside transaction
         const dep = await tx.patchDeployment.findUnique({ where: { id: deploymentId } });
         if (dep && dep.pending === 0) {
@@ -1598,7 +1587,7 @@ class DeploymentExecutorService {
       },
     });
 
-    if (!task || task.status !== 'failed') {
+    if (!task || task.status !== 'FAILED') {
       return { action: 'final_failure' };
     }
 
@@ -1620,7 +1609,7 @@ class DeploymentExecutorService {
             agentId: originalCommand.agentId,
             type: originalCommand.type,
             payload: originalCommand.payload as Prisma.InputJsonValue,
-            status: 'pending',
+            status: 'PENDING',
             scheduledAt: new Date(Date.now() + retryDelay * 1000),
           },
         });
@@ -1629,7 +1618,7 @@ class DeploymentExecutorService {
         await prisma.patchDeploymentTask.update({
           where: { id: taskId },
           data: {
-            status: 'pending',
+            status: 'PENDING',
             retryAttempt: { increment: 1 },
             commandId: retryCommand.id,
             errorMessage: null,
@@ -1646,7 +1635,7 @@ class DeploymentExecutorService {
           },
         });
 
-        console.log(`[Auto-Retry] Task ${taskId} retry ${task.retryAttempt + 1}/${retryCount}, next command ${retryCommand.id} in ${retryDelay}s`);
+        logger.info({ taskId, attempt: task.retryAttempt + 1, maxRetries: retryCount, commandId: retryCommand.id, retryDelaySec: retryDelay }, 'Auto-retry scheduled');
         return { action: 'retry' };
       }
     }
@@ -1662,11 +1651,11 @@ class DeploymentExecutorService {
           data: {
             agentId: originalCommand.agentId,
             type: COMMAND_TYPES.HUB_PATCH_ROLLBACK,
-            payload: {
+            payload: toJsonInput({
               rollbackId: `RB-${task.commandId}`,
               patchId: deployment.patches?.[0]?.patchId || undefined,
-            } as unknown as Prisma.InputJsonValue,
-            status: 'pending',
+            }),
+            status: 'PENDING',
             scheduledAt: new Date(),
           },
         });
@@ -1676,7 +1665,7 @@ class DeploymentExecutorService {
           data: { status: 'rolled_back' },
         });
 
-        console.log(`[Auto-Rollback] Task ${taskId} rollback initiated, command ${rollbackCommand.id}`);
+        logger.info({ taskId, commandId: rollbackCommand.id }, 'Auto-rollback initiated');
         // Check if deployment is now complete
         await this.checkPatchDeploymentCompletion(deployment.id);
         return { action: 'rollback' };
@@ -1689,13 +1678,13 @@ class DeploymentExecutorService {
         userId: deployment.createdBy,
         title: 'Patch Task Failed',
         message: `Task for "${deployment.patches?.[0]?.title || 'unknown'}" in deployment "${deployment.name}" has permanently failed after ${task.retryAttempt} retries`,
-        type: 'error',
-        category: 'deployment',
+        type: 'ERROR',
+        category: 'DEPLOYMENT',
         link: '/patches/deployed/deployed',
       }).catch(() => {});
     }
 
-    console.log(`[Task Failure] Task ${taskId} permanently failed after ${task.retryAttempt} retries`);
+    logger.info({ taskId, retries: task.retryAttempt }, 'Task permanently failed after retries');
     await this.checkPatchDeploymentCompletion(deployment.id);
     return { action: 'final_failure' };
   }
@@ -1734,8 +1723,8 @@ class DeploymentExecutorService {
       throw new BadRequestError('Can only rollback completed or failed tasks');
     }
 
-    if (!task.endpointId) {
-      throw new BadRequestError('Task has no associated endpoint');
+    if (!task.agentId) {
+      throw new BadRequestError('Task has no associated agent');
     }
 
     // Create a rollback command for the agent
@@ -1743,13 +1732,13 @@ class DeploymentExecutorService {
     // The rollback ID is generated based on the original command ID
     const rollbackCommand = await prisma.agentCommand.create({
       data: {
-        agentId: task.endpointId,
+        agentId: task.agentId,
         type: COMMAND_TYPES.ROLLBACK_EXECUTE || 'rollback_execute',
-        payload: {
+        payload: toJsonInput({
           rollbackId: `RB-${task.commandId}`, // Convention: rollback ID based on original command
           force: options.force || false,
-        } as unknown as Prisma.InputJsonValue,
-        status: 'pending',
+        }),
+        status: 'PENDING',
         scheduledAt: new Date(),
       },
     });

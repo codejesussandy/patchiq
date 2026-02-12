@@ -4,8 +4,16 @@
  */
 
 import { Router } from 'express';
-import { deploymentController } from './deployment.controller';
 import { authenticate } from '@/middleware/auth';
+import { validateBody, validateParams } from '@/middleware/validation';
+import { deploymentController } from './deployment.controller';
+import {
+  createSoftwareDeploymentSchema,
+  createPatchDeploymentBodySchema,
+  createConfigDeploymentSchema,
+  deploymentIdParamSchema,
+  rollbackParamsSchema,
+} from './deployment.validators';
 
 const router = Router();
 
@@ -13,22 +21,22 @@ const router = Router();
 router.use(authenticate);
 
 // Software Deployments
-router.post('/software', deploymentController.createSoftwareDeployment.bind(deploymentController));
+router.post('/software', validateBody(createSoftwareDeploymentSchema), deploymentController.createSoftwareDeployment.bind(deploymentController));
 router.get('/software', deploymentController.listSoftwareDeployments.bind(deploymentController));
-router.get('/software/:deploymentId', deploymentController.getSoftwareDeploymentStatus.bind(deploymentController));
-router.post('/software/:deploymentId/cancel', deploymentController.cancelSoftwareDeployment.bind(deploymentController));
+router.get('/software/:deploymentId', validateParams(deploymentIdParamSchema), deploymentController.getSoftwareDeploymentStatus.bind(deploymentController));
+router.post('/software/:deploymentId/cancel', validateParams(deploymentIdParamSchema), deploymentController.cancelSoftwareDeployment.bind(deploymentController));
 
 // Rollback endpoints
-router.post('/software/:deploymentId/tasks/:taskId/rollback', deploymentController.triggerRollback.bind(deploymentController));
+router.post('/software/:deploymentId/tasks/:taskId/rollback', validateParams(rollbackParamsSchema), deploymentController.triggerRollback.bind(deploymentController));
 
 // Config Deployments
-router.post('/config', deploymentController.createConfigDeployment.bind(deploymentController));
-router.get('/config/:deploymentId', deploymentController.getConfigDeploymentStatus.bind(deploymentController));
+router.post('/config', validateBody(createConfigDeploymentSchema), deploymentController.createConfigDeployment.bind(deploymentController));
+router.get('/config/:deploymentId', validateParams(deploymentIdParamSchema), deploymentController.getConfigDeploymentStatus.bind(deploymentController));
 
 // Patch Deployments
-router.post('/patch', deploymentController.createPatchDeployment.bind(deploymentController));
+router.post('/patch', validateBody(createPatchDeploymentBodySchema), deploymentController.createPatchDeployment.bind(deploymentController));
 router.get('/patch', deploymentController.listPatchDeployments.bind(deploymentController));
-router.get('/patch/:deploymentId', deploymentController.getPatchDeploymentStatus.bind(deploymentController));
-router.post('/patch/:deploymentId/cancel', deploymentController.cancelPatchDeployment.bind(deploymentController));
+router.get('/patch/:deploymentId', validateParams(deploymentIdParamSchema), deploymentController.getPatchDeploymentStatus.bind(deploymentController));
+router.post('/patch/:deploymentId/cancel', validateParams(deploymentIdParamSchema), deploymentController.cancelPatchDeployment.bind(deploymentController));
 
 export default router;

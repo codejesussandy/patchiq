@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { sendSuccess, typedQuery } from '@shared/utils';
 import { DiscoveryService } from './discovery.service';
 import type {
   ListIPRangesQuery,
@@ -11,6 +12,7 @@ import type {
   GetScanResultsQuery,
   ListDiscoveredDevicesQuery,
   EnrollDeviceInput,
+  GetCredentialQuery,
 } from './discovery.validators';
 
 export class DiscoveryController {
@@ -28,14 +30,14 @@ export class DiscoveryController {
    */
   listIPRanges = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const query = req.query as unknown as ListIPRangesQuery;
+      const query = typedQuery<ListIPRangesQuery>(req);
       const result = await this.discoveryService.listIPRanges({
         page: query.page,
         limit: query.limit,
         search: query.search,
         status: query.status,
       });
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -49,7 +51,7 @@ export class DiscoveryController {
     try {
       const { id } = req.params;
       const range = await this.discoveryService.getIPRangeById(id);
-      res.json(range);
+      sendSuccess(res, range);
     } catch (error) {
       next(error);
     }
@@ -63,7 +65,7 @@ export class DiscoveryController {
     try {
       const data = req.body as CreateIPRangeInput;
       const range = await this.discoveryService.createIPRange(data);
-      res.status(201).json(range);
+      sendSuccess(res, range, 201);
     } catch (error) {
       next(error);
     }
@@ -78,7 +80,7 @@ export class DiscoveryController {
       const { id } = req.params;
       const data = req.body as UpdateIPRangeInput;
       const range = await this.discoveryService.updateIPRange(id, data);
-      res.json(range);
+      sendSuccess(res, range);
     } catch (error) {
       next(error);
     }
@@ -92,7 +94,7 @@ export class DiscoveryController {
     try {
       const { id } = req.params;
       await this.discoveryService.deleteIPRange(id);
-      res.json({ success: true, message: 'IP range deleted successfully' });
+      sendSuccess(res, { message: 'IP range deleted successfully' });
     } catch (error) {
       next(error);
     }
@@ -106,7 +108,7 @@ export class DiscoveryController {
     try {
       const { id } = req.params;
       const result = await this.discoveryService.triggerScan(id);
-      res.status(202).json(result);
+      sendSuccess(res, result, 202);
     } catch (error) {
       next(error);
     }
@@ -120,7 +122,7 @@ export class DiscoveryController {
     try {
       const { id } = req.params;
       const scan = await this.discoveryService.getScanStatus(id);
-      res.json(scan);
+      sendSuccess(res, scan);
     } catch (error) {
       next(error);
     }
@@ -133,12 +135,12 @@ export class DiscoveryController {
   getScanResults = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const query = req.query as unknown as GetScanResultsQuery;
+      const query = typedQuery<GetScanResultsQuery>(req);
       const result = await this.discoveryService.getScanResults(id, {
         page: query.page,
         limit: query.limit,
       });
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -152,14 +154,14 @@ export class DiscoveryController {
    */
   listCredentials = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const query = req.query as unknown as ListCredentialsQuery;
+      const query = typedQuery<ListCredentialsQuery>(req);
       const result = await this.discoveryService.listCredentials({
         page: query.page,
         limit: query.limit,
         search: query.search,
         type: query.type,
       });
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -172,9 +174,9 @@ export class DiscoveryController {
   getCredential = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const showPassword = req.query.showPassword === 'true';
-      const credential = await this.discoveryService.getCredentialById(id, showPassword);
-      res.json(credential);
+      const { showPassword } = typedQuery<GetCredentialQuery>(req);
+      const credential = await this.discoveryService.getCredentialById(id, showPassword ?? false);
+      sendSuccess(res, credential);
     } catch (error) {
       next(error);
     }
@@ -189,7 +191,7 @@ export class DiscoveryController {
       const data = req.body as CreateCredentialInput;
       const userId = req.user?.id;
       const credential = await this.discoveryService.createCredential(data, userId);
-      res.status(201).json(credential);
+      sendSuccess(res, credential, 201);
     } catch (error) {
       next(error);
     }
@@ -204,7 +206,7 @@ export class DiscoveryController {
       const { id } = req.params;
       const data = req.body as UpdateCredentialInput;
       const credential = await this.discoveryService.updateCredential(id, data);
-      res.json(credential);
+      sendSuccess(res, credential);
     } catch (error) {
       next(error);
     }
@@ -218,7 +220,7 @@ export class DiscoveryController {
     try {
       const { id } = req.params;
       await this.discoveryService.deleteCredential(id);
-      res.json({ success: true, message: 'Credential deleted successfully' });
+      sendSuccess(res, { message: 'Credential deleted successfully' });
     } catch (error) {
       next(error);
     }
@@ -233,7 +235,7 @@ export class DiscoveryController {
       const { id } = req.params;
       const data = req.body as TestCredentialInput;
       const result = await this.discoveryService.testCredential(id, data);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -247,7 +249,7 @@ export class DiscoveryController {
    */
   listDiscoveredDevices = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const query = req.query as unknown as ListDiscoveredDevicesQuery;
+      const query = typedQuery<ListDiscoveredDevicesQuery>(req);
       const result = await this.discoveryService.listDiscoveredDevices({
         page: query.page,
         limit: query.limit,
@@ -255,7 +257,7 @@ export class DiscoveryController {
         status: query.status,
         search: query.search,
       });
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -270,7 +272,7 @@ export class DiscoveryController {
       const { id } = req.params;
       const data = req.body as EnrollDeviceInput;
       const result = await this.discoveryService.enrollDevice(id, data);
-      res.status(201).json(result);
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }

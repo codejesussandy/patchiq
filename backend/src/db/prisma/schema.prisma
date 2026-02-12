@@ -24,7 +24,7 @@ model User {
   contactNumber String?   @map("contact_number")
   timezone      String?   @default("UTC")       // NEW: User timezone preference
   avatar        String?                         // NEW: Avatar URL or path
-  role          String    @default("user")
+  role          String    @default("USER")
   isActive      Boolean   @default(true) @map("is_active")
   isOnboarded   Boolean   @default(false) @map("is_onboarded")
   lastLoginAt   DateTime? @map("last_login_at")
@@ -200,7 +200,7 @@ model AgentCommand {
   agent       Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
   type        String    // software_install, software_uninstall, patch_install, etc.
   payload     Json?
-  status      String    @default("pending") // pending, in_progress, completed, failed
+  status      String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED
   result      Json?
   errorMessage String?  @map("error_message")
   scheduledAt DateTime? @map("scheduled_at")
@@ -344,10 +344,6 @@ model Asset {
   depreciationType   String?    @map("depreciation_type") // "Straight Line" | "Declining Balance"
   depreciationRate   Decimal?   @map("depreciation_rate") @db.Decimal(5, 2)
   invoiceNumber      String?    @map("invoice_number")
-
-  // NEW: Dual location support
-  baseLocationId      String?   @map("base_location_id")
-  installedLocationId String?   @map("installed_location_id")
 
   // Category relations
   categoryId      String?      @map("category_id")
@@ -643,8 +639,8 @@ model VulnerabilityException {
   cve                 String
   exceptionType       String        @map("exception_type")
   reasonForExclusion  String?       @map("reason_for_exclusion")
-  scope               String        @default("Global")
-  source              String        @default("vulnerabilities") // 'vulnerabilities' | 'zeroDay'
+  scope               String        @default("GLOBAL")
+  source              String        @default("VULNERABILITIES") // 'VULNERABILITIES' | 'ZERO_DAY'
   createdBy           String?       @map("created_by")
   createdAt           DateTime      @default(now()) @map("created_at")
   deletedAt           DateTime?     @map("deleted_at")
@@ -686,7 +682,7 @@ model CpeMapping {
 
   // Metadata
   confidence      Float    @default(1.0)             // Match confidence (0.0-1.0)
-  source          String   @default("manual")        // "manual", "nvd", "auto"
+  source          String   @default("MANUAL")        // "MANUAL", "NVD", "AUTO"
   notes           String?                             // Optional notes about mapping
   isActive        Boolean  @default(true) @map("is_active")
   createdAt       DateTime @default(now()) @map("created_at")
@@ -737,11 +733,9 @@ model Patch {
   kbNumber              String?   @map("kb_number")
   bulletinId            String?   @map("bulletin_id")
 
-  // Dates - publishedAt is authoritative, others kept for backwards compatibility
-  publishedAt           DateTime? @map("published_at")        // NEW: Single authoritative date
-  releaseDate           DateTime? @map("release_date")        // Deprecated: use publishedAt
-  releasedOn            DateTime? @map("released_on")         // Deprecated: use publishedAt
-  downloadedOn          DateTime? @map("downloaded_on")       // Deprecated: moved to PatchBundle
+  // Dates — publishedAt is the single authoritative vendor publish date
+  // downloadedAt lives on PatchBundle (when we acquired the binary)
+  publishedAt           DateTime? @map("published_at")
 
   size                  BigInt?
   sizeFormatted         String?   @map("size_formatted")
@@ -788,9 +782,9 @@ model Patch {
   bundle            PatchBundle?           // NEW: 1:1 relation to bundle storage (preferred)
   deployments       PatchDeployment[]
   affectedProducts  PatchAffectedProduct[]
-  fileDetails       PatchFileDetail[]      // @deprecated - Use bundle instead. Kept for backwards compatibility.
+  // PatchFileDetail relation removed — use bundle instead
   vulnerabilities   PatchVulnerability[]
-  patchEndpoints    PatchEndpoint[]        // @deprecated - Use Agent/Asset relations instead. Kept for backwards compatibility.
+  // PatchEndpoint relation removed — use Agent/Asset via PatchDeploymentTask
   assetPatchRecommendations AssetPatchRecommendation[]
 
   @@index([severity])
@@ -828,7 +822,7 @@ model PatchBundle {
 
   // Download Tracking
   sourceUrl       String?   @map("source_url")         // Original vendor download URL
-  downloadStatus  String    @default("pending") @map("download_status") // pending, downloading, completed, failed
+  downloadStatus  String    @default("PENDING") @map("download_status") // PENDING, DOWNLOADING, COMPLETED, FAILED
   downloadedAt    DateTime? @map("downloaded_at")
   downloadError   String?   @map("download_error")
   retryCount      Int       @default(0) @map("retry_count")
@@ -861,7 +855,6 @@ model PatchDeployment {
   configType   String    @default("INSTALL") @map("config_type")  // INSTALL, ROLLBACK, VERIFY
   scope        String    @default("Endpoint")             // Global, Group, Endpoint
   status       String    @default("PENDING")              // PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
-  stage        String    @default("IN_PROGRESS")          // Kept for backwards compatibility
   pending      Int       @default(0)
   succeeded    Int       @default(0)
   failed       Int       @default(0)
@@ -869,7 +862,6 @@ model PatchDeployment {
   // Targeting - Explicit separate fields (NEW)
   targetGroupIds  String[]  @default([]) @map("target_group_ids")   // When scope=Group
   targetAgentIds  String[]  @default([]) @map("target_agent_ids")   // When scope=Endpoint
-  targetGroups    String[]  @default([]) @map("target_groups")      // Deprecated: use targetGroupIds/targetAgentIds
 
   // Retry Policy (NEW)
   retryCount      Int       @default(1) @map("retry_count")
@@ -895,7 +887,6 @@ model PatchDeployment {
   tasks   PatchDeploymentTask[]
 
   @@index([status])
-  @@index([stage])
   @@map("patch_deployments")
 }
 
@@ -909,8 +900,8 @@ model PatchDeploymentTask {
   assetId      String          @map("asset_id")           // Linked asset (for reporting)
   asset        Asset           @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
-  // Status: pending, in_progress, completed, failed, rolled_back
-  status       String          @default("pending")
+  // Status: PENDING, IN_PROGRESS, COMPLETED, FAILED, ROLLED_BACK
+  status       String          @default("PENDING")
 
   // Link to agent command for tracking execution
   commandId    String?         @unique @map("command_id")
@@ -965,7 +956,7 @@ model AssetPatchRecommendation {
   patch             Patch     @relation(fields: [patchId], references: [id], onDelete: Cascade)
 
   // Lifecycle
-  status            String    @default("recommended")  // recommended | accepted | rejected | deployed | verified | failed
+  status            String    @default("RECOMMENDED")  // RECOMMENDED | ACCEPTED | REJECTED | DEPLOYED | VERIFIED | FAILED
 
   // Scoring (computed during creation)
   severity          String                             // CRITICAL, HIGH, MEDIUM, LOW
@@ -1018,33 +1009,7 @@ model PatchAffectedProduct {
   @@map("patch_affected_products")
 }
 
-// @deprecated - Use PatchBundle instead. This model is kept for backwards compatibility.
-// Run migration script: npx ts-node -r tsconfig-paths/register src/db/prisma/scripts/migrate-patch-file-details.ts
-model PatchFileDetail {
-  id              String    @id @default(uuid())
-  patchId         String    @map("patch_id")
-  patch           Patch     @relation(fields: [patchId], references: [id], onDelete: Cascade)
-  fileName        String    @map("file_name")
-  version         String?
-  size            String?
-  sizeBytes       BigInt?   @map("size_bytes")
-  path            String?
-  // MinIO storage fields
-  minioObjectKey  String?   @map("minio_object_key")   // e.g., "windows/microsoft/KB5034441/x64/patch.msu"
-  minioBucket     String?   @map("minio_bucket")        // e.g., "patches"
-  checksum        String?                               // SHA256 hash
-  checksumType    String?   @map("checksum_type")       // "sha256" | "md5"
-  sourceUrl       String?   @map("source_url")          // Original vendor URL
-  downloadStatus  String    @default("pending") @map("download_status") // pending | downloading | completed | failed
-  downloadedAt    DateTime? @map("downloaded_at")
-  downloadError   String?   @map("download_error")
-  retryCount      Int       @default(0) @map("retry_count")
-
-  @@index([patchId])
-  @@index([downloadStatus])
-  @@index([minioObjectKey])
-  @@map("patch_file_details")
-}
+// PatchFileDetail model removed — replaced by PatchBundle
 
 // ============================================
 // Patch Repository Models (Central Patch Storage)
@@ -1092,7 +1057,7 @@ model PatchDownloadJob {
   expectedSize    BigInt?   @map("expected_size")
   expectedChecksum String?  @map("expected_checksum")
   checksumType    String?   @map("checksum_type")
-  status          String    @default("pending")       // pending | queued | downloading | verifying | completed | failed | cancelled
+  status          String    @default("PENDING")       // PENDING | QUEUED | DOWNLOADING | VERIFYING | COMPLETED | FAILED | CANCELLED
   progress        Int       @default(0)               // 0-100 percentage
   downloadedBytes BigInt?   @map("downloaded_bytes")
   actualChecksum  String?   @map("actual_checksum")
@@ -1120,27 +1085,13 @@ model PatchVulnerability {
   severity      String?
   description   String?
   publishedDate     DateTime? @map("published_date")
-  correlationSource String    @default("manual") @map("correlation_source")  // manual | auto-kb | auto-vendor | auto-nvd
+  correlationSource String    @default("MANUAL") @map("correlation_source")  // MANUAL | AUTO_KB | AUTO_VENDOR | AUTO_NVD
 
   @@index([patchId])
   @@map("patch_vulnerabilities")
 }
 
-// @deprecated - Use Agent/Asset relations with PatchDeploymentTask instead.
-// Endpoint/Agent tracking should use the deployment system rather than static patch-endpoint links.
-model PatchEndpoint {
-  id       String    @id @default(uuid())
-  patchId  String    @map("patch_id")
-  patch    Patch     @relation(fields: [patchId], references: [id], onDelete: Cascade)
-  assetId  String?   @map("asset_id")
-  name     String
-  os       String?
-  status   String    @default("Online")
-  lastSeen DateTime? @map("last_seen")
-
-  @@index([patchId])
-  @@map("patch_endpoints")
-}
+// PatchEndpoint model removed — replaced by Agent/Asset relations via PatchDeploymentTask
 
 model PatchTest {
   id              String   @id @default(uuid())
@@ -1195,7 +1146,7 @@ model IPRange {
   scanScheduleDay     Int?      @map("scan_schedule_day")
   lastScanned         DateTime? @map("last_scanned")
   deviceCount         Int       @default(0) @map("device_count")
-  status              String    @default("active") // 'active' | 'inactive'
+  status              String    @default("ACTIVE") // 'ACTIVE' | 'INACTIVE'
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
 
@@ -1230,7 +1181,7 @@ model DiscoveryScan {
   id            String    @id @default(uuid())
   ipRangeId     String    @map("ip_range_id")
   ipRange       IPRange   @relation(fields: [ipRangeId], references: [id], onDelete: Cascade)
-  status        String    @default("pending") // 'pending' | 'in_progress' | 'completed' | 'failed'
+  status        String    @default("PENDING") // 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED'
   devicesFound  Int       @default(0) @map("devices_found")
   startedAt     DateTime? @map("started_at")
   completedAt   DateTime? @map("completed_at")
@@ -1252,7 +1203,7 @@ model DiscoveredDevice {
   os            String?
   vendor        String?
   openPorts     Int[]     @default([]) @map("open_ports")
-  status        String    @default("discovered") // 'discovered' | 'enrolled' | 'ignored'
+  status        String    @default("DISCOVERED") // 'DISCOVERED' | 'ENROLLED' | 'IGNORED'
   assetId       String?   @unique @map("asset_id")
   discoveredAt  DateTime  @default(now()) @map("discovered_at")
   lastSeenAt    DateTime  @default(now()) @map("last_seen_at")
@@ -1270,7 +1221,7 @@ model Job {
   id          String    @id @default(uuid())
   type        String
   name        String
-  status      String    @default("pending")
+  status      String    @default("PENDING")
   priority    Int       @default(0)
   payload     Json?
   result      Json?
@@ -1297,7 +1248,7 @@ model Report {
   name         String
   type         String
   format       String    @default("CSV")
-  status       String    @default("pending")
+  status       String    @default("PENDING")
   parameters   Json?
   filePath     String?   @map("file_path")
   fileSize     BigInt?   @map("file_size")
@@ -1498,9 +1449,9 @@ model VulnerabilityJob {
   jobId         String    @unique @map("job_id")
   name          String
   description   String?
-  scope         String    @default("Global") // Global | Group | Endpoint
+  scope         String    @default("GLOBAL") // GLOBAL | GROUP | ENDPOINT
   endpoints     String[]  @default([])
-  scanType      String    @default("instant") @map("scan_type") // instant | scheduled
+  scanType      String    @default("INSTANT") @map("scan_type") // INSTANT | SCHEDULED
   scheduleDate  String?   @map("schedule_date")
   scheduleTime  String?   @map("schedule_time")
   recurrence    String?   // once | daily | weekly | monthly
@@ -1521,7 +1472,7 @@ model VulnerabilityJob {
 model VulnerabilityDBSync {
   id               String    @id @default(uuid())
   scanJobInterval  Int       @default(24) @map("scan_job_interval")
-  scanJobUnit      String    @default("Hour") @map("scan_job_unit") // Hour | Day | Week
+  scanJobUnit      String    @default("HOUR") @map("scan_job_unit") // HOUR | DAY | WEEK
   databaseSyncTime String    @default("02:00:00") @map("database_sync_time")
   lastSync         DateTime? @map("last_sync")
   totalCVE         Int       @default(0) @map("total_cve")
@@ -1640,78 +1591,23 @@ model HubBundleItem {
   @@map("hub_bundle_items")
 }
 
-// ============================================
-// Legacy Software Catalog (to be migrated)
-// ============================================
-
-model SoftwareCatalog {
-  id                      String   @id @default(uuid())
-  deploymentId            String   @unique @map("deployment_id")
-  applicationName         String   @map("application_name")
-  description             String?
-  tags                    String[] @default([])
-  os                      String   // Windows | Mac | Linux
-  version                 String   @default("latest")
-  applicationLocationType String   @default("URL") @map("application_location_type") // Local Directory | Network Share | URL
-  installationCommand     String?  @map("installation_command")
-  uninstallationCommand   String?  @map("uninstallation_command")
-  upgradeCommand          String?  @map("upgrade_command")
-  iconUrl                 String?  @map("icon_url")
-  selfService             Boolean  @default(true) @map("self_service")
-  architecture            String   @default("x64") // x64 | x86 | ARM64
-  applicationType         String   @default("EXE") @map("application_type") // MSI | EXE | APPLICATION | ZIP
-  applicationFileUrl      String?  @map("application_file_url")
-  createdBy               String?  @map("created_by")
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
-
-  bundleItems SoftwareBundleItem[]
-
-  @@index([os])
-  @@map("software_catalog")
-}
-
-model SoftwareBundle {
-  id           String   @id @default(uuid())
-  bundleId     String   @unique @map("bundle_id")
-  bundleName   String   @map("bundle_name")
-  os           String   // Windows | Mac | Linux
-  description  String?
-  createdBy    String?  @map("created_by")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  items SoftwareBundleItem[]
-
-  @@index([os])
-  @@map("software_bundles")
-}
-
-model SoftwareBundleItem {
-  id         String          @id @default(uuid())
-  bundleId   String          @map("bundle_id")
-  bundle     SoftwareBundle  @relation(fields: [bundleId], references: [id], onDelete: Cascade)
-  softwareId String          @map("software_id")
-  software   SoftwareCatalog @relation(fields: [softwareId], references: [id], onDelete: Cascade)
-
-  @@unique([bundleId, softwareId])
-  @@map("software_bundle_items")
-}
+// Legacy SoftwareCatalog, SoftwareBundle, SoftwareBundleItem models removed
+// Replaced by SoftwarePackage + HubBundle + HubBundleItem in the Hub module
 
 model SoftwareDeployment {
   id               String   @id @default(uuid())
   deploymentId     String   @unique @map("deployment_id")
   deploymentName   String   @map("deployment_name")
   description      String?
-  deploymentType   String   @default("install") @map("deployment_type") // install | uninstall | upgrade
-  selectionType    String   @default("application") @map("selection_type") // application | bundle
+  deploymentType   String   @default("INSTALL") @map("deployment_type") // INSTALL | UNINSTALL | UPGRADE
+  selectionType    String   @default("APPLICATION") @map("selection_type") // APPLICATION | BUNDLE
   selectedItems    String[] @default([]) @map("selected_items")
-  scope            String   @default("all") // all | windows | mac | linux
+  scope            String   @default("ALL") // ALL | WINDOWS | MAC | LINUX
   endpoints        String[] @default([])
   deploymentPolicy String?  @map("deployment_policy")
   retryCount       Int      @default(1) @map("retry_count")
-  notifyTo         String   @default("admin") @map("notify_to") // admin | user
-  stage            String   @default("IN_PROGRESS") // COMPLETED | IN_PROGRESS | INSTALLED | FAILED
+  notifyTo         String   @default("ADMIN") @map("notify_to") // ADMIN | USER
+  status           String   @default("IN_PROGRESS") @map("stage") // PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
   pending          Int      @default(0)
   succeeded        Int      @default(0)
   failed           Int      @default(0)
@@ -1721,7 +1617,7 @@ model SoftwareDeployment {
 
   tasks SoftwareDeploymentTask[]
 
-  @@index([stage])
+  @@index([status])
   @@map("software_deployments")
 }
 
@@ -1729,12 +1625,12 @@ model SoftwareDeploymentTask {
   id           String             @id @default(uuid())
   deploymentId String             @map("deployment_id")
   deployment   SoftwareDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-  endpointId   String?            @map("endpoint_id")   // Agent ID
+  agentId      String?            @map("endpoint_id")   // Agent ID (DB column: endpoint_id)
   assetId      String?            @map("asset_id")      // Asset ID for tracking
   asset        Asset?             @relation(fields: [assetId], references: [id], onDelete: SetNull)
-  endpointName String             @map("endpoint_name")
-  endpointOs   String             @map("endpoint_os")
-  itemName     String             @map("item_name")
+  agentName    String             @map("endpoint_name") // Agent hostname (DB column: endpoint_name)
+  agentOs      String             @map("endpoint_os")   // Agent OS (DB column: endpoint_os)
+  packageName  String             @map("item_name")     // Package name (DB column: item_name)
   status       String             @default("PENDING") // SUCCESS | FAILED | PENDING | IN_PROGRESS
 
   // Link to agent command for tracking execution
@@ -1765,10 +1661,10 @@ model ConfigCatalog {
   os                String   // Windows | Mac | Linux
   description       String?
   tags              String[] @default([])
-  configurationType String   @default("command") @map("configuration_type") // command | policy | script
-  architecture      String   @default("x64") // x64 | x86 | ARM64
+  configurationType String   @default("COMMAND") @map("configuration_type") // COMMAND | POLICY | SCRIPT
+  architecture      String   @default("X64") // X64 | X86 | ARM64
   isRemediation     Boolean  @default(false) @map("is_remediation")
-  commandType       String   @default("powershell") @map("command_type") // powershell | cmd | bash | sh
+  commandType       String   @default("POWERSHELL") @map("command_type") // POWERSHELL | CMD | BASH | SH
   command           String
   createdBy         String?  @map("created_by")
   createdAt         DateTime @default(now()) @map("created_at")
@@ -1812,14 +1708,14 @@ model ConfigDeployment {
   deploymentId     String   @unique @map("deployment_id")
   deploymentName   String   @map("deployment_name")
   description      String?
-  selectionType    String   @default("configuration") @map("selection_type") // configuration | bundle
+  selectionType    String   @default("CONFIGURATION") @map("selection_type") // CONFIGURATION | BUNDLE
   selectedItems    String[] @default([]) @map("selected_items")
-  scope            String   @default("all") // all | windows | mac | linux
+  scope            String   @default("ALL") // ALL | WINDOWS | MAC | LINUX
   endpoints        String[] @default([])
   deploymentPolicy String?  @map("deployment_policy")
   retryCount       Int      @default(1) @map("retry_count")
-  notifyTo         String   @default("admin") @map("notify_to") // admin | user
-  stage            String   @default("IN_PROGRESS") // COMPLETED | IN_PROGRESS | INSTALLED | FAILED
+  notifyTo         String   @default("ADMIN") @map("notify_to") // ADMIN | USER
+  status           String   @default("IN_PROGRESS") @map("stage") // PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
   pending          Int      @default(0)
   succeeded        Int      @default(0)
   failed           Int      @default(0)
@@ -1829,7 +1725,7 @@ model ConfigDeployment {
 
   tasks ConfigDeploymentTask[]
 
-  @@index([stage])
+  @@index([status])
   @@map("config_deployments")
 }
 
@@ -1837,10 +1733,10 @@ model ConfigDeploymentTask {
   id           String           @id @default(uuid())
   deploymentId String           @map("deployment_id")
   deployment   ConfigDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-  endpointId   String?          @map("endpoint_id")
-  endpointName String           @map("endpoint_name")
-  endpointOs   String           @map("endpoint_os")
-  itemName     String           @map("item_name")
+  agentId      String?          @map("endpoint_id")   // Agent ID (DB column: endpoint_id)
+  agentName    String           @map("endpoint_name") // Agent hostname (DB column: endpoint_name)
+  agentOs      String           @map("endpoint_os")   // Agent OS (DB column: endpoint_os)
+  configName   String           @map("item_name")     // Config name (DB column: item_name)
   status       String           @default("PENDING") // SUCCESS | FAILED | PENDING | IN_PROGRESS
   commandId    String?          @unique @map("command_id")
   command      AgentCommand?    @relation(fields: [commandId], references: [id])
@@ -1921,8 +1817,8 @@ model Notification {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   message   String
-  type      String    @default("info")   // info | success | warning | error
-  category  String    @default("system") @map("category")  // agent | deployment | vulnerability | alert | system
+  type      String    @default("INFO")   // INFO | SUCCESS | WARNING | ERROR
+  category  String    @default("SYSTEM") @map("category")  // AGENT | DEPLOYMENT | VULNERABILITY | ALERT | SYSTEM
   read      Boolean   @default(false)
   link      String?                      // frontend route to navigate to on click
   metadata  Json?                        // optional extra context

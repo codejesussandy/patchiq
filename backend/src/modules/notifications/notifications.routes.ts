@@ -1,20 +1,21 @@
 import { Router } from 'express';
-import { notificationsController } from './notifications.controller';
 import { authenticate } from '@middleware/auth';
 import { validateQuery, validateParams, validateBody } from '@middleware/validation';
+import { notificationsController } from './notifications.controller';
 import {
   listNotificationsQuerySchema,
   notificationIdParamSchema,
   notificationHistoryQuerySchema,
   bulkNotificationSchema,
   notificationPreferencesSchema,
+  sseTokenQuerySchema,
 } from './notifications.validators';
 
 const router = Router();
 
 // SSE stream — also mounted early in app.ts to bypass assets router global auth
 // This route still works for direct tests but the app.ts route handles the real traffic
-router.get('/stream', notificationsController.sseStream);
+router.get('/stream', validateQuery(sseTokenQuerySchema), notificationsController.sseStream);
 
 router.use(authenticate);
 

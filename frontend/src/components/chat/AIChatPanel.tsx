@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Button, Tooltip } from 'antd';
 import {
   CloseOutlined,
   SendOutlined,
   ColumnWidthOutlined,
 } from '@ant-design/icons';
-import { SparklesIcon } from './SparklesIcon';
+import { Button, Tooltip } from 'antd';
 import { getMockResponse, suggestedPrompts } from './mockResponses';
+import { SparklesIcon } from './SparklesIcon';
 import './AIChatPanel.css';
 
 interface Message {
@@ -81,6 +81,7 @@ export const AIChatPanel = ({ open, onClose }: AIChatPanelProps) => {
     setWidth(DEFAULT_WIDTH);
   };
 
+  /* eslint-disable react-hooks/purity -- only called from event handlers, not during render */
   const sendMessage = (text: string) => {
     if (!text.trim()) return;
 
@@ -105,6 +106,7 @@ export const AIChatPanel = ({ open, onClose }: AIChatPanelProps) => {
       setIsTyping(false);
     }, 800 + Math.random() * 700);
   };
+  /* eslint-enable react-hooks/purity */
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

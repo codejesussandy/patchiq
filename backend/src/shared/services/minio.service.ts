@@ -1,7 +1,10 @@
-import { Client as MinioClient, ItemBucketMetadata } from 'minio';
-import { Readable } from 'stream';
 import * as crypto from 'crypto';
+import { Readable } from 'stream';
+import { Client as MinioClient, ItemBucketMetadata } from 'minio';
 import { env } from '../../config/env';
+import { createLogger } from './logger';
+
+const logger = createLogger('minio');
 
 // MinIO configuration
 const minioConfig = {
@@ -79,14 +82,25 @@ class MinioStorageService {
       const bucketExists = await this.client.bucketExists(DEFAULT_BUCKET);
       if (!bucketExists) {
         await this.client.makeBucket(DEFAULT_BUCKET, 'us-east-1');
-        console.log(`[MinIO] Created bucket: ${DEFAULT_BUCKET}`);
+        logger.info({ bucket: DEFAULT_BUCKET }, 'Created MinIO bucket');
       }
 
       this.initialized = true;
-      console.log(`[MinIO] Connected to ${minioConfig.endPoint}:${minioConfig.port}`);
+      logger.info({ endpoint: minioConfig.endPoint, port: minioConfig.port }, 'MinIO connected');
     } catch (error) {
-      console.error('[MinIO] Failed to initialize:', error);
+      logger.error({ err: error }, 'MinIO failed to initialize');
       throw error;
+    }
+  }
+
+  /**
+   * Ensure a bucket exists, creating it if necessary
+   */
+  async ensureBucket(bucket: string): Promise<void> {
+    const client = await this.getClient();
+    const exists = await client.bucketExists(bucket);
+    if (!exists) {
+      await client.makeBucket(bucket, 'us-east-1');
     }
   }
 

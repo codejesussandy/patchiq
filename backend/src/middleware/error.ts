@@ -1,7 +1,10 @@
 import { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { HttpError, InternalServerError } from '@shared/errors';
+import { createLogger } from '@shared/services/logger';
 import { config } from '@config/index';
+
+const logger = createLogger('error-handler');
 
 export const errorHandler: ErrorRequestHandler = (
   error: Error,
@@ -9,13 +12,13 @@ export const errorHandler: ErrorRequestHandler = (
   res: Response,
   _next: NextFunction
 ): void => {
-  // Log error in non-test environments
+  // Log error in non-test environments (use req.log for requestId context)
   if (!config.isTest) {
-    console.error('Error:', {
-      name: error.name,
-      message: error.message,
-      stack: config.isDevelopment ? error.stack : undefined,
-    });
+    const log = _req.log || logger;
+    log.error(
+      { err: error, method: _req.method, path: _req.originalUrl, statusCode: res.statusCode },
+      'Request error'
+    );
   }
 
   // Handle Zod validation errors
@@ -27,16 +30,26 @@ export const errorHandler: ErrorRequestHandler = (
     });
 
     res.status(400).json({
-      error: 'ValidationError',
-      message: 'Validation failed',
-      details: { errors },
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Validation failed',
+        details: { errors },
+      },
     });
     return;
   }
 
   // Handle custom HTTP errors
   if (error instanceof HttpError) {
-    res.status(error.statusCode).json(error.toJSON());
+    res.status(error.statusCode).json({
+      success: false,
+      error: {
+        code: error.error,
+        message: error.message,
+        ...(error.details && { details: error.details }),
+      },
+    });
     return;
   }
 
@@ -45,5 +58,11 @@ export const errorHandler: ErrorRequestHandler = (
     config.isProduction ? 'An unexpected error occurred' : error.message
   );
 
-  res.status(internalError.statusCode).json(internalError.toJSON());
+  res.status(internalError.statusCode).json({
+    success: false,
+    error: {
+      code: internalError.error,
+      message: internalError.message,
+    },
+  });
 };

@@ -1,5 +1,6 @@
-import { prisma } from '../../db/client';
 import { v4 as uuidv4 } from 'uuid';
+import { prisma } from '../../db/client';
+import { NotFoundError, BadRequestError } from '../../shared/errors';
 import {
   minioStorage,
   BUCKET_PREFIXES,
@@ -17,7 +18,6 @@ import {
   SyncResult,
   PatchSourceWithStats,
 } from './patch-repository.types';
-import { NotFoundError, BadRequestError } from '../../shared/errors';
 
 class PatchRepositoryService {
   // ============================================
@@ -97,7 +97,7 @@ class PatchRepositoryService {
     const sourcesWithStats = await Promise.all(
       sources.map(async (source) => {
         const stats = await prisma.patchDownloadJob.aggregate({
-          where: { sourceId: source.id, status: 'completed' },
+          where: { sourceId: source.id, status: 'COMPLETED' },
           _count: true,
           _max: { completedAt: true },
           _sum: { downloadedBytes: true },
@@ -142,7 +142,7 @@ class PatchRepositoryService {
         checksumType: data.checksumType || 'sha256',
         priority: data.priority || 50,
         maxRetries: data.maxRetries || 3,
-        status: 'pending',
+        status: 'PENDING',
       },
     });
   }
@@ -182,11 +182,11 @@ class PatchRepositoryService {
     if (downloadedBytes !== undefined) updateData.downloadedBytes = downloadedBytes;
     if (error) updateData.error = error;
 
-    if (status === 'downloading' && !updateData.startedAt) {
+    if (status === 'DOWNLOADING' && !updateData.startedAt) {
       updateData.startedAt = new Date();
     }
 
-    if (status === 'completed' || status === 'failed') {
+    if (status === 'COMPLETED' || status === 'FAILED') {
       updateData.completedAt = new Date();
     }
 
@@ -226,7 +226,7 @@ class PatchRepositoryService {
   async retryDownloadJob(jobId: string) {
     const job = await this.getDownloadJob(jobId);
 
-    if (job.status !== 'failed') {
+    if (job.status !== 'FAILED') {
       throw new BadRequestError('Only failed jobs can be retried');
     }
 
@@ -237,7 +237,7 @@ class PatchRepositoryService {
     return prisma.patchDownloadJob.update({
       where: { jobId },
       data: {
-        status: 'pending',
+        status: 'PENDING',
         error: null,
         retryCount: { increment: 1 },
         progress: 0,
@@ -251,13 +251,13 @@ class PatchRepositoryService {
   async cancelDownloadJob(jobId: string) {
     const job = await this.getDownloadJob(jobId);
 
-    if (job.status === 'completed') {
+    if (job.status === 'COMPLETED') {
       throw new BadRequestError('Cannot cancel completed jobs');
     }
 
     return prisma.patchDownloadJob.update({
       where: { jobId },
-      data: { status: 'cancelled' },
+      data: { status: 'CANCELLED' },
     });
   }
 
@@ -266,42 +266,37 @@ class PatchRepositoryService {
   // ============================================
 
   async getPatchDownloadUrl(
-    patchId: string,
-    fileDetailId?: string
+    patchId: string
   ): Promise<PatchDownloadUrl | null> {
-    const where: Record<string, unknown> = { patchId };
-    if (fileDetailId) where.id = fileDetailId;
-
-    const fileDetail = await prisma.patchFileDetail.findFirst({
+    const bundle = await prisma.patchBundle.findFirst({
       where: {
-        ...where,
-        downloadStatus: 'completed',
-        minioObjectKey: { not: null },
+        patch: { id: patchId },
+        downloadStatus: 'COMPLETED',
+        bundleObjectKey: { not: null },
       },
     });
 
-    if (!fileDetail || !fileDetail.minioObjectKey) {
+    if (!bundle || !bundle.bundleObjectKey) {
       return null;
     }
 
     // Generate presigned URL (valid for 1 hour)
     const presignedUrl = await minioStorage.getPresignedUrl(
-      fileDetail.minioObjectKey,
+      bundle.bundleObjectKey,
       {
         expirySeconds: 3600,
-        responseContentDisposition: `attachment; filename="${fileDetail.fileName}"`,
+        responseContentDisposition: `attachment; filename="${bundle.fileName || 'patch.bin'}"`,
       },
-      fileDetail.minioBucket || undefined
+      bundle.minioBucket || undefined
     );
 
     return {
       patchId,
-      fileDetailId: fileDetail.id,
-      fileName: fileDetail.fileName,
+      fileName: bundle.fileName || 'patch.bin',
       presignedUrl,
       expiresAt: new Date(Date.now() + 3600 * 1000),
-      size: fileDetail.sizeBytes,
-      checksum: fileDetail.checksum,
+      size: bundle.bundleSize,
+      checksum: bundle.bundleChecksum,
     };
   }
 
@@ -329,32 +324,31 @@ class PatchRepositoryService {
     return results;
   }
 
-  async updatePatchFileMinioInfo(
-    fileDetailId: string,
+  async updatePatchBundleMinioInfo(
+    bundleId: string,
     minioInfo: {
-      minioObjectKey: string;
+      bundleObjectKey: string;
       minioBucket: string;
-      checksum: string;
-      checksumType: string;
-      sizeBytes: bigint;
+      bundleChecksum: string;
+      bundleSize: bigint;
     }
   ) {
-    return prisma.patchFileDetail.update({
-      where: { id: fileDetailId },
+    return prisma.patchBundle.update({
+      where: { id: bundleId },
       data: {
         ...minioInfo,
-        downloadStatus: 'completed',
+        downloadStatus: 'COMPLETED',
         downloadedAt: new Date(),
         downloadError: null,
       },
     });
   }
 
-  async markPatchFileDownloadFailed(fileDetailId: string, error: string) {
-    return prisma.patchFileDetail.update({
-      where: { id: fileDetailId },
+  async markPatchBundleDownloadFailed(bundleId: string, error: string) {
+    return prisma.patchBundle.update({
+      where: { id: bundleId },
       data: {
-        downloadStatus: 'failed',
+        downloadStatus: 'FAILED',
         downloadError: error,
         retryCount: { increment: 1 },
       },
@@ -375,12 +369,12 @@ class PatchRepositoryService {
       platformStats,
       vendorStats,
     ] = await Promise.all([
-      prisma.patchFileDetail.count({
-        where: { downloadStatus: 'completed' },
+      prisma.patchBundle.count({
+        where: { downloadStatus: 'COMPLETED' },
       }),
-      prisma.patchDownloadJob.count({ where: { status: 'pending' } }),
-      prisma.patchDownloadJob.count({ where: { status: 'downloading' } }),
-      prisma.patchDownloadJob.count({ where: { status: 'failed' } }),
+      prisma.patchDownloadJob.count({ where: { status: 'PENDING' } }),
+      prisma.patchDownloadJob.count({ where: { status: 'DOWNLOADING' } }),
+      prisma.patchDownloadJob.count({ where: { status: 'FAILED' } }),
       prisma.patchSource.findFirst({
         where: { lastSyncAt: { not: null } },
         orderBy: { lastSyncAt: 'desc' },
@@ -403,11 +397,11 @@ class PatchRepositoryService {
       totalSize = BigInt(stats.totalSize);
     } catch {
       // MinIO not available, use DB stats
-      const sizeStats = await prisma.patchFileDetail.aggregate({
-        where: { downloadStatus: 'completed' },
-        _sum: { sizeBytes: true },
+      const sizeStats = await prisma.patchBundle.aggregate({
+        where: { downloadStatus: 'COMPLETED' },
+        _sum: { bundleSize: true },
       });
-      totalSize = sizeStats._sum.sizeBytes || BigInt(0);
+      totalSize = sizeStats._sum.bundleSize || BigInt(0);
     }
 
     const patchesByPlatform: Record<string, number> = {};
@@ -473,7 +467,7 @@ class PatchRepositoryService {
         // Find patches that belong to this source's vendor/platform and need downloading
         const patchFilter: Record<string, unknown> = {
           vendor: source.vendor,
-          downloadStatus: { in: [null, 'pending', 'failed'] },
+          downloadStatus: { in: [null, 'PENDING', 'FAILED'] },
         };
         if (source.platform) {
           patchFilter.platform = source.platform;
@@ -486,7 +480,7 @@ class PatchRepositoryService {
         const patches = await prisma.patch.findMany({
           where: patchFilter,
           include: {
-            fileDetails: true,
+            bundle: true,
           },
         });
 
@@ -496,7 +490,7 @@ class PatchRepositoryService {
           results.push({
             sourceId: source.id,
             vendor: source.vendor,
-            status: 'success',
+            status: 'SUCCESS',
             patchesFound,
             patchesDownloaded: 0,
             patchesFailed: 0,
@@ -513,21 +507,25 @@ class PatchRepositoryService {
           }
 
           try {
-            // Create a file detail record if none exists
-            let fileDetail = patch.fileDetails.find(
-              (fd) => fd.downloadStatus !== 'completed' || options.force
-            );
+            // Create or reuse bundle record for this patch
+            let bundle = patch.bundle;
 
-            if (!fileDetail) {
-              fileDetail = await prisma.patchFileDetail.create({
+            if (!bundle || bundle.downloadStatus === 'COMPLETED' && !options.force) {
+              if (bundle) continue; // Already completed and not forcing re-download
+            }
+
+            if (!bundle) {
+              bundle = await prisma.patchBundle.create({
                 data: {
                   patchId: patch.id,
                   fileName: patch.downloadUrl.split('/').pop() || `${patch.patchId}.bin`,
                   sourceUrl: patch.downloadUrl,
-                  downloadStatus: 'pending',
+                  downloadStatus: 'PENDING',
                 },
               });
             }
+
+            const fileName = bundle.fileName || patch.downloadUrl.split('/').pop() || `${patch.patchId}.bin`;
 
             // Create a download job record
             const jobId = `dl-${uuidv4()}`;
@@ -536,7 +534,7 @@ class PatchRepositoryService {
               patch.vendor || source.vendor,
               (patch.product || patch.software || 'unknown') as string,
               patch.patchId,
-              fileDetail.fileName
+              fileName
             );
 
             await prisma.patchDownloadJob.create({
@@ -546,12 +544,12 @@ class PatchRepositoryService {
                 patchId: patch.id,
                 sourceUrl: patch.downloadUrl,
                 targetPath,
-                fileName: fileDetail.fileName,
+                fileName,
                 expectedSize: patch.size ? BigInt(patch.size) : null,
                 checksumType: 'sha256',
                 priority: source.priority,
                 maxRetries: 3,
-                status: 'pending',
+                status: 'PENDING',
               },
             });
 
@@ -561,10 +559,9 @@ class PatchRepositoryService {
               jobId,
               sourceUrl: patch.downloadUrl,
               targetPath,
-              fileName: fileDetail.fileName,
+              fileName,
               patchId: patch.id,
-              fileDetailId: fileDetail.id,
-              expectedChecksum: fileDetail.checksum || undefined,
+              expectedChecksum: bundle.fileChecksum || undefined,
               checksumType: 'sha256',
               priority: source.priority,
             });
@@ -581,7 +578,7 @@ class PatchRepositoryService {
           where: { id: source.id },
           data: {
             lastSyncAt: new Date(),
-            lastSyncStatus: patchesFailed === 0 ? 'success' : patchesFailed < patchesFound ? 'partial' : 'failed',
+            lastSyncStatus: patchesFailed === 0 ? 'SUCCESS' : patchesFailed < patchesFound ? 'PARTIAL' : 'FAILED',
             lastSyncError: errors.length > 0 ? errors.join('; ') : null,
           },
         });
@@ -589,7 +586,7 @@ class PatchRepositoryService {
         results.push({
           sourceId: source.id,
           vendor: source.vendor,
-          status: patchesFailed === 0 ? 'success' : patchesFailed < patchesFound ? 'partial' : 'failed',
+          status: patchesFailed === 0 ? 'SUCCESS' : patchesFailed < patchesFound ? 'PARTIAL' : 'FAILED',
           patchesFound,
           patchesDownloaded,
           patchesFailed,
@@ -604,7 +601,7 @@ class PatchRepositoryService {
           where: { id: source.id },
           data: {
             lastSyncAt: new Date(),
-            lastSyncStatus: 'failed',
+            lastSyncStatus: 'FAILED',
             lastSyncError: errorMsg,
           },
         });
@@ -612,7 +609,7 @@ class PatchRepositoryService {
         results.push({
           sourceId: source.id,
           vendor: source.vendor,
-          status: 'failed',
+          status: 'FAILED',
           patchesFound,
           patchesDownloaded,
           patchesFailed,

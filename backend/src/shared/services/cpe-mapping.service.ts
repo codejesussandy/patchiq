@@ -10,8 +10,8 @@
  * Solution: Look up mapping and return standardized CPE identifiers
  */
 
-import { prisma } from '@/db/client';
 import { normalizeVersion } from '@shared/utils/version.utils';
+import { prisma } from '@/db/client';
 
 /**
  * Result of CPE resolution

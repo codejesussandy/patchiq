@@ -1,11 +1,17 @@
-import { prisma } from '@/db/client';
-import { NotFoundError, BadRequestError, ConflictError } from '@shared/errors';
-import { getPaginationParams, paginate } from '@shared/utils/pagination';
 import type { Prisma } from '@prisma/client';
-import { deploymentExecutorService } from '@modules/deployments';
-import type { PatchInstallPayload } from '@modules/deployments';
-import { queueDownloadJob } from '@modules/patch-repository';
 import { v4 as uuidv4 } from 'uuid';
+import type { PatchInstallPayload } from '@modules/deployments';
+import { deploymentExecutorService } from '@modules/deployments';
+import { queueDownloadJob } from '@modules/patch-repository';
+import { NotFoundError, BadRequestError } from '@shared/errors';
+import { createLogger } from '@shared/services/logger';
+import type { PatchPrerequisites } from '@shared/services/patch-prerequisite.service';
+import { typedJson } from '@shared/utils';
+import { getPaginationParams, paginate } from '@shared/utils/pagination';
+import { withTransaction } from '@shared/utils/transaction';
+import { prisma } from '@/db/client';
+
+const logger = createLogger('patches');
 import type {
   CreatePatchInput,
   UpdatePatchInput,
@@ -69,11 +75,9 @@ export async function getPatchById(id: string) {
   const patch = await prisma.patch.findUnique({
     where: { id },
     include: {
-      bundle: true,           // NEW: Preferred bundle storage
+      bundle: true,
       affectedProducts: true,
-      fileDetails: true,      // @deprecated - kept for backwards compatibility
       vulnerabilities: true,
-      patchEndpoints: true,   // @deprecated - kept for backwards compatibility
     },
   });
 
@@ -92,53 +96,56 @@ export async function createPatch(data: CreatePatchInput) {
   // Generate unique patch ID
   const patchId = await generatePatchId(data.os || 'W');
 
-  const patch = await prisma.patch.create({
-    data: {
-      patchId,
-      title: data.title || data.software,
-      software: data.software,
-      description: data.description,
-      severity: data.severity || 'UNSPECIFIED',
-      category: data.category,
-      vendor: data.vendor,
-      product: data.product,
-      os: data.os,
-      platform: data.platform,
-      architecture: data.architecture,
-      kbNumber: data.kbNumber,
-      bulletinId: data.bulletinId,
-      releaseDate: data.releaseDate ? new Date(data.releaseDate) : null,
-      downloadUrl: data.downloadUrl || null,
-      referenceUrl: data.referenceUrl,
-      rebootRequired: data.rebootRequired ?? false,
-      supportUninstallation: data.supportUninstallation ?? false,
-      languagesSupported: data.languagesSupported || [],
-      tags: data.tags || [],
-      cveNumbers: data.cveNumbers || [],
-      operationalStatusSince: new Date(),
-    },
+  // Create patch and link CVEs in a transaction
+  const patch = await withTransaction('createPatch', async (tx) => {
+    const patch = await tx.patch.create({
+      data: {
+        patchId,
+        title: data.title || data.software,
+        software: data.software,
+        description: data.description,
+        severity: data.severity || 'UNSPECIFIED',
+        category: data.category,
+        vendor: data.vendor,
+        product: data.product,
+        os: data.os,
+        platform: data.platform,
+        architecture: data.architecture,
+        kbNumber: data.kbNumber,
+        bulletinId: data.bulletinId,
+        publishedAt: data.releaseDate ? new Date(data.releaseDate) : null,
+        downloadUrl: data.downloadUrl || null,
+        referenceUrl: data.referenceUrl,
+        rebootRequired: data.rebootRequired ?? false,
+        supportUninstallation: data.supportUninstallation ?? false,
+        languagesSupported: data.languagesSupported || [],
+        tags: data.tags || [],
+        cveNumbers: data.cveNumbers || [],
+        operationalStatusSince: new Date(),
+      },
+    });
+
+    return patch;
   });
 
-  // Link patch to vulnerabilities via CVE numbers
+  // Link patch to vulnerabilities via CVE numbers (outside transaction — uses bulk operations)
   await updateVulnerabilityPatchStatus(patch.id, patch.cveNumbers);
 
-  // Auto-correlate CVEs if none were provided
+  // Fire-and-forget operations outside the transaction
   if (!patch.cveNumbers || patch.cveNumbers.length === 0) {
     autoCorrelateCves(patch.id).catch((err) => {
-      console.error(`[CVE Correlator] Failed for patch ${patch.id}:`, err);
+      logger.error({ err, patchId: patch.id }, 'CVE correlator failed');
     });
   }
 
-  // Auto-queue download if downloadUrl is provided
   if (patch.downloadUrl) {
     autoQueueDownload(patch.id, patch.downloadUrl, patch.software || patch.title).catch((err) => {
-      console.error(`[Auto-Download] Failed to queue download for patch ${patch.id}:`, err);
+      logger.error({ err, patchId: patch.id }, 'Auto-download queue failed');
     });
   }
 
-  // Auto-generate PatchBundle with inline scripts
   autoGeneratePatchBundle(patch.id).catch((err) => {
-    console.error(`[PatchBundle] Failed to auto-generate for patch ${patch.id}:`, err);
+    logger.error({ err, patchId: patch.id }, 'PatchBundle auto-generation failed');
   });
 
   return transformPatch(patch);
@@ -170,7 +177,7 @@ export async function updatePatch(id: string, data: UpdatePatchInput) {
       architecture: data.architecture,
       kbNumber: data.kbNumber,
       bulletinId: data.bulletinId,
-      releaseDate: data.releaseDate ? new Date(data.releaseDate) : undefined,
+      publishedAt: data.releaseDate ? new Date(data.releaseDate) : undefined,
       downloadUrl: data.downloadUrl,
       referenceUrl: data.referenceUrl,
       rebootRequired: data.rebootRequired,
@@ -200,22 +207,22 @@ export async function updatePatch(id: string, data: UpdatePatchInput) {
   // Auto-correlate CVEs if they were cleared
   if (data.cveNumbers !== undefined && data.cveNumbers.length === 0) {
     autoCorrelateCves(id).catch((err) => {
-      console.error(`[CVE Correlator] Failed for patch ${id}:`, err);
+      logger.error({ err, patchId: id }, 'CVE correlator failed');
     });
   }
 
   // Trigger zero-touch evaluation if patch was just approved
-  if (data.approvalStatus?.toLowerCase() === 'approved' &&
-      existing.approvalStatus?.toLowerCase() !== 'approved') {
+  if (data.approvalStatus === 'APPROVED' &&
+      existing.approvalStatus !== 'APPROVED') {
     evaluateZeroTouchRules(id).catch((err) => {
-      console.error(`[Zero-Touch] Failed for patch ${id}:`, err);
+      logger.error({ err, patchId: id }, 'Zero-touch evaluation failed');
     });
   }
 
   // Auto-queue download if downloadUrl was added/changed and no download completed yet
-  if (data.downloadUrl && data.downloadUrl !== existing.downloadUrl && existing.downloadStatus !== 'completed') {
+  if (data.downloadUrl && data.downloadUrl !== existing.downloadUrl && existing.downloadStatus !== 'COMPLETED') {
     autoQueueDownload(patch.id, data.downloadUrl, patch.software || patch.title).catch((err) => {
-      console.error(`[Auto-Download] Failed to queue download for patch ${patch.id}:`, err);
+      logger.error({ err, patchId: patch.id }, 'Auto-download queue failed');
     });
   }
 
@@ -223,7 +230,7 @@ export async function updatePatch(id: string, data: UpdatePatchInput) {
   const bundleRelevantChanged = data.software !== undefined || data.downloadUrl !== undefined;
   if (bundleRelevantChanged) {
     autoGeneratePatchBundle(patch.id).catch((err) => {
-      console.error(`[PatchBundle] Failed to re-generate for patch ${patch.id}:`, err);
+      logger.error({ err, patchId: patch.id }, 'PatchBundle re-generation failed');
     });
   }
 
@@ -273,25 +280,23 @@ export async function supersedePatch(oldPatchId: string, newPatchId: string) {
   }
 
   // Update both patches
-  await prisma.$transaction([
-    // Mark old patch as superseded
-    prisma.patch.update({
+  await withTransaction('supersedePatch', async (tx) => {
+    await tx.patch.update({
       where: { id: oldPatchId },
       data: {
         supersededBy: [...(oldPatch.supersededBy || []), newPatchId],
         supersededAt: new Date(),
       },
-    }),
-    // Mark new patch as superseding
-    prisma.patch.update({
+    });
+    await tx.patch.update({
       where: { id: newPatchId },
       data: {
         supersedes: [...(newPatch.supersedes || []), oldPatchId],
       },
-    }),
-  ]);
+    });
+  });
 
-  console.log(`[Supersedence] Patch ${oldPatch.patchId} superseded by ${newPatch.patchId}`);
+  logger.info({ oldPatchId: oldPatch.patchId, newPatchId: newPatch.patchId }, 'Patch superseded');
 
   return {
     success: true,
@@ -316,25 +321,23 @@ export async function removeSupersedence(oldPatchId: string, newPatchId: string)
   }
 
   // Update both patches
-  await prisma.$transaction([
-    // Remove from old patch's supersededBy list
-    prisma.patch.update({
+  await withTransaction('removeSupersedence', async (tx) => {
+    await tx.patch.update({
       where: { id: oldPatchId },
       data: {
         supersededBy: (oldPatch.supersededBy || []).filter(id => id !== newPatchId),
         supersededAt: (oldPatch.supersededBy || []).filter(id => id !== newPatchId).length > 0
           ? oldPatch.supersededAt
-          : null, // Clear if no more superseding patches
+          : null,
       },
-    }),
-    // Remove from new patch's supersedes list
-    prisma.patch.update({
+    });
+    await tx.patch.update({
       where: { id: newPatchId },
       data: {
         supersedes: (newPatch.supersedes || []).filter(id => id !== oldPatchId),
       },
-    }),
-  ]);
+    });
+  });
 
   return {
     success: true,
@@ -469,26 +472,6 @@ export async function removeAffectedProduct(patchId: string, productId: string) 
   return { success: true };
 }
 
-export async function getFileDetails(patchId: string) {
-  const patch = await prisma.patch.findUnique({ where: { id: patchId } });
-
-  if (!patch) {
-    throw new NotFoundError('Patch not found');
-  }
-
-  const files = await prisma.patchFileDetail.findMany({
-    where: { patchId },
-  });
-
-  return files.map((f) => ({
-    id: f.id,
-    fileName: f.fileName,
-    version: f.version,
-    size: f.size,
-    path: f.path,
-  }));
-}
-
 export async function getVulnerabilities(patchId: string) {
   const patch = await prisma.patch.findUnique({ where: { id: patchId } });
 
@@ -511,21 +494,28 @@ export async function getVulnerabilities(patchId: string) {
 
 export async function getEndpoints(patchId: string) {
   const patch = await prisma.patch.findUnique({ where: { id: patchId } });
-
   if (!patch) {
     throw new NotFoundError('Patch not found');
   }
 
-  const endpoints = await prisma.patchEndpoint.findMany({
-    where: { patchId },
+  // Query deployment tasks for this patch's deployments
+  const tasks = await prisma.patchDeploymentTask.findMany({
+    where: {
+      deployment: {
+        patches: { some: { id: patchId } },
+      },
+    },
+    include: {
+      asset: true,
+    },
   });
 
-  return endpoints.map((e) => ({
-    id: e.id,
-    name: e.name,
-    os: e.os,
-    status: e.status,
-    lastSeen: e.lastSeen?.toISOString() || null,
+  return tasks.map((t) => ({
+    id: t.id,
+    name: t.asset?.name || 'Unknown',
+    os: t.asset?.os || null,
+    status: t.status,
+    lastSeen: t.updatedAt?.toISOString() || null,
   }));
 }
 
@@ -543,9 +533,9 @@ export async function scanEndpoints(patchId: string, data: ScanEndpointsInput) {
   }
 
   // Determine scope of assets to check
-  const assetWhere: Prisma.AssetWhereInput = { status: { not: 'Retired' } };
+  const assetWhere: Prisma.AssetWhereInput = { status: { not: 'RETIRED' } };
 
-  if (data.scope === 'Specific Groups' && data.endpointIds.length > 0) {
+  if (data.scope === 'SPECIFIC_GROUPS' && data.endpointIds.length > 0) {
     assetWhere.id = { in: data.endpointIds };
   }
 
@@ -566,36 +556,11 @@ export async function scanEndpoints(patchId: string, data: ScanEndpointsInput) {
 
   for (const asset of assets) {
     const applicability = determineApplicability(patch, asset);
-
-    const existing = await prisma.patchEndpoint.findFirst({
-      where: { patchId, assetId: asset.id },
-    });
-
-    if (existing) {
-      await prisma.patchEndpoint.update({
-        where: { id: existing.id },
-        data: {
-          status: applicability,
-          name: asset.name,
-          os: asset.os || undefined,
-          lastSeen: new Date(),
-        },
-      });
-    } else {
-      await prisma.patchEndpoint.create({
-        data: {
-          patchId,
-          assetId: asset.id,
-          name: asset.name,
-          os: asset.os || undefined,
-          status: applicability,
-          lastSeen: new Date(),
-        },
-      });
+    if (applicability === 'missing') {
+      missingCount++;
+    } else if (applicability === 'not_applicable') {
+      notApplicableCount++;
     }
-
-    if (applicability === 'missing') missingCount++;
-    else notApplicableCount++;
   }
 
   // Update patch endpoint count
@@ -621,11 +586,11 @@ export async function scanEndpoints(patchId: string, data: ScanEndpointsInput) {
 export async function getPatchesPendingTestApproval(params: { status?: string; page: number; limit: number }) {
   const where: Prisma.PatchWhereInput = {};
 
-  if (params.status === 'pending-test') {
-    where.testStatus = 'Not Tested';
-  } else if (params.status === 'pending-approval') {
-    where.testStatus = 'Tested';
-    where.approvalStatus = 'Pending';
+  if (params.status === 'PENDING_TEST') {
+    where.testStatus = 'NOT_TESTED';
+  } else if (params.status === 'PENDING_APPROVAL') {
+    where.testStatus = 'TESTED';
+    where.approvalStatus = 'PENDING';
   }
 
   const [patches, total] = await Promise.all([
@@ -647,7 +612,7 @@ export async function testPatch(id: string, userId: string, data: TestPatchInput
     throw new NotFoundError('Patch not found');
   }
 
-  const testStatus = data.status === 'passed' ? 'Tested' : 'Test Failed';
+  const testStatus = data.status === 'PASSED' ? 'TESTED' : 'TEST_FAILED';
 
   const updated = await prisma.patch.update({
     where: { id },
@@ -659,11 +624,11 @@ export async function testPatch(id: string, userId: string, data: TestPatchInput
       testNotes: data.notes,
       testEnvironment: data.testEnvironment,
       // If test failed, also set approval to rejected
-      ...(data.status === 'failed' && {
-        approvalStatus: 'Rejected',
+      ...(data.status === 'FAILED' && {
+        approvalStatus: 'REJECTED',
         rejectedBy: userId,
         rejectedAt: new Date(),
-        rejectionReason: 'Test failed',
+        rejectionReason: 'TEST_FAILED',
       }),
     },
   });
@@ -689,18 +654,18 @@ export async function approvePatch(id: string, userId: string) {
     throw new NotFoundError('Patch not found');
   }
 
-  if (patch.testStatus !== 'Tested') {
+  if (patch.testStatus !== 'TESTED') {
     throw new BadRequestError('Patch must be tested before approval');
   }
 
-  if (patch.testResult === 'failed') {
+  if (patch.testResult === 'FAILED') {
     throw new BadRequestError('Cannot approve patch with failed test result');
   }
 
   const updated = await prisma.patch.update({
     where: { id },
     data: {
-      approvalStatus: 'Approved',
+      approvalStatus: 'APPROVED',
       approvedBy: userId,
       approvedAt: new Date(),
     },
@@ -718,7 +683,7 @@ export async function approvePatch(id: string, userId: string) {
 
   // Trigger zero-touch evaluation for newly approved patch
   evaluateZeroTouchRules(id).catch((err) => {
-    console.error(`[Zero-Touch] Failed for patch ${id}:`, err);
+    logger.error({ err, patchId: id }, 'Zero-touch evaluation failed');
   });
 
   return transformPatch(updated);
@@ -734,7 +699,7 @@ export async function rejectPatch(id: string, userId: string, data: RejectPatchI
   const updated = await prisma.patch.update({
     where: { id },
     data: {
-      approvalStatus: 'Rejected',
+      approvalStatus: 'REJECTED',
       rejectedBy: userId,
       rejectedAt: new Date(),
       rejectionReason: data.reason,
@@ -764,7 +729,7 @@ export async function listDeployments(params: DeploymentListQuery) {
   const where: Prisma.PatchDeploymentWhereInput = {};
 
   if (params.type) where.type = params.type;
-  if (params.stage) where.stage = params.stage;
+  if (params.status) where.status = params.status;
 
   const [deployments, total] = await Promise.all([
     prisma.patchDeployment.findMany({
@@ -823,7 +788,7 @@ export async function createDeployment(data: CreateDeploymentInput, userId: stri
   const requireApproval = approvalSetting?.value === true;
 
   if (requireApproval && !data.skipApprovalCheck) {
-    const unapprovedPatches = patches.filter(p => p.approvalStatus?.toLowerCase() !== 'approved');
+    const unapprovedPatches = patches.filter(p => p.approvalStatus !== 'APPROVED');
     if (unapprovedPatches.length > 0) {
       const names = unapprovedPatches.map(p => `${p.patchId || p.id} (${p.approvalStatus})`).join(', ');
       throw new BadRequestError(
@@ -851,10 +816,9 @@ export async function createDeployment(data: CreateDeploymentInput, userId: stri
       description: data.description,
       type: data.type,
       configType: data.configType || 'INSTALL',
-      scope: data.scope || 'Endpoint',
-      status: 'PENDING',
-      stage: data.schedule ? 'PENDING' : 'IN_PROGRESS',
-      targetGroups: data.targetGroups || [],
+      scope: data.scope || 'ENDPOINT',
+      status: data.schedule ? 'PENDING' : 'IN_PROGRESS',
+      targetGroupIds: data.targetGroups || [],
       scheduledAt: data.schedule ? new Date(data.schedule) : null,
       triggerType: data.triggerType || 'manual',
       skipApprovalCheck: data.skipApprovalCheck || false,
@@ -890,7 +854,7 @@ export async function deleteDeployment(id: string, userId: string) {
     throw new NotFoundError('Deployment not found');
   }
 
-  if (existing.stage === 'IN_PROGRESS') {
+  if (existing.status === 'IN_PROGRESS') {
     throw new BadRequestError('Cannot delete deployment that is in progress');
   }
 
@@ -924,7 +888,7 @@ export async function updateDeployment(id: string, data: { name?: string; schedu
     throw new BadRequestError('Cannot update deployment that has started execution');
   }
 
-  if (existing.stage === 'COMPLETED' || existing.stage === 'CANCELLED') {
+  if (existing.status === 'COMPLETED' || existing.status === 'CANCELLED') {
     throw new BadRequestError('Cannot update completed or cancelled deployment');
   }
 
@@ -947,14 +911,13 @@ export async function cancelDeployment(id: string, userId: string) {
     throw new NotFoundError('Deployment not found');
   }
 
-  if (existing.stage === 'COMPLETED') {
+  if (existing.status === 'COMPLETED') {
     throw new BadRequestError('Cannot cancel completed deployment');
   }
 
   const updated = await prisma.patchDeployment.update({
     where: { id },
     data: {
-      stage: 'CANCELLED',
       status: 'CANCELLED',
       completedAt: new Date(),
     },
@@ -993,23 +956,23 @@ export async function getDeploymentPreview(id: string) {
   if (deployment.tasks.length > 0) {
     // If tasks already exist, use the actual task count
     targetEndpoints = deployment.tasks.length;
-  } else if (deployment.scope === 'Global') {
+  } else if (deployment.scope === 'GLOBAL') {
     // Global scope: count all active assets
     targetEndpoints = await prisma.asset.count({
-      where: { status: { not: 'Retired' } },
+      where: { status: { not: 'RETIRED' } },
     });
-  } else if (deployment.scope === 'Group' && deployment.targetGroups.length > 0) {
+  } else if (deployment.scope === 'GROUP' && deployment.targetGroupIds.length > 0) {
     // Group scope: count unique endpoints across selected groups
     const groups = await prisma.computerGroup.findMany({
-      where: { id: { in: deployment.targetGroups } },
+      where: { id: { in: deployment.targetGroupIds } },
       select: { endpoints: true },
     });
     const uniqueEndpoints = new Set(groups.flatMap((g) => g.endpoints));
     targetEndpoints = uniqueEndpoints.size;
-  } else if (deployment.scope === 'Endpoint' && deployment.targetGroups.length > 0) {
-    // Endpoint scope: targetGroups holds endpoint IDs directly
+  } else if (deployment.scope === 'ENDPOINT' && deployment.targetAgentIds.length > 0) {
+    // Endpoint scope: targetAgentIds holds agent IDs directly
     const validEndpoints = await prisma.asset.count({
-      where: { id: { in: deployment.targetGroups } },
+      where: { id: { in: deployment.targetAgentIds } },
     });
     targetEndpoints = validEndpoints;
   }
@@ -1032,10 +995,10 @@ export async function getDeploymentPreview(id: string) {
     targetEndpoints,
     totalOperations,
     taskBreakdown: {
-      pending: tasksByStatus['pending'] || 0,
-      inProgress: tasksByStatus['in_progress'] || 0,
-      completed: tasksByStatus['completed'] || 0,
-      failed: tasksByStatus['failed'] || 0,
+      pending: tasksByStatus['PENDING'] || 0,
+      inProgress: tasksByStatus['IN_PROGRESS'] || 0,
+      completed: tasksByStatus['COMPLETED'] || 0,
+      failed: tasksByStatus['FAILED'] || 0,
     },
   };
 }
@@ -1053,11 +1016,11 @@ export async function executeDeployment(id: string, userId: string) {
     throw new NotFoundError('Deployment not found');
   }
 
-  if (deployment.stage === 'IN_PROGRESS') {
+  if (deployment.status === 'IN_PROGRESS') {
     throw new BadRequestError('Deployment is already in progress');
   }
 
-  if (deployment.stage === 'COMPLETED') {
+  if (deployment.status === 'COMPLETED') {
     throw new BadRequestError('Deployment is already completed');
   }
 
@@ -1069,7 +1032,7 @@ export async function executeDeployment(id: string, userId: string) {
     const requireApproval = approvalSetting?.value === true;
 
     if (requireApproval && !deployment.skipApprovalCheck) {
-      const unapprovedPatches = deployment.patches.filter(p => p.approvalStatus?.toLowerCase() !== 'approved');
+      const unapprovedPatches = deployment.patches.filter(p => p.approvalStatus !== 'APPROVED');
       if (unapprovedPatches.length > 0) {
         const names = unapprovedPatches.map(p => `${p.patchId || p.id} (${p.approvalStatus})`).join(', ');
         throw new BadRequestError(
@@ -1090,7 +1053,7 @@ export async function executeDeployment(id: string, userId: string) {
     }
   }
   if (supersededWarnings.length > 0) {
-    console.warn(`[Deployment] Executing deployment with superseded patches:\n  ${supersededWarnings.join('\n  ')}`);
+    logger.warn({ supersededWarnings }, 'Executing deployment with superseded patches');
   }
 
   // If tasks already exist (created via POST /deployments/patch), just flip stage
@@ -1098,7 +1061,7 @@ export async function executeDeployment(id: string, userId: string) {
     await prisma.patchDeployment.update({
       where: { id },
       data: {
-        stage: 'IN_PROGRESS',
+        status: 'IN_PROGRESS',
         startedAt: new Date(),
       },
     });
@@ -1106,15 +1069,15 @@ export async function executeDeployment(id: string, userId: string) {
     // Resolve scope to agent IDs for deployments created via old POST /deployments route
     let agentIds: string[] = [];
 
-    if (deployment.scope === 'Global') {
+    if (deployment.scope === 'GLOBAL') {
       const agents = await prisma.agent.findMany({
         where: { assetId: { not: null } },
         select: { id: true },
       });
       agentIds = agents.map(a => a.id);
-    } else if (deployment.scope === 'Group' && deployment.targetGroups.length > 0) {
+    } else if (deployment.scope === 'GROUP' && deployment.targetGroupIds.length > 0) {
       const groups = await prisma.computerGroup.findMany({
-        where: { id: { in: deployment.targetGroups } },
+        where: { id: { in: deployment.targetGroupIds } },
         select: { endpoints: true },
       });
       const endpointIds = [...new Set(groups.flatMap(g => g.endpoints))];
@@ -1124,10 +1087,10 @@ export async function executeDeployment(id: string, userId: string) {
         select: { id: true },
       });
       agentIds = agents.map(a => a.id);
-    } else if (deployment.scope === 'Endpoint' && deployment.targetGroups.length > 0) {
-      // targetGroups holds endpoint (asset) IDs for Endpoint scope
+    } else if (deployment.scope === 'ENDPOINT' && deployment.targetAgentIds.length > 0) {
+      // targetAgentIds holds agent IDs for Endpoint scope
       const agents = await prisma.agent.findMany({
-        where: { assetId: { in: deployment.targetGroups } },
+        where: { id: { in: deployment.targetAgentIds } },
         select: { id: true },
       });
       agentIds = agents.map(a => a.id);
@@ -1155,11 +1118,11 @@ export async function executeDeployment(id: string, userId: string) {
       createdBy: userId,
     });
 
-    // Update the existing deployment stage
+    // Update the existing deployment status
     await prisma.patchDeployment.update({
       where: { id },
       data: {
-        stage: 'IN_PROGRESS',
+        status: 'IN_PROGRESS',
         startedAt: new Date(),
         pending: agentIds.length,
       },
@@ -1201,7 +1164,7 @@ export async function createPatchDeploymentFromUI(data: CreatePatchDeploymentFro
   const requireApproval = approvalSetting?.value === true;
 
   if (requireApproval && !data.skipApprovalCheck) {
-    const unapprovedPatches = patches.filter(p => p.approvalStatus?.toLowerCase() !== 'approved');
+    const unapprovedPatches = patches.filter(p => p.approvalStatus !== 'APPROVED');
     if (unapprovedPatches.length > 0) {
       const names = unapprovedPatches.map(p => `${p.patchId || p.id} (${p.approvalStatus})`).join(', ');
       throw new BadRequestError(
@@ -1299,7 +1262,7 @@ export async function createPatchTest(data: CreatePatchTestInput, userId: string
       scope: data.scope || 'ALL_COMPUTERS',
       computers: data.computers || [],
       groups: data.groups || [],
-      status: 'Pending',
+      status: 'PENDING',
       createdBy: userId,
     },
   });
@@ -1317,7 +1280,7 @@ export async function approvePatchTest(id: string, userId: string) {
   const updated = await prisma.patchTest.update({
     where: { id },
     data: {
-      status: 'Approved',
+      status: 'APPROVED',
     },
   });
 
@@ -1388,7 +1351,7 @@ export async function createZeroTouchConfig(data: CreateZeroTouchConfigInput, us
       computers: data.computers || [],
       groups: data.groups || [],
       autoDeploymentRules: data.autoDeploymentRules,
-      status: 'Active',
+      status: 'ACTIVE',
       createdBy: userId,
     },
   });
@@ -1446,18 +1409,18 @@ export async function evaluateZeroTouchRules(patchId: string): Promise<void> {
   if (!patch) return;
 
   const configs = await prisma.zeroTouchConfig.findMany({
-    where: { status: 'Active' },
+    where: { status: 'ACTIVE' },
   });
 
   if (configs.length === 0) return;
 
   for (const config of configs) {
     try {
-      const rules = config.autoDeploymentRules as any;
+      const rules = typedJson<{ severity?: string[]; categories?: string[]; approvalRequired?: boolean }>(config.autoDeploymentRules);
       if (!rules) continue;
 
       // 1. Severity match
-      const severities: string[] = rules.severity || [];
+      const severities: string[] = rules?.severity || [];
       if (severities.length > 0) {
         const patchSeverity = (patch.severity || '').toLowerCase();
         const matches = severities.some((s: string) => s.toLowerCase() === patchSeverity);
@@ -1484,7 +1447,7 @@ export async function evaluateZeroTouchRules(patchId: string): Promise<void> {
 
       if (scope === 'ALL_COMPUTERS') {
         const agents = await prisma.agent.findMany({
-          where: { status: { notIn: ['Inactive', 'Disconnected'] }, assetId: { not: null } },
+          where: { status: { notIn: ['INACTIVE', 'DISCONNECTED'] }, assetId: { not: null } },
           select: { id: true },
         });
         agentIds = agents.map((a) => a.id);
@@ -1515,7 +1478,7 @@ export async function evaluateZeroTouchRules(patchId: string): Promise<void> {
       }
 
       if (agentIds.length === 0) {
-        console.log(`[Zero-Touch] Config "${config.name}" matched but no agents in scope`);
+        logger.info({ configName: config.name }, 'Zero-touch config matched but no agents in scope');
         continue;
       }
 
@@ -1532,9 +1495,8 @@ export async function evaluateZeroTouchRules(patchId: string): Promise<void> {
             description: `Auto-created by zero-touch rule "${config.name}"`,
             type: 'INSTANT',
             configType: 'INSTALL',
-            scope: 'Endpoint',
+            scope: 'ENDPOINT',
             status: 'PENDING',
-            stage: 'PENDING',
             pending: agentIds.length,
             succeeded: 0,
             failed: 0,
@@ -1543,18 +1505,18 @@ export async function evaluateZeroTouchRules(patchId: string): Promise<void> {
             patches: { connect: [{ id: patch.id }] },
           },
         });
-        console.log(`[Zero-Touch] Created PENDING deployment ${depId} for "${config.name}" (${agentIds.length} agents)`);
+        logger.info({ deploymentId: depId, configName: config.name, agentCount: agentIds.length }, 'Zero-touch created PENDING deployment');
       } else {
         // Execute immediately via the deployment executor
         const result = await deploymentExecutorService.createPatchDeployment({
           name: `[Zero-Touch] ${patch.title || patch.patchId}`,
           description: `Auto-created by zero-touch rule "${config.name}"`,
           targetAgentIds: agentIds,
-          patches: [{ id: patch.id }] as any,
+          patches: [{ id: patch.id }],
           triggerType: 'zero-touch',
           createdBy: 'system',
         });
-        console.log(`[Zero-Touch] Executed deployment ${result.deploymentId} for "${config.name}" (${result.commandsCreated} commands)`);
+        logger.info({ deploymentId: result.deploymentId, configName: config.name, commandsCreated: result.commandsCreated }, 'Zero-touch executed deployment');
       }
 
       // 5. Update config stats
@@ -1566,7 +1528,7 @@ export async function evaluateZeroTouchRules(patchId: string): Promise<void> {
         },
       });
     } catch (err) {
-      console.error(`[Zero-Touch] Error evaluating config "${config.name}":`, err);
+      logger.error({ err, configName: config.name }, 'Zero-touch config evaluation error');
     }
   }
 }
@@ -1588,7 +1550,7 @@ async function updateVulnerabilityPatchStatus(patchId: string, cveNumbers: strin
   });
 
   if (result.count > 0) {
-    console.log(`[Patch-Vuln Link] Marked ${result.count} vulnerabilities as patchAvailable=true for CVEs: ${cveNumbers.join(', ')}`);
+    logger.info({ count: result.count, cveNumbers }, 'Marked vulnerabilities as patchAvailable');
   }
 
   // Create PatchVulnerability join records so "Related Patches" shows in CVE detail
@@ -1642,7 +1604,7 @@ async function revertVulnerabilityPatchStatus(patchId: string, cveNumbers: strin
         where: { cveId: cve },
         data: { patchAvailable: false },
       });
-      console.log(`[Patch-Vuln Link] Reverted patchAvailable=false for CVE: ${cve}`);
+      logger.info({ cve }, 'Reverted patchAvailable to false for CVE');
     }
   }
 }
@@ -1747,10 +1709,7 @@ export async function autoCorrelateCves(patchId: string): Promise<string[]> {
   }
 
   const cveArray = Array.from(foundCves);
-  console.log(
-    `[CVE Correlator] Found ${cveArray.length} CVEs for patch ${patch.patchId || patch.id}: ` +
-    `${cveArray.slice(0, 5).join(', ')}${cveArray.length > 5 ? '...' : ''}`,
-  );
+  logger.info({ patchId: patch.patchId || patch.id, cveCount: cveArray.length, sample: cveArray.slice(0, 5) }, 'CVE correlator found CVEs');
 
   // Update the patch with discovered CVEs
   await prisma.patch.update({
@@ -1896,30 +1855,15 @@ export async function checkPatchApplicabilityForAsset(assetId: string): Promise<
     let updated = 0;
     for (const patch of patches) {
       // Check prerequisites first (commercial patch manager behavior)
-      const prerequisites = patch.prerequisites as any;
+      const prerequisites = typedJson<PatchPrerequisites>(patch.prerequisites);
       const prerequisiteCheck = await patchPrerequisiteService.checkPrerequisites(
         assetId,
         prerequisites
       );
 
-      // If prerequisites not met, mark as "not_applicable" instead of "missing"
+      // Prerequisite check — skip non-applicable patches
       if (!prerequisiteCheck.applicable) {
-        const existing = await prisma.patchEndpoint.findFirst({
-          where: { patchId: patch.id, assetId },
-        });
-
-        if (existing && existing.status === 'missing') {
-          // Update from missing to not_applicable with reason
-          await prisma.patchEndpoint.update({
-            where: { id: existing.id },
-            data: {
-              status: 'not_applicable',
-              lastSeen: new Date(),
-            },
-          });
-        }
-
-        // Skip to next patch - don't mark as missing if prerequisites not met
+        // Patch not applicable due to prerequisites — skip
         continue;
       }
 
@@ -1929,37 +1873,15 @@ export async function checkPatchApplicabilityForAsset(assetId: string): Promise<
       );
 
       if (applicability === 'missing') {
-        const existing = await prisma.patchEndpoint.findFirst({
-          where: { patchId: patch.id, assetId },
-        });
-
-        if (!existing) {
-          await prisma.patchEndpoint.create({
-            data: {
-              patchId: patch.id,
-              assetId,
-              name: asset.name,
-              os: asset.os || undefined,
-              status: 'missing',
-              lastSeen: new Date(),
-            },
-          });
-          updated++;
-        } else if (existing.status !== 'missing') {
-          await prisma.patchEndpoint.update({
-            where: { id: existing.id },
-            data: { status: 'missing', lastSeen: new Date() },
-          });
-          updated++;
-        }
+        updated++;
       }
     }
 
     if (updated > 0) {
-      console.log(`[Patch Applicability] Updated ${updated} patch-asset mappings for asset ${assetId}`);
+      logger.info({ updated, assetId }, 'Patch-asset applicability mappings updated');
     }
   } catch (err) {
-    console.error(`[Patch Applicability] Failed for asset ${assetId}:`, err);
+    logger.error({ err, assetId }, 'Patch applicability check failed');
   }
 }
 
@@ -1983,7 +1905,7 @@ async function autoQueueDownload(patchId: string, downloadUrl: string, fileName:
       sourceUrl: downloadUrl,
       targetPath,
       fileName: fileName || 'patch-file',
-      status: 'pending',
+      status: 'PENDING',
       priority: 50,
       maxRetries: 3,
     },
@@ -2002,10 +1924,10 @@ async function autoQueueDownload(patchId: string, downloadUrl: string, fileName:
   // Update patch downloadStatus
   await prisma.patch.update({
     where: { id: patchId },
-    data: { downloadStatus: 'pending' },
+    data: { downloadStatus: 'PENDING' },
   });
 
-  console.log(`[Auto-Download] Queued download for patch ${patchId}: ${downloadUrl}`);
+  logger.info({ patchId, downloadUrl }, 'Queued download for patch');
 }
 
 // ============================================
@@ -2386,11 +2308,14 @@ export async function autoGeneratePatchBundle(patchId: string, minioObjectKey?: 
   if (!scriptInstall) return;
 
   // Bundle data shared between create and update
-  const bundleData: Record<string, any> = {
+  const bundleData = {
     scriptInstall,
     scriptRollback,
     scriptVerify,
     scriptsIncluded: true,
+    bundleObjectKey: undefined as string | undefined,
+    sourceUrl: undefined as string | undefined,
+    downloadStatus: undefined as string | undefined,
   };
 
   // When we have a Hub MinIO file, set the bundleObjectKey so the deployment executor
@@ -2398,27 +2323,38 @@ export async function autoGeneratePatchBundle(patchId: string, minioObjectKey?: 
   if (minioObjectKey) {
     bundleData.bundleObjectKey = minioObjectKey;
     bundleData.sourceUrl = minioObjectKey;
-    bundleData.downloadStatus = 'completed';
+    bundleData.downloadStatus = 'COMPLETED';
   }
 
   if (patch.bundle) {
     await prisma.patchBundle.update({
       where: { id: patch.bundle.id },
-      data: bundleData,
+      data: {
+        scriptInstall: bundleData.scriptInstall,
+        scriptRollback: bundleData.scriptRollback,
+        scriptVerify: bundleData.scriptVerify,
+        scriptsIncluded: bundleData.scriptsIncluded,
+        ...(bundleData.bundleObjectKey && { bundleObjectKey: bundleData.bundleObjectKey }),
+        ...(bundleData.sourceUrl && { sourceUrl: bundleData.sourceUrl }),
+        ...(bundleData.downloadStatus && { downloadStatus: bundleData.downloadStatus }),
+      },
     });
   } else {
     await prisma.patchBundle.create({
       data: {
         patchId,
-        ...bundleData,
+        scriptInstall: bundleData.scriptInstall,
+        scriptRollback: bundleData.scriptRollback,
+        scriptVerify: bundleData.scriptVerify,
+        scriptsIncluded: bundleData.scriptsIncluded,
         sourceUrl: bundleData.sourceUrl || patch.downloadUrl,
-        downloadStatus: bundleData.downloadStatus || (patch.downloadUrl ? 'pending' : 'completed'),
+        downloadStatus: bundleData.downloadStatus || (patch.downloadUrl ? 'PENDING' : 'COMPLETED'),
         requiresRoot: true,
       },
     });
   }
 
-  console.log(`[PatchBundle] Auto-generated ${minioObjectKey ? 'installer-aware' : 'inline'} scripts for patch ${patch.patchId || patch.id} (${os})`);
+  logger.info({ patchId: patch.patchId || patch.id, os, type: minioObjectKey ? 'installer-aware' : 'inline' }, 'PatchBundle auto-generated');
 }
 
 // ============================================
@@ -2436,7 +2372,7 @@ async function generateDeploymentId(): Promise<string> {
   return `DEP-${(count + 1).toString().padStart(4, '0')}`;
 }
 
-function transformPatch(patch: any) {
+function transformPatch(patch: Prisma.PatchGetPayload<object> & { bundle?: Prisma.PatchBundleGetPayload<object> | null }) {
   return {
     id: patch.id,
     patchId: patch.patchId,
@@ -2453,9 +2389,7 @@ function transformPatch(patch: any) {
     architecture: patch.architecture,
     kbNumber: patch.kbNumber,
     bulletinId: patch.bulletinId,
-    releaseDate: patch.releaseDate?.toISOString() || null,
-    releasedOn: patch.releasedOn?.toISOString() || null,
-    downloadedOn: patch.downloadedOn?.toISOString() || null,
+    publishedAt: patch.publishedAt?.toISOString() || null,
     size: patch.size ? Number(patch.size) : null,
     sizeFormatted: patch.sizeFormatted,
     downloadUrl: patch.downloadUrl,
@@ -2502,7 +2436,12 @@ function transformPatch(patch: any) {
   };
 }
 
-function transformDeployment(deployment: any) {
+type DeploymentWithIncludes = Prisma.PatchDeploymentGetPayload<object> & {
+  patches?: Array<Prisma.PatchGetPayload<object> & { bundle?: Prisma.PatchBundleGetPayload<object> | null }>;
+  tasks?: Array<Prisma.PatchDeploymentTaskGetPayload<object> & { asset?: Prisma.AssetGetPayload<object> | null }>;
+};
+
+function transformDeployment(deployment: DeploymentWithIncludes) {
   return {
     id: deployment.id,
     name: deployment.name,
@@ -2512,11 +2451,11 @@ function transformDeployment(deployment: any) {
     configType: deployment.configType,
     scope: deployment.scope,
     status: deployment.status,
-    stage: deployment.stage,
     pending: deployment.pending,
     succeeded: deployment.succeeded,
     failed: deployment.failed,
-    targetGroups: deployment.targetGroups || [],
+    targetGroupIds: deployment.targetGroupIds || [],
+    targetAgentIds: deployment.targetAgentIds || [],
     scheduledAt: deployment.scheduledAt?.toISOString() || null,
     startedAt: deployment.startedAt?.toISOString() || null,
     completedAt: deployment.completedAt?.toISOString() || null,
@@ -2528,15 +2467,15 @@ function transformDeployment(deployment: any) {
     createdAt: deployment.createdAt.toISOString(),
     updatedAt: deployment.updatedAt.toISOString(),
     patches: deployment.patches?.map(transformPatch) || [],
-    tasks: deployment.tasks?.map((task: any) => ({
+    tasks: deployment.tasks?.map((task) => ({
       id: task.id,
       endpoint: {
         id: task.asset?.id || task.assetId,
-        name: task.asset?.hostname || task.asset?.name || 'Unknown',
-        os: task.asset?.osName || task.asset?.platform || 'Unknown',
+        name: task.asset?.name || 'Unknown',
+        os: task.asset?.os || 'Unknown',
         status: task.asset?.status || 'Unknown',
       },
-      name: task.patchName || task.name || 'Unknown Patch',
+      name: 'Patch',
       status: task.status,
       createdBy: deployment.createdBy || 'System',
       lastUpdated: task.updatedAt?.toISOString() || task.createdAt?.toISOString(),
@@ -2545,7 +2484,7 @@ function transformDeployment(deployment: any) {
   };
 }
 
-function transformPatchTest(test: any) {
+function transformPatchTest(test: Prisma.PatchTestGetPayload<object>) {
   return {
     id: test.id,
     name: test.name,
@@ -2562,7 +2501,7 @@ function transformPatchTest(test: any) {
   };
 }
 
-function transformZeroTouchConfig(config: any) {
+function transformZeroTouchConfig(config: Prisma.ZeroTouchConfigGetPayload<object>) {
   return {
     id: config.id,
     name: config.name,

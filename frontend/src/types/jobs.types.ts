@@ -1,12 +1,63 @@
 // Jobs Types
 // Centralized type definitions for all job-related data
 
+import type {
+  DeploymentScope,
+  DeploymentStatus,
+  VulnerabilityScanType,
+  Recurrence,
+  VulnerabilityJobStatus,
+  ApplicationLocationType,
+  ApplicationType,
+  SoftwareDeploymentType,
+  SelectionType,
+  NotifyTo,
+  ConfigurationType,
+  CommandType,
+  Architecture,
+  DeploymentTaskStatus,
+  SupportedModule,
+  RelatedType,
+  PatchOS,
+} from '@shared/types';
+
+// Re-export shared enums for backward compatibility
+export type {
+  DeploymentScope,
+  DeploymentStatus,
+  VulnerabilityScanType,
+  Recurrence,
+  VulnerabilityJobStatus,
+  ApplicationLocationType,
+  ApplicationType,
+  SoftwareDeploymentType,
+  SelectionType,
+  NotifyTo,
+  ConfigurationType,
+  CommandType,
+  Architecture,
+  DeploymentTaskStatus,
+  SupportedModule,
+  RelatedType,
+};
+
+// Re-export shared API types
+export type {
+  JobListQuery,
+  SoftwareCatalogQuery,
+  ConfigCatalogQuery,
+  DeploymentQuery,
+  DeploymentTaskResponse,
+  DeploymentPolicyResponse,
+} from '@shared/types';
+
 // ============ Common Types ============
 
-export type JobScope = 'Global' | 'Group' | 'Endpoint';
-export type OSType = 'Windows' | 'Mac' | 'Linux';
-export type ArchitectureType = 'x64' | 'x86' | 'ARM64';
-export type DeploymentStage = 'COMPLETED' | 'IN_PROGRESS' | 'INSTALLED' | 'FAILED';
+export type JobScope = DeploymentScope;
+// UI-specific OS display labels (not the same as shared OSFamily enum)
+export type OSTypeLabel = 'Windows' | 'Mac' | 'Linux';
+// Alias for shared Architecture type
+export type ArchitectureType = Architecture;
 
 // ============ Patch Jobs ============
 
@@ -17,7 +68,7 @@ export interface PatchJob {
   description: string;
   type: 'SCHEDULE' | 'INSTANT';
   configType: 'INSTALL' | 'ROLLBACK';
-  scope: JobScope;
+  scope: DeploymentScope;
   endpoints?: string[];
   patches: string[];
   deploymentPolicy: string;
@@ -35,13 +86,13 @@ export interface VulnerabilityJob {
   jobId: string;
   name: string;
   description: string;
-  scope: JobScope;
+  scope: DeploymentScope;
   endpoints?: string[];
-  scanType: 'instant' | 'scheduled';
+  scanType: VulnerabilityScanType;
   scheduleDate?: string;
   scheduleTime?: string;
-  recurrence?: 'once' | 'daily' | 'weekly' | 'monthly';
-  status: 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SCHEDULED';
+  recurrence?: Recurrence;
+  status: VulnerabilityJobStatus;
   scheduledTime?: string;
   lastRun?: string;
   nextRun?: string;
@@ -59,55 +110,20 @@ export interface VulnerabilityDBSync {
 
 // ============ Software Jobs ============
 
-export type ApplicationLocationType = 'Local Directory' | 'Network Share' | 'URL';
-export type ApplicationType = 'MSI' | 'EXE' | 'APPLICATION' | 'ZIP';
-
-export interface SoftwareCatalogItem {
-  id: string;
-  deploymentId: string;
-  applicationName: string;
-  description: string;
-  tags?: string[];
-  os: OSType;
-  version: string;
-  applicationLocationType: ApplicationLocationType;
-  installationCommand?: string;
-  uninstallationCommand?: string;
-  upgradeCommand?: string;
-  iconUrl?: string;
-  selfService: boolean;
-  architecture: ArchitectureType;
-  applicationType: ApplicationType;
-  applicationFileUrl?: string;
-  createdBy: string;
-  createdOn: string;
-}
-
-export interface SoftwareBundle {
-  id: string;
-  bundleId: string;
-  bundleName: string;
-  os: OSType;
-  description: string;
-  applications: string[];
-  createdBy: string;
-  createdOn: string;
-}
-
 export interface SoftwareDeployment {
   id: string;
   deploymentId: string;
   deploymentName: string;
   description: string;
-  deploymentType: 'install' | 'uninstall' | 'upgrade';
-  selectionType: 'application' | 'bundle';
+  deploymentType: SoftwareDeploymentType;
+  selectionType: SelectionType;
   selectedItems: string[];
   scope: 'all' | 'windows' | 'mac' | 'linux';
   endpoints?: string[];
   deploymentPolicy: string;
   retryCount: number;
-  notifyTo: 'admin' | 'user';
-  stage: DeploymentStage;
+  notifyTo: NotifyTo;
+  status: DeploymentStatus;
   pending: number;
   succeeded: number;
   failed: number;
@@ -117,14 +133,11 @@ export interface SoftwareDeployment {
 
 // ============ Configuration Jobs ============
 
-export type ConfigurationType = 'command' | 'policy' | 'script';
-export type CommandType = 'powershell' | 'cmd' | 'bash' | 'sh';
-
 export interface ConfigCatalogItem {
   id: string;
   configurationId: string;
   name: string;
-  os: OSType;
+  os: OSTypeLabel;
   description: string;
   tags?: string[];
   configurationType: ConfigurationType;
@@ -140,7 +153,7 @@ export interface ConfigBundle {
   id: string;
   bundleId: string;
   bundleName: string;
-  os: OSType;
+  os: OSTypeLabel;
   description: string;
   configurations: string[];
   createdBy: string;
@@ -158,8 +171,8 @@ export interface ConfigDeployment {
   endpoints?: string[];
   deploymentPolicy: string;
   retryCount: number;
-  notifyTo: 'admin' | 'user';
-  stage: DeploymentStage;
+  notifyTo: NotifyTo;
+  status: DeploymentStatus;
   pending: number;
   succeeded: number;
   failed: number;
@@ -169,7 +182,8 @@ export interface ConfigDeployment {
 
 // ============ Deployment Tasks ============
 
-export type EndpointOS = 'Windows' | 'MacOS' | 'Ubuntu' | 'Linux';
+export type EndpointOS = PatchOS;
+// UI-specific task status (uses SUCCESS instead of COMPLETED in shared DeploymentTaskStatus)
 export type TaskStatus = 'SUCCESS' | 'FAILED' | 'PENDING' | 'IN_PROGRESS';
 
 export interface DeploymentTask {
@@ -195,8 +209,8 @@ export interface DeploymentPolicy {
   name: string;
   description: string;
   type: 'SCHEDULE' | 'INSTANT';
-  supportedModule: 'All' | 'Patch' | 'Update' | 'Security';
-  relatedType: 'No Relation' | 'Critical' | 'Important' | 'Optional';
+  supportedModule: SupportedModule;
+  relatedType: RelatedType;
   createdBy: string;
   createdOn: string;
 }

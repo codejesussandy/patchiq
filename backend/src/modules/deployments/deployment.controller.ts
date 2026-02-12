@@ -4,6 +4,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { sendSuccess } from '@shared/utils';
 import { deploymentExecutorService } from './deployment-executor.service';
 import { CreateSoftwareDeploymentOptions, CreatePatchDeploymentOptions, CreateConfigDeploymentOptions } from './deployment-executor.types';
 
@@ -39,10 +40,7 @@ export class DeploymentController {
 
       const result = await deploymentExecutorService.createSoftwareDeployment(options);
 
-      res.status(201).json({
-        success: true,
-        data: result,
-      });
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -73,10 +71,7 @@ export class DeploymentController {
 
       const result = await deploymentExecutorService.createPatchDeployment(options);
 
-      res.status(201).json({
-        success: true,
-        data: result,
-      });
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -92,10 +87,7 @@ export class DeploymentController {
 
       const status = await deploymentExecutorService.getSoftwareDeploymentStatus(deploymentId);
 
-      res.json({
-        success: true,
-        data: status,
-      });
+      sendSuccess(res, status);
     } catch (error) {
       next(error);
     }
@@ -111,10 +103,7 @@ export class DeploymentController {
 
       await deploymentExecutorService.cancelSoftwareDeployment(deploymentId);
 
-      res.json({
-        success: true,
-        message: 'Deployment cancelled',
-      });
+      sendSuccess(res, { message: 'Deployment cancelled' });
     } catch (error) {
       next(error);
     }
@@ -138,26 +127,23 @@ export class DeploymentController {
         },
       });
 
-      res.json({
-        success: true,
-        data: deployments.map(d => ({
-          id: d.id,
-          deploymentId: d.deploymentId,
-          name: d.deploymentName,
-          description: d.description,
-          type: d.deploymentType,
-          stage: d.stage,
-          pending: d.pending,
-          succeeded: d.succeeded,
-          failed: d.failed,
-          total: d._count.tasks,
-          progress: d._count.tasks > 0
-            ? Math.round(((d.succeeded + d.failed) / d._count.tasks) * 100)
-            : 0,
-          createdAt: d.createdAt,
-          updatedAt: d.updatedAt,
-        })),
-      });
+      sendSuccess(res, deployments.map(d => ({
+        id: d.id,
+        deploymentId: d.deploymentId,
+        name: d.deploymentName,
+        description: d.description,
+        type: d.deploymentType,
+        status: d.status,
+        pending: d.pending,
+        succeeded: d.succeeded,
+        failed: d.failed,
+        total: d._count.tasks,
+        progress: d._count.tasks > 0
+          ? Math.round(((d.succeeded + d.failed) / d._count.tasks) * 100)
+          : 0,
+        createdAt: d.createdAt,
+        updatedAt: d.updatedAt,
+      })));
     } catch (error) {
       next(error);
     }
@@ -173,10 +159,7 @@ export class DeploymentController {
 
       const status = await deploymentExecutorService.getPatchDeploymentStatus(deploymentId);
 
-      res.json({
-        success: true,
-        data: status,
-      });
+      sendSuccess(res, status);
     } catch (error) {
       next(error);
     }
@@ -190,10 +173,7 @@ export class DeploymentController {
     try {
       const deployments = await deploymentExecutorService.listPatchDeployments();
 
-      res.json({
-        success: true,
-        data: deployments,
-      });
+      sendSuccess(res, deployments);
     } catch (error) {
       next(error);
     }
@@ -209,10 +189,7 @@ export class DeploymentController {
 
       await deploymentExecutorService.cancelPatchDeployment(deploymentId);
 
-      res.json({
-        success: true,
-        message: 'Patch deployment cancelled',
-      });
+      sendSuccess(res, { message: 'Patch deployment cancelled' });
     } catch (error) {
       next(error);
     }
@@ -226,7 +203,7 @@ export class DeploymentController {
     try {
       const { deploymentId } = req.params;
       const result = await deploymentExecutorService.retryPatchDeployment(deploymentId);
-      res.status(201).json({ success: true, data: result });
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -261,10 +238,7 @@ export class DeploymentController {
 
       const result = await deploymentExecutorService.createConfigDeployment(options);
 
-      res.status(201).json({
-        success: true,
-        data: result,
-      });
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -280,10 +254,7 @@ export class DeploymentController {
 
       const status = await deploymentExecutorService.getConfigDeploymentStatus(deploymentId);
 
-      res.json({
-        success: true,
-        data: status,
-      });
+      sendSuccess(res, status);
     } catch (error) {
       next(error);
     }
@@ -300,10 +271,7 @@ export class DeploymentController {
 
       const result = await deploymentExecutorService.triggerRollback(deploymentId, taskId, { force });
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }

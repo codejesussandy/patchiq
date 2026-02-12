@@ -1,81 +1,35 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { App,
   Form, Input, Button, Space, Typography, Divider, Card, Row, Col } from 'antd';
-import { settingsService } from '../../services/settings.service';
-import type { AgentConfiguration as AgentConfigurationType, AgentConfigurationFormData } from '../../types/settings.types';
+import { useAgentConfiguration, useUpdateAgentConfiguration } from '../../hooks/useSettings';
+import type { AgentConfigurationFormData } from '../../types/settings.types';
 
 const { Title } = Typography;
 
 export const AgentConfiguration = () => {
   const { message } = App.useApp();
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
-  const [configuration, setConfiguration] = useState<AgentConfigurationType | null>(null);
+  const { data: configuration } = useAgentConfiguration();
+  const updateConfigMutation = useUpdateAgentConfiguration();
 
   useEffect(() => {
-    const fetchConfiguration = async () => {
-      try {
-        const data = await settingsService.getAgentConfiguration();
-        setConfiguration(data);
-        form.setFieldsValue({
-          allowedBandwidth: data.allowedBandwidth,
-          agentRefreshCycle: data.agentRefreshCycle,
-          systemActionRefreshCycle: data.systemActionRefreshCycle,
-          endpointVlanRefreshCycle: data.endpointVlanRefreshCycle,
-          patchScanningRefreshCycle: data.patchScanningRefreshCycle,
-          ssdmRefreshCycle: data.ssdmRefreshCycle,
-          processRefreshCycle: data.processRefreshCycle,
-          networkRefreshCycle: data.networkRefreshCycle,
-          certificateRefreshCycle: data.certificateRefreshCycle,
-          startupItemsRefreshCycle: data.startupItemsRefreshCycle,
-          usersRefreshCycle: data.usersRefreshCycle,
-          systemResourcesRefreshCycle: data.systemResourcesRefreshCycle,
-          systemServicesRefreshCycle: data.systemServicesRefreshCycle,
-          fimEventsRefreshCycle: data.fimEventsRefreshCycle,
-          softwareMeterRefreshCycle: data.softwareMeterRefreshCycle,
-        });
-      } catch (error) {
-        console.error('Failed to fetch agent configuration:', error);
-        message.error('Failed to fetch agent configuration');
-      }
-    };
-    fetchConfiguration();
-  }, [form]);
+    if (configuration) {
+      form.setFieldsValue(configuration);
+    }
+  }, [configuration, form]);
 
   const onFinish = async (values: AgentConfigurationFormData) => {
-    setLoading(true);
     try {
-      await settingsService.updateAgentConfiguration(values);
+      await updateConfigMutation.mutateAsync(values);
       message.success('Agent configuration updated successfully');
-      const updatedConfiguration = await settingsService.getAgentConfiguration();
-      setConfiguration(updatedConfiguration);
-    } catch (error) {
-      console.error('Error updating agent configuration:', error);
+    } catch {
       message.error('Failed to update agent configuration');
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleReset = () => {
     if (configuration) {
-      form.setFieldsValue({
-        allowedBandwidth: configuration.allowedBandwidth,
-        agentRefreshCycle: configuration.agentRefreshCycle,
-        systemActionRefreshCycle: configuration.systemActionRefreshCycle,
-        endpointVlanRefreshCycle: configuration.endpointVlanRefreshCycle,
-        patchScanningRefreshCycle: configuration.patchScanningRefreshCycle,
-        ssdmRefreshCycle: configuration.ssdmRefreshCycle,
-        processRefreshCycle: configuration.processRefreshCycle,
-        networkRefreshCycle: configuration.networkRefreshCycle,
-        certificateRefreshCycle: configuration.certificateRefreshCycle,
-        startupItemsRefreshCycle: configuration.startupItemsRefreshCycle,
-        usersRefreshCycle: configuration.usersRefreshCycle,
-        systemResourcesRefreshCycle: configuration.systemResourcesRefreshCycle,
-        systemServicesRefreshCycle: configuration.systemServicesRefreshCycle,
-        fimEventsRefreshCycle: configuration.fimEventsRefreshCycle,
-        softwareMeterRefreshCycle: configuration.softwareMeterRefreshCycle,
-      });
+      form.setFieldsValue(configuration);
     }
   };
 
@@ -266,7 +220,7 @@ export const AgentConfiguration = () => {
         {/* Action Buttons */}
         <Form.Item>
           <Space>
-            <Button type="primary" htmlType="submit" loading={loading}>
+            <Button type="primary" htmlType="submit" loading={updateConfigMutation.isPending}>
               Save
             </Button>
             <Button onClick={handleReset}>

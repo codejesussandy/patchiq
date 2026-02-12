@@ -1,6 +1,9 @@
-import { prisma } from '@/db/client';
 import { NotFoundError, BadRequestError } from '@shared/errors';
+import { createLogger } from '@shared/services/logger';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
+import { prisma } from '@/db/client';
+
+const logger = createLogger('vulnerabilities');
 import type { Prisma } from '@prisma/client';
 import type {
   ListVulnerabilitiesQuery,
@@ -591,7 +594,7 @@ export class VulnerabilitiesService {
             source: data.source,
             createdBy: userId,
             endpoints:
-              data.scope === 'Endpoint' && data.endpoints
+              data.scope === 'ENDPOINT' && data.endpoints
                 ? {
                     create: data.endpoints.map((endpointId) => ({ endpointId })),
                   }
@@ -665,7 +668,7 @@ export class VulnerabilitiesService {
     };
 
     // If changing to Endpoint scope and endpoints provided, update them
-    if (data.scope === 'Endpoint' && data.endpoints) {
+    if (data.scope === 'ENDPOINT' && data.endpoints) {
       // Delete existing endpoints and create new ones
       await prisma.exceptionEndpoint.deleteMany({
         where: { exceptionId: id },
@@ -766,8 +769,8 @@ export class VulnerabilitiesService {
     const job = await prisma.job.create({
       data: {
         type: 'vulnerability_scan',
-        name: `Vulnerability Scan - ${data.scope === 'all' ? 'All Endpoints' : 'Selected Endpoints'}`,
-        status: 'running',
+        name: `Vulnerability Scan - ${data.scope === 'ALL' ? 'All Endpoints' : 'Selected Endpoints'}`,
+        status: 'RUNNING',
         payload: {
           scope: data.scope,
           endpointIds: data.endpointIds || [],
@@ -788,7 +791,7 @@ export class VulnerabilitiesService {
 
     // Execute the scan in background (non-blocking)
     this.executeVulnerabilityScan(job.id, data.scope, data.endpointIds).catch((err) => {
-      console.error(`[Vulnerability Scan] Job ${job.id} failed:`, err);
+      logger.error({ err, jobId: job.id }, 'Vulnerability scan job failed');
     });
 
     return {
@@ -803,7 +806,7 @@ export class VulnerabilitiesService {
    */
   private async executeVulnerabilityScan(
     jobId: string,
-    scope: 'all' | 'selected',
+    scope: 'ALL' | 'SELECTED',
     endpointIds?: string[]
   ) {
     const { cveDatabase } = await import('@shared/services/cve-database.service');
@@ -812,7 +815,7 @@ export class VulnerabilitiesService {
       // Get assets to scan
       let assetIds: string[] = [];
 
-      if (scope === 'all') {
+      if (scope === 'ALL') {
         // Scan all assets that have agents (Agent → Asset relationship)
         const agents = await prisma.agent.findMany({
           where: { assetId: { not: null } },
@@ -828,7 +831,7 @@ export class VulnerabilitiesService {
         assetIds = agents.filter((a) => a.assetId).map((a) => a.assetId as string);
       }
 
-      console.log(`[Vulnerability Scan] Job ${jobId}: Scanning ${assetIds.length} assets`);
+      logger.info({ jobId, assetCount: assetIds.length }, 'Scanning assets for vulnerabilities');
 
       // Scan each asset
       let scannedCount = 0;
@@ -840,7 +843,7 @@ export class VulnerabilitiesService {
           vulnerabilitiesFound += vulns.length;
           scannedCount++;
         } catch (err) {
-          console.error(`[Vulnerability Scan] Failed to scan asset ${assetId}:`, err);
+          logger.error({ err, assetId }, 'Failed to scan asset for vulnerabilities');
         }
       }
 
@@ -849,17 +852,17 @@ export class VulnerabilitiesService {
       try {
         patchesCreated = await cveDatabase.generatePatchSuggestions();
         if (patchesCreated > 0) {
-          console.log(`[Vulnerability Scan] Auto-generated ${patchesCreated} patch suggestions`);
+          logger.info({ patchesCreated }, 'Auto-generated patch suggestions');
         }
       } catch (err) {
-        console.error('[Vulnerability Scan] Failed to generate patch suggestions:', err);
+        logger.error({ err }, 'Failed to generate patch suggestions');
       }
 
       // Mark job as completed
       await prisma.job.update({
         where: { id: jobId },
         data: {
-          status: 'completed',
+          status: 'COMPLETED',
           completedAt: new Date(),
           result: {
             assetsScanned: scannedCount,
@@ -869,15 +872,13 @@ export class VulnerabilitiesService {
         },
       });
 
-      console.log(
-        `[Vulnerability Scan] Job ${jobId} completed: ${scannedCount} assets scanned, ${vulnerabilitiesFound} vulnerabilities found, ${patchesCreated} patches created`
-      );
+      logger.info({ jobId, assetsScanned: scannedCount, vulnerabilitiesFound, patchesCreated }, 'Vulnerability scan job completed');
     } catch (error) {
       // Mark job as failed
       await prisma.job.update({
         where: { id: jobId },
         data: {
-          status: 'failed',
+          status: 'FAILED',
           completedAt: new Date(),
           result: { error: String(error) },
         },

@@ -29,15 +29,34 @@ class ApiService {
       }
     );
 
-    // Response interceptor for error handling
+    // Response interceptor: unwrap standard envelope and handle errors
     this.api.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        // Unwrap standard API envelope: { success: true, data: T } → T
+        // Also handles paginated: { success: true, data: T[], meta: {...} }
+        const body = response.data;
+        if (body && typeof body === 'object' && 'success' in body && body.success === true) {
+          // For paginated responses, preserve meta alongside data
+          if ('meta' in body) {
+            response.data = { data: body.data, ...body.meta };
+          } else {
+            response.data = body.data;
+          }
+        }
+        return response;
+      },
       (error: AxiosError<ApiError>) => {
         if (error.response?.status === 401) {
           // Clear tokens and redirect to login
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
           window.location.href = '/login';
+        }
+        // Unwrap error envelope: { success: false, error: { code, message, details? } }
+        const body = error.response?.data as Record<string, unknown> | undefined;
+        if (body && typeof body === 'object' && 'success' in body && body.success === false && body.error) {
+          const errObj = body.error as Record<string, unknown>;
+          error.message = (typeof errObj.message === 'string' ? errObj.message : undefined) || error.message;
         }
         return Promise.reject(error);
       }

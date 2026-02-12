@@ -1,20 +1,17 @@
 import { prisma } from '@/db/client';
 import { Prisma } from '@prisma/client';
 import { NotFoundError } from '@shared/errors';
+
+const logger = createLogger('agents');
+import { cveDatabase } from '@shared/services/cve-database.service';
+import { createLogger } from '@shared/services/logger';
+import { calculateAgentStatus } from '@shared/utils/agent-status';
+import { getRelativeTime } from '@shared/utils/date';
 import { generateTokenPair } from '@shared/utils/jwt';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
-import { getRelativeTime } from '@shared/utils/date';
-import { calculateAgentStatus } from '@shared/utils/agent-status';
-import { cveDatabase } from '@shared/services/cve-database.service';
+import { withTransaction } from '@shared/utils/transaction';
 import { evaluateAlertsForAsset, evaluateSecurityAlertsForAsset } from '@/modules/alerts/alert-evaluation.service';
 import { notificationsService } from '@/modules/notifications/notifications.service';
-import type {
-  RegisterAgentInput,
-  HeartbeatInput,
-  CommandResultInput,
-  InventoryInput,
-  TelemetryInput,
-} from './agents.validators';
 import type {
   AgentResponse,
   AgentDownloadResponse,
@@ -26,6 +23,12 @@ import type {
   AgentConfig,
   PendingCommand,
 } from './agents.types';
+import type {
+  RegisterAgentInput,
+  HeartbeatInput,
+  CommandResultInput,
+  InventoryInput,
+  } from './agents.validators';
 
 export class AgentsService {
   /**
@@ -39,40 +42,42 @@ export class AgentsService {
 
     if (existingAgent) {
       // Re-registration - update agent info
-      const agentUpdateData: Record<string, unknown> = {
-        hostname: input.hostname,
-        os: input.os,
-        osVersion: input.osVersion,
-        architecture: input.architecture,
-        agentVersion: input.agentVersion,
-        ipAddress: input.ipAddress,
-        macAddress: input.macAddress,
-        serialNumber: input.serialNumber,
-        status: 'Connected',
-        lastHeartbeat: new Date(),
-      };
+      const agent = await withTransaction('reRegisterAgent', async (tx) => {
+        const agentUpdateData: Record<string, unknown> = {
+          hostname: input.hostname,
+          os: input.os,
+          osVersion: input.osVersion,
+          architecture: input.architecture,
+          agentVersion: input.agentVersion,
+          ipAddress: input.ipAddress,
+          macAddress: input.macAddress,
+          serialNumber: input.serialNumber,
+          status: 'CONNECTED',
+          lastHeartbeat: new Date(),
+        };
 
-      // If agent has no linked asset, create one now
-      if (!existingAgent.assetId) {
-        const asset = await prisma.asset.create({
-          data: {
-            name: input.hostname,
-            status: 'In Use',
-            os: input.os,
-            osVersion: input.osVersion,
-            manufacturer: input.manufacturer,
-            model: input.model,
-            serialNumber: input.serialNumber,
-            ipAddress: input.ipAddress,
-            macAddress: input.macAddress,
-          },
+        // If agent has no linked asset, create one now
+        if (!existingAgent.assetId) {
+          const asset = await tx.asset.create({
+            data: {
+              name: input.hostname,
+              status: 'IN_USE',
+              os: input.os,
+              osVersion: input.osVersion,
+              manufacturer: input.manufacturer,
+              model: input.model,
+              serialNumber: input.serialNumber,
+              ipAddress: input.ipAddress,
+              macAddress: input.macAddress,
+            },
+          });
+          agentUpdateData.assetId = asset.id;
+        }
+
+        return tx.agent.update({
+          where: { id: existingAgent.id },
+          data: agentUpdateData,
         });
-        agentUpdateData.assetId = asset.id;
-      }
-
-      const agent = await prisma.agent.update({
-        where: { id: existingAgent.id },
-        data: agentUpdateData,
       });
 
       // Generate new tokens
@@ -94,12 +99,12 @@ export class AgentsService {
     }
 
     // Create new agent and asset in a transaction
-    const [agent, asset] = await prisma.$transaction(async (tx) => {
+    const [agent, asset] = await withTransaction('registerAgent', async (tx) => {
       // Create asset first
       const asset = await tx.asset.create({
         data: {
           name: input.hostname,
-          status: 'In Use',
+          status: 'IN_USE',
           os: input.os,
           osVersion: input.osVersion,
           manufacturer: input.manufacturer,
@@ -124,7 +129,7 @@ export class AgentsService {
           macAddress: input.macAddress,
           serialNumber: input.serialNumber,
           assetId: asset.id,
-          status: 'Connected',
+          status: 'CONNECTED',
           lastHeartbeat: new Date(),
           capabilities: ['scan', 'deploy', 'reboot', 'update'],
         },
@@ -144,8 +149,8 @@ export class AgentsService {
     notificationsService.broadcast({
       title: `New Agent: ${input.hostname || input.machineId}`,
       message: `A new agent has registered from ${input.ipAddress || 'unknown IP'}`,
-      type: 'info',
-      category: 'agent',
+      type: 'INFO',
+      category: 'AGENT',
       link: '/discovery/agents',
     }).catch(() => {});
 
@@ -175,8 +180,8 @@ export class AgentsService {
     const inventoryWasRequested = agent.inventoryRequested ?? false;
 
     // Detect status change to Error
-    const newStatus = input.status === 'error' ? 'Error' : 'Connected';
-    const statusChangedToError = newStatus === 'Error' && agent.status !== 'Error';
+    const newStatus = input.status === 'error' ? 'ERROR' : 'CONNECTED';
+    const statusChangedToError = newStatus === 'ERROR' && agent.status !== 'ERROR';
 
     // Update agent status (and clear inventoryRequested flag if set)
     await prisma.agent.update({
@@ -196,8 +201,8 @@ export class AgentsService {
       notificationsService.broadcast({
         title: `Agent Error: ${agent.hostname || agent.name || agentId}`,
         message: `Agent is reporting error status`,
-        type: 'error',
-        category: 'agent',
+        type: 'ERROR',
+        category: 'AGENT',
         dedupKey: `agent-error-${agentId}`,
         link: '/discovery/agents',
       }).catch(() => {});
@@ -214,7 +219,7 @@ export class AgentsService {
 
     // Check for pending actions
     const pendingCommands = await prisma.agentCommand.count({
-      where: { agentId, status: 'pending' },
+      where: { agentId, status: 'PENDING' },
     });
 
     return {
@@ -349,47 +354,45 @@ export class AgentsService {
       throw new NotFoundError('Agent not found');
     }
 
-    // Update basic fields
-    const updatedAgent = await prisma.agent.update({
-      where: { id },
-      data: {
-        name: data.name || agent.name,
-      },
-      include: {
-        tags: true,
-        groups: { include: { group: true } },
-      },
-    });
-
-    // Handle tags update if provided
-    if (data.tags !== undefined) {
-      // Remove existing tag associations
-      await prisma.agentTagRelation.deleteMany({
-        where: { agentId: id },
+    const finalAgent = await withTransaction('updateAgent', async (tx) => {
+      // Update basic fields
+      await tx.agent.update({
+        where: { id },
+        data: {
+          name: data.name || agent.name,
+        },
       });
 
-      // Add new tag associations
-      if (data.tags.length > 0) {
-        const tagRecords = await prisma.tag.findMany({
-          where: { id: { in: data.tags } },
+      // Handle tags update if provided
+      if (data.tags !== undefined) {
+        // Remove existing tag associations
+        await tx.agentTagRelation.deleteMany({
+          where: { agentId: id },
         });
 
-        await prisma.agentTagRelation.createMany({
-          data: tagRecords.map((tag) => ({
-            agentId: id,
-            tag: tag.name,
-          })),
-        });
+        // Add new tag associations
+        if (data.tags.length > 0) {
+          const tagRecords = await tx.tag.findMany({
+            where: { id: { in: data.tags } },
+          });
+
+          await tx.agentTagRelation.createMany({
+            data: tagRecords.map((tag) => ({
+              agentId: id,
+              tag: tag.name,
+            })),
+          });
+        }
       }
-    }
 
-    // Fetch updated agent with tags
-    const finalAgent = await prisma.agent.findUnique({
-      where: { id },
-      include: {
-        tags: true,
-        groups: { include: { group: true } },
-      },
+      // Fetch updated agent with tags
+      return tx.agent.findUnique({
+        where: { id },
+        include: {
+          tags: true,
+          groups: { include: { group: true } },
+        },
+      });
     });
 
     return {
@@ -469,7 +472,7 @@ export class AgentsService {
    */
   async getPendingCommands(agentId: string): Promise<PendingCommand[]> {
     const commands = await prisma.agentCommand.findMany({
-      where: { agentId, status: 'pending' },
+      where: { agentId, status: 'PENDING' },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -477,7 +480,7 @@ export class AgentsService {
     if (commands.length > 0) {
       await prisma.agentCommand.updateMany({
         where: { id: { in: commands.map((c) => c.id) } },
-        data: { status: 'delivered' },
+        data: { status: 'DELIVERED' },
       });
     }
 
@@ -519,7 +522,7 @@ export class AgentsService {
     const { deploymentExecutorService } = await import('@modules/deployments');
     await deploymentExecutorService.processCommandResult({
       commandId,
-      status: input.status as 'in_progress' | 'completed' | 'failed',
+      status: input.status as 'IN_PROGRESS' | 'COMPLETED' | 'FAILED',
       result: input.result as Record<string, unknown> | undefined,
       errorMessage: input.errorMessage,
       output: input.output || (typeof input.result === 'string' ? input.result : undefined),
@@ -544,14 +547,14 @@ export class AgentsService {
       data: {
         agentId,
         type: 'inventory_full',
-        status: 'pending',
+        status: 'PENDING',
         scheduledAt: new Date(),
       },
     });
 
     return {
       id: command.id,
-      status: 'queued',
+      status: 'QUEUED',
     };
   }
 
@@ -580,7 +583,7 @@ export class AgentsService {
       data: {
         agentId,
         type: commandType,
-        status: 'pending',
+        status: 'PENDING',
         scheduledAt: new Date(),
       },
     });
@@ -595,7 +598,7 @@ export class AgentsService {
 
     return {
       commandId: command.id,
-      status: 'queued',
+      status: 'QUEUED',
       type: commandType,
     };
   }
@@ -620,12 +623,12 @@ export class AgentsService {
           checksum: input.checksum,
           version: input.version,
         },
-        status: 'pending',
+        status: 'PENDING',
         scheduledAt: new Date(),
       },
     });
 
-    return { commandId: command.id, status: 'queued' };
+    return { commandId: command.id, status: 'QUEUED' };
   }
 
   /**
@@ -782,35 +785,6 @@ export class AgentsService {
       throw new NotFoundError('Agent not found');
     }
 
-    // If agent has no linked asset, create one now from inventory data
-    if (!agent.assetId) {
-      const hw = inventory.hardware as Record<string, unknown> | undefined;
-      const sysId = hw?.systemIdentity as Record<string, unknown> | undefined;
-      const sw = inventory.software as Record<string, unknown> | undefined;
-      const os = sw?.operatingSystem as Record<string, unknown> | undefined;
-
-      const asset = await prisma.asset.create({
-        data: {
-          name: agent.hostname || agentId,
-          status: 'In Use',
-          os: agent.os || (os?.name as string) || undefined,
-          osVersion: agent.osVersion || (os?.version as string) || undefined,
-          manufacturer: (sysId?.manufacturer as string) || undefined,
-          model: (sysId?.model as string) || undefined,
-          serialNumber: agent.serialNumber || (sysId?.serialNumber as string) || undefined,
-          ipAddress: agent.ipAddress || undefined,
-          macAddress: agent.macAddress || undefined,
-        },
-      });
-
-      await prisma.agent.update({
-        where: { id: agent.id },
-        data: { assetId: asset.id },
-      });
-
-      agent.assetId = asset.id;
-    }
-
     // Extract hardware data from agent's nested structure
     const hw = inventory.hardware as Record<string, unknown> | undefined;
     const systemIdentity = hw?.systemIdentity as Record<string, unknown> | undefined;
@@ -819,7 +793,7 @@ export class AgentsService {
     const bios = hw?.bios as Record<string, unknown> | undefined;
     const graphicsAdapters = hw?.graphicsAdapters as Array<Record<string, unknown>> | undefined;
     const storageDrives = hw?.storageDrives as Array<Record<string, unknown>> | undefined;
-    const battery = hw?.battery as Record<string, unknown> | undefined;
+    const _battery = hw?.battery as Record<string, unknown> | undefined;
 
     // Extract software data
     const sw = inventory.software as Record<string, unknown> | undefined;
@@ -830,27 +804,9 @@ export class AgentsService {
     const networkIdentity = net?.identity as Record<string, unknown> | undefined;
     const networkAdapters = net?.adapters as Array<Record<string, unknown>> | undefined;
 
-    // Update asset with inventory data (manufacturer, model, serial from hardware)
-    const assetUpdateData: Record<string, unknown> = {
-      updatedAt: new Date(),
-    };
-
-    if (systemIdentity) {
-      if (systemIdentity.manufacturer) assetUpdateData.manufacturer = systemIdentity.manufacturer;
-      if (systemIdentity.model) assetUpdateData.model = systemIdentity.model;
-      if (systemIdentity.serialNumber) assetUpdateData.serialNumber = systemIdentity.serialNumber;
-    }
-
-    // Update OS info from software.operatingSystem if provided
-    if (operatingSystem) {
-      if (operatingSystem.name) assetUpdateData.os = operatingSystem.name;
-      if (operatingSystem.version) assetUpdateData.osVersion = operatingSystem.version;
-    }
-
     // Extract MAC address from network adapters (prefer default/first physical adapter)
     let macAddressFromNetwork: string | undefined;
     if (networkAdapters && Array.isArray(networkAdapters)) {
-      // Find default adapter first, then fall back to first physical adapter
       const defaultAdapter = networkAdapters.find(a => a.isDefault === true);
       const physicalAdapter = networkAdapters.find(a =>
         a.type === 'Ethernet' || a.type === 'WiFi'
@@ -861,283 +817,301 @@ export class AgentsService {
       }
     }
 
-    // Update asset with MAC address if found
-    if (macAddressFromNetwork) {
-      assetUpdateData.macAddress = macAddressFromNetwork;
-    }
+    // Extract software sub-data for use inside transaction
+    const softwareData = inventory.software as Record<string, unknown> | undefined;
+    const applications = softwareData ? ((softwareData.applications as Array<Record<string, unknown>>) || []) : [];
+    const services = softwareData ? ((softwareData.services as Array<Record<string, unknown>>) || []) : [];
 
-    // Update asset with hostname from network identity
-    if (networkIdentity?.hostname) {
-      assetUpdateData.name = networkIdentity.hostname as string;
-    }
+    // Security data
+    const sec = inventory.security as Record<string, unknown> | undefined;
 
-    await prisma.asset.update({
-      where: { id: agent.assetId },
-      data: assetUpdateData,
-    });
+    // Peripheral data
+    const peripherals = inventory.peripherals as Record<string, unknown> | undefined;
 
-    // Update agent with hostname and macAddress from network data
-    const agentUpdateData: Record<string, unknown> = {};
-    if (networkIdentity?.hostname) {
-      agentUpdateData.hostname = networkIdentity.hostname as string;
-      agentUpdateData.name = networkIdentity.hostname as string;
-    }
-    if (macAddressFromNetwork) {
-      agentUpdateData.macAddress = macAddressFromNetwork;
-    }
-    if (Object.keys(agentUpdateData).length > 0) {
-      await prisma.agent.update({
-        where: { id: agentId },
-        data: agentUpdateData,
-      });
-    }
+    // Wrap all DB operations in a transaction
+    await withTransaction('processInventory', async (tx) => {
+      // If agent has no linked asset, create one now from inventory data
+      if (!agent.assetId) {
+        const hwInit = inventory.hardware as Record<string, unknown> | undefined;
+        const sysId = hwInit?.systemIdentity as Record<string, unknown> | undefined;
+        const swInit = inventory.software as Record<string, unknown> | undefined;
+        const osInit = swInit?.operatingSystem as Record<string, unknown> | undefined;
 
-    // Store hardware data if provided - map from agent's nested structure
-    if (hw) {
-      // Calculate RAM in bytes from GB
-      const ramTotalGB = memory?.totalPhysicalGB as number | undefined;
-      const ramTotalBytes = ramTotalGB ? BigInt(Math.floor(ramTotalGB * 1024 * 1024 * 1024)) : undefined;
+        const asset = await tx.asset.create({
+          data: {
+            name: agent.hostname || agentId,
+            status: 'IN_USE',
+            os: agent.os || (osInit?.name as string) || undefined,
+            osVersion: agent.osVersion || (osInit?.version as string) || undefined,
+            manufacturer: (sysId?.manufacturer as string) || undefined,
+            model: (sysId?.model as string) || undefined,
+            serialNumber: agent.serialNumber || (sysId?.serialNumber as string) || undefined,
+            ipAddress: agent.ipAddress || undefined,
+            macAddress: agent.macAddress || undefined,
+          },
+        });
 
-      // Calculate disk totals from storage drives
-      // Agent sends: capacityGB, freeSpaceGB (not sizeGB, freeGB)
-      let diskTotalBytes: bigint | undefined;
-      let diskFreeBytes: bigint | undefined;
-      let diskType: string | undefined;
-      if (storageDrives && Array.isArray(storageDrives)) {
-        let totalSize = 0;
-        let totalFree = 0;
-        for (const drive of storageDrives) {
-          // Support both field naming conventions
-          const capacity = (drive.capacityGB ?? drive.sizeGB) as number | undefined;
-          const freeSpace = (drive.freeSpaceGB ?? drive.freeGB) as number | undefined;
-          if (capacity) totalSize += capacity;
-          if (freeSpace) totalFree += freeSpace;
-          if (!diskType && drive.type) diskType = drive.type as string;
-        }
-        if (totalSize > 0) diskTotalBytes = BigInt(Math.floor(totalSize * 1024 * 1024 * 1024));
-        if (totalFree > 0) diskFreeBytes = BigInt(Math.floor(totalFree * 1024 * 1024 * 1024));
+        await tx.agent.update({
+          where: { id: agent.id },
+          data: { assetId: asset.id },
+        });
+
+        agent.assetId = asset.id;
       }
 
-      // Get GPU model and memory from first graphics adapter
-      const gpuModel = graphicsAdapters?.[0]?.name as string | undefined;
-      const gpuMemoryMB = graphicsAdapters?.[0]?.memoryMB as number | undefined;
-
-      // Get BIOS info
-      const biosVendor = bios?.vendor as string | undefined;
-      const biosVersion = bios?.version as string | undefined;
-
-      // Get System SKU from system identity (fallback to assetTag if sku not available)
-      const systemSKU = (systemIdentity?.sku ?? systemIdentity?.assetTag) as string | undefined;
-
-      // Extract additional hardware summary fields for querying
-      const cpuManufacturer = processor?.manufacturer as string | undefined;
-      const cpuThreads = processor?.threadCount as number | undefined;
-      const cpuSpeedMHz = processor?.clockSpeedMHz as number | undefined;
-      const ramSlots = memory?.usedSlots as number | undefined;
-      const ramType = memory?.type as string | undefined;
-      const manufacturer = systemIdentity?.manufacturer as string | undefined;
-      const model = systemIdentity?.model as string | undefined;
-      const serialNumber = systemIdentity?.serialNumber as string | undefined;
-
-      // Build combined payload with hardware and network adapters for detailed views
-      // The assets.service.ts getAssetHardware() expects networkAdapters in rawPayload
-      const combinedPayload = {
-        ...hw,
-        // Include network adapters in the payload so getAssetHardware can access them
-        networkAdapters: networkAdapters || [],
+      // Update asset with inventory data (manufacturer, model, serial from hardware)
+      const assetUpdateData: Record<string, unknown> = {
+        updatedAt: new Date(),
       };
 
-      await prisma.assetHardware.upsert({
-        where: { assetId: agent.assetId },
-        create: {
-          assetId: agent.assetId,
-          // CPU summary fields
-          cpu: processor?.name as string | undefined,
-          cpuCores: processor?.coreCount as number | undefined,
-          cpuManufacturer,
-          cpuThreads,
-          cpuSpeedMHz,
-          // RAM summary fields
-          ramTotal: ramTotalBytes,
-          ramSlots,
-          ramType,
-          // Disk summary fields
-          diskTotal: diskTotalBytes,
-          diskFree: diskFreeBytes,
-          diskType,
-          // GPU summary fields
-          gpuModel,
-          gpuMemoryMB,
-          // BIOS summary fields
-          biosVendor,
-          biosVersion,
-          // System summary fields
-          systemSKU,
-          manufacturer,
-          model,
-          serialNumber,
-          // Full payload for detailed views (includes network adapters)
-          rawPayload: combinedPayload as Prisma.InputJsonValue,
-          collectedAt: new Date(),
-        },
-        update: {
-          // CPU summary fields
-          cpu: processor?.name as string | undefined,
-          cpuCores: processor?.coreCount as number | undefined,
-          cpuManufacturer,
-          cpuThreads,
-          cpuSpeedMHz,
-          // RAM summary fields
-          ramTotal: ramTotalBytes,
-          ramSlots,
-          ramType,
-          // Disk summary fields
-          diskTotal: diskTotalBytes,
-          diskFree: diskFreeBytes,
-          diskType,
-          // GPU summary fields
-          gpuModel,
-          gpuMemoryMB,
-          // BIOS summary fields
-          biosVendor,
-          biosVersion,
-          // System summary fields
-          systemSKU,
-          manufacturer,
-          model,
-          serialNumber,
-          // Full payload for detailed views (includes network adapters)
-          rawPayload: combinedPayload as Prisma.InputJsonValue,
-          collectedAt: new Date(),
-        },
+      if (systemIdentity) {
+        if (systemIdentity.manufacturer) assetUpdateData.manufacturer = systemIdentity.manufacturer;
+        if (systemIdentity.model) assetUpdateData.model = systemIdentity.model;
+        if (systemIdentity.serialNumber) assetUpdateData.serialNumber = systemIdentity.serialNumber;
+      }
+
+      if (operatingSystem) {
+        if (operatingSystem.name) assetUpdateData.os = operatingSystem.name;
+        if (operatingSystem.version) assetUpdateData.osVersion = operatingSystem.version;
+      }
+
+      if (macAddressFromNetwork) {
+        assetUpdateData.macAddress = macAddressFromNetwork;
+      }
+
+      if (networkIdentity?.hostname) {
+        assetUpdateData.name = networkIdentity.hostname as string;
+      }
+
+      await tx.asset.update({
+        where: { id: agent.assetId },
+        data: assetUpdateData,
       });
 
-    }
+      // Update agent with hostname and macAddress from network data
+      const agentUpdateData: Record<string, unknown> = {};
+      if (networkIdentity?.hostname) {
+        agentUpdateData.hostname = networkIdentity.hostname as string;
+        agentUpdateData.name = networkIdentity.hostname as string;
+      }
+      if (macAddressFromNetwork) {
+        agentUpdateData.macAddress = macAddressFromNetwork;
+      }
+      if (Object.keys(agentUpdateData).length > 0) {
+        await tx.agent.update({
+          where: { id: agentId },
+          data: agentUpdateData,
+        });
+      }
 
-    // Store security data if provided
-    if (inventory.security) {
-      const sec = inventory.security as Record<string, unknown>;
-      await prisma.assetSecurity.upsert({
-        where: { assetId: agent.assetId },
-        create: {
-          assetId: agent.assetId,
-          antivirusInstalled: sec.antivirusInstalled as boolean | undefined,
-          antivirusName: sec.antivirusName as string | undefined,
-          firewallEnabled: sec.firewallEnabled as boolean | undefined,
-          encryptionEnabled: sec.encryptionEnabled as boolean | undefined,
-        },
-        update: {
-          antivirusInstalled: sec.antivirusInstalled as boolean | undefined,
-          antivirusName: sec.antivirusName as string | undefined,
-          firewallEnabled: sec.firewallEnabled as boolean | undefined,
-          encryptionEnabled: sec.encryptionEnabled as boolean | undefined,
-        },
-      });
+      // Store hardware data if provided
+      if (hw) {
+        const ramTotalGB = memory?.totalPhysicalGB as number | undefined;
+        const ramTotalBytes = ramTotalGB ? BigInt(Math.floor(ramTotalGB * 1024 * 1024 * 1024)) : undefined;
 
-      // Fire-and-forget security alert evaluation
+        let diskTotalBytes: bigint | undefined;
+        let diskFreeBytes: bigint | undefined;
+        let diskType: string | undefined;
+        if (storageDrives && Array.isArray(storageDrives)) {
+          let totalSize = 0;
+          let totalFree = 0;
+          for (const drive of storageDrives) {
+            const capacity = (drive.capacityGB ?? drive.sizeGB) as number | undefined;
+            const freeSpace = (drive.freeSpaceGB ?? drive.freeGB) as number | undefined;
+            if (capacity) totalSize += capacity;
+            if (freeSpace) totalFree += freeSpace;
+            if (!diskType && drive.type) diskType = drive.type as string;
+          }
+          if (totalSize > 0) diskTotalBytes = BigInt(Math.floor(totalSize * 1024 * 1024 * 1024));
+          if (totalFree > 0) diskFreeBytes = BigInt(Math.floor(totalFree * 1024 * 1024 * 1024));
+        }
+
+        const gpuModel = graphicsAdapters?.[0]?.name as string | undefined;
+        const gpuMemoryMB = graphicsAdapters?.[0]?.memoryMB as number | undefined;
+        const biosVendor = bios?.vendor as string | undefined;
+        const biosVersion = bios?.version as string | undefined;
+        const systemSKU = (systemIdentity?.sku ?? systemIdentity?.assetTag) as string | undefined;
+        const cpuManufacturer = processor?.manufacturer as string | undefined;
+        const cpuThreads = processor?.threadCount as number | undefined;
+        const cpuSpeedMHz = processor?.clockSpeedMHz as number | undefined;
+        const ramSlots = memory?.usedSlots as number | undefined;
+        const ramType = memory?.type as string | undefined;
+        const manufacturer = systemIdentity?.manufacturer as string | undefined;
+        const model = systemIdentity?.model as string | undefined;
+        const serialNumber = systemIdentity?.serialNumber as string | undefined;
+
+        const combinedPayload = {
+          ...hw,
+          networkAdapters: networkAdapters || [],
+        };
+
+        await tx.assetHardware.upsert({
+          where: { assetId: agent.assetId },
+          create: {
+            assetId: agent.assetId,
+            cpu: processor?.name as string | undefined,
+            cpuCores: processor?.coreCount as number | undefined,
+            cpuManufacturer,
+            cpuThreads,
+            cpuSpeedMHz,
+            ramTotal: ramTotalBytes,
+            ramSlots,
+            ramType,
+            diskTotal: diskTotalBytes,
+            diskFree: diskFreeBytes,
+            diskType,
+            gpuModel,
+            gpuMemoryMB,
+            biosVendor,
+            biosVersion,
+            systemSKU,
+            manufacturer,
+            model,
+            serialNumber,
+            rawPayload: combinedPayload as Prisma.InputJsonValue,
+            collectedAt: new Date(),
+          },
+          update: {
+            cpu: processor?.name as string | undefined,
+            cpuCores: processor?.coreCount as number | undefined,
+            cpuManufacturer,
+            cpuThreads,
+            cpuSpeedMHz,
+            ramTotal: ramTotalBytes,
+            ramSlots,
+            ramType,
+            diskTotal: diskTotalBytes,
+            diskFree: diskFreeBytes,
+            diskType,
+            gpuModel,
+            gpuMemoryMB,
+            biosVendor,
+            biosVersion,
+            systemSKU,
+            manufacturer,
+            model,
+            serialNumber,
+            rawPayload: combinedPayload as Prisma.InputJsonValue,
+            collectedAt: new Date(),
+          },
+        });
+      }
+
+      // Store security data if provided
+      if (sec) {
+        await tx.assetSecurity.upsert({
+          where: { assetId: agent.assetId },
+          create: {
+            assetId: agent.assetId,
+            antivirusInstalled: sec.antivirusInstalled as boolean | undefined,
+            antivirusName: sec.antivirusName as string | undefined,
+            firewallEnabled: sec.firewallEnabled as boolean | undefined,
+            encryptionEnabled: sec.encryptionEnabled as boolean | undefined,
+          },
+          update: {
+            antivirusInstalled: sec.antivirusInstalled as boolean | undefined,
+            antivirusName: sec.antivirusName as string | undefined,
+            firewallEnabled: sec.firewallEnabled as boolean | undefined,
+            encryptionEnabled: sec.encryptionEnabled as boolean | undefined,
+          },
+        });
+      }
+
+      // Store software data if provided
+      if (inventory.software) {
+        await tx.assetSoftware.deleteMany({
+          where: { assetId: agent.assetId },
+        });
+
+        if (applications.length > 0) {
+          await tx.assetSoftware.createMany({
+            data: applications.map((app) => ({
+              assetId: agent.assetId!,
+              name: (app.name as string) || 'Unknown',
+              version: app.version as string | undefined,
+              vendor: app.vendor as string | undefined,
+              installPath: app.path as string | undefined,
+              isSystem: app.installSource === 'Pre-installed',
+              category: app.category as string | undefined,
+            })),
+          });
+        }
+
+        await tx.assetSoftwareInventory.upsert({
+          where: { assetId: agent.assetId },
+          create: {
+            assetId: agent.assetId,
+            osName: operatingSystem?.name as string | undefined,
+            osVersion: operatingSystem?.version as string | undefined,
+            osBuild: operatingSystem?.build as string | undefined,
+            totalApps: applications.length,
+            totalServices: services.length,
+            rawPayload: softwareData as Prisma.InputJsonValue,
+            collectedAt: new Date(),
+          },
+          update: {
+            osName: operatingSystem?.name as string | undefined,
+            osVersion: operatingSystem?.version as string | undefined,
+            osBuild: operatingSystem?.build as string | undefined,
+            totalApps: applications.length,
+            totalServices: services.length,
+            rawPayload: softwareData as Prisma.InputJsonValue,
+            collectedAt: new Date(),
+          },
+        });
+      }
+
+      // Store peripheral data if provided
+      if (peripherals) {
+        const monitors = (peripherals.monitors as Array<unknown>) || [];
+        const usbDevices = (peripherals.usbDevices as Array<unknown>) || [];
+        const printers = (peripherals.printers as Array<unknown>) || [];
+        const audioDevices = (peripherals.audioDevices as Array<unknown>) || [];
+        const bluetoothDevices = (peripherals.bluetoothDevices as Array<unknown>) || [];
+
+        await tx.assetPeripherals.upsert({
+          where: { assetId: agent.assetId },
+          create: {
+            assetId: agent.assetId,
+            monitorCount: monitors.length,
+            usbDeviceCount: usbDevices.length,
+            printerCount: printers.length,
+            audioDeviceCount: audioDevices.length,
+            bluetoothDeviceCount: bluetoothDevices.length,
+            rawPayload: peripherals as Prisma.InputJsonValue,
+            collectedAt: new Date(),
+          },
+          update: {
+            monitorCount: monitors.length,
+            usbDeviceCount: usbDevices.length,
+            printerCount: printers.length,
+            audioDeviceCount: audioDevices.length,
+            bluetoothDeviceCount: bluetoothDevices.length,
+            rawPayload: peripherals as Prisma.InputJsonValue,
+            collectedAt: new Date(),
+          },
+        });
+      }
+    }, { timeout: 30000 });
+
+    // Fire-and-forget operations OUTSIDE the transaction
+    if (sec && agent.assetId) {
       evaluateSecurityAlertsForAsset(agent.assetId, {
         firewallEnabled: sec.firewallEnabled as boolean | undefined,
         antivirusInstalled: sec.antivirusInstalled as boolean | undefined,
       }).catch(() => {});
     }
 
-    // Store software data if provided
-    if (inventory.software) {
-      // First, delete existing software entries for this asset
-      await prisma.assetSoftware.deleteMany({
-        where: { assetId: agent.assetId },
-      });
-
-      // Extract applications from software object
-      const softwareData = inventory.software as Record<string, unknown>;
-      const applications = (softwareData.applications as Array<Record<string, unknown>>) || [];
-      const services = (softwareData.services as Array<Record<string, unknown>>) || [];
-
-      // Insert new software entries
-      if (applications.length > 0) {
-        await prisma.assetSoftware.createMany({
-          data: applications.map((app) => ({
-            assetId: agent.assetId!,
-            name: (app.name as string) || 'Unknown',
-            version: app.version as string | undefined,
-            vendor: app.vendor as string | undefined,
-            installPath: app.path as string | undefined,
-            isSystem: app.installSource === 'Pre-installed',
-            category: app.category as string | undefined,
-          })),
-        });
-      }
-
-      // Store full software inventory in AssetSoftwareInventory
-      await prisma.assetSoftwareInventory.upsert({
-        where: { assetId: agent.assetId },
-        create: {
-          assetId: agent.assetId,
-          osName: operatingSystem?.name as string | undefined,
-          osVersion: operatingSystem?.version as string | undefined,
-          osBuild: operatingSystem?.build as string | undefined,
-          totalApps: applications.length,
-          totalServices: services.length,
-          rawPayload: softwareData as Prisma.InputJsonValue,
-          collectedAt: new Date(),
-        },
-        update: {
-          osName: operatingSystem?.name as string | undefined,
-          osVersion: operatingSystem?.version as string | undefined,
-          osBuild: operatingSystem?.build as string | undefined,
-          totalApps: applications.length,
-          totalServices: services.length,
-          rawPayload: softwareData as Prisma.InputJsonValue,
-          collectedAt: new Date(),
-        },
-      });
-
-      // Trigger vulnerability check for this asset (non-blocking)
-      // This matches installed software against known CVEs
+    if (inventory.software && agent.assetId) {
       cveDatabase.checkAssetVulnerabilities(agent.assetId).catch((err) => {
-        console.error(`[Vulnerability Check] Failed for asset ${agent.assetId}:`, err);
+        logger.error({ err, assetId: agent.assetId }, 'Vulnerability check failed');
       });
 
-      // Trigger patch applicability check (non-blocking)
-      // Identifies which patches apply to this asset based on installed software
       import('@modules/patches/patches.service').then(({ checkPatchApplicabilityForAsset }) => {
         checkPatchApplicabilityForAsset(agent.assetId!).catch((err) => {
-          console.error(`[Patch Applicability] Failed for asset ${agent.assetId}:`, err);
+          logger.error({ err, assetId: agent.assetId }, 'Patch applicability check failed');
         });
       }).catch(() => {});
-    }
-
-    // Store peripheral data if provided
-    if (inventory.peripherals) {
-      const peripherals = inventory.peripherals as Record<string, unknown>;
-      const monitors = (peripherals.monitors as Array<unknown>) || [];
-      const usbDevices = (peripherals.usbDevices as Array<unknown>) || [];
-      const printers = (peripherals.printers as Array<unknown>) || [];
-      const audioDevices = (peripherals.audioDevices as Array<unknown>) || [];
-      const bluetoothDevices = (peripherals.bluetoothDevices as Array<unknown>) || [];
-
-      await prisma.assetPeripherals.upsert({
-        where: { assetId: agent.assetId },
-        create: {
-          assetId: agent.assetId,
-          monitorCount: monitors.length,
-          usbDeviceCount: usbDevices.length,
-          printerCount: printers.length,
-          audioDeviceCount: audioDevices.length,
-          bluetoothDeviceCount: bluetoothDevices.length,
-          rawPayload: peripherals as Prisma.InputJsonValue,
-          collectedAt: new Date(),
-        },
-        update: {
-          monitorCount: monitors.length,
-          usbDeviceCount: usbDevices.length,
-          printerCount: printers.length,
-          audioDeviceCount: audioDevices.length,
-          bluetoothDeviceCount: bluetoothDevices.length,
-          rawPayload: peripherals as Prisma.InputJsonValue,
-          collectedAt: new Date(),
-        },
-      });
     }
   }
 
@@ -1223,7 +1197,7 @@ export class AgentsService {
         agentId,
         type,
         payload: (payload || {}) as Prisma.InputJsonValue,
-        status: 'pending',
+        status: 'PENDING',
         scheduledAt: scheduledAt || new Date(),
       },
     });
@@ -1263,14 +1237,14 @@ export class AgentsService {
     }
 
     // Create commands in a transaction
-    await prisma.$transaction(async (tx) => {
+    await withTransaction('createBatchCommands', async (tx) => {
       for (const cmd of commands) {
         const command = await tx.agentCommand.create({
           data: {
             agentId: cmd.agentId,
             type: cmd.type,
             payload: (cmd.payload || {}) as Prisma.InputJsonValue,
-            status: 'pending',
+            status: 'PENDING',
             scheduledAt: new Date(),
           },
         });

@@ -1,21 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import {
+  ReloadOutlined,
+  DownloadOutlined,
+  FileTextOutlined,
+} from '@ant-design/icons';
 import {
   App,
-  Table,
-  Input,
   Button,
   Typography,
   Space,
   Tooltip,
 } from 'antd';
-import {
-  SearchOutlined,
-  ReloadOutlined,
-  DownloadOutlined,
-  FileTextOutlined,
-} from '@ant-design/icons';
-import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
-import { agentService } from '../../services/agent.service';
+import type { ColumnsType } from 'antd/es/table';
+import { DataTable } from '../../components/shared/DataTable';
+import { useAgentVersions } from '../../hooks/useAgents';
 import type { AgentVersion } from '../../types/agent.types';
 
 const { Title } = Typography;
@@ -43,40 +41,18 @@ const PlatformIcon = ({ platform }: PlatformIconProps) => {
 
 export const AgentVersions = () => {
   const { message } = App.useApp();
-  const [versions, setVersions] = useState<AgentVersion[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { data: rawVersions, isLoading: loading, refetch } = useAgentVersions();
   const [searchText, setSearchText] = useState('');
-  const [pagination, setPagination] = useState<TablePaginationConfig>({
-    pageSize: 50,
-    current: 1,
-  });
 
-  useEffect(() => {
-    fetchAgentVersions();
-  }, []);
-
-  const fetchAgentVersions = async () => {
-    setLoading(true);
-    try {
-      const data = await agentService.getAgentVersions();
-      const formattedData = Array.isArray(data)
-        ? data.map((version: AgentVersion) => ({
-            ...version,
-            id: version.id || `${version.platform}-${version.architecture}`,
-          }))
-        : [];
-      setVersions(formattedData);
-    } catch (error) {
-      console.error('Error fetching agent versions:', error);
-      message.error('Failed to fetch agent versions');
-      setVersions([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const versions = Array.isArray(rawVersions)
+    ? rawVersions.map((version: AgentVersion) => ({
+        ...version,
+        id: version.id || `${version.platform}-${version.architecture}`,
+      }))
+    : [];
 
   const handleRefresh = () => {
-    fetchAgentVersions();
+    refetch();
   };
 
   const handleExport = () => {
@@ -154,8 +130,7 @@ export const AgentVersions = () => {
         const errorData = await response.json().catch(() => ({}));
         message.error({ content: errorData.message || 'Failed to download agent version', key: 'download' });
       }
-    } catch (error) {
-      console.error('Error downloading agent version:', error);
+    } catch {
       message.error({ content: 'Failed to download agent version', key: 'download' });
     }
   };
@@ -210,7 +185,7 @@ export const AgentVersions = () => {
       title: 'Actions',
       key: 'actions',
       width: 100,
-      render: (_text: any, record: AgentVersion) => (
+      render: (_text: unknown, record: AgentVersion) => (
         <Tooltip title="Download">
           <Button
             type="text"
@@ -228,43 +203,26 @@ export const AgentVersions = () => {
         <Title level={2}>Agent Versions</Title>
       </div>
 
-      {/* Search and Actions Bar */}
-      <div
-        style={{
-          marginBottom: '20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '12px',
-        }}
-      >
-        <Input
-          placeholder="Search"
-          prefix={<SearchOutlined />}
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          style={{ width: '250px' }}
-        />
-
-        <Space>
-          <Button onClick={handleRefresh} icon={<ReloadOutlined />}>
-            Refresh
-          </Button>
-          <Button onClick={handleExport} icon={<FileTextOutlined />}>
-            Export
-          </Button>
-        </Space>
-      </div>
-
-      {/* Table */}
-      <Table
+      <DataTable
         columns={columns}
-        dataSource={filteredVersions}
+        data={filteredVersions}
         loading={loading}
-        pagination={pagination}
-        onChange={(newPagination) => setPagination(newPagination)}
         rowKey="id"
         size="small"
+        searchable
+        searchPlaceholder="Search"
+        searchValue={searchText}
+        onSearch={setSearchText}
+        toolbar={
+          <Space>
+            <Button onClick={handleRefresh} icon={<ReloadOutlined />}>
+              Refresh
+            </Button>
+            <Button onClick={handleExport} icon={<FileTextOutlined />}>
+              Export
+            </Button>
+          </Space>
+        }
         style={{ backgroundColor: 'white', borderRadius: '4px' }}
       />
     </div>

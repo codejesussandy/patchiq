@@ -5,9 +5,9 @@ const uuidSchema = z.string().uuid();
 const hexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional();
 
 // Asset Status enum
-export const assetStatusSchema = z.enum(['In Use', 'Available', 'Under Maintenance', 'Retired']);
-export const operationalStatusSchema = z.enum(['Connected', 'Disconnected']);
-export const osTypeSchema = z.enum(['Windows', 'MacOS', 'Linux']);
+export const assetStatusSchema = z.enum(['IN_USE', 'AVAILABLE', 'UNDER_MAINTENANCE', 'RETIRED']);
+export const operationalStatusSchema = z.enum(['CONNECTED', 'DISCONNECTED']);
+export const osTypeSchema = z.enum(['WINDOWS', 'MACOS', 'LINUX']);
 
 // Category Validators
 export const categoryCreateSchema = z.object({
@@ -32,14 +32,14 @@ export const categoryIdParamSchema = z.object({
 export const subCategoryCreateSchema = z.object({
   categoryId: uuidSchema,
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  criticality: z.enum(['Critical', 'High', 'Medium', 'Low']).optional(),
+  criticality: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']).optional(),
   description: z.string().max(500).optional(),
 });
 
 export const subCategoryUpdateSchema = z.object({
   categoryId: uuidSchema.optional(),
   name: z.string().min(2).max(100).optional(),
-  criticality: z.enum(['Critical', 'High', 'Medium', 'Low']).optional().nullable(),
+  criticality: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']).optional().nullable(),
   description: z.string().max(500).optional().nullable(),
 });
 
@@ -99,7 +99,7 @@ export const assetCreateSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   categoryId: uuidSchema.optional(),
   subCategoryId: uuidSchema.optional(),
-  status: assetStatusSchema.optional().default('Available'),
+  status: assetStatusSchema.optional().default('AVAILABLE'),
   ipAddress: z.string().ip().optional().or(z.literal('')),
   macAddress: z.string().max(17).optional(),
   serialNumber: z.string().max(100).optional(),
@@ -190,7 +190,7 @@ export const softwareLicenseCreateSchema = z.object({
   licenseCount: z.number().int().min(1, 'License count must be at least 1'),
   vendorName: z.string().min(1, 'Vendor name is required').max(255),
   cost: z.number().min(0).optional(),
-  status: z.enum(['Allocated', 'Available', 'Expired']),
+  status: z.enum(['ALLOCATED', 'AVAILABLE', 'EXPIRED']),
   notes: z.string().max(1000).optional(),
 });
 
@@ -204,7 +204,7 @@ export const softwareLicenseUpdateSchema = z.object({
   licenseCount: z.number().int().min(1).optional(),
   vendorName: z.string().min(1).max(255).optional(),
   cost: z.number().min(0).optional().nullable(),
-  status: z.enum(['Allocated', 'Available', 'Expired']).optional(),
+  status: z.enum(['ALLOCATED', 'AVAILABLE', 'EXPIRED']).optional(),
   notes: z.string().max(1000).optional().nullable(),
 });
 
@@ -216,7 +216,7 @@ export const softwareLicenseIdParamSchema = z.object({
 export const osLicenseCreateSchema = z.object({
   licenseName: z.string().min(1, 'License name is required').max(255),
   osType: z.string().min(1, 'OS type is required').max(100),
-  status: z.enum(['Allocated', 'Available', 'Expired']),
+  status: z.enum(['ALLOCATED', 'AVAILABLE', 'EXPIRED']),
   licenseCount: z.number().int().min(1, 'License count must be at least 1'),
   vendorName: z.string().min(1, 'Vendor name is required').max(255),
   licenseKey: z.string().max(255).optional(),
@@ -230,7 +230,7 @@ export const osLicenseCreateSchema = z.object({
 export const osLicenseUpdateSchema = z.object({
   licenseName: z.string().min(1).max(255).optional(),
   osType: z.string().min(1).max(100).optional(),
-  status: z.enum(['Allocated', 'Available', 'Expired']).optional(),
+  status: z.enum(['ALLOCATED', 'AVAILABLE', 'EXPIRED']).optional(),
   licenseCount: z.number().int().min(1).optional(),
   vendorName: z.string().min(1).max(255).optional(),
   licenseKey: z.string().max(255).optional().nullable(),
@@ -243,6 +243,16 @@ export const osLicenseUpdateSchema = z.object({
 
 export const osLicenseIdParamSchema = z.object({
   id: uuidSchema,
+});
+
+// SubCategory List Query
+export const subCategoryListQuerySchema = z.object({
+  categoryId: z.string().uuid().optional(),
+});
+
+// Lifecycle Query
+export const lifecycleQuerySchema = z.object({
+  method: z.string().optional(),
 });
 
 // Telemetry History Query
@@ -268,3 +278,5 @@ export type SoftwareLicenseCreateInput = z.infer<typeof softwareLicenseCreateSch
 export type SoftwareLicenseUpdateInput = z.infer<typeof softwareLicenseUpdateSchema>;
 export type OSLicenseCreateInput = z.infer<typeof osLicenseCreateSchema>;
 export type OSLicenseUpdateInput = z.infer<typeof osLicenseUpdateSchema>;
+export type SubCategoryListQueryInput = z.infer<typeof subCategoryListQuerySchema>;
+export type LifecycleQueryInput = z.infer<typeof lifecycleQuerySchema>;

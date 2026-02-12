@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { emailSchema, passwordSchema, phoneSchema } from '@shared/validators/common';
+import { passwordSchema, phoneSchema } from '@shared/validators/common';
 
 // Re-export commonly used schemas
 export {

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import {
+  SearchOutlined,
+  UploadOutlined } from '@ant-design/icons';
 import {
   App,
-  Table,
   Input,
   Button,
   Typography,
@@ -10,14 +11,11 @@ import {
   Modal,
   Form,
   Row,
-  Col,
-} from 'antd';
-import {
-  SearchOutlined,
-  UploadOutlined,
-} from '@ant-design/icons';
+  Col } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { assetService } from '../../services/asset.service';
+import { useSearchParams } from 'react-router-dom';
+import { DataTable } from '../../components/shared/DataTable';
+import { useSoftwareInventory } from '../../hooks/useAssets';
 import type { SoftwareInventory as SoftwareInventoryType } from '../../types/asset.types';
 
 const { Title } = Typography;
@@ -26,8 +24,11 @@ const { Option } = Select;
 export const SoftwareInventory = () => {
   const { message } = App.useApp();
   const [searchParams] = useSearchParams();
-  const [software, setSoftware] = useState<SoftwareInventoryType[]>([]);
-  const [loading, setLoading] = useState(false);
+
+  // React Query hooks
+  const { data: softwareData, isLoading: loading } = useSoftwareInventory();
+  const software: SoftwareInventoryType[] = softwareData || [];
+
   const [searchText, setSearchText] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [osFilter, setOsFilter] = useState<string>('all-os');
@@ -35,22 +36,6 @@ export const SoftwareInventory = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedSoftware, setSelectedSoftware] = useState<SoftwareInventoryType | null>(null);
   const [detailForm] = Form.useForm();
-
-  useEffect(() => {
-    fetchSoftware();
-  }, []);
-
-  const fetchSoftware = async () => {
-    setLoading(true);
-    try {
-      const data = await assetService.getSoftwareInventory();
-      setSoftware(data);
-    } catch (error) {
-      message.error('Failed to fetch software inventory');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleImportCSV = () => {
     const input = document.createElement('input');
@@ -61,13 +46,9 @@ export const SoftwareInventory = () => {
       const file = target.files?.[0];
       if (file) {
         try {
-          setLoading(true);
           message.success(`${file.name} uploaded successfully`);
-          await fetchSoftware();
-        } catch (error) {
+        } catch {
           message.error('Failed to import CSV');
-        } finally {
-          setLoading(false);
         }
       }
     };
@@ -85,38 +66,32 @@ export const SoftwareInventory = () => {
       title: 'Software Name',
       dataIndex: 'softwareName',
       key: 'softwareName',
-      sorter: (a, b) => a.softwareName.localeCompare(b.softwareName),
-    },
+      sorter: (a, b) => a.softwareName.localeCompare(b.softwareName) },
     {
       title: 'Version',
       dataIndex: 'version',
-      key: 'version',
-    },
+      key: 'version' },
     {
       title: 'Software Type',
       dataIndex: 'softwareType',
-      key: 'softwareType',
-    },
+      key: 'softwareType' },
     {
       title: 'Manufacturer',
       dataIndex: 'manufacturer',
       key: 'manufacturer',
-      sorter: (a, b) => a.manufacturer.localeCompare(b.manufacturer),
-    },
+      sorter: (a, b) => a.manufacturer.localeCompare(b.manufacturer) },
     {
       title: 'Total Instances',
       dataIndex: 'totalInstances',
       key: 'totalInstances',
-      sorter: (a, b) => a.totalInstances - b.totalInstances,
-    },
+      sorter: (a, b) => a.totalInstances - b.totalInstances },
   ];
 
   const rowSelection = {
     selectedRowKeys,
     onChange: (selectedKeys: React.Key[]) => {
       setSelectedRowKeys(selectedKeys);
-    },
-  };
+    } };
 
   const categoryId = searchParams.get('category');
   const subCategoryId = searchParams.get('subcategory');
@@ -138,8 +113,7 @@ export const SoftwareInventory = () => {
           marginBottom: '24px',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
+          alignItems: 'center' }}
       >
         <Title level={3} style={{ margin: 0 }}>
           Software Inventory
@@ -153,8 +127,7 @@ export const SoftwareInventory = () => {
         style={{
           marginBottom: '16px',
           display: 'flex',
-          gap: '16px',
-        }}
+          gap: '16px' }}
       >
         <Input
           placeholder="Search"
@@ -176,21 +149,19 @@ export const SoftwareInventory = () => {
         </Select>
       </div>
 
-      <Table
+      <DataTable
         rowSelection={rowSelection}
         columns={columns}
-        dataSource={filteredSoftware}
+        data={filteredSoftware}
         rowKey="id"
         loading={loading}
         pagination={{
           pageSize: 10,
           showSizeChanger: true,
-          showTotal: (total) => `Total ${total} found`,
-        }}
+          showTotal: (total) => `Total ${total} found` }}
         onRow={(record) => ({
           onClick: () => handleRowClick(record),
-          style: { cursor: 'pointer' },
-        })}
+          style: { cursor: 'pointer' } })}
       />
 
       {/* Software Details Modal */}

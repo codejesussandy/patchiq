@@ -3,8 +3,8 @@
  * API client for software deployments
  */
 
-import { api } from './api.service';
 import type { SoftwarePackage, HubBundle } from '../types/hub.types';
+import { api } from './api.service';
 
 // Deployment types
 export interface SoftwareDeployment {
@@ -12,8 +12,8 @@ export interface SoftwareDeployment {
   deploymentId: string;
   name: string;
   description: string | null;
-  type: 'install' | 'uninstall' | 'upgrade';
-  stage: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  type: 'INSTALL' | 'UNINSTALL' | 'UPGRADE';
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
   pending: number;
   succeeded: number;
   failed: number;
@@ -30,7 +30,7 @@ export interface SoftwareDeploymentTask {
   agentName?: string;
   agentOs?: string;
   packageName: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
   executionOutput?: string;
   errorMessage?: string;
   startedAt?: string;
@@ -46,7 +46,7 @@ export interface SoftwareDeploymentWithTasks extends SoftwareDeployment {
 export interface CreateSoftwareDeploymentInput {
   name: string;
   description?: string;
-  type: 'install' | 'uninstall' | 'upgrade';
+  type: 'INSTALL' | 'UNINSTALL' | 'UPGRADE';
   targetAgentIds: string[];
   package: {
     packageId?: string;  // For Hub package detection (script bundles)
@@ -120,16 +120,16 @@ export const softwareJobsService = {
     // Handle both wrapped (data.data) and unwrapped (data) response formats
     const agents = response.data.data || response.data || [];
     // Normalize agent data to consistent format
-    return agents.map((agent: any) => ({
-      id: agent.id,
-      agentId: agent.machineId || agent.agentId || agent.id,
-      hostname: agent.hostname || agent.name || 'Unknown',
-      // Normalize OS: Linux, darwin/MacOS -> darwin, windows/Windows -> windows
-      osType: agent.os?.toLowerCase() === 'macos' || agent.os?.toLowerCase() === 'darwin'
-        ? 'darwin'
-        : agent.os?.toLowerCase() || 'linux',
-      status: agent.status?.toLowerCase() === 'connected' ? 'online' : agent.status?.toLowerCase() || 'offline',
-    }));
+    return agents.map((agent: Record<string, unknown>) => {
+      const os = typeof agent.os === 'string' ? agent.os.toLowerCase() : 'linux';
+      return {
+        id: agent.id as string,
+        agentId: (agent.machineId || agent.agentId || agent.id) as string,
+        hostname: (agent.hostname || agent.name || 'Unknown') as string,
+        osType: os === 'macos' || os === 'darwin' ? 'darwin' : os,
+        status: agent.status === 'CONNECTED' ? 'ONLINE' : 'OFFLINE',
+      };
+    });
   },
 
   // ============================================

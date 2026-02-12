@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate, requireUser } from '@middleware/auth';
 import { validateQuery, validateParams, validateBody } from '@middleware/validation';
+import * as controller from './vulnerabilities.controller';
 import {
   listVulnerabilitiesQuerySchema,
   listZeroDayQuerySchema,
@@ -11,8 +12,10 @@ import {
   updateExceptionBodySchema,
   exceptionParamsSchema,
   scanVulnerabilitiesBodySchema,
+  statsQuerySchema,
+  unmatchedSoftwareQuerySchema,
+  cveSuggestQuerySchema,
 } from './vulnerabilities.validators';
-import * as controller from './vulnerabilities.controller';
 
 const router = Router();
 
@@ -25,7 +28,7 @@ router.use(requireUser);
 // ============================================
 
 // GET /v1/vulnerabilities/stats - Get vulnerability statistics
-router.get('/stats', controller.getStats);
+router.get('/stats', validateQuery(statsQuerySchema), controller.getStats);
 
 // GET /v1/vulnerabilities/types - Get vulnerability type counts
 router.get('/types', controller.getTypes);
@@ -41,7 +44,7 @@ router.get('/network', controller.getNetworkVulnerabilities);
 // ============================================
 
 // GET /v1/vulnerabilities/cve-suggest - Suggest CVEs for a software name
-router.get('/cve-suggest', controller.suggestCvesForSoftware);
+router.get('/cve-suggest', validateQuery(cveSuggestQuerySchema), controller.suggestCvesForSoftware);
 
 // ============================================
 // CPE Correlation & Unmatched Software
@@ -51,7 +54,7 @@ router.get('/cve-suggest', controller.suggestCvesForSoftware);
 router.get('/cpe-stats', controller.getCpeStats);
 
 // GET /v1/vulnerabilities/unmatched-software - List software that couldn't be mapped to CPE
-router.get('/unmatched-software', controller.listUnmatchedSoftware);
+router.get('/unmatched-software', validateQuery(unmatchedSoftwareQuerySchema), controller.listUnmatchedSoftware);
 
 // PUT /v1/vulnerabilities/unmatched-software/:id/resolve - Mark as resolved
 router.put('/unmatched-software/:id/resolve', controller.resolveUnmatchedSoftware);

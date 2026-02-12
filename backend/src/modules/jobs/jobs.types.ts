@@ -1,5 +1,14 @@
+// Re-export shared API types
+export type {
+  JobListQuery,
+  SoftwareCatalogQuery,
+  ConfigCatalogQuery,
+  DeploymentQuery,
+  DeploymentTaskResponse,
+} from '@shared/types';
+
 // ============================================
-// Patch Jobs Types
+// Internal model types (full DB response shapes, not in shared)
 // ============================================
 
 export interface PatchJob {
@@ -9,7 +18,7 @@ export interface PatchJob {
   description: string | null;
   type: 'SCHEDULE' | 'INSTANT';
   configType: 'INSTALL' | 'ROLLBACK';
-  scope: 'Global' | 'Group' | 'Endpoint';
+  scope: 'GLOBAL' | 'GROUP' | 'ENDPOINT';
   endpoints: string[];
   patches: string[];
   deploymentPolicy: string | null;
@@ -24,21 +33,17 @@ export interface PatchJob {
   createdOn: string;
 }
 
-// ============================================
-// Vulnerability Jobs Types
-// ============================================
-
 export interface VulnerabilityJob {
   id: string;
   jobId: string;
   name: string;
   description: string | null;
-  scope: 'Global' | 'Group' | 'Endpoint';
+  scope: 'GLOBAL' | 'GROUP' | 'ENDPOINT';
   endpoints: string[];
-  scanType: 'instant' | 'scheduled';
+  scanType: 'INSTANT' | 'SCHEDULED';
   scheduleDate: string | null;
   scheduleTime: string | null;
-  recurrence: 'once' | 'daily' | 'weekly' | 'monthly' | null;
+  recurrence: 'ONCE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | null;
   status: 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SCHEDULED';
   scheduledTime: string | null;
   lastRun: string | null;
@@ -49,46 +54,10 @@ export interface VulnerabilityJob {
 
 export interface VulnerabilityDBSync {
   scanJobInterval: number;
-  scanJobUnit: 'Hour' | 'Day' | 'Week';
+  scanJobUnit: 'HOUR' | 'DAY' | 'WEEK';
   databaseSyncTime: string;
   lastSync: string | null;
   totalCVE: number;
-}
-
-// ============================================
-// Software Jobs Types
-// ============================================
-
-export interface SoftwareCatalogItem {
-  id: string;
-  deploymentId: string;
-  applicationName: string;
-  description: string | null;
-  tags: string[];
-  os: 'Windows' | 'Mac' | 'Linux';
-  version: string;
-  applicationLocationType: 'Local Directory' | 'Network Share' | 'URL';
-  installationCommand: string | null;
-  uninstallationCommand: string | null;
-  upgradeCommand: string | null;
-  iconUrl: string | null;
-  selfService: boolean;
-  architecture: 'x64' | 'x86' | 'ARM64';
-  applicationType: 'MSI' | 'EXE' | 'APPLICATION' | 'ZIP';
-  applicationFileUrl: string | null;
-  createdBy: string | null;
-  createdOn: string;
-}
-
-export interface SoftwareBundle {
-  id: string;
-  bundleId: string;
-  bundleName: string;
-  os: 'Windows' | 'Mac' | 'Linux';
-  description: string | null;
-  applications: string[];
-  createdBy: string | null;
-  createdOn: string;
 }
 
 export interface SoftwareDeployment {
@@ -96,15 +65,15 @@ export interface SoftwareDeployment {
   deploymentId: string;
   deploymentName: string;
   description: string | null;
-  deploymentType: 'install' | 'uninstall' | 'upgrade';
-  selectionType: 'application' | 'bundle';
+  deploymentType: 'INSTALL' | 'UNINSTALL' | 'UPGRADE';
+  selectionType: 'APPLICATION' | 'BUNDLE';
   selectedItems: string[];
-  scope: 'all' | 'windows' | 'mac' | 'linux';
+  scope: 'ALL' | 'WINDOWS' | 'MAC' | 'LINUX';
   endpoints: string[];
   deploymentPolicy: string | null;
   retryCount: number;
-  notifyTo: 'admin' | 'user';
-  stage: 'COMPLETED' | 'IN_PROGRESS' | 'INSTALLED' | 'FAILED';
+  notifyTo: 'ADMIN' | 'USER';
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'INSTALLED' | 'FAILED';
   pending: number;
   succeeded: number;
   failed: number;
@@ -112,21 +81,17 @@ export interface SoftwareDeployment {
   createdOn: string;
 }
 
-// ============================================
-// Configuration Jobs Types
-// ============================================
-
 export interface ConfigCatalogItem {
   id: string;
   configurationId: string;
   name: string;
-  os: 'Windows' | 'Mac' | 'Linux';
+  os: 'WINDOWS' | 'MAC' | 'LINUX';
   description: string | null;
   tags: string[];
-  configurationType: 'command' | 'policy' | 'script';
-  architecture: 'x64' | 'x86' | 'ARM64';
+  configurationType: 'COMMAND' | 'POLICY' | 'SCRIPT';
+  architecture: 'X64' | 'X86' | 'ARM64';
   isRemediation: boolean;
-  commandType: 'powershell' | 'cmd' | 'bash' | 'sh';
+  commandType: 'POWERSHELL' | 'CMD' | 'BASH' | 'SH';
   command: string;
   createdBy: string | null;
   createdOn: string;
@@ -136,7 +101,7 @@ export interface ConfigBundle {
   id: string;
   bundleId: string;
   bundleName: string;
-  os: 'Windows' | 'Mac' | 'Linux';
+  os: 'WINDOWS' | 'MAC' | 'LINUX';
   description: string | null;
   configurations: string[];
   createdBy: string | null;
@@ -148,24 +113,20 @@ export interface ConfigDeployment {
   deploymentId: string;
   deploymentName: string;
   description: string | null;
-  selectionType: 'configuration' | 'bundle';
+  selectionType: 'CONFIGURATION' | 'BUNDLE';
   selectedItems: string[];
-  scope: 'all' | 'windows' | 'mac' | 'linux';
+  scope: 'ALL' | 'WINDOWS' | 'MAC' | 'LINUX';
   endpoints: string[];
   deploymentPolicy: string | null;
   retryCount: number;
-  notifyTo: 'admin' | 'user';
-  stage: 'COMPLETED' | 'IN_PROGRESS' | 'INSTALLED' | 'FAILED';
+  notifyTo: 'ADMIN' | 'USER';
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'INSTALLED' | 'FAILED';
   pending: number;
   succeeded: number;
   failed: number;
   createdBy: string | null;
   createdOn: string;
 }
-
-// ============================================
-// Deployment Tasks Types
-// ============================================
 
 export interface DeploymentTask {
   id: string;
@@ -182,51 +143,14 @@ export interface DeploymentTask {
   createdOn: string;
 }
 
-// ============================================
-// Deployment Policies Types
-// ============================================
-
 export interface DeploymentPolicy {
   id: string;
   policyId: string;
   name: string;
   description: string | null;
   type: 'SCHEDULE' | 'INSTANT';
-  supportedModule: 'All' | 'Patch' | 'Update' | 'Security';
-  relatedType: 'No Relation' | 'Critical' | 'Important' | 'Optional';
+  supportedModule: 'ALL' | 'PATCH' | 'UPDATE' | 'SECURITY';
+  relatedType: 'NO_RELATION' | 'CRITICAL' | 'IMPORTANT' | 'OPTIONAL';
   createdBy: string | null;
   createdOn: string;
-}
-
-// ============================================
-// Query Types
-// ============================================
-
-export interface JobListQuery {
-  page?: number;
-  limit?: number;
-  status?: string;
-  type?: string;
-  scope?: string;
-  search?: string;
-}
-
-export interface SoftwareCatalogQuery {
-  page?: number;
-  limit?: number;
-  os?: string;
-  search?: string;
-}
-
-export interface ConfigCatalogQuery {
-  page?: number;
-  limit?: number;
-  os?: string;
-  search?: string;
-}
-
-export interface DeploymentQuery {
-  page?: number;
-  limit?: number;
-  stage?: string;
 }

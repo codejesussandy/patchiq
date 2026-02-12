@@ -1,7 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
+import { createLogger } from '@shared/services/logger';
+import { sendSuccess, sendError, typedQuery } from '@shared/utils';
 import { SOFTWARE_CATALOG } from './catalog';
+import { syncSingleTemplate } from './catalog-sync.service';
+import type { GetLatestVersionQuery } from './patch-templates.validators';
 import { fetchLatestVersion } from './vendor-fetchers';
-import { syncFromCatalog, syncSingleTemplate } from './catalog-sync.service';
+
+const logger = createLogger('patch-templates');
 
 export class PatchTemplatesController {
   /**
@@ -21,28 +26,27 @@ export class PatchTemplatesController {
       description: t.description,
       referenceUrl: t.referenceUrl,
     }));
-    res.json(templates);
+    sendSuccess(res, templates);
   };
 
   /**
    * GET /v1/patch-templates/:id/latest?os=Windows&arch=x64
    * Fetch the latest version from the vendor API and return pre-filled patch fields
    */
-  getLatestVersion = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getLatestVersion = async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     try {
       const template = SOFTWARE_CATALOG.find((t) => t.id === req.params.id);
       if (!template) {
-        res.status(404).json({ error: 'Template not found' });
+        sendError(res, 404, 'NOT_FOUND', 'Template not found');
         return;
       }
 
-      const os = (req.query.os as string) || 'Windows';
-      const arch = (req.query.arch as string) || 'x64';
+      const { os, arch } = typedQuery<GetLatestVersionQuery>(req);
 
       const result = await fetchLatestVersion(template, os, arch);
 
       // Return data shaped for the patch creation form
-      res.json({
+      sendSuccess(res, {
         // Pre-filled patch fields
         software: `${template.name} ${result.latestVersion}`,
         title: `${template.name} ${result.latestVersion} Update (${os})`,
@@ -64,12 +68,10 @@ export class PatchTemplatesController {
           releaseNotes: result.releaseNotes,
         },
       });
-    } catch (error: any) {
-      console.error(`[PatchTemplate] Failed to fetch latest for ${req.params.id}:`, error.message);
-      res.status(502).json({
-        error: 'VendorFetchError',
-        message: `Failed to fetch latest version: ${error.message}`,
-      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error({ templateId: req.params.id, error: message }, 'Failed to fetch latest version');
+      sendError(res, 502, 'VENDOR_FETCH_ERROR', `Failed to fetch latest version: ${message}`);
     }
   };
 
@@ -81,7 +83,7 @@ export class PatchTemplatesController {
   syncToHub = async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     try {
       const { templateIds, os, arch, force } = req.body;
-      const userId = (req as any).user?.userId;
+      const userId = req.user?.id;
 
       res.writeHead(200, {
         'Content-Type': 'application/x-ndjson',
@@ -94,7 +96,7 @@ export class PatchTemplatesController {
         for (const id of templateIds) {
           const tmpl = SOFTWARE_CATALOG.find((t) => t.id === id);
           if (!tmpl) {
-            res.write(JSON.stringify({ templateId: id, status: 'failed', error: 'Template not found' }) + '\n');
+            res.write(JSON.stringify({ templateId: id, status: 'FAILED', error: 'Template not found' }) + '\n');
             continue;
           }
           const result = await syncSingleTemplate(tmpl, os || 'Windows', arch || 'x64', force, userId);
@@ -112,12 +114,13 @@ export class PatchTemplatesController {
       }
 
       res.end();
-    } catch (error: any) {
-      console.error('[CatalogSync] Sync failed:', error.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error({ error: message }, 'Catalog sync failed');
       if (!res.headersSent) {
-        res.status(500).json({ error: 'SyncFailed', message: error.message });
+        sendError(res, 500, 'SYNC_FAILED', message);
       } else {
-        res.write(JSON.stringify({ status: 'error', error: error.message }) + '\n');
+        res.write(JSON.stringify({ status: 'error', error: message }) + '\n');
         res.end();
       }
     }
@@ -132,18 +135,19 @@ export class PatchTemplatesController {
     try {
       const template = SOFTWARE_CATALOG.find((t) => t.id === req.params.id);
       if (!template) {
-        res.status(404).json({ error: 'Template not found' });
+        sendError(res, 404, 'NOT_FOUND', 'Template not found');
         return;
       }
 
       const { os: targetOs = 'Windows', arch = 'x64', force = false } = req.body;
-      const userId = (req as any).user?.userId;
+      const userId = req.user?.id;
 
       const result = await syncSingleTemplate(template, targetOs, arch, force, userId);
-      res.json(result);
-    } catch (error: any) {
-      console.error(`[CatalogSync] Sync failed for ${req.params.id}:`, error.message);
-      res.status(500).json({ error: 'SyncFailed', message: error.message });
+      sendSuccess(res, result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error({ templateId: req.params.id, error: message }, 'Single template sync failed');
+      sendError(res, 500, 'SYNC_FAILED', message);
     }
   };
 }

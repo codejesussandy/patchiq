@@ -39,9 +39,9 @@ export const urlSchema = z.string().url().optional();
 export const phoneSchema = z.string().regex(/^\+?[\d\s\-()]+$/).optional();
 
 // Status enums
-export const statusSchema = z.enum(['Active', 'Inactive', 'Pending', 'Suspended', 'Deleted']);
+export const statusSchema = z.enum(['ACTIVE', 'INACTIVE', 'PENDING', 'SUSPENDED', 'DELETED']);
 export const severitySchema = z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO']);
-export const osSchema = z.enum(['Windows', 'MacOS', 'Linux']);
+export const osSchema = z.enum(['WINDOWS', 'MACOS', 'LINUX']);
 
 // Create validators with pagination
 export function withPagination<T extends z.ZodRawShape>(schema: z.ZodObject<T>) {

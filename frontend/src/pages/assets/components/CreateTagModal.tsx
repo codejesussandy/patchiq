@@ -1,8 +1,8 @@
 import React from 'react';
 import { App,
   Modal, Form, Input, Select, Checkbox, Button, Space, Divider } from 'antd';
+import { useCreateTag, useUpdateTag } from '../../../hooks/useAssets';
 import type { Tag as TagType } from '../../../types/asset.types';
-import { tagService } from '../../../services/tag.service';
 
 interface CreateTagModalProps {
   visible: boolean;
@@ -27,15 +27,15 @@ const colorOptions = [
 ];
 
 const priorityOptions = [
-  { value: 'Critical', label: 'Critical' },
-  { value: 'High', label: 'High' },
-  { value: 'Medium', label: 'Medium' },
-  { value: 'Low', label: 'Low' },
+  { value: 'CRITICAL', label: 'Critical' },
+  { value: 'HIGH', label: 'High' },
+  { value: 'MEDIUM', label: 'Medium' },
+  { value: 'LOW', label: 'Low' },
 ];
 
 const statusOptions = [
-  { value: 'Active', label: 'Active' },
-  { value: 'Inactive', label: 'Inactive' },
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'INACTIVE', label: 'Inactive' },
 ];
 
 const complianceTagOptions = [
@@ -54,8 +54,11 @@ const CreateTagModal: React.FC<CreateTagModalProps> = ({
 }) => {
   const { message } = App.useApp();
   const [form] = Form.useForm();
-  const [loading, setLoading] = React.useState(false);
   const [mode, setMode] = React.useState<'quick' | 'full'>('quick');
+
+  const createTagMutation = useCreateTag();
+  const updateTagMutation = useUpdateTag();
+  const loading = createTagMutation.isPending || updateTagMutation.isPending;
 
   React.useEffect(() => {
     if (visible && tag) {
@@ -78,14 +81,13 @@ const CreateTagModal: React.FC<CreateTagModalProps> = ({
   }, [visible, tag, form]);
 
   const handleSubmit = async (values: Record<string, unknown>) => {
-    setLoading(true);
     try {
       let newTag: TagType;
       if (tag) {
-        newTag = await tagService.updateTag(tag.id, values);
+        newTag = await updateTagMutation.mutateAsync({ id: tag.id, data: values as Partial<TagType> });
         message.success('Tag updated successfully');
       } else {
-        newTag = await tagService.createTag(values);
+        newTag = await createTagMutation.mutateAsync(values as Omit<TagType, 'id' | 'assetCount' | 'createdAt'>);
         message.success('Tag created successfully');
       }
       onSuccess(newTag);
@@ -93,8 +95,6 @@ const CreateTagModal: React.FC<CreateTagModalProps> = ({
       onClose();
     } catch {
       message.error(tag ? 'Failed to update tag' : 'Failed to create tag');
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -1,14 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
+import { sendSuccess, sendError, typedQuery } from '@shared/utils';
+import { alertConfigCrudService } from './alert-config-crud.service';
 import { organizationsService } from './organizations.service';
-import { usersService } from './users.service';
 import { settingsService } from './settings.service';
 import type {
   CreateOrganizationInput,
   UpdateOrganizationInput,
+  ListOrganizationsQuery,
   CreateBranchInput,
   UpdateBranchInput,
+  ListBranchesQuery,
   CreateDepartmentInput,
   UpdateDepartmentInput,
+  ListDepartmentsQuery,
+  AuditLogQueryInput,
+  UserListQuery,
   CreateLocationInput,
   UpdateLocationInput,
   CreateUserInput,
@@ -29,6 +35,7 @@ import type {
   UpdateLicenseInput,
   UpdateVulnerabilityPreferenceInput,
 } from './settings.validators';
+import { usersService } from './users.service';
 
 export class SettingsController {
   // ============================================
@@ -37,13 +44,13 @@ export class SettingsController {
 
   async listOrganizations(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { page = 1, limit = 10, search } = req.query;
+      const query = typedQuery<ListOrganizationsQuery>(req);
       const result = await organizationsService.listOrganizations({
-        page: Number(page),
-        limit: Number(limit),
-        search: search as string | undefined,
+        page: query.page,
+        limit: query.limit,
+        search: query.search,
       });
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -52,7 +59,7 @@ export class SettingsController {
   async getOrganization(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await organizationsService.getOrganization(req.params.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -62,7 +69,7 @@ export class SettingsController {
     try {
       const input = req.body as CreateOrganizationInput;
       const result = await organizationsService.createOrganization(input);
-      res.status(201).json(result);
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -72,7 +79,7 @@ export class SettingsController {
     try {
       const input = req.body as UpdateOrganizationInput;
       const result = await organizationsService.updateOrganization(req.params.id, input);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -93,14 +100,14 @@ export class SettingsController {
 
   async listBranches(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { page = 1, limit = 10, search, organizationId } = req.query;
+      const query = typedQuery<ListBranchesQuery>(req);
       const result = await organizationsService.listBranches({
-        page: Number(page),
-        limit: Number(limit),
-        search: search as string | undefined,
-        organizationId: organizationId as string | undefined,
+        page: query.page,
+        limit: query.limit,
+        search: query.search,
+        organizationId: query.organizationId,
       });
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -109,7 +116,7 @@ export class SettingsController {
   async getBranch(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await organizationsService.getBranch(req.params.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -119,7 +126,7 @@ export class SettingsController {
     try {
       const input = req.body as CreateBranchInput;
       const result = await organizationsService.createBranch(input);
-      res.status(201).json(result);
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -129,7 +136,7 @@ export class SettingsController {
     try {
       const input = req.body as UpdateBranchInput;
       const result = await organizationsService.updateBranch(req.params.id, input);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -150,14 +157,14 @@ export class SettingsController {
 
   async listDepartments(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { page = 1, limit = 10, search, branchId } = req.query;
+      const query = typedQuery<ListDepartmentsQuery>(req);
       const result = await organizationsService.listDepartments({
-        page: Number(page),
-        limit: Number(limit),
-        search: search as string | undefined,
-        branchId: branchId as string | undefined,
+        page: query.page,
+        limit: query.limit,
+        search: query.search,
+        branchId: query.branchId,
       });
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -166,7 +173,7 @@ export class SettingsController {
   async getDepartment(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await organizationsService.getDepartment(req.params.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -176,7 +183,7 @@ export class SettingsController {
     try {
       const input = req.body as CreateDepartmentInput;
       const result = await organizationsService.createDepartment(input);
-      res.status(201).json(result);
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -186,7 +193,7 @@ export class SettingsController {
     try {
       const input = req.body as UpdateDepartmentInput;
       const result = await organizationsService.updateDepartment(req.params.id, input);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -207,13 +214,13 @@ export class SettingsController {
 
   async listLocations(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { page = 1, limit = 10, search } = req.query;
+      const query = typedQuery<ListOrganizationsQuery>(req);
       const result = await organizationsService.listLocations({
-        page: Number(page),
-        limit: Number(limit),
-        search: search as string | undefined,
+        page: query.page,
+        limit: query.limit,
+        search: query.search,
       });
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -222,7 +229,7 @@ export class SettingsController {
   async getLocation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await organizationsService.getLocation(req.params.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -232,7 +239,7 @@ export class SettingsController {
     try {
       const input = req.body as CreateLocationInput;
       const result = await organizationsService.createLocation(input);
-      res.status(201).json(result);
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -242,7 +249,7 @@ export class SettingsController {
     try {
       const input = req.body as UpdateLocationInput;
       const result = await organizationsService.updateLocation(req.params.id, input);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -263,16 +270,16 @@ export class SettingsController {
 
   async listUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { page = 1, limit = 10, search, status, role, organizationId } = req.query;
+      const query = typedQuery<UserListQuery>(req);
       const result = await usersService.listUsers({
-        page: Number(page),
-        limit: Number(limit),
-        search: search as string | undefined,
-        status: status as string | undefined,
-        role: role as string | undefined,
-        organizationId: organizationId as string | undefined,
+        page: query.page,
+        limit: query.limit,
+        search: query.search,
+        status: query.status,
+        role: query.role,
+        organizationId: query.organizationId,
       });
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -281,7 +288,7 @@ export class SettingsController {
   async getUser(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await usersService.getUser(req.params.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -291,7 +298,7 @@ export class SettingsController {
     try {
       const input = req.body as CreateUserInput;
       const result = await usersService.createUser(input, req.user?.id);
-      res.status(201).json(result);
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -301,7 +308,7 @@ export class SettingsController {
     try {
       const input = req.body as UpdateUserInput;
       const result = await usersService.updateUser(req.params.id, input, req.user?.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -320,7 +327,7 @@ export class SettingsController {
     try {
       const input = req.body as InviteUserInput;
       const result = await usersService.inviteUser(input, req.user?.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -329,7 +336,7 @@ export class SettingsController {
   async suspendUser(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await usersService.suspendUser(req.params.id, req.user?.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -338,7 +345,7 @@ export class SettingsController {
   async activateUser(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await usersService.activateUser(req.params.id, req.user?.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -347,7 +354,7 @@ export class SettingsController {
   async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await usersService.resetPassword(req.params.id, req.user?.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -355,12 +362,12 @@ export class SettingsController {
 
   async getUserAuditLog(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { page = 1, limit = 10 } = req.query;
+      const query = typedQuery<ListOrganizationsQuery>(req);
       const result = await usersService.getUserAuditLog(req.params.id, {
-        page: Number(page),
-        limit: Number(limit),
+        page: query.page,
+        limit: query.limit,
       });
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -373,7 +380,7 @@ export class SettingsController {
   async listRoles(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await usersService.listRoles();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -382,7 +389,7 @@ export class SettingsController {
   async getRole(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await usersService.getRole(req.params.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -392,7 +399,7 @@ export class SettingsController {
     try {
       const input = req.body as CreateRoleInput;
       const result = await usersService.createRole(input);
-      res.status(201).json(result);
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -402,7 +409,7 @@ export class SettingsController {
     try {
       const input = req.body as UpdateRoleInput;
       const result = await usersService.updateRole(req.params.id, input);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -418,13 +425,13 @@ export class SettingsController {
   }
 
   // ============================================
-  // Alert Configurations
+  // Alert Configurations (via BaseCrudService)
   // ============================================
 
   async listAlertConfigs(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const result = await settingsService.listAlertConfigs();
-      res.json(result);
+      const result = await alertConfigCrudService.findMany();
+      sendSuccess(res, result.data);
     } catch (error) {
       next(error);
     }
@@ -432,8 +439,8 @@ export class SettingsController {
 
   async getAlertConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const result = await settingsService.getAlertConfigById(req.params.id);
-      res.json(result);
+      const result = await alertConfigCrudService.findById(req.params.id);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -442,8 +449,8 @@ export class SettingsController {
   async createAlertConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const input = req.body as CreateAlertConfigInput;
-      const result = await settingsService.createAlertConfig(input);
-      res.status(201).json(result);
+      const result = await alertConfigCrudService.create(input);
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -452,8 +459,8 @@ export class SettingsController {
   async updateAlertConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const input = req.body as UpdateAlertConfigInput;
-      const result = await settingsService.updateAlertConfigById(req.params.id, input);
-      res.json(result);
+      const result = await alertConfigCrudService.update(req.params.id, input);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -461,8 +468,8 @@ export class SettingsController {
 
   async deleteAlertConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await settingsService.deleteAlertConfig(req.params.id);
-      res.json({ message: 'Alert configuration deleted successfully' });
+      await alertConfigCrudService.delete(req.params.id);
+      sendSuccess(res, { message: 'Alert configuration deleted successfully' });
     } catch (error) {
       next(error);
     }
@@ -475,7 +482,7 @@ export class SettingsController {
   async listLdapConfigs(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.listLdapConfigs();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -484,7 +491,7 @@ export class SettingsController {
   async getLdapConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getLdapConfig(req.params.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -494,7 +501,7 @@ export class SettingsController {
     try {
       const input = req.body as CreateLdapConfigInput;
       const result = await settingsService.createLdapConfig(input);
-      res.status(201).json(result);
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -504,7 +511,7 @@ export class SettingsController {
     try {
       const input = req.body as UpdateLdapConfigInput;
       const result = await settingsService.updateLdapConfig(req.params.id, input);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -522,7 +529,7 @@ export class SettingsController {
   async testLdapConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.testLdapConfig(req.params.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -535,7 +542,7 @@ export class SettingsController {
   async getServerSettings(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getServerSettings();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -545,7 +552,7 @@ export class SettingsController {
     try {
       const input = req.body as UpdateServerSettingsInput;
       const result = await settingsService.updateServerSettings(input);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -558,7 +565,7 @@ export class SettingsController {
   async getAgentConfig(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getAgentConfig();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -568,7 +575,7 @@ export class SettingsController {
     try {
       const input = req.body as UpdateAgentConfigInput;
       const result = await settingsService.updateAgentConfig(input);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -581,7 +588,7 @@ export class SettingsController {
   async getProxyServer(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getProxyServer();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -591,7 +598,7 @@ export class SettingsController {
     try {
       const input = req.body as UpdateProxyServerInput;
       const result = await settingsService.updateProxyServer(input);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -601,7 +608,7 @@ export class SettingsController {
     try {
       const input = req.body as TestProxyServerInput;
       const result = await settingsService.testProxyServer(input);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -614,7 +621,7 @@ export class SettingsController {
   async getMailServer(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getMailServer();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -624,7 +631,7 @@ export class SettingsController {
     try {
       const input = req.body as UpdateMailServerInput;
       const result = await settingsService.updateMailServer(input);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -634,7 +641,7 @@ export class SettingsController {
     try {
       const input = req.body as TestMailServerInput;
       const result = await settingsService.testMailServer(input);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -646,20 +653,20 @@ export class SettingsController {
 
   async listAuditLogs(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { page = 1, limit = 10, action, resource, userId, startDate, endDate, search, sortBy, sortOrder = 'desc' } = req.query;
+      const query = typedQuery<AuditLogQueryInput>(req);
       const result = await settingsService.listAuditLogs({
-        page: Number(page),
-        limit: Number(limit),
-        sortOrder: (sortOrder as 'asc' | 'desc'),
-        sortBy: sortBy as string | undefined,
-        action: action as string | undefined,
-        resource: resource as string | undefined,
-        userId: userId as string | undefined,
-        startDate: startDate as string | undefined,
-        endDate: endDate as string | undefined,
-        search: search as string | undefined,
+        page: query.page,
+        limit: query.limit,
+        sortOrder: query.sortOrder,
+        sortBy: query.sortBy,
+        action: query.action,
+        resource: query.resource,
+        userId: query.userId,
+        startDate: query.startDate,
+        endDate: query.endDate,
+        search: query.search,
       });
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -668,7 +675,7 @@ export class SettingsController {
   async getAuditLogFilters(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getAuditLogFilters();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -681,7 +688,7 @@ export class SettingsController {
   async getVulnerabilityPreference(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getVulnerabilityPreference();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -691,7 +698,7 @@ export class SettingsController {
     try {
       const input = req.body as UpdateVulnerabilityPreferenceInput;
       const result = await settingsService.updateVulnerabilityPreference(input);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -700,7 +707,7 @@ export class SettingsController {
   async syncVulnerabilityDatabase(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.syncVulnerabilityDatabase();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -713,7 +720,7 @@ export class SettingsController {
   async getPlatformLicense(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getPlatformLicense();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -723,7 +730,7 @@ export class SettingsController {
     try {
       const input = req.body as UpdateLicenseInput;
       const result = await settingsService.updatePlatformLicense(input.licenseCode);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -735,13 +742,13 @@ export class SettingsController {
 
   async listAgentApprovals(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { page = 1, limit = 10, search } = req.query;
+      const query = typedQuery<ListOrganizationsQuery>(req);
       const result = await settingsService.listAgentApprovals({
-        page: Number(page),
-        limit: Number(limit),
-        search: search as string | undefined,
+        page: query.page,
+        limit: query.limit,
+        search: query.search,
       });
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -750,7 +757,7 @@ export class SettingsController {
   async approveAgent(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.approveAgent(req.params.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -759,7 +766,7 @@ export class SettingsController {
   async rejectAgent(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.rejectAgent(req.params.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -772,7 +779,7 @@ export class SettingsController {
   async listComputerGroups(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.listComputerGroups();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -781,7 +788,7 @@ export class SettingsController {
   async getComputerGroup(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getComputerGroup(req.params.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -790,7 +797,7 @@ export class SettingsController {
   async createComputerGroup(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.createComputerGroup(req.body);
-      res.status(201).json(result);
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -799,7 +806,7 @@ export class SettingsController {
   async updateComputerGroup(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.updateComputerGroup(req.params.id, req.body);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -817,7 +824,7 @@ export class SettingsController {
   async getAvailableEndpoints(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getAvailableEndpoints();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -830,7 +837,7 @@ export class SettingsController {
   async listDeploymentPolicies(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.listDeploymentPolicies();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -839,7 +846,7 @@ export class SettingsController {
   async getDeploymentPolicy(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getDeploymentPolicy(req.params.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -848,7 +855,7 @@ export class SettingsController {
   async createDeploymentPolicy(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.createDeploymentPolicy(req.body);
-      res.status(201).json(result);
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -857,7 +864,7 @@ export class SettingsController {
   async updateDeploymentPolicy(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.updateDeploymentPolicy(req.params.id, req.body);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -879,7 +886,7 @@ export class SettingsController {
   async getBranding(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getBranding();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -899,7 +906,7 @@ export class SettingsController {
         { companyName: req.body.companyName },
         logoFile
       );
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -912,7 +919,7 @@ export class SettingsController {
   async getRiskScoreSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getRiskScoreSettings();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -921,7 +928,7 @@ export class SettingsController {
   async updateRiskScoreSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.updateRiskScoreSettings(req.body);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -934,7 +941,7 @@ export class SettingsController {
   async getRemoteDesktopSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getRemoteDesktopSettings();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -943,7 +950,7 @@ export class SettingsController {
   async updateRemoteDesktopSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.updateRemoteDesktopSettings(req.body);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -952,7 +959,7 @@ export class SettingsController {
   async resetRemoteDesktopSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.resetRemoteDesktopSettings();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -965,7 +972,7 @@ export class SettingsController {
   async listVendorLogos(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.listVendorLogos();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -974,7 +981,7 @@ export class SettingsController {
   async getVendorLogo(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getVendorLogo(req.params.id);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -983,7 +990,7 @@ export class SettingsController {
   async createVendorLogo(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.file) {
-        res.status(400).json({ message: 'Logo file is required' });
+        sendError(res, 400, 'BAD_REQUEST', 'Logo file is required');
         return;
       }
 
@@ -995,7 +1002,7 @@ export class SettingsController {
           mimetype: req.file.mimetype,
         }
       );
-      res.status(201).json(result);
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -1016,7 +1023,7 @@ export class SettingsController {
         { name: req.body.name, type: req.body.type },
         logoFile
       );
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -1037,7 +1044,7 @@ export class SettingsController {
   async getPatchManagementSettings(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.getPatchManagementSettings();
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -1046,7 +1053,7 @@ export class SettingsController {
   async updatePatchManagementSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.updatePatchManagementSettings(req.body);
-      res.json(result);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }

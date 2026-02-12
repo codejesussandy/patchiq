@@ -1,20 +1,5 @@
 import { useState, useEffect } from 'react';
 import {
-  App,
-  Drawer,
-  Typography,
-  Tag,
-  Tabs,
-  Table,
-  Row,
-  Col,
-  Card,
-  Statistic,
-  Space,
-  Spin,
-  Button,
-} from 'antd';
-import {
   DesktopOutlined,
   ApiOutlined,
   HddOutlined,
@@ -25,10 +10,23 @@ import {
   CloseCircleOutlined,
   SyncOutlined,
   ExclamationCircleOutlined,
-  LinkOutlined,
-} from '@ant-design/icons';
+  LinkOutlined } from '@ant-design/icons';
+import {
+  App,
+  Drawer,
+  Typography,
+  Tag,
+  Tabs,
+  Row,
+  Col,
+  Card,
+  Statistic,
+  Space,
+  Spin,
+  Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { patchService, type EndpointDetails, type AssetRelatedPatch, type EndpointRelatedPatch } from '../../services/patch.service';
+import { DataTable } from '../shared/DataTable';
 import { SeverityBadge } from './SeverityBadge';
 
 const { Title, Text } = Typography;
@@ -42,44 +40,43 @@ type EndpointDetailsDrawerProps = {
 export const EndpointDetailsDrawer = ({
   open,
   endpointId,
-  onClose,
-}: EndpointDetailsDrawerProps) => {
+  onClose }: EndpointDetailsDrawerProps) => {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [endpoint, setEndpoint] = useState<EndpointDetails | null>(null);
-
-  useEffect(() => {
-    if (open && endpointId) {
-      fetchEndpointDetails(endpointId);
-    }
-  }, [open, endpointId]);
 
   const fetchEndpointDetails = async (id: string) => {
     setLoading(true);
     try {
       const data = await patchService.getEndpointDetails(id);
       setEndpoint(data);
-    } catch (error) {
+    } catch {
       message.error('Failed to fetch endpoint details');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (open && endpointId) {
+      fetchEndpointDetails(endpointId);
+    }
+  }, [open, endpointId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Online':
-      case 'Connected':
-      case 'Success':
-      case 'Installed':
+      case 'ONLINE':
+      case 'CONNECTED':
+      case 'SUCCESS':
+      case 'INSTALLED':
         return 'success';
-      case 'Offline':
-      case 'Disconnected':
-      case 'Failed':
+      case 'OFFLINE':
+      case 'DISCONNECTED':
+      case 'FAILED':
         return 'error';
-      case 'Pending':
-      case 'Missing':
+      case 'PENDING':
+      case 'MISSING':
         return 'warning';
       default:
         return 'default';
@@ -88,18 +85,18 @@ export const EndpointDetailsDrawer = ({
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'Online':
-      case 'Connected':
-      case 'Success':
-      case 'Installed':
+      case 'ONLINE':
+      case 'CONNECTED':
+      case 'SUCCESS':
+      case 'INSTALLED':
         return <CheckCircleOutlined />;
-      case 'Offline':
-      case 'Disconnected':
-      case 'Failed':
+      case 'OFFLINE':
+      case 'DISCONNECTED':
+      case 'FAILED':
         return <CloseCircleOutlined />;
-      case 'Pending':
+      case 'PENDING':
         return <SyncOutlined spin />;
-      case 'Missing':
+      case 'MISSING':
         return <ExclamationCircleOutlined />;
       default:
         return null;
@@ -381,14 +378,12 @@ export const EndpointDetailsDrawer = ({
           >
             {name}
           </Button>
-        ),
-      },
+        ) },
       {
         title: 'KB',
         dataIndex: 'kbNumber',
         key: 'kbNumber',
-        width: 100,
-      },
+        width: 100 },
       {
         title: 'Severity',
         dataIndex: 'severity',
@@ -396,8 +391,7 @@ export const EndpointDetailsDrawer = ({
         width: 100,
         render: (severity: AssetRelatedPatch['severity']) => (
           <SeverityBadge severity={severity} />
-        ),
-      },
+        ) },
       {
         title: 'Status',
         dataIndex: 'status',
@@ -407,13 +401,12 @@ export const EndpointDetailsDrawer = ({
           <Tag color={getStatusColor(status)} icon={getStatusIcon(status)}>
             {status}
           </Tag>
-        ),
-      },
+        ) },
     ];
 
     return (
-      <Table
-        dataSource={endpoint.relatedPatches}
+      <DataTable
+        data={endpoint.relatedPatches}
         columns={columns}
         rowKey="id"
         size="small"
@@ -438,14 +431,12 @@ export const EndpointDetailsDrawer = ({
           >
             {name}
           </Button>
-        ),
-      },
+        ) },
       {
         title: 'Date',
         dataIndex: 'date',
         key: 'date',
-        width: 120,
-      },
+        width: 120 },
       {
         title: 'Status',
         dataIndex: 'status',
@@ -455,13 +446,12 @@ export const EndpointDetailsDrawer = ({
           <Tag color={getStatusColor(status)} icon={getStatusIcon(status)}>
             {status}
           </Tag>
-        ),
-      },
+        ) },
     ];
 
     return (
-      <Table
-        dataSource={endpoint.recentDeployments}
+      <DataTable
+        data={endpoint.recentDeployments}
         columns={columns}
         rowKey="id"
         size="small"
@@ -506,23 +496,19 @@ export const EndpointDetailsDrawer = ({
             {
               key: 'overview',
               label: 'Overview',
-              children: renderOverviewTab(),
-            },
+              children: renderOverviewTab() },
             {
               key: 'linked',
               label: 'Linked',
-              children: renderLinkedItemsTab(),
-            },
+              children: renderLinkedItemsTab() },
             {
               key: 'patches',
               label: `Patches (${endpoint.relatedPatches.length})`,
-              children: renderPatchesTab(),
-            },
+              children: renderPatchesTab() },
             {
               key: 'history',
               label: 'History',
-              children: renderHistoryTab(),
-            },
+              children: renderHistoryTab() },
           ]}
         />
       ) : (

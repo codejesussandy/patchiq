@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 // Query schema for list endpoint
 export const listAgentsQuerySchema = z.object({
-  status: z.enum(['Connected', 'Disconnected', 'Pending', 'Error']).optional(),
-  os: z.enum(['Windows', 'MacOS', 'Linux']).optional(),
+  status: z.enum(['PENDING', 'CONNECTED', 'DISCONNECTED', 'ERROR']).optional(),
+  os: z.enum(['WINDOWS', 'MACOS', 'LINUX']).optional(),
   search: z.string().optional(),
   page: z.coerce.number().positive().default(1),
   limit: z.coerce.number().positive().max(100).default(20),
@@ -13,7 +13,7 @@ export const listAgentsQuerySchema = z.object({
 export const registerAgentSchema = z.object({
   machineId: z.string().min(1),
   hostname: z.string().min(1),
-  os: z.enum(['Windows', 'MacOS', 'Linux']),
+  os: z.enum(['WINDOWS', 'MACOS', 'LINUX']),
   osVersion: z.string(),
   osBuild: z.string().optional(),
   architecture: z.string(),
@@ -43,7 +43,7 @@ export const heartbeatSchema = z.object({
 
 // Command result schema
 export const commandResultSchema = z.object({
-  status: z.enum(['completed', 'failed']),
+  status: z.enum(['COMPLETED', 'FAILED']),
   result: z.string().optional(),
   errorMessage: z.string().optional(),
   output: z.string().optional(),

@@ -21,7 +21,7 @@ describe('E2E: Vulnerability Management', () => {
         email: 'vuln-test-admin@patchiq.io',
         name: 'Vuln Test Admin',
         passwordHash,
-        role: 'admin',
+        role: 'ADMIN',
         isActive: true,
         isOnboarded: true,
       },
@@ -183,10 +183,10 @@ describe('E2E: Vulnerability Management', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           vulnerabilityIds: [testVulnerabilityId],
-          exceptionType: 'Acceptable Risk',  // Valid enum value
+          exceptionType: 'ACCEPTABLE_RISK',  // Valid enum value
           reasonForExclusion: 'Mitigating controls in place',
-          scope: 'Global',  // Valid enum value
-          source: 'vulnerabilities',
+          scope: 'GLOBAL',  // Valid enum value
+          source: 'VULNERABILITIES',
         });
 
       expect(res.status).toBe(201);
@@ -287,7 +287,7 @@ describe('E2E: Vulnerability Error Handling', () => {
         email: 'vuln-error-test@patchiq.io',
         name: 'Vuln Error Test',
         passwordHash,
-        role: 'admin',
+        role: 'ADMIN',
         isActive: true,
         isOnboarded: true,
       },

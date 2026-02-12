@@ -1,33 +1,54 @@
-export type OperationalStatus = 'Connected' | 'Disconnected';
-export type AssetStatus = 'In Use' | 'Available' | 'Under Maintenance' | 'Retired';
-export type AssetType = 'Computer' | 'Server' | 'Mobile' | 'Printer' | 'Laptop' | 'Tablet' | 'Desktop' | 'Virtual Machine';
-export type OSType = 'Windows 11 Pro' | 'Windows 10' | 'MacOS' | 'Linux' | 'Android' | 'iOS';
-export type AgentStatus = 'Connected' | 'Disconnected' | 'Pending' | 'Error';
-export type AssetPatchStatus = 'Installed' | 'Missing' | 'Pending' | 'Failed';
+import type { OperationalStatus, AssetStatus, AgentStatus, LicenseStatus } from '@shared/types';
 
-// Agent link for assets
-export type AgentLink = {
-  id: string;
-  status: string;
-  version?: string;
-  lastHeartbeat?: string;
-  lastHeartbeatRelative?: string;
-  heartbeatInterval?: number;
-};
+// Re-export shared enums
+export type { OperationalStatus, AssetStatus, AgentStatus, LicenseStatus };
 
-// Patch summary for assets
-export type PatchSummary = {
-  total: number;
-  installed: number;
-  missing: number;
-  failed: number;
-  pending: number;
-  criticalMissing?: number;
-  securityMissing?: number;
-  lastScanDate: string;
-  lastScanRelative?: string;
-  compliancePercent?: number;
-};
+// Re-export shared API types that match
+export type {
+  AssetPatchStatus,
+  DepreciationPoint,
+  AssetLifeCycle,
+  BiosInfo,
+  ProcessorInfo,
+  BaseBoardInfo,
+  StorageInfo,
+  MemoryInfo,
+  NetworkAdapterInfo,
+  BatteryInfo,
+  GraphicsCardInfo,
+  AssetHardwareResponse,
+  SoftwareLicenseInfo as ApplicationLicense,
+  ApplicationInfo,
+  ServiceInfo,
+  StartupProgramInfo,
+  AssetSoftwareResponse,
+  AssetAuditLog as AuditLog,
+  SoftwareInventoryResponse as SoftwareInventory,
+  SoftwareLicenseResponse,
+  SoftwareLicenseCreateInput,
+  SoftwareLicenseUpdateInput,
+  OSLicenseResponse,
+  OSLicenseCreateInput,
+  OSLicenseUpdateInput,
+  CategoryResponse,
+  CategoryCreateInput,
+  CategoryUpdateInput,
+  SubCategoryResponse,
+  SubCategoryCreateInput,
+  SubCategoryUpdateInput,
+  TagResponse,
+  TagCreateInput,
+  TagUpdateInput,
+  PatchSummary,
+  AssetRelatedPatch,
+  AssetDeploymentResponse,
+  AgentStatusInfo as AgentLink,
+} from '@shared/types';
+
+// UI-specific display labels for asset types (not the same as shared AssetType enum)
+export type AssetTypeDisplay = 'Computer' | 'Server' | 'Mobile' | 'Printer' | 'Laptop' | 'Tablet' | 'Desktop' | 'Virtual Machine';
+// UI-specific OS display strings (not the same as shared OSFamily enum)
+export type OSTypeDisplay = 'Windows 11 Pro' | 'Windows 10' | 'MacOS' | 'Linux' | 'Android' | 'iOS';
 
 // Asset group membership
 export type AssetGroup = {
@@ -35,26 +56,16 @@ export type AssetGroup = {
   name: string;
 };
 
-// Related patch for an asset
-export type AssetRelatedPatch = {
-  id: string;
-  name: string;
-  severity: 'CRITICAL' | 'High' | 'Medium' | 'Low' | 'UNSPECIFIED';
-  status: AssetPatchStatus;
-  kbNumber?: string;
-  releaseDate?: string;
-};
-
-// Deployment history for an asset
+// Deployment history for an asset (UI version - differs from shared AssetDeploymentResponse)
 export type AssetDeployment = {
   id: string;
   patchId: string;
   patchName: string;
   date: string;
-  status: 'Success' | 'Failed' | 'Pending';
+  status: 'COMPLETED' | 'FAILED' | 'PENDING';
 };
 
-// Category Types
+// UI-specific Category type (has extra fields not in shared)
 export type Category = {
   id: string;
   name: string;
@@ -90,10 +101,10 @@ export type SubCategory = {
   uptime?: string;
   maintenanceWindow?: string;
   tags?: string[];
-  customMetadata?: Record<string, any>;
+  customMetadata?: Record<string, unknown>;
 };
 
-// Tag Types
+// UI-specific Tag type (has extra fields not in shared)
 export type Tag = {
   id: string;
   name: string;
@@ -112,7 +123,7 @@ export type Tag = {
   budget?: string;
   complianceRequired?: boolean;
   complianceTags?: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 };
 
 export type AssetTag = {
@@ -189,7 +200,7 @@ export type Asset = {
   status: AssetStatus;
   operationalStatusSince: string;
   operationalStatusDuration: string;
-  assetType: AssetType;
+  assetType: AssetTypeDisplay;
   assetTag: string;
   serialNumber: string;
   branchLocation: string;
@@ -198,7 +209,7 @@ export type Asset = {
   purchaseDate: string;
   warrantyExpiry: string;
   owner: Owner;
-  osType: OSType;
+  osType: OSTypeDisplay;
   osVersion: string;
   osBuild: string;
   architecture: string;
@@ -227,58 +238,54 @@ export type Asset = {
   diskSize?: string;
   mac?: string;
 
-  // Agent link (NEW)
-  agent?: AgentLink;
+  // Agent link
+  agent?: {
+    id: string;
+    status: string;
+    version?: string;
+    lastHeartbeat?: string;
+    lastHeartbeatRelative?: string;
+    heartbeatInterval?: number;
+  };
 
-  // Patch compliance (NEW)
-  patchSummary?: PatchSummary;
+  // Patch compliance
+  patchSummary?: {
+    total: number;
+    installed: number;
+    missing: number;
+    failed: number;
+    pending: number;
+    criticalMissing?: number;
+    securityMissing?: number;
+    lastScanDate: string;
+    lastScanRelative?: string;
+    compliancePercent?: number;
+  };
 
-  // Groups for deployment targeting (NEW)
+  // Groups for deployment targeting
   groups?: AssetGroup[];
 
-  // Related patches for this asset (NEW)
-  relatedPatches?: AssetRelatedPatch[];
+  // Related patches for this asset
+  relatedPatches?: {
+    id: string;
+    name: string;
+    severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNSPECIFIED';
+    status: 'INSTALLED' | 'MISSING' | 'PENDING' | 'FAILED';
+    kbNumber?: string;
+    publishedAt?: string;
+  }[];
 
-  // Recent deployment history (NEW)
+  // Recent deployment history
   recentDeployments?: AssetDeployment[];
 
-  // Additional fields (NEW)
+  // Additional fields
   department?: string;
   lastSeen?: string;
   createdAt?: string;
   updatedAt?: string;
 };
 
-// Asset Life Cycle
-export type DepreciationPoint = {
-  date: string;
-  value: number;
-  label: string;
-  year?: number;                         // Year number (1, 2, 3...)
-};
-
-export type AssetLifeCycle = {
-  purchaseDate: string | null;
-  purchaseValue: number | null;
-  currentDate: string;
-  currentValue: number | null;
-  amcExpiryDate: string | null;
-  warrantyExpiryDate: string | null;
-  endOfLife: string | null;
-  endOfLifeValue: number | null;
-  depreciationTimeline: DepreciationPoint[];
-  // Extended depreciation fields
-  depreciationMethod?: string | null;    // "Straight Line", "Double Declining Balance", etc.
-  totalDepreciation?: number | null;     // Total depreciation to date
-  annualDepreciation?: number | null;    // Current year's depreciation expense
-  yearsElapsed?: number | null;          // Years since purchase
-  yearsRemaining?: number | null;        // Years until end of life
-  usefulLifeYears?: number | null;       // Total useful life in years
-  currency?: string;                     // Currency code (INR, USD, etc.)
-  hasFinancialData?: boolean;            // True if asset has real financial data
-};
-
-// Hardware
+// Hardware types (UI-specific expanded types)
 export type BIOS = {
   name: string;
   installDate: string;
@@ -361,9 +368,6 @@ export type Hardware = {
 };
 
 // Enhanced Hardware Types (Phase 4)
-// Based on contracts/schemas/hardware.schema.json
-
-// SMART Status Types
 export type SmartStatusLevel = 'OK' | 'Warning' | 'Critical' | 'Unknown';
 
 export type SmartStatus = {
@@ -378,7 +382,6 @@ export type SmartStatus = {
   mediaWearoutIndicator?: number;
 };
 
-// Partition Types
 export type FileSystemType =
   | 'NTFS'
   | 'FAT32'
@@ -410,7 +413,6 @@ export type Partition = {
   luksStatus?: 'Encrypted' | 'Decrypted' | 'Unknown';
 };
 
-// Expanded Storage Drive Types
 export type StorageDriveType = 'HDD' | 'SSD' | 'NVMe' | 'USB' | 'Network' | 'Unknown';
 export type StorageMediaType = 'Fixed' | 'Removable' | 'External';
 export type StorageInterfaceType = 'SATA' | 'NVMe' | 'USB' | 'SCSI' | 'IDE' | 'Unknown';
@@ -430,7 +432,6 @@ export type ExpandedStorageDrive = {
   smartStatus?: SmartStatus;
 };
 
-// Expanded Memory Module Types
 export type MemoryModuleType = 'DDR3' | 'DDR4' | 'DDR5' | 'LPDDR4' | 'LPDDR5' | 'Unknown';
 export type MemoryFormFactor = 'DIMM' | 'SODIMM' | 'Onboard' | 'Unknown';
 
@@ -447,7 +448,6 @@ export type ExpandedMemoryModule = {
   configured?: boolean;
 };
 
-// Expanded Memory Summary
 export type ExpandedMemory = {
   totalPhysicalGB: number;
   availableGB?: number;
@@ -459,7 +459,6 @@ export type ExpandedMemory = {
   maxCapacityGB?: number;
 };
 
-// Expanded Processor Types
 export type ProcessorArchitecture = 'x64' | 'x86' | 'arm64' | 'arm';
 
 export type ExpandedProcessor = {
@@ -477,7 +476,6 @@ export type ExpandedProcessor = {
   virtualizationEnabled?: boolean;
 };
 
-// Graphics Card Types
 export type GraphicsCard = {
   name: string;
   manufacturer?: string;
@@ -488,7 +486,6 @@ export type GraphicsCard = {
   refreshRate?: number;
 };
 
-// Expanded BIOS Types
 export type FirmwareType = 'BIOS' | 'UEFI';
 
 export type ExpandedBIOS = {
@@ -502,7 +499,6 @@ export type ExpandedBIOS = {
   tpmEnabled?: boolean;
 };
 
-// System Identity Types
 export type SystemIdentity = {
   manufacturer: string;
   model: string;
@@ -512,7 +508,6 @@ export type SystemIdentity = {
   assetTag?: string;
 };
 
-// Expanded Battery Types
 export type BatteryChemistry = 'Li-Ion' | 'Li-Poly' | 'NiMH' | 'NiCd' | 'Unknown';
 export type BatteryChargingStatus = 'Charging' | 'Discharging' | 'Full' | 'NotCharging' | 'Unknown';
 
@@ -532,7 +527,6 @@ export type ExpandedBattery = {
   serialNumber?: string;
 };
 
-// Complete Expanded Hardware Inventory Type
 export type ExpandedHardware = {
   collectedAt: string;
   systemIdentity?: SystemIdentity;
@@ -545,19 +539,7 @@ export type ExpandedHardware = {
   graphicsCards?: GraphicsCard[];
 };
 
-// Application License (from agent inventory)
-export type ApplicationLicense = {
-  type?: string; // Perpetual, Subscription, Trial, Freeware, OpenSource, OEM, Volume, Unknown
-  status?: string; // Licensed, Expired, Trial, GracePeriod, Unlicensed, Unknown
-  key?: string; // Masked license key (last 5 chars visible)
-  expirationDate?: string; // ISO8601 for subscription/trial
-  daysRemaining?: number; // Days until expiration
-  licensedTo?: string; // User/organization name
-  productId?: string; // Vendor product ID
-  channel?: string; // Retail, Volume, OEM, NFR
-};
-
-// Software
+// Software types (UI-specific - use different field names than shared)
 export type Application = {
   id: string;
   name: string;
@@ -569,7 +551,16 @@ export type Application = {
   installSource?: string;
   isSystemApp?: boolean;
   icon?: string;
-  license?: ApplicationLicense;
+  license?: {
+    type?: string;
+    status?: string;
+    key?: string;
+    expirationDate?: string;
+    daysRemaining?: number;
+    licensedTo?: string;
+    productId?: string;
+    channel?: string;
+  };
 };
 
 export type Service = {
@@ -650,31 +641,12 @@ export type Software = {
   startupPrograms: StartupProgram[];
 };
 
-// Audit Log
-export type AuditLog = {
-  id: string;
-  timestamp: string;
-  action: string;
-  user: string;
-  details: string;
-};
-
-// Software Inventory
-export type SoftwareInventory = {
-  id: string;
-  softwareName: string;
-  version: string;
-  softwareType: string;
-  manufacturer: string;
-  totalInstances: number;
-};
-
-// Software License
+// Software License types (UI-specific shape)
 export type SoftwareLicense = {
   id: string;
   licenseName: string;
   softwareName: string;
-  status: 'Allocated' | 'Available' | 'Expired';
+  status: LicenseStatus;
   licenseCount: number;
   vendorName: string;
   licenseKey?: string;
@@ -685,12 +657,11 @@ export type SoftwareLicense = {
   notes?: string;
 };
 
-// OS License
 export type OSLicense = {
   id: string;
   licenseName: string;
   osType: string;
-  status: 'Allocated' | 'Available' | 'Expired';
+  status: LicenseStatus;
   licenseCount: number;
   vendorName: string;
   licenseKey?: string;
@@ -701,7 +672,7 @@ export type OSLicense = {
   notes?: string;
 };
 
-// Add Asset Form Data
+// Add Asset Form Data (UI-only)
 export type AddAssetFormData = {
   // Step 1 - Define Asset
   assetName: string;

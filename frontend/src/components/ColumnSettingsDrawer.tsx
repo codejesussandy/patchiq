@@ -1,17 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Drawer,
-  Checkbox,
-  Button,
-  Space,
-  Typography,
-  Input,
-  Slider,
-  Divider,
-  Tooltip,
-  Dropdown,
-} from 'antd';
-import {
   HolderOutlined,
   SearchOutlined,
   UndoOutlined,
@@ -20,7 +8,6 @@ import {
   VerticalLeftOutlined,
   VerticalRightOutlined,
 } from '@ant-design/icons';
-import type { MenuProps } from 'antd';
 import {
   DndContext,
   closestCenter,
@@ -39,6 +26,19 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import type { MenuProps } from 'antd';
+import {
+  Drawer,
+  Checkbox,
+  Button,
+  Space,
+  Typography,
+  Input,
+  Slider,
+  Divider,
+  Tooltip,
+  Dropdown,
+} from 'antd';
 
 const { Text } = Typography;
 
@@ -269,10 +269,12 @@ export const ColumnSettingsDrawer = ({
   const [showWidthSliders, setShowWidthSliders] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- sync external prop to local state */
   useEffect(() => {
     setLocalColumns(columns);
     setHistory([]);
   }, [columns, open]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -621,6 +623,7 @@ export const ColumnSettingsDrawer = ({
 };
 
 // Helper hook for loading saved column config
+// eslint-disable-next-line react-refresh/only-export-components
 export const useColumnConfig = (
   defaultColumns: ColumnConfig[],
   storageKey: string

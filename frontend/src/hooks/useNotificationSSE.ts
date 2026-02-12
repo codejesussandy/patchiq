@@ -47,6 +47,7 @@ export function useNotificationSSE({ onNotification, enabled = true }: UseNotifi
       es.close();
       esRef.current = null;
       // Reconnect after 5 seconds
+      // eslint-disable-next-line react-hooks/immutability -- self-referencing reconnect pattern
       reconnectTimerRef.current = setTimeout(connect, 5000);
     };
   }, []);

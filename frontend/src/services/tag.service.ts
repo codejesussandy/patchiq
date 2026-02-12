@@ -1,5 +1,5 @@
-import { api } from './api.service';
 import type { Tag } from '../types/asset.types';
+import { api } from './api.service';
 
 export const tagService = {
   // Tag CRUD
@@ -33,7 +33,7 @@ export const tagService = {
     return response.data;
   },
 
-  async getTagAssets(tagId: string): Promise<any[]> {
+  async getTagAssets(tagId: string): Promise<Record<string, unknown>[]> {
     const response = await api.get(`/tags/${tagId}/assets`);
     return response.data;
   },

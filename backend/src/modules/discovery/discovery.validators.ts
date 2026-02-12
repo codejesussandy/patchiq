@@ -8,7 +8,7 @@ import { z } from 'zod';
 const cidrRegex = /^(\d{1,3}\.){3}\d{1,3}\/(\d{1,2})$/;
 
 const scanScheduleSchema = z.object({
-  type: z.enum(['once', 'daily', 'weekly']),
+  type: z.enum(['ONCE', 'DAILY', 'WEEKLY']),
   time: z.string().regex(/^\d{2}:\d{2}$/).optional(), // HH:MM format
   dayOfWeek: z.number().min(0).max(6).optional(), // 0 = Sunday, 6 = Saturday
 });
@@ -27,14 +27,14 @@ export const updateIPRangeSchema = z.object({
   description: z.string().max(500).optional().nullable(),
   credentialId: z.string().uuid().optional().nullable(),
   scanSchedule: scanScheduleSchema.optional().nullable(),
-  status: z.enum(['active', 'inactive']).optional(),
+  status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
 });
 
 export const listIPRangesQuerySchema = z.object({
   page: z.coerce.number().positive().default(1),
   limit: z.coerce.number().positive().max(100).default(20),
   search: z.string().optional(),
-  status: z.enum(['active', 'inactive']).optional(),
+  status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
 });
 
 // ============================================
@@ -43,22 +43,22 @@ export const listIPRangesQuerySchema = z.object({
 
 export const createCredentialSchema = z.object({
   name: z.string().min(2).max(100),
-  type: z.enum(['SSH', 'Windows', 'SNMP', 'WinRM']),
+  type: z.enum(['SSH', 'WINDOWS', 'SNMP', 'WINRM']),
   username: z.string().min(1).max(100).optional(),
   password: z.string().min(1).max(256).optional(),
   domain: z.string().max(100).optional(),
   snmpCommunity: z.string().max(100).optional(),
-  snmpVersion: z.enum(['v2c', 'v3']).optional(),
+  snmpVersion: z.enum(['V2C', 'V3']).optional(),
   port: z.number().int().positive().max(65535).optional(),
   description: z.string().max(500).optional(),
 }).refine(
   (data) => {
     // SSH and WinRM require username
-    if ((data.type === 'SSH' || data.type === 'WinRM') && !data.username) {
+    if ((data.type === 'SSH' || data.type === 'WINRM') && !data.username) {
       return false;
     }
     // Windows requires username
-    if (data.type === 'Windows' && !data.username) {
+    if (data.type === 'WINDOWS' && !data.username) {
       return false;
     }
     // SNMP requires community string
@@ -74,12 +74,12 @@ export const createCredentialSchema = z.object({
 
 export const updateCredentialSchema = z.object({
   name: z.string().min(2).max(100).optional(),
-  type: z.enum(['SSH', 'Windows', 'SNMP', 'WinRM']).optional(),
+  type: z.enum(['SSH', 'WINDOWS', 'SNMP', 'WINRM']).optional(),
   username: z.string().min(1).max(100).optional(),
   password: z.string().min(1).max(256).optional(),
   domain: z.string().max(100).optional().nullable(),
   snmpCommunity: z.string().max(100).optional().nullable(),
-  snmpVersion: z.enum(['v2c', 'v3']).optional().nullable(),
+  snmpVersion: z.enum(['V2C', 'V3']).optional().nullable(),
   port: z.number().int().positive().max(65535).optional().nullable(),
   description: z.string().max(500).optional().nullable(),
 });
@@ -88,7 +88,14 @@ export const listCredentialsQuerySchema = z.object({
   page: z.coerce.number().positive().default(1),
   limit: z.coerce.number().positive().max(100).default(20),
   search: z.string().optional(),
-  type: z.enum(['SSH', 'Windows', 'SNMP', 'WinRM']).optional(),
+  type: z.enum(['SSH', 'WINDOWS', 'SNMP', 'WINRM']).optional(),
+});
+
+export const getCredentialQuerySchema = z.object({
+  showPassword: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
 });
 
 export const testCredentialSchema = z.object({
@@ -112,7 +119,7 @@ export const listDiscoveredDevicesQuerySchema = z.object({
   page: z.coerce.number().positive().default(1),
   limit: z.coerce.number().positive().max(100).default(20),
   ipRangeId: z.string().uuid().optional(),
-  status: z.enum(['discovered', 'enrolled', 'ignored']).optional(),
+  status: z.enum(['DISCOVERED', 'ENROLLED', 'IGNORED']).optional(),
   search: z.string().optional(),
 });
 
@@ -133,6 +140,7 @@ export type CreateCredentialInput = z.infer<typeof createCredentialSchema>;
 export type UpdateCredentialInput = z.infer<typeof updateCredentialSchema>;
 export type ListCredentialsQuery = z.infer<typeof listCredentialsQuerySchema>;
 export type TestCredentialInput = z.infer<typeof testCredentialSchema>;
+export type GetCredentialQuery = z.infer<typeof getCredentialQuerySchema>;
 
 export type GetScanResultsQuery = z.infer<typeof getScanResultsQuerySchema>;
 export type ListDiscoveredDevicesQuery = z.infer<typeof listDiscoveredDevicesQuerySchema>;

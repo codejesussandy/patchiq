@@ -1,4 +1,5 @@
 import { RequestHandler } from 'express';
+import { sendSuccess, typedQuery } from '@shared/utils';
 import { dashboardService } from './dashboard.service';
 import type { ChartQuery, RecentActivityQuery, TopVulnerabilitiesQuery } from './dashboard.validators';
 
@@ -9,7 +10,7 @@ import type { ChartQuery, RecentActivityQuery, TopVulnerabilitiesQuery } from '.
 export const getDashboard: RequestHandler = async (_req, res, next) => {
   try {
     const result = await dashboardService.getDashboardData();
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -22,7 +23,7 @@ export const getDashboard: RequestHandler = async (_req, res, next) => {
 export const getStats: RequestHandler = async (_req, res, next) => {
   try {
     const result = await dashboardService.getStats();
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -34,9 +35,9 @@ export const getStats: RequestHandler = async (_req, res, next) => {
  */
 export const getPatchChart: RequestHandler = async (req, res, next) => {
   try {
-    const query = req.query as unknown as ChartQuery;
+    const query = typedQuery<ChartQuery>(req);
     const result = await dashboardService.getPatchChartData(query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -49,7 +50,7 @@ export const getPatchChart: RequestHandler = async (req, res, next) => {
 export const getAssetChart: RequestHandler = async (_req, res, next) => {
   try {
     const result = await dashboardService.getAssetChartData();
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -62,7 +63,7 @@ export const getAssetChart: RequestHandler = async (_req, res, next) => {
 export const getVulnerabilityChart: RequestHandler = async (_req, res, next) => {
   try {
     const result = await dashboardService.getVulnerabilityChartData();
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -75,7 +76,7 @@ export const getVulnerabilityChart: RequestHandler = async (_req, res, next) => 
 export const getAgentConnectivity: RequestHandler = async (_req, res, next) => {
   try {
     const result = await dashboardService.getAgentConnectivity();
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -87,9 +88,9 @@ export const getAgentConnectivity: RequestHandler = async (_req, res, next) => {
  */
 export const getRecentActivity: RequestHandler = async (req, res, next) => {
   try {
-    const query = req.query as unknown as RecentActivityQuery;
+    const query = typedQuery<RecentActivityQuery>(req);
     const result = await dashboardService.getRecentActivityFeed(query.limit || 20);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -101,9 +102,9 @@ export const getRecentActivity: RequestHandler = async (req, res, next) => {
  */
 export const getTopVulnerabilities: RequestHandler = async (req, res, next) => {
   try {
-    const query = req.query as unknown as TopVulnerabilitiesQuery;
+    const query = typedQuery<TopVulnerabilitiesQuery>(req);
     const result = await dashboardService.getTopVulnerabilities(query.limit || 10);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -116,7 +117,7 @@ export const getTopVulnerabilities: RequestHandler = async (req, res, next) => {
 export const getPatchCompliance: RequestHandler = async (_req, res, next) => {
   try {
     const result = await dashboardService.getPatchCompliance();
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -131,7 +132,7 @@ export const refreshDashboard: RequestHandler = async (_req, res, next) => {
     // For now, just return fresh dashboard data
     // In production, this could invalidate caches
     const result = await dashboardService.getDashboardData();
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }

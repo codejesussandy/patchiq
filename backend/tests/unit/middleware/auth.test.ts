@@ -11,7 +11,7 @@ describe('Auth Middleware', () => {
   const testPayload = {
     userId: 'test-user-id',
     email: 'test@patchiq.io',
-    role: 'admin',
+    role: 'ADMIN',
     organizationId: 'org-123',
   };
 
@@ -132,7 +132,7 @@ describe('Auth Middleware', () => {
       mockRequest.user = {
         id: testPayload.userId,
         email: testPayload.email,
-        role: 'admin',
+        role: 'ADMIN',
         organizationId: testPayload.organizationId,
       };
 
@@ -147,7 +147,7 @@ describe('Auth Middleware', () => {
     });
 
     it('should call next with error when user missing', () => {
-      const middleware = requireRole('admin');
+      const middleware = requireRole('ADMIN');
       middleware(
         mockRequest as Request,
         mockResponse as Response,
@@ -161,11 +161,11 @@ describe('Auth Middleware', () => {
       mockRequest.user = {
         id: testPayload.userId,
         email: testPayload.email,
-        role: 'viewer',
+        role: 'VIEWER',
         organizationId: testPayload.organizationId,
       };
 
-      const middleware = requireRole('admin');
+      const middleware = requireRole('ADMIN');
       middleware(
         mockRequest as Request,
         mockResponse as Response,

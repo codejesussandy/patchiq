@@ -5,8 +5,8 @@
  * Run: npx tsx src/db/prisma/scripts/populate-software-catalog.ts
  */
 
-import { softwareCatalogPopulatorService } from '../../../modules/software-catalog/software-catalog-populator.service';
 import { prisma } from '../../../db/client';
+import { softwareCatalogPopulatorService } from '../../../modules/software-catalog/software-catalog-populator.service';
 
 async function main() {
   console.log('╔════════════════════════════════════════════════════════════╗');

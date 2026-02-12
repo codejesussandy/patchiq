@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Form, Button, Typography, InputNumber, Switch, Row, Col, App } from 'antd';
-import { settingsService } from '../../services/settings.service';
+import { useAlertPolicies, useUpdateAlertPolicy } from '../../hooks/useSettings';
 import type { Policy, PolicyConfiguration } from '../../types/settings.types';
 
 const { Title, Text } = Typography;
@@ -15,33 +15,11 @@ interface PasswordPolicyFormData {
 
 export const PasswordPolicies = () => {
   const { message } = App.useApp();
-  const [loading, setLoading] = useState(false);
   const [form] = Form.useForm<PasswordPolicyFormData>();
+  const { data: policies = [], isLoading: loading } = useAlertPolicies();
+  const updatePolicyMutation = useUpdateAlertPolicy();
   const [currentPolicy, setCurrentPolicy] = useState<Policy | null>(null);
   const [originalFormValues, setOriginalFormValues] = useState<PasswordPolicyFormData | null>(null);
-
-  useEffect(() => {
-    fetchPasswordPolicy();
-  }, []);
-
-  const fetchPasswordPolicy = async () => {
-    setLoading(true);
-    try {
-      const policies = await settingsService.getPolicies();
-      const passwordPolicy = policies.find((p) => p.type === 'Password') || policies[0];
-
-      if (passwordPolicy) {
-        setCurrentPolicy(passwordPolicy);
-        const formData = policyToFormData(passwordPolicy.configuration);
-        form.setFieldsValue(formData);
-        setOriginalFormValues(formData);
-      }
-    } catch (error) {
-      message.error('Failed to fetch password policy');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const policyToFormData = (config: PolicyConfiguration): PasswordPolicyFormData => {
     return {
@@ -52,6 +30,20 @@ export const PasswordPolicies = () => {
       minSpecialCharacters: (config.minSpecialCharacters || 0) > 0,
     };
   };
+
+  /* eslint-disable react-hooks/set-state-in-effect -- sync fetched policy to form state */
+  useEffect(() => {
+    if (policies.length > 0) {
+      const passwordPolicy = (policies as Policy[]).find((p) => p.type === 'Password') || (policies as Policy[])[0];
+      if (passwordPolicy) {
+        setCurrentPolicy(passwordPolicy);
+        const formData = policyToFormData(passwordPolicy.configuration);
+        form.setFieldsValue(formData);
+        setOriginalFormValues(formData);
+      }
+    }
+  }, [policies, form]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const formDataToPolicy = (formData: PasswordPolicyFormData): PolicyConfiguration => {
     return {
@@ -81,19 +73,22 @@ export const PasswordPolicies = () => {
         configuration: formDataToPolicy(values),
       };
 
-      await settingsService.updatePolicy(currentPolicy.id, {
-        name: updatedPolicy.name,
-        type: updatedPolicy.type,
-        branch: updatedPolicy.orgUnit,
-        roles: updatedPolicy.affectedRoles,
-        description: updatedPolicy.description,
-        configuration: updatedPolicy.configuration,
+      await updatePolicyMutation.mutateAsync({
+        id: currentPolicy.id,
+        data: {
+          name: updatedPolicy.name,
+          type: updatedPolicy.type,
+          branch: updatedPolicy.orgUnit,
+          roles: updatedPolicy.affectedRoles,
+          description: updatedPolicy.description,
+          configuration: updatedPolicy.configuration,
+        },
       });
 
       setCurrentPolicy(updatedPolicy);
       setOriginalFormValues(values);
       message.success('Password policy updated successfully');
-    } catch (error) {
+    } catch {
       message.error('Failed to update password policy');
     }
   };

@@ -5,7 +5,7 @@
 # Configuration: Set PUBLIC_HOST, PUBLIC_PORT, PUBLIC_SCHEME in .env
 # See .env.example for details.
 
-.PHONY: help dev dev-fresh dev-services dev-backend dev-frontend dev-agent stop clean logs logs-backend logs-frontend db-migrate db-seed db-studio db-reset agent-build agent-run agent-install-air test test-backend test-frontend check check-types check-lint check-build check-health check-all install status minio-console api-docs api-endpoints dev-all clean-all preflight
+.PHONY: help dev dev-fresh dev-services dev-backend dev-frontend dev-agent stop clean logs logs-backend logs-frontend db-migrate db-seed db-studio db-reset agent-build agent-run agent-install-air test test-backend test-frontend check check-types check-lint check-build check-health check-all install status minio-console api-docs api-endpoints dev-all clean-all preflight generate-types
 
 # Colors for output
 GREEN := \033[0;32m
@@ -221,6 +221,10 @@ stop:
 # ===================
 # Database Targets
 # ===================
+
+generate-types:
+	@echo "$(CYAN)Generating shared types from Prisma schema...$(NC)"
+	cd shared && node scripts/generate-types.js
 
 db-migrate:
 	@echo "$(CYAN)Running database migrations...$(NC)"

@@ -150,12 +150,12 @@ async function evaluateConfig(
 
     // Notify admins about the new alert
     const severity = config.config.severity || 'WARNING';
-    const notifType = severity === 'CRITICAL' ? 'error' : severity === 'WARNING' ? 'warning' : 'info';
+    const notifType = severity === 'CRITICAL' ? 'ERROR' : severity === 'WARNING' ? 'WARNING' : 'INFO';
     notificationsService.broadcast({
       title: config.config.name || config.type,
       message: `Condition met: ${condDesc}`,
-      type: notifType as 'error' | 'warning' | 'info',
-      category: 'alert',
+      type: notifType as 'ERROR' | 'WARNING' | 'INFO',
+      category: 'ALERT',
       dedupKey: `alert-${config.id}-${assetId}`,
       link: `/assets/${assetId}`,
     }).catch(() => {});
@@ -173,8 +173,8 @@ async function evaluateConfig(
     notificationsService.broadcast({
       title: `Alert Resolved: ${config.config.name || config.type}`,
       message: `Alert conditions are no longer met`,
-      type: 'success',
-      category: 'alert',
+      type: 'SUCCESS',
+      category: 'ALERT',
       link: `/assets/${assetId}`,
     }).catch(() => {});
   }

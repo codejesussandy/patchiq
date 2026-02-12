@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Form, Input, Button, Typography } from 'antd';
 import { SendOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './Login.css';
@@ -25,7 +25,7 @@ export const ForgotPassword = () => {
       setTimeout(() => {
         navigate('/login');
       }, 2000);
-    } catch (error) {
+    } catch {
       // Error is handled in AuthContext with message.error
     } finally {
       setLoading(false);

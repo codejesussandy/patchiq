@@ -1,12 +1,13 @@
-/**
- * Reports Module Types
- */
+import type { ReportType, ReportFormat, ReportStatus, ReportFrequency } from '@shared/types';
 
-export type ReportType = 'patch' | 'asset' | 'vulnerability' | 'compliance' | 'audit' | 'custom';
-export type ReportFormat = 'PDF' | 'CSV' | 'Excel';
-export type ReportStatus = 'draft' | 'generating' | 'completed' | 'failed';
-export type ScheduleFrequency = 'daily' | 'weekly' | 'monthly';
+// Re-export shared types for backward compatibility
+export type { ReportType, ReportFormat, ReportStatus };
+export type ScheduleFrequency = ReportFrequency;
 
+// Re-export shared API types
+export type { ReportPreview } from '@shared/types';
+
+// Keep local types (use local ReportType/ReportFormat/ScheduleFrequency)
 export interface ReportFilters {
   dateRange?: {
     start: string;
@@ -21,9 +22,9 @@ export interface ReportFilters {
 export interface ReportSchedule {
   enabled: boolean;
   frequency: ScheduleFrequency;
-  time?: string; // HH:mm format
-  dayOfWeek?: number; // 0-6 for weekly
-  dayOfMonth?: number; // 1-31 for monthly
+  time?: string;
+  dayOfWeek?: number;
+  dayOfMonth?: number;
   recipients: string[];
 }
 
@@ -73,28 +74,23 @@ export interface CreateReportStep3 {
   schedule?: ReportSchedule;
 }
 
-export interface ReportPreview {
-  rowCount: number;
-  sampleData: Record<string, unknown>[];
-}
-
-// Column definitions for each report type
+// Keep const arrays (runtime values)
 export const REPORT_COLUMNS: Record<ReportType, string[]> = {
-  patch: [
+  PATCH: [
     'patchId',
     'software',
     'category',
     'severity',
     'os',
     'status',
-    'releaseDate',
+    'publishedAt',
     'kbNumber',
     'affectedEndpoints',
     'installedEndpoints',
     'pendingEndpoints',
     'failedEndpoints',
   ],
-  asset: [
+  ASSET: [
     'assetId',
     'name',
     'category',
@@ -106,7 +102,7 @@ export const REPORT_COLUMNS: Record<ReportType, string[]> = {
     'ipAddress',
     'lastSeen',
   ],
-  vulnerability: [
+  VULNERABILITY: [
     'cve',
     'severity',
     'epss',
@@ -117,7 +113,7 @@ export const REPORT_COLUMNS: Record<ReportType, string[]> = {
     'affectedSoftwares',
     'published',
   ],
-  compliance: [
+  COMPLIANCE: [
     'assetName',
     'complianceScore',
     'patchesInstalled',
@@ -127,7 +123,7 @@ export const REPORT_COLUMNS: Record<ReportType, string[]> = {
     'highVulnerabilities',
     'lastAuditDate',
   ],
-  audit: [
+  AUDIT: [
     'timestamp',
     'module',
     'operation',
@@ -136,15 +132,18 @@ export const REPORT_COLUMNS: Record<ReportType, string[]> = {
     'message',
     'ipAddress',
   ],
-  custom: [],
+  CUSTOM: [],
+  ENDPOINT: [],
+  HARDWARE: [],
 };
 
-// Filter definitions for each report type
 export const REPORT_FILTERS: Record<ReportType, string[]> = {
-  patch: ['severity', 'os', 'status', 'category', 'dateRange'],
-  asset: ['category', 'status', 'operationalStatus', 'osType'],
-  vulnerability: ['severity', 'exploitable', 'riskScoreRange', 'cvssRange', 'publishedDateRange'],
-  compliance: ['complianceScoreRange', 'auditDateRange'],
-  audit: ['module', 'operation', 'user', 'status', 'dateRange'],
-  custom: [],
+  PATCH: ['severity', 'os', 'status', 'category', 'dateRange'],
+  ASSET: ['category', 'status', 'operationalStatus', 'osType'],
+  VULNERABILITY: ['severity', 'exploitable', 'riskScoreRange', 'cvssRange', 'publishedDateRange'],
+  COMPLIANCE: ['complianceScoreRange', 'auditDateRange'],
+  AUDIT: ['module', 'operation', 'user', 'status', 'dateRange'],
+  CUSTOM: [],
+  ENDPOINT: [],
+  HARDWARE: [],
 };

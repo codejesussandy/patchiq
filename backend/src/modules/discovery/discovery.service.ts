@@ -1,7 +1,8 @@
-import { prisma } from '@/db/client';
 import { NotFoundError, ConflictError, BadRequestError } from '@shared/errors';
 import { encrypt, decrypt, maskString } from '@shared/utils/crypto';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
+import { withTransaction } from '@shared/utils/transaction';
+import { prisma } from '@/db/client';
 import type {
   IPRangeResponse,
   DeviceCredentialResponse,
@@ -118,7 +119,7 @@ export class DiscoveryService {
         scanScheduleType: data.scanSchedule?.type,
         scanScheduleTime: data.scanSchedule?.time,
         scanScheduleDay: data.scanSchedule?.dayOfWeek,
-        status: 'active',
+        status: 'ACTIVE',
       },
       include: {
         credential: {
@@ -210,7 +211,7 @@ export class DiscoveryService {
     const scan = await prisma.discoveryScan.create({
       data: {
         ipRangeId: id,
-        status: 'pending',
+        status: 'PENDING',
       },
     });
 
@@ -465,7 +466,7 @@ export class DiscoveryService {
   /**
    * Test a credential against a target host
    */
-  async testCredential(id: string, data: TestCredentialInput): Promise<TestCredentialResponse> {
+  async testCredential(id: string, _data: TestCredentialInput): Promise<TestCredentialResponse> {
     const credential = await prisma.deviceCredential.findUnique({
       where: { id },
     });
@@ -545,17 +546,17 @@ export class DiscoveryService {
       throw new NotFoundError('Device not found');
     }
 
-    if (device.status === 'enrolled') {
+    if (device.status === 'ENROLLED') {
       throw new ConflictError('Device is already enrolled');
     }
 
     // Create an asset from the discovered device
-    const asset = await prisma.$transaction(async (tx) => {
+    const asset = await withTransaction('enrollDevice', async (tx) => {
       const asset = await tx.asset.create({
         data: {
           name: data.name || device.hostname || device.ipAddress,
           type: data.type || 'Endpoint',
-          status: 'In Use',
+          status: 'IN_USE',
           ipAddress: device.ipAddress,
           macAddress: device.macAddress,
           os: device.os,
@@ -566,7 +567,7 @@ export class DiscoveryService {
       await tx.discoveredDevice.update({
         where: { id },
         data: {
-          status: 'enrolled',
+          status: 'ENROLLED',
           assetId: asset.id,
         },
       });
@@ -615,14 +616,14 @@ export class DiscoveryService {
         : null,
       scanSchedule: range.scanScheduleType
         ? {
-            type: range.scanScheduleType as 'once' | 'daily' | 'weekly',
+            type: range.scanScheduleType as 'ONCE' | 'DAILY' | 'WEEKLY',
             time: range.scanScheduleTime ?? undefined,
             dayOfWeek: range.scanScheduleDay ?? undefined,
           }
         : null,
       lastScanned: range.lastScanned?.toISOString() ?? null,
       deviceCount: range.deviceCount,
-      status: range.status as 'active' | 'inactive',
+      status: range.status as 'ACTIVE' | 'INACTIVE',
       createdAt: range.createdAt.toISOString(),
     };
   }
@@ -647,11 +648,11 @@ export class DiscoveryService {
     return {
       id: credential.id,
       name: credential.name,
-      type: credential.type as 'SSH' | 'Windows' | 'SNMP' | 'WinRM',
+      type: credential.type as 'SSH' | 'WINDOWS' | 'SNMP' | 'WINRM',
       username: credential.username,
       domain: credential.domain,
       snmpCommunity: credential.snmpCommunity,
-      snmpVersion: credential.snmpVersion as 'v2c' | 'v3' | null,
+      snmpVersion: credential.snmpVersion as 'V2C' | 'V3' | null,
       port: credential.port,
       description: credential.description,
       lastUsed: credential.lastUsed?.toISOString() ?? null,
@@ -676,7 +677,7 @@ export class DiscoveryService {
     return {
       id: scan.id,
       ipRangeId: scan.ipRangeId,
-      status: scan.status as 'pending' | 'in_progress' | 'completed' | 'failed',
+      status: scan.status as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED',
       devicesFound: scan.devicesFound,
       startedAt: scan.startedAt?.toISOString() ?? null,
       completedAt: scan.completedAt?.toISOString() ?? null,
@@ -713,7 +714,7 @@ export class DiscoveryService {
       os: device.os,
       vendor: device.vendor,
       openPorts: device.openPorts,
-      status: device.status as 'discovered' | 'enrolled' | 'ignored',
+      status: device.status as 'DISCOVERED' | 'ENROLLED' | 'IGNORED',
       assetId: device.assetId,
       discoveredAt: device.discoveredAt.toISOString(),
       lastSeenAt: device.lastSeenAt.toISOString(),

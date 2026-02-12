@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import dotenv from 'dotenv';
+import { z } from 'zod';
 
 // Load environment variables
 const envFile = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
@@ -133,6 +133,7 @@ function validateEnv() {
   } catch (error) {
     if (error instanceof z.ZodError) {
       const missingVars = error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+      // Use console.error here since logger depends on env config being loaded first
       console.error('Environment validation failed:');
       missingVars.forEach((v) => console.error(`  - ${v}`));
       process.exit(1);

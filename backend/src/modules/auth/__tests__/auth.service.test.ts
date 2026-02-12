@@ -1,9 +1,9 @@
-import { AuthService } from '../auth.service';
-import { prisma } from '@db/client';
-import { hashPassword, hashString } from '@shared/utils/crypto';
-import { signRefreshToken } from '@shared/utils/jwt';
-import { addDuration } from '@shared/utils/date';
 import { UnauthorizedError, ForbiddenError, BadRequestError, NotFoundError } from '@shared/errors';
+import { hashPassword, hashString } from '@shared/utils/crypto';
+import { addDuration } from '@shared/utils/date';
+import { signRefreshToken } from '@shared/utils/jwt';
+import { prisma } from '@db/client';
+import { AuthService } from '../auth.service';
 
 // Mock Prisma
 jest.mock('@db/client', () => ({
@@ -45,7 +45,7 @@ describe('AuthService', () => {
         email: 'user@example.com',
         passwordHash,
         name: 'Test User',
-        role: 'user',
+        role: 'USER',
         isActive: true,
         isOnboarded: true,
         organizationId: null,
@@ -115,7 +115,7 @@ describe('AuthService', () => {
         email: 'user@example.com',
         passwordHash,
         name: 'Test User',
-        role: 'user',
+        role: 'USER',
         isActive: true,
         isOnboarded: true,
         organizationId: null,
@@ -169,7 +169,7 @@ describe('AuthService', () => {
       const refreshToken = signRefreshToken({
         userId: 'user-1',
         email: 'user@example.com',
-        role: 'user',
+        role: 'USER',
       });
 
       (mockPrisma.refreshToken.findFirst as jest.Mock).mockResolvedValue(null);
@@ -183,7 +183,7 @@ describe('AuthService', () => {
       const refreshToken = signRefreshToken({
         userId: 'user-1',
         email: 'user@example.com',
-        role: 'user',
+        role: 'USER',
       });
 
       const mockStoredToken = {
@@ -195,7 +195,7 @@ describe('AuthService', () => {
         user: {
           id: 'user-1',
           email: 'user@example.com',
-          role: 'user',
+          role: 'USER',
           isActive: true,
           organizationId: null,
         },
@@ -216,7 +216,7 @@ describe('AuthService', () => {
       const refreshToken = signRefreshToken({
         userId: 'user-1',
         email: 'user@example.com',
-        role: 'user',
+        role: 'USER',
       });
 
       const mockStoredToken = {
@@ -228,7 +228,7 @@ describe('AuthService', () => {
         user: {
           id: 'user-1',
           email: 'user@example.com',
-          role: 'user',
+          role: 'USER',
           isActive: false, // User disabled
           organizationId: null,
         },
@@ -382,7 +382,7 @@ describe('AuthService', () => {
         email: 'user@example.com',
         name: 'Test User',
         contactNumber: '+1234567890',
-        role: 'user',
+        role: 'USER',
         organizationId: 'org-1',
         departmentId: null,
         locationId: null,
@@ -401,7 +401,7 @@ describe('AuthService', () => {
       expect(result.email).toBe('user@example.com');
       expect(result.firstName).toBe('Test');
       expect(result.lastName).toBe('User');
-      expect(result.role).toBe('user');
+      expect(result.role).toBe('USER');
       expect(result.isOnboarded).toBe(true);
       expect(result.createdAt).toBe('2024-01-01T00:00:00.000Z');
     });

@@ -6,7 +6,7 @@
  * The agent central repository will only download from these whitelisted sources.
  */
 
-import { CreatePatchSourceDto, PatchSourceCategory, PatchSourcePlatform } from './patch-repository.types';
+import { CreatePatchSourceDto } from './patch-repository.types';
 
 export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   // ============================================
@@ -17,8 +17,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Microsoft Windows Update',
     vendor: 'Microsoft',
-    category: 'os',
-    platform: 'windows',
+    category: 'OS',
+    platform: 'WINDOWS',
     baseUrl: 'https://windowsupdate.microsoft.com',
     urlPatterns: [
       '*.windowsupdate.microsoft.com',
@@ -39,8 +39,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Microsoft Delivery Optimization',
     vendor: 'Microsoft',
-    category: 'os',
-    platform: 'windows',
+    category: 'OS',
+    platform: 'WINDOWS',
     baseUrl: 'https://delivery.mp.microsoft.com',
     urlPatterns: [
       '*.do.dsp.mp.microsoft.com',
@@ -61,8 +61,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Apple macOS Updates',
     vendor: 'Apple',
-    category: 'os',
-    platform: 'macos',
+    category: 'OS',
+    platform: 'MACOS',
     baseUrl: 'https://swscan.apple.com',
     urlPatterns: [
       'swscan.apple.com',
@@ -87,8 +87,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Red Hat Enterprise Linux',
     vendor: 'Red Hat',
-    category: 'os',
-    platform: 'linux',
+    category: 'OS',
+    platform: 'LINUX',
     baseUrl: 'https://cdn.redhat.com',
     urlPatterns: [
       'cdn.redhat.com',
@@ -101,8 +101,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'CentOS',
     vendor: 'CentOS',
-    category: 'os',
-    platform: 'linux',
+    category: 'OS',
+    platform: 'LINUX',
     baseUrl: 'http://mirror.centos.org',
     urlPatterns: [
       'mirror.centos.org',
@@ -114,8 +114,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Ubuntu',
     vendor: 'Canonical',
-    category: 'os',
-    platform: 'linux',
+    category: 'OS',
+    platform: 'LINUX',
     baseUrl: 'http://archive.ubuntu.com',
     urlPatterns: [
       'archive.ubuntu.com',
@@ -128,8 +128,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Debian',
     vendor: 'Debian',
-    category: 'os',
-    platform: 'linux',
+    category: 'OS',
+    platform: 'LINUX',
     baseUrl: 'http://ftp.debian.org',
     urlPatterns: [
       'ftp.debian.org',
@@ -141,8 +141,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Pardus',
     vendor: 'TUBITAK',
-    category: 'os',
-    platform: 'linux',
+    category: 'OS',
+    platform: 'LINUX',
     baseUrl: 'http://depo.pardus.org.tr',
     urlPatterns: [
       'depo.pardus.org.tr',
@@ -154,8 +154,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Oracle Linux',
     vendor: 'Oracle',
-    category: 'os',
-    platform: 'linux',
+    category: 'OS',
+    platform: 'LINUX',
     baseUrl: 'https://yum.oracle.com',
     urlPatterns: [
       'yum.oracle.com',
@@ -167,8 +167,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'AlmaLinux',
     vendor: 'AlmaLinux',
-    category: 'os',
-    platform: 'linux',
+    category: 'OS',
+    platform: 'LINUX',
     baseUrl: 'https://repo.almalinux.org',
     urlPatterns: ['repo.almalinux.org'],
     priority: 80,
@@ -177,8 +177,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Rocky Linux',
     vendor: 'Rocky Enterprise Software Foundation',
-    category: 'os',
-    platform: 'linux',
+    category: 'OS',
+    platform: 'LINUX',
     baseUrl: 'https://dl.rockylinux.org',
     urlPatterns: ['dl.rockylinux.org'],
     priority: 80,
@@ -187,8 +187,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Amazon Linux',
     vendor: 'Amazon',
-    category: 'os',
-    platform: 'linux',
+    category: 'OS',
+    platform: 'LINUX',
     baseUrl: 'https://repo.us-east-1.amazonaws.com',
     urlPatterns: ['repo.*.amazonaws.com'],
     priority: 85,
@@ -197,8 +197,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'SUSE Linux Enterprise',
     vendor: 'SUSE',
-    category: 'os',
-    platform: 'linux',
+    category: 'OS',
+    platform: 'LINUX',
     baseUrl: 'https://updates.suse.com',
     urlPatterns: [
       'updates.suse.com',
@@ -210,8 +210,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Fedora & EPEL',
     vendor: 'Fedora Project',
-    category: 'os',
-    platform: 'linux',
+    category: 'OS',
+    platform: 'LINUX',
     baseUrl: 'https://mirrors.fedoraproject.org',
     urlPatterns: [
       'mirrors.fedoraproject.org',
@@ -223,8 +223,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Alpine Linux',
     vendor: 'Alpine Linux',
-    category: 'os',
-    platform: 'linux',
+    category: 'OS',
+    platform: 'LINUX',
     baseUrl: 'http://dl-cdn.alpinelinux.org',
     urlPatterns: ['dl-cdn.alpinelinux.org'],
     priority: 75,
@@ -238,8 +238,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Dell Firmware & Drivers',
     vendor: 'Dell',
-    category: 'firmware',
-    platform: 'cross-platform',
+    category: 'FIRMWARE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://downloads.dell.com',
     urlPatterns: [
       'downloads.dell.com',
@@ -251,8 +251,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'HP Firmware & Drivers',
     vendor: 'HP',
-    category: 'firmware',
-    platform: 'cross-platform',
+    category: 'FIRMWARE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://ftp.hp.com',
     urlPatterns: [
       'ftp.hp.com',
@@ -264,8 +264,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Lenovo Firmware & Drivers',
     vendor: 'Lenovo',
-    category: 'firmware',
-    platform: 'cross-platform',
+    category: 'FIRMWARE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://download.lenovo.com',
     urlPatterns: [
       'download.lenovo.com',
@@ -277,8 +277,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'NVIDIA Drivers',
     vendor: 'NVIDIA',
-    category: 'firmware',
-    platform: 'cross-platform',
+    category: 'FIRMWARE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://international.download.nvidia.com',
     urlPatterns: [
       'international.download.nvidia.com',
@@ -289,8 +289,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Intel Drivers',
     vendor: 'Intel',
-    category: 'firmware',
-    platform: 'cross-platform',
+    category: 'FIRMWARE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://downloadmirror.intel.com',
     urlPatterns: [
       'downloadmirror.intel.com',
@@ -301,8 +301,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'AMD Drivers',
     vendor: 'AMD',
-    category: 'firmware',
-    platform: 'cross-platform',
+    category: 'FIRMWARE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://drivers.amd.com',
     urlPatterns: ['drivers.amd.com'],
     priority: 85,
@@ -315,8 +315,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Adobe Creative Cloud & Acrobat',
     vendor: 'Adobe',
-    category: 'enterprise',
-    platform: 'cross-platform',
+    category: 'ENTERPRISE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://ccmdl.adobe.com',
     urlPatterns: [
       '*.adobe.com',
@@ -331,8 +331,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Autodesk',
     vendor: 'Autodesk',
-    category: 'enterprise',
-    platform: 'cross-platform',
+    category: 'ENTERPRISE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://manifest.delivery.autodesk.com',
     urlPatterns: [
       '*.autodesk.com',
@@ -345,8 +345,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Microsoft 365',
     vendor: 'Microsoft',
-    category: 'enterprise',
-    platform: 'cross-platform',
+    category: 'ENTERPRISE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://officecdn.microsoft.com',
     urlPatterns: [
       '*.officecdn.microsoft.com',
@@ -362,8 +362,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Zoom',
     vendor: 'Zoom',
-    category: 'enterprise',
-    platform: 'cross-platform',
+    category: 'ENTERPRISE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://zoom.us',
     urlPatterns: [
       '*.zoom.us',
@@ -375,8 +375,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Citrix Workspace',
     vendor: 'Citrix',
-    category: 'enterprise',
-    platform: 'cross-platform',
+    category: 'ENTERPRISE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://downloadplugins.citrix.com',
     urlPatterns: [
       'downloadplugins.citrix.com',
@@ -394,8 +394,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'VMware',
     vendor: 'VMware',
-    category: 'enterprise',
-    platform: 'cross-platform',
+    category: 'ENTERPRISE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://download3.vmware.com',
     urlPatterns: [
       'download3.vmware.com',
@@ -407,8 +407,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'VirtualBox',
     vendor: 'Oracle',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://download.virtualbox.org',
     urlPatterns: ['download.virtualbox.org'],
     priority: 70,
@@ -416,8 +416,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Azure Virtual Desktop',
     vendor: 'Microsoft',
-    category: 'enterprise',
-    platform: 'windows',
+    category: 'ENTERPRISE',
+    platform: 'WINDOWS',
     baseUrl: 'https://query.prod.cms.rt.microsoft.com',
     urlPatterns: ['query.prod.cms.rt.microsoft.com'],
     priority: 80,
@@ -425,8 +425,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Docker Desktop',
     vendor: 'Docker',
-    category: 'runtime',
-    platform: 'cross-platform',
+    category: 'RUNTIME',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://download.docker.com',
     urlPatterns: [
       'download.docker.com',
@@ -437,8 +437,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'AWS CLI',
     vendor: 'Amazon',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://awscli.amazonaws.com',
     urlPatterns: ['awscli.amazonaws.com'],
     priority: 75,
@@ -452,8 +452,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Azul Zulu JDK',
     vendor: 'Azul',
-    category: 'runtime',
-    platform: 'cross-platform',
+    category: 'RUNTIME',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://cdn.azul.com',
     urlPatterns: ['cdn.azul.com'],
     priority: 80,
@@ -462,8 +462,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Oracle Java',
     vendor: 'Oracle',
-    category: 'runtime',
-    platform: 'cross-platform',
+    category: 'RUNTIME',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://javadl.oracle.com',
     urlPatterns: ['javadl.oracle.com'],
     priority: 80,
@@ -472,8 +472,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Amazon Corretto',
     vendor: 'Amazon',
-    category: 'runtime',
-    platform: 'cross-platform',
+    category: 'RUNTIME',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://corretto.aws',
     urlPatterns: ['corretto.aws'],
     priority: 80,
@@ -482,8 +482,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Eclipse Temurin',
     vendor: 'Eclipse Foundation',
-    category: 'runtime',
-    platform: 'cross-platform',
+    category: 'RUNTIME',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://api.adoptium.net',
     urlPatterns: ['api.adoptium.net'],
     priority: 80,
@@ -494,8 +494,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Microsoft .NET',
     vendor: 'Microsoft',
-    category: 'runtime',
-    platform: 'cross-platform',
+    category: 'RUNTIME',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://dotnetcli.azureedge.net',
     urlPatterns: ['dotnetcli.azureedge.net'],
     priority: 85,
@@ -506,8 +506,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Python',
     vendor: 'Python Software Foundation',
-    category: 'runtime',
-    platform: 'cross-platform',
+    category: 'RUNTIME',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://www.python.org',
     urlPatterns: ['www.python.org'],
     priority: 80,
@@ -516,8 +516,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Node.js',
     vendor: 'OpenJS Foundation',
-    category: 'runtime',
-    platform: 'cross-platform',
+    category: 'RUNTIME',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://nodejs.org',
     urlPatterns: ['nodejs.org'],
     priority: 80,
@@ -526,8 +526,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Go',
     vendor: 'Google',
-    category: 'runtime',
-    platform: 'cross-platform',
+    category: 'RUNTIME',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://go.dev',
     urlPatterns: ['go.dev'],
     priority: 75,
@@ -538,8 +538,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Git for Windows',
     vendor: 'Git',
-    category: 'utility',
-    platform: 'windows',
+    category: 'UTILITY',
+    platform: 'WINDOWS',
     baseUrl: 'https://github.com/git-for-windows',
     urlPatterns: ['github.com'],
     priority: 75,
@@ -547,8 +547,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Visual Studio Code',
     vendor: 'Microsoft',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://update.code.visualstudio.com',
     urlPatterns: ['update.code.visualstudio.com'],
     priority: 80,
@@ -556,8 +556,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'JetBrains IDEs',
     vendor: 'JetBrains',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://download.jetbrains.com',
     urlPatterns: ['download.jetbrains.com'],
     priority: 75,
@@ -565,8 +565,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Postman',
     vendor: 'Postman',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://dl.pstmn.io',
     urlPatterns: ['dl.pstmn.io'],
     priority: 70,
@@ -574,8 +574,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Anaconda',
     vendor: 'Anaconda',
-    category: 'runtime',
-    platform: 'cross-platform',
+    category: 'RUNTIME',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://repo.anaconda.com',
     urlPatterns: ['repo.anaconda.com'],
     priority: 75,
@@ -589,8 +589,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Microsoft Defender',
     vendor: 'Microsoft',
-    category: 'security',
-    platform: 'windows',
+    category: 'SECURITY',
+    platform: 'WINDOWS',
     baseUrl: 'https://definitionupdates.microsoft.com',
     urlPatterns: [
       'definitionupdates.microsoft.com',
@@ -603,8 +603,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Symantec/Broadcom',
     vendor: 'Broadcom',
-    category: 'security',
-    platform: 'cross-platform',
+    category: 'SECURITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://liveupdate.symantecliveupdate.com',
     urlPatterns: ['liveupdate.symantecliveupdate.com'],
     priority: 85,
@@ -612,8 +612,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'McAfee/Trellix',
     vendor: 'Trellix',
-    category: 'security',
-    platform: 'cross-platform',
+    category: 'SECURITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'http://update.nai.com',
     urlPatterns: ['update.nai.com'],
     priority: 85,
@@ -621,8 +621,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Trend Micro',
     vendor: 'Trend Micro',
-    category: 'security',
-    platform: 'cross-platform',
+    category: 'SECURITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://activeupdate.trendmicro.com',
     urlPatterns: ['activeupdate.trendmicro.com'],
     priority: 85,
@@ -630,8 +630,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Malwarebytes',
     vendor: 'Malwarebytes',
-    category: 'security',
-    platform: 'cross-platform',
+    category: 'SECURITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://data-cdn.mbamupdates.com',
     urlPatterns: ['data-cdn.mbamupdates.com'],
     priority: 80,
@@ -645,8 +645,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Google Chrome',
     vendor: 'Google',
-    category: 'browser',
-    platform: 'cross-platform',
+    category: 'BROWSER',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://dl.google.com',
     urlPatterns: ['dl.google.com'],
     priority: 90,
@@ -655,8 +655,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Mozilla Firefox',
     vendor: 'Mozilla',
-    category: 'browser',
-    platform: 'cross-platform',
+    category: 'BROWSER',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://download.cdn.mozilla.net',
     urlPatterns: ['download.cdn.mozilla.net'],
     priority: 90,
@@ -665,8 +665,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Brave Browser',
     vendor: 'Brave Software',
-    category: 'browser',
-    platform: 'cross-platform',
+    category: 'BROWSER',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://updates-cdn.bravesoftware.com',
     urlPatterns: ['updates-cdn.bravesoftware.com'],
     priority: 75,
@@ -674,8 +674,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Opera Browser',
     vendor: 'Opera',
-    category: 'browser',
-    platform: 'cross-platform',
+    category: 'BROWSER',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://get.geo.opera.com',
     urlPatterns: ['get.geo.opera.com'],
     priority: 70,
@@ -685,8 +685,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Slack',
     vendor: 'Salesforce',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://downloads.slack-edge.com',
     urlPatterns: ['downloads.slack-edge.com'],
     priority: 80,
@@ -694,8 +694,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Microsoft Teams',
     vendor: 'Microsoft',
-    category: 'enterprise',
-    platform: 'cross-platform',
+    category: 'ENTERPRISE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://statics.teams.cdn.office.net',
     urlPatterns: ['statics.teams.cdn.office.net'],
     priority: 90,
@@ -704,8 +704,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Cisco Webex',
     vendor: 'Cisco',
-    category: 'enterprise',
-    platform: 'cross-platform',
+    category: 'ENTERPRISE',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://akamaicdn.webex.com',
     urlPatterns: ['akamaicdn.webex.com'],
     priority: 80,
@@ -713,8 +713,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Discord',
     vendor: 'Discord',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://dl.discordapp.net',
     urlPatterns: ['dl.discordapp.net'],
     priority: 65,
@@ -722,8 +722,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'WhatsApp Desktop',
     vendor: 'Meta',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://web.whatsapp.com',
     urlPatterns: ['web.whatsapp.com'],
     priority: 65,
@@ -733,8 +733,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: '7-Zip',
     vendor: '7-Zip',
-    category: 'utility',
-    platform: 'windows',
+    category: 'UTILITY',
+    platform: 'WINDOWS',
     baseUrl: 'https://7-zip.org',
     urlPatterns: ['7-zip.org'],
     priority: 70,
@@ -742,8 +742,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'WinRAR',
     vendor: 'RARLAB',
-    category: 'utility',
-    platform: 'windows',
+    category: 'UTILITY',
+    platform: 'WINDOWS',
     baseUrl: 'https://www.rarlab.com',
     urlPatterns: ['www.rarlab.com'],
     priority: 70,
@@ -751,8 +751,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Notepad++',
     vendor: 'Notepad++',
-    category: 'utility',
-    platform: 'windows',
+    category: 'UTILITY',
+    platform: 'WINDOWS',
     baseUrl: 'https://github.com/notepad-plus-plus',
     urlPatterns: ['github.com'],
     priority: 70,
@@ -760,8 +760,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'VLC Media Player',
     vendor: 'VideoLAN',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://get.videolan.org',
     urlPatterns: ['get.videolan.org'],
     priority: 70,
@@ -769,8 +769,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'FileZilla',
     vendor: 'FileZilla Project',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://dl3.cdn.filezilla-project.org',
     urlPatterns: ['*.cdn.filezilla-project.org'],
     priority: 65,
@@ -778,8 +778,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'TeamViewer',
     vendor: 'TeamViewer',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://download.teamviewer.com',
     urlPatterns: ['download.teamviewer.com'],
     priority: 75,
@@ -787,8 +787,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'AnyDesk',
     vendor: 'AnyDesk',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://download.anydesk.com',
     urlPatterns: ['download.anydesk.com'],
     priority: 70,
@@ -796,8 +796,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Wireshark',
     vendor: 'Wireshark Foundation',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://1.na.dl.wireshark.org',
     urlPatterns: ['*.dl.wireshark.org'],
     priority: 65,
@@ -810,8 +810,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'GitHub Releases',
     vendor: 'GitHub',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://github.com',
     urlPatterns: [
       'github.com',
@@ -823,8 +823,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'SourceForge',
     vendor: 'SourceForge',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://sourceforge.net',
     urlPatterns: ['sourceforge.net', '*.sourceforge.net'],
     priority: 60,
@@ -832,8 +832,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Amazon S3 CDN',
     vendor: 'Amazon',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://s3.amazonaws.com',
     urlPatterns: ['*.s3.amazonaws.com'],
     priority: 70,
@@ -842,8 +842,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Akamai CDN',
     vendor: 'Akamai',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://akamaiedge.net',
     urlPatterns: ['*.akamaiedge.net'],
     priority: 70,
@@ -852,8 +852,8 @@ export const WHITELIST_SOURCES: CreatePatchSourceDto[] = [
   {
     name: 'Cloudflare CDN',
     vendor: 'Cloudflare',
-    category: 'utility',
-    platform: 'cross-platform',
+    category: 'UTILITY',
+    platform: 'CROSS_PLATFORM',
     baseUrl: 'https://cloudflare.com',
     urlPatterns: ['*.cloudflare.com'],
     priority: 70,

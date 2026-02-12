@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import { useNavigate, useLocation, Routes, Route } from 'react-router-dom';
 import { Typography, Tabs } from 'antd';
-import { ConfigurationJobsCatalog } from './ConfigurationJobsCatalog';
+import { useNavigate, useLocation, Routes, Route } from 'react-router-dom';
 import { ConfigurationJobsBundle } from './ConfigurationJobsBundle';
+import { ConfigurationJobsCatalog } from './ConfigurationJobsCatalog';
 import { ConfigurationJobsDeployed } from './ConfigurationJobsDeployed';
 
 const { Title } = Typography;

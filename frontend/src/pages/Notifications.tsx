@@ -1,21 +1,24 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-  Table, Typography, Tag, Button, Space, Input, Select, DatePicker, App, Tooltip,
-} from 'antd';
+import { useState } from 'react';
 import {
   SearchOutlined, DeleteOutlined, CheckOutlined, ReloadOutlined,
-  CheckCircleFilled, WarningFilled, InfoCircleFilled, CloseCircleFilled,
-} from '@ant-design/icons';
-import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+  CheckCircleFilled, WarningFilled, InfoCircleFilled, CloseCircleFilled } from '@ant-design/icons';
+import {
+  Typography, Tag, Button, Space, Input, Select, DatePicker, App, Tooltip } from 'antd';
+import type { ColumnsType} from 'antd/es/table';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { DataTable } from '../components/shared/DataTable';
 import {
-  notificationService,
-  type Notification,
-  type NotificationType,
-  type NotificationCategory,
-  type NotificationHistoryParams,
-} from '../services/notification.service';
+  useNotificationHistory,
+  useMarkAsRead,
+  useDeleteNotification,
+  useBulkMarkAsRead,
+  useBulkDeleteNotifications } from '../hooks/useNotifications';
+import type {
+  Notification,
+  NotificationType,
+  NotificationCategory,
+  NotificationHistoryParams } from '../services/notification.service';
 
 dayjs.extend(relativeTime);
 
@@ -52,14 +55,10 @@ const categoryColor: Record<string, string> = {
   deployment: 'green',
   vulnerability: 'red',
   alert: 'orange',
-  system: 'default',
-};
+  system: 'default' };
 
 export const Notifications = () => {
   const { message } = App.useApp();
-  const [data, setData] = useState<Notification[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   // Filters
@@ -68,45 +67,35 @@ export const Notifications = () => {
   const [categoryFilter, setCategoryFilter] = useState<NotificationCategory | undefined>();
   const [readFilter, setReadFilter] = useState<string | undefined>();
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
-  const [pagination, setPagination] = useState<TablePaginationConfig>({ current: 1, pageSize: 20 });
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params: NotificationHistoryParams = {
-        page: pagination.current || 1,
-        limit: pagination.pageSize || 20,
-        sortBy: 'createdAt',
-        sortOrder: 'desc',
-      };
-      if (search) params.search = search;
-      if (typeFilter) params.type = typeFilter;
-      if (categoryFilter) params.category = categoryFilter;
-      if (readFilter) params.read = readFilter;
-      if (dateRange?.[0]) params.dateFrom = dateRange[0].toISOString();
-      if (dateRange?.[1]) params.dateTo = dateRange[1].toISOString();
+  // Build query params
+  const queryParams: NotificationHistoryParams = {
+    page: pagination.current || 1,
+    limit: pagination.pageSize || 20,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+    ...(search && { search }),
+    ...(typeFilter && { type: typeFilter }),
+    ...(categoryFilter && { category: categoryFilter }),
+    ...(readFilter && { read: readFilter }),
+    ...(dateRange?.[0] && { dateFrom: dateRange[0].toISOString() }),
+    ...(dateRange?.[1] && { dateTo: dateRange[1].toISOString() }) };
 
-      const result = await notificationService.getHistory(params);
-      setData(Array.isArray(result.data) ? result.data : []);
-      setTotal(result.total || 0);
-    } catch {
-      message.error('Failed to fetch notifications');
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.current, pagination.pageSize, search, typeFilter, categoryFilter, readFilter, dateRange, message]);
+  const { data: historyResponse, isLoading: loading, refetch } = useNotificationHistory(queryParams);
+  const data = Array.isArray(historyResponse?.data) ? historyResponse.data : [];
+  const total = historyResponse?.total || 0;
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const markAsReadMutation = useMarkAsRead();
+  const deleteNotificationMutation = useDeleteNotification();
+  const bulkMarkAsReadMutation = useBulkMarkAsRead();
+  const bulkDeleteMutation = useBulkDeleteNotifications();
 
   const handleBulkMarkRead = async () => {
     try {
-      await notificationService.bulkMarkAsRead(selectedRowKeys as string[]);
+      await bulkMarkAsReadMutation.mutateAsync(selectedRowKeys as string[]);
       message.success(`Marked ${selectedRowKeys.length} notifications as read`);
       setSelectedRowKeys([]);
-      fetchData();
     } catch {
       message.error('Failed to mark notifications as read');
     }
@@ -114,10 +103,9 @@ export const Notifications = () => {
 
   const handleBulkDelete = async () => {
     try {
-      await notificationService.bulkDelete(selectedRowKeys as string[]);
+      await bulkDeleteMutation.mutateAsync(selectedRowKeys as string[]);
       message.success(`Deleted ${selectedRowKeys.length} notifications`);
       setSelectedRowKeys([]);
-      fetchData();
     } catch {
       message.error('Failed to delete notifications');
     }
@@ -125,8 +113,7 @@ export const Notifications = () => {
 
   const handleMarkSingleRead = async (id: string) => {
     try {
-      await notificationService.markAsRead(id);
-      setData((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      await markAsReadMutation.mutateAsync(id);
     } catch {
       message.error('Failed to mark as read');
     }
@@ -134,9 +121,7 @@ export const Notifications = () => {
 
   const handleDeleteSingle = async (id: string) => {
     try {
-      await notificationService.deleteNotification(id);
-      setData((prev) => prev.filter((n) => n.id !== id));
-      setTotal((t) => t - 1);
+      await deleteNotificationMutation.mutateAsync(id);
     } catch {
       message.error('Failed to delete notification');
     }
@@ -148,22 +133,19 @@ export const Notifications = () => {
       dataIndex: 'type',
       width: 60,
       align: 'center',
-      render: (type: NotificationType) => getTypeIcon(type),
-    },
+      render: (type: NotificationType) => getTypeIcon(type) },
     {
       title: 'Category',
       dataIndex: 'category',
       width: 120,
-      render: (cat: string) => cat ? <Tag color={categoryColor[cat] || 'default'}>{cat}</Tag> : '-',
-    },
+      render: (cat: string) => cat ? <Tag color={categoryColor[cat] || 'default'}>{cat}</Tag> : '-' },
     {
       title: 'Title',
       dataIndex: 'title',
       ellipsis: true,
       render: (title: string, record: Notification) => (
         <span style={{ fontWeight: record.read ? 'normal' : 600 }}>{title}</span>
-      ),
-    },
+      ) },
     {
       title: 'Message',
       dataIndex: 'message',
@@ -172,8 +154,7 @@ export const Notifications = () => {
         <Tooltip title={msg}>
           <span style={{ color: '#666' }}>{msg}</span>
         </Tooltip>
-      ),
-    },
+      ) },
     {
       title: 'Status',
       dataIndex: 'read',
@@ -181,8 +162,7 @@ export const Notifications = () => {
       align: 'center',
       render: (read: boolean) => read
         ? <Tag>Read</Tag>
-        : <Tag color="blue">Unread</Tag>,
-    },
+        : <Tag color="blue">Unread</Tag> },
     {
       title: 'Time',
       dataIndex: 'createdAt',
@@ -191,8 +171,7 @@ export const Notifications = () => {
         <Tooltip title={dayjs(date).format('YYYY-MM-DD HH:mm:ss')}>
           {dayjs(date).fromNow()}
         </Tooltip>
-      ),
-    },
+      ) },
     {
       title: 'Actions',
       width: 80,
@@ -217,15 +196,14 @@ export const Notifications = () => {
             title="Delete"
           />
         </Space>
-      ),
-    },
+      ) },
   ];
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={4} style={{ margin: 0 }}>Notification History</Title>
-        <Button icon={<ReloadOutlined />} onClick={fetchData}>Refresh</Button>
+        <Button icon={<ReloadOutlined />} onClick={() => refetch()}>Refresh</Button>
       </div>
 
       {/* Filters */}
@@ -286,21 +264,19 @@ export const Notifications = () => {
         </Space>
       )}
 
-      <Table
+      <DataTable
         rowKey="id"
         columns={columns}
-        dataSource={data}
+        data={data}
         loading={loading}
         rowSelection={{
           selectedRowKeys,
-          onChange: setSelectedRowKeys,
-        }}
+          onChange: setSelectedRowKeys }}
         pagination={{
           ...pagination,
           total,
           showSizeChanger: true,
-          showTotal: (t) => `${t} notifications`,
-        }}
+          showTotal: (t) => `${t} notifications` }}
         onChange={(pag) => setPagination(pag)}
         size="middle"
       />

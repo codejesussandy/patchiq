@@ -1,58 +1,22 @@
 // Dashboard Types
 
-export interface ExploitabilityBreakdown {
-  critical: number;
-  high: number;
-  medium: number;
-  low: number;
-  total: number;
-}
+// Re-export shared API types that match
+export type {
+  ExploitabilityBreakdown,
+  DashboardStats,
+  VulnerabilityByDateTable,
+  TopVulnerabilities,
+  PatchCompliance,
+  RecentActivity,
+  AlertSeverityByPlatform,
+  DayWiseVulnerability,
+  AlertSeverityByModule,
+  SankeyLink as VulnerabilityClassification,
+  DistributionItem as EndpointDistribution,
+  VulnerabilityByDate as VulnerabilityTrend,
+} from '@shared/types';
 
-export interface DashboardStats {
-  totalEndpoints: number;
-  dataLossEndpoints: number;
-  windowsEndpoints: number;
-  linuxEndpoints: number;
-  macEndpoints: number;
-  totalAgents: number;
-  totalVulnerabilities: number;
-  unmitigatedVulnerabilities: number;
-  criticalVulnerabilities: number;
-  highVulnerabilities: number;
-  mediumVulnerabilities: number;
-  lowVulnerabilities: number;
-  exploitableVulnerabilities?: ExploitabilityBreakdown;
-  nonExploitableVulnerabilities?: ExploitabilityBreakdown;
-}
-
-export interface VulnerabilityClassification {
-  source: string;
-  target: string;
-  value: number;
-}
-
-export interface EndpointDistribution {
-  name: string;
-  value: number;
-  color?: string;
-  [key: string]: unknown;
-}
-
-export interface VulnerabilityTrend {
-  date: string;
-  critical: number;
-  high: number;
-  medium: number;
-  low: number;
-}
-
-export interface VulnerabilityByDateTable {
-  dateRange: string;
-  critical: number;
-  high: number;
-  medium: number;
-  low: number;
-}
+// UI-specific types (differ from shared or used only in frontend charts)
 
 export interface CVEEntry {
   cve: string;
@@ -61,11 +25,6 @@ export interface CVEEntry {
   severity: 'critical' | 'high' | 'medium' | 'low';
   description?: string;
   publishedDate?: string;
-}
-
-export interface TopVulnerabilities {
-  byCVSS: CVEEntry[];
-  byEPSS: CVEEntry[];
 }
 
 export interface ChartData {
@@ -109,15 +68,16 @@ export interface DayWiseDetection {
   count: number;
 }
 
+// UI-specific dashboard data shape (differs from shared DashboardData)
 export interface DashboardData {
-  stats: DashboardStats;
-  vulnerabilityClassification: VulnerabilityClassification[];
-  endpointDistribution: EndpointDistribution[];
-  vulnerabilityByPublishedDate: VulnerabilityTrend[];
-  vulnerabilityByDiscoveredDate: VulnerabilityTrend[];
+  stats: import('@shared/types').DashboardStats;
+  vulnerabilityClassification: import('@shared/types').SankeyLink[];
+  endpointDistribution: import('@shared/types').DistributionItem[];
+  vulnerabilityByPublishedDate: import('@shared/types').VulnerabilityByDate[];
+  vulnerabilityByDiscoveredDate: import('@shared/types').VulnerabilityByDate[];
   vulnerabilityBySeverityTable: SeveritySplitData[];
-  vulnerabilityByPublishedDateTable: VulnerabilityByDateTable[];
-  topVulnerabilities: TopVulnerabilities;
+  vulnerabilityByPublishedDateTable: import('@shared/types').VulnerabilityByDateTable[];
+  topVulnerabilities: import('@shared/types').TopVulnerabilities;
   patchCompliance: {
     compliant: number;
     nonCompliant: number;

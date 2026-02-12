@@ -1,14 +1,20 @@
-import { prisma } from '@/db/client';
-import { NotFoundError, ConflictError, BadRequestError } from '@shared/errors';
-import { paginate, getPaginationParams } from '@shared/utils/pagination';
-import { calculateAgentStatus } from '@shared/utils/agent-status';
+import { Prisma } from '@prisma/client';
+import { NotFoundError, ConflictError } from '@shared/errors';
 import { PaginationParams } from '@shared/types';
+import type { AssetStatus } from '@shared/types';
+import { calculateAgentStatus } from '@shared/utils/agent-status';
+import { paginate, getPaginationParams } from '@shared/utils/pagination';
+import { prisma } from '@/db/client';
 import {
   createAuditLog,
   diffObjects,
   AuditAction,
   AuditResource,
 } from '@middleware/audit';
+import {
+  transformHardwareForAPI,
+  transformTelemetryForAPI,
+} from './assets.transformer';
 import type {
   AssetResponse,
   AssetLifeCycle,
@@ -39,21 +45,20 @@ import type {
   SubCategoryUpdateInput,
   TagCreateInput,
   TagUpdateInput,
-  SoftwareLicenseCreateInput,
-  SoftwareLicenseUpdateInput,
-  OSLicenseCreateInput,
-  OSLicenseUpdateInput,
+  SoftwareLicenseCreateInput as SoftwareLicenseCreateZod,
+  SoftwareLicenseUpdateInput as SoftwareLicenseUpdateZod,
+  OSLicenseCreateInput as OSLicenseCreateZod,
+  OSLicenseUpdateInput as OSLicenseUpdateZod,
 } from './assets.validators';
-import {
-  transformHardwareForAPI,
-  transformTelemetryForAPI,
-} from './assets.transformer';
+import { categoryCrudService } from './category-crud.service';
 import {
   calculateDepreciation,
   mapDepreciationMethod,
   getMethodDisplayName,
-  type DepreciationMethod,
 } from './depreciation.utils';
+import { osLicenseCrudService } from './os-license-crud.service';
+import { softwareLicenseCrudService } from './software-license-crud.service';
+import { tagCrudService } from './tag-crud.service';
 
 // Helper to generate asset display ID
 function generateAssetId(count: number): string {
@@ -103,120 +108,15 @@ function formatSystemUptime(uptimeSeconds: number | null | undefined, rawSystemU
 // Categories Service
 // ============================================
 
+// Categories — delegated to BaseCrudService (see category-crud.service.ts)
 export async function listCategories(): Promise<CategoryResponse[]> {
-  const categories = await prisma.category.findMany({
-    include: { subCategories: true },
-    orderBy: { name: 'asc' },
-  });
-
-  return categories.map(transformCategory);
+  const result = await categoryCrudService.findMany({ limit: 1000 });
+  return result.data;
 }
-
-export async function getCategoryById(id: string): Promise<CategoryResponse> {
-  const category = await prisma.category.findUnique({
-    where: { id },
-  });
-
-  if (!category) {
-    throw new NotFoundError('Category not found');
-  }
-
-  return transformCategory(category);
-}
-
-export async function createCategory(data: CategoryCreateInput): Promise<CategoryResponse> {
-  // Check for duplicate name
-  const existing = await prisma.category.findFirst({
-    where: { name: { equals: data.name, mode: 'insensitive' } },
-  });
-
-  if (existing) {
-    throw new ConflictError('Category with this name already exists');
-  }
-
-  const category = await prisma.category.create({
-    data: {
-      name: data.name,
-      color: data.color || null,
-      description: data.description || null,
-      isDefault: data.isDefault || false,
-    },
-  });
-
-  return transformCategory(category);
-}
-
-export async function updateCategory(id: string, data: CategoryUpdateInput): Promise<CategoryResponse> {
-  const existing = await prisma.category.findUnique({
-    where: { id },
-  });
-
-  if (!existing) {
-    throw new NotFoundError('Category not found');
-  }
-
-  // Check for duplicate name if name is being updated
-  if (data.name && data.name !== existing.name) {
-    const duplicate = await prisma.category.findFirst({
-      where: {
-        name: { equals: data.name, mode: 'insensitive' },
-        id: { not: id },
-      },
-    });
-    if (duplicate) {
-      throw new ConflictError('Category with this name already exists');
-    }
-  }
-
-  const category = await prisma.category.update({
-    where: { id },
-    data: {
-      name: data.name ?? undefined,
-      color: data.color ?? undefined,
-      description: data.description ?? undefined,
-      isDefault: data.isDefault ?? undefined,
-    },
-  });
-
-  return transformCategory(category);
-}
-
-export async function deleteCategory(id: string): Promise<void> {
-  const existing = await prisma.category.findUnique({
-    where: { id },
-    include: { subCategories: { take: 1 } },
-  });
-
-  if (!existing) {
-    throw new NotFoundError('Category not found');
-  }
-
-  // Check if any subcategories exist for this category
-  if (existing.subCategories.length > 0) {
-    throw new BadRequestError('Cannot delete category that has subcategories');
-  }
-
-  await prisma.category.delete({ where: { id } });
-}
-
-function transformCategory(category: any): CategoryResponse {
-  return {
-    id: category.id,
-    name: category.name,
-    color: category.color,
-    description: category.description,
-    isDefault: category.isDefault ?? false,
-    createdAt: category.createdAt instanceof Date ? category.createdAt.toISOString() : category.createdAt,
-    subCategories: category.subCategories?.map((sub: any) => ({
-      id: sub.id,
-      categoryId: sub.categoryId,
-      name: sub.name,
-      criticality: sub.criticality,
-      description: sub.description,
-      createdAt: sub.createdAt instanceof Date ? sub.createdAt.toISOString() : sub.createdAt,
-    })),
-  };
-}
+export const getCategoryById = (id: string) => categoryCrudService.findById(id);
+export const createCategory = (data: CategoryCreateInput) => categoryCrudService.create(data);
+export const updateCategory = (id: string, data: CategoryUpdateInput) => categoryCrudService.update(id, data);
+export const deleteCategory = (id: string) => categoryCrudService.delete(id);
 
 // ============================================
 // SubCategories Service
@@ -347,7 +247,7 @@ export async function deleteSubCategory(id: string): Promise<void> {
   await prisma.subCategory.delete({ where: { id } });
 }
 
-function transformSubCategory(subCategory: any): SubCategoryResponse {
+function transformSubCategory(subCategory: Prisma.SubCategoryGetPayload<object> & { categoryName?: string }): SubCategoryResponse {
   return {
     id: subCategory.id,
     categoryId: subCategory.categoryId,
@@ -359,156 +259,18 @@ function transformSubCategory(subCategory: any): SubCategoryResponse {
   };
 }
 
-// ============================================
-// Tags Service
-// ============================================
-
+// Tags — CRUD delegated to BaseCrudService (see tag-crud.service.ts)
 export interface TagQueryParams {
   search?: string;
   page?: number;
   limit?: number;
 }
 
-export async function listTags(params: TagQueryParams = {}): Promise<{ data: TagResponse[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
-  const page = params.page || 1;
-  const limit = params.limit || 50;
-  const skip = (page - 1) * limit;
-
-  const where: any = {};
-  if (params.search) {
-    where.OR = [
-      { name: { contains: params.search, mode: 'insensitive' } },
-      { description: { contains: params.search, mode: 'insensitive' } },
-    ];
-  }
-
-  const [tags, total] = await Promise.all([
-    prisma.tag.findMany({
-      where,
-      orderBy: [{ priority: 'desc' }, { name: 'asc' }],
-      skip,
-      take: limit,
-    }),
-    prisma.tag.count({ where }),
-  ]);
-
-  // Get asset counts for each tag
-  const tagsWithCounts = await Promise.all(
-    tags.map(async (tag) => {
-      const count = await prisma.assetTag.count({
-        where: { tagId: tag.id },
-      });
-      return transformTag(tag, count);
-    })
-  );
-
-  return {
-    data: tagsWithCounts,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
-}
-
-export async function getTagById(id: string): Promise<TagResponse> {
-  const tag = await prisma.tag.findUnique({
-    where: { id },
-  });
-
-  if (!tag) {
-    throw new NotFoundError('Tag not found');
-  }
-
-  const assetCount = await prisma.assetTag.count({
-    where: { tagId: id },
-  });
-
-  return transformTag(tag, assetCount);
-}
-
-export async function createTag(data: TagCreateInput): Promise<TagResponse> {
-  // Check for duplicate name
-  const existing = await prisma.tag.findFirst({
-    where: { name: { equals: data.name, mode: 'insensitive' } },
-  });
-
-  if (existing) {
-    throw new ConflictError('Tag with this name already exists');
-  }
-
-  const tag = await prisma.tag.create({
-    data: {
-      name: data.name,
-      color: data.color,
-      description: data.description,
-      icon: data.icon,
-      priority: data.priority ?? 0,
-      compliance: data.compliance ?? false,
-    },
-  });
-
-  return transformTag(tag, 0);
-}
-
-export async function updateTag(id: string, data: TagUpdateInput): Promise<TagResponse> {
-  const existing = await prisma.tag.findUnique({
-    where: { id },
-  });
-
-  if (!existing) {
-    throw new NotFoundError('Tag not found');
-  }
-
-  // Check for duplicate name if name is being updated
-  if (data.name && data.name !== existing.name) {
-    const duplicate = await prisma.tag.findFirst({
-      where: {
-        name: { equals: data.name, mode: 'insensitive' },
-        id: { not: id },
-      },
-    });
-    if (duplicate) {
-      throw new ConflictError('Tag with this name already exists');
-    }
-  }
-
-  const tag = await prisma.tag.update({
-    where: { id },
-    data: {
-      name: data.name,
-      color: data.color,
-      description: data.description,
-      icon: data.icon,
-      priority: data.priority,
-      compliance: data.compliance,
-    },
-  });
-
-  const assetCount = await prisma.assetTag.count({
-    where: { tagId: id },
-  });
-
-  return transformTag(tag, assetCount);
-}
-
-export async function deleteTag(id: string): Promise<void> {
-  const existing = await prisma.tag.findUnique({
-    where: { id },
-  });
-
-  if (!existing) {
-    throw new NotFoundError('Tag not found');
-  }
-
-  // Delete tag associations and tag in a transaction
-  await prisma.$transaction([
-    prisma.assetTag.deleteMany({ where: { tagId: id } }),
-    prisma.tag.delete({ where: { id } }),
-  ]);
-}
+export const listTags = (params: TagQueryParams = {}) => tagCrudService.findMany(params);
+export const getTagById = (id: string) => tagCrudService.findById(id);
+export const createTag = (data: TagCreateInput) => tagCrudService.create(data);
+export const updateTag = (id: string, data: TagUpdateInput) => tagCrudService.update(id, data);
+export const deleteTag = (id: string) => tagCrudService.delete(id);
 
 export async function getPopularTags(limit: number = 10): Promise<TagResponse[]> {
   // Get tag usage counts grouped by tagId
@@ -686,7 +448,7 @@ export async function bulkAssignTags(assetIds: string[], tagIds: string[]): Prom
   };
 }
 
-function transformTag(tag: any, assetCount: number = 0): TagResponse {
+function transformTag(tag: Prisma.TagGetPayload<object>, assetCount: number = 0): TagResponse {
   return {
     id: tag.id,
     name: tag.name,
@@ -706,7 +468,7 @@ function transformTag(tag: any, assetCount: number = 0): TagResponse {
 // ============================================
 
 export async function listAssets(params: AssetQueryInput & PaginationParams) {
-  const where: any = {};
+  const where: Prisma.AssetWhereInput = {};
 
   if (params.status) where.status = params.status;
   if (params.categoryId) where.categoryId = params.categoryId;
@@ -790,7 +552,7 @@ export async function createAsset(data: AssetCreateInput, userId?: string): Prom
     data: {
       name: data.name,
       type: 'Endpoint',
-      status: data.status || 'Available',
+      status: data.status || 'AVAILABLE',
       serialNumber: data.serialNumber,
       assetTag: assetId,
       os: data.osType,
@@ -926,7 +688,7 @@ export async function updateAsset(id: string, data: AssetUpdateInput, userId?: s
     },
     include: {
       tags: { include: { tag: true } },
-      agent: { select: { id: true, status: true } },
+      agent: { select: { id: true, status: true, hostname: true, ipAddress: true, macAddress: true, lastHeartbeat: true, agentVersion: true } },
       category: true,
       subCategory: true,
     },
@@ -1100,7 +862,15 @@ function formatBytesToSize(bytes: bigint | null | undefined): string | null {
   return `${Math.round(gb)}GB`;
 }
 
-function transformAsset(asset: any): AssetResponse {
+type AssetWithIncludes = Prisma.AssetGetPayload<object> & {
+  tags?: Array<{ tag: Prisma.TagGetPayload<object> }>;
+  agent?: { id: string; status: string; hostname: string | null; ipAddress: string | null; macAddress: string | null; lastHeartbeat: Date | null; agentVersion: string | null } | null;
+  hardware?: Prisma.AssetHardwareGetPayload<object> | null;
+  category?: Prisma.CategoryGetPayload<object> | null;
+  subCategory?: Prisma.SubCategoryGetPayload<object> | null;
+};
+
+function transformAsset(asset: AssetWithIncludes): AssetResponse {
   // Get values from agent if available, fall back to asset
   const hostname = asset.agent?.hostname || asset.name;
   const ipAddress = asset.agent?.ipAddress || asset.ipAddress;
@@ -1137,14 +907,14 @@ function transformAsset(asset: any): AssetResponse {
     categoryName: asset.category?.name,
     subCategoryId: asset.subCategoryId,
     subCategoryName: asset.subCategory?.name,
-    status: asset.status,
-    operationalStatus: calculateAgentStatus(asset.agent) === 'Connected' ? 'Connected' : 'Disconnected',
+    status: asset.status as AssetStatus,
+    operationalStatus: calculateAgentStatus(asset.agent ? { status: asset.agent.status, lastHeartbeat: asset.agent.lastHeartbeat ?? null } : null) === 'CONNECTED' ? 'CONNECTED' : 'DISCONNECTED',
     operationalStatusSince: asset.agent?.lastHeartbeat?.toISOString(),
     agentId: asset.agent?.id,
     // Agent status details
     agent: asset.agent ? {
       id: asset.agent.id,
-      status: calculateAgentStatus(asset.agent),
+      status: calculateAgentStatus({ status: asset.agent.status, lastHeartbeat: asset.agent.lastHeartbeat ?? null }),
       version: asset.agent.agentVersion || 'Unknown',
       lastHeartbeat: asset.agent.lastHeartbeat?.toISOString(),
       lastHeartbeatRelative,
@@ -1161,7 +931,7 @@ function transformAsset(asset: any): AssetResponse {
     memorySize,
     diskSize,
     systemSKU,
-    tags: asset.tags?.map((at: any) => transformTag(at.tag)),
+    tags: asset.tags?.map((at) => transformTag(at.tag)),
     createdAt: asset.createdAt.toISOString(),
     updatedAt: asset.updatedAt.toISOString(),
     // Cost properties
@@ -1399,33 +1169,41 @@ export async function getAssetHardware(id: string): Promise<AssetHardware | null
     // - Agent sends: storageDrives, graphicsAdapters, memory.modules[].capacityGB
     // - HardwareResponse expects: storage, graphicsCards, memory.modules[].capacity
     // We need to handle BOTH formats for compatibility.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = transformed as any;
+    // The raw payload from the agent may contain fields beyond HardwareResponse
+    // (e.g. storageDrives, graphicsAdapters, networkAdapters, battery).
+    // Cast to Record to access agent-specific field names that aren't on HardwareResponse.
+    // The agent raw payload has a dynamic shape; we use a narrow union type instead of `any`.
+    type AgentField = string | number | boolean | undefined | null;
+    type AgentRecord = Record<string, AgentField>;
+    type AgentPayload = Record<string, AgentField | AgentRecord | AgentRecord[]>;
+    const rawValue: unknown = transformed;
+    const raw = rawValue as AgentPayload;
 
     // Get storage drives (agent sends "storageDrives", fallback to "storage")
-    const storageDrives = raw.storageDrives || transformed.storage || [];
+    const storageDrives = (raw.storageDrives || transformed.storage || []) as AgentRecord[];
 
     // Get memory modules
-    const memoryModules = raw.memory?.modules || [];
-    const totalPhysicalGB = raw.memory?.totalPhysicalGB || transformed.memory?.totalPhysicalGB;
+    const rawMemory = raw.memory as (AgentRecord & { modules?: AgentRecord[] }) | undefined;
+    const memoryModules = rawMemory?.modules || [];
+    const totalPhysicalGB = (rawMemory?.totalPhysicalGB as number) || transformed.memory?.totalPhysicalGB;
 
     // Get network adapters (agent might send these in different formats)
-    const networkAdapters = raw.networkAdapters || [];
+    const networkAdapters = (raw.networkAdapters || []) as (AgentRecord & { ipConfiguration?: AgentRecord })[];
 
     // Get graphics (agent sends "graphicsAdapters")
-    const graphicsAdapters = raw.graphicsAdapters || transformed.graphicsCards || [];
+    const graphicsAdapters = (raw.graphicsAdapters || transformed.graphicsCards || []) as AgentRecord[];
 
     // Get BIOS info
-    const biosInfo = raw.bios || transformed.bios;
+    const biosInfo = (raw.bios || transformed.bios) as AgentRecord | undefined;
 
     // Get processor info
-    const processorInfo = raw.processor || transformed.processor;
+    const processorInfo = (raw.processor || transformed.processor) as AgentRecord | undefined;
 
     // Get system identity for additional fields
-    const systemIdentity = raw.systemIdentity || transformed.systemIdentity;
+    const systemIdentity = (raw.systemIdentity || transformed.systemIdentity) as AgentRecord | undefined;
 
     // Get battery info
-    const batteryInfo = raw.battery;
+    const batteryInfo = raw.battery as AgentRecord | undefined;
 
     return {
       bios: biosInfo ? {
@@ -1457,25 +1235,25 @@ export async function getAssetHardware(id: string): Promise<AssetHardware | null
         tag: systemIdentity.assetTag || undefined,
         version: undefined,
       } : undefined,
-      storage: storageDrives.map((s: any, i: number) => ({
+      storage: storageDrives.map((s, i: number) => ({
         name: s.name || `Drive ${i + 1}`,
         drive: s.mountPoint || s.deviceId || s.name || `Drive ${i + 1}`,
-        capacity: s.capacityGB ? `${Math.round(s.capacityGB)} GB` : undefined,
+        capacity: s.capacityGB ? `${Math.round(Number(s.capacityGB))} GB` : undefined,
         used: s.capacityGB && s.freeSpaceGB !== undefined
-          ? `${Math.round(s.capacityGB - s.freeSpaceGB)} GB`
+          ? `${Math.round(Number(s.capacityGB) - Number(s.freeSpaceGB))} GB`
           : undefined,
         format: s.fileSystem || undefined,
         type: s.type || 'Unknown',
         serialNumber: s.serialNumber || undefined,
       })),
       memory: memoryModules.length > 0
-        ? memoryModules.map((m: any, i: number) => ({
+        ? memoryModules.map((m, i: number) => ({
             slot: m.slot || `Slot ${i + 1}`,
             name: m.manufacturer || 'Memory Module',
             // Handle both string "capacity" and number "capacityGB"
             capacity: typeof m.capacity === 'string'
               ? m.capacity
-              : (m.capacityGB ? `${Math.round(m.capacityGB)} GB` : undefined),
+              : (m.capacityGB ? `${Math.round(Number(m.capacityGB))} GB` : undefined),
             bankLabel: m.bankLabel || undefined,
             locator: m.slot || undefined,
             memoryType: m.type || m.memoryType || undefined,
@@ -1487,10 +1265,10 @@ export async function getAssetHardware(id: string): Promise<AssetHardware | null
             name: 'System Memory',
             capacity: totalPhysicalGB ? `${Math.round(totalPhysicalGB)} GB` : undefined,
           }],
-      networkAdapters: networkAdapters.map((n: any, i: number) => {
+      networkAdapters: networkAdapters.map((n, i: number) => {
         // Handle nested ipConfiguration from agent (ipConfiguration.ipv4Address)
         // Also handle flat structure (ipAddressV4) for compatibility
-        const ipConfig = n.ipConfiguration || {};
+        const ipConfig = n.ipConfiguration || {} as AgentRecord;
         return {
           id: n.id || `adapter-${i}`,
           name: n.displayName || n.name || `Network Adapter ${i + 1}`,
@@ -1507,7 +1285,7 @@ export async function getAssetHardware(id: string): Promise<AssetHardware | null
         id: 'battery-0',
         name: batteryInfo.name || 'Battery',
         health: batteryInfo.healthPercent !== undefined
-          ? `${Math.round(batteryInfo.healthPercent)}%`
+          ? `${Math.round(Number(batteryInfo.healthPercent))}%`
           : 'Unknown',
         cycleCount: batteryInfo.cycleCount || 0,
         chargeLevel: batteryInfo.chargeLevel || 0,
@@ -1522,14 +1300,14 @@ export async function getAssetHardware(id: string): Promise<AssetHardware | null
           ? `${batteryInfo.temperature}°C`
           : undefined,
       } : undefined,
-      graphicsCards: graphicsAdapters.map((g: any) => ({
+      graphicsCards: graphicsAdapters.map((g) => ({
         name: g.name || 'Unknown GPU',
         manufacturer: g.manufacturer || undefined,
         driverVersion: g.driverVersion || undefined,
         videoMemoryMB: g.memoryMB || undefined,
         currentResolution: g.resolution || undefined,
       })),
-    };
+    } as AssetHardware;
   }
 
   // Fallback to basic fields
@@ -2138,7 +1916,7 @@ export async function getAssetTelemetryHistory(
   const hours = hoursMap[period];
   const since = new Date(Date.now() - hours * 60 * 60 * 1000);
 
-  let telemetry: any[] = [];
+  let telemetry: Prisma.AgentTelemetryGetPayload<object>[] = [];
   if (asset.agent) {
     telemetry = await prisma.agentTelemetry.findMany({
       where: {
@@ -2151,8 +1929,8 @@ export async function getAssetTelemetryHistory(
   }
 
   const mapToDataPoints = (
-    data: any[],
-    getValue: (t: any) => number | null
+    data: Prisma.AgentTelemetryGetPayload<object>[],
+    getValue: (t: Prisma.AgentTelemetryGetPayload<object>) => number | null
   ): Array<{ timestamp: string; value: number }> => {
     return data
       .filter((t) => getValue(t) !== null)
@@ -2391,9 +2169,9 @@ export async function getAssetPatches(id: string): Promise<{
     patchId: string;
     name: string;
     severity: string;
-    status: 'Installed' | 'Missing' | 'Pending' | 'Failed';
+    status: 'INSTALLED' | 'MISSING' | 'PENDING' | 'FAILED';
     kbNumber?: string;
-    releaseDate?: string;
+    publishedAt?: string;
     deploymentId?: string;
     deploymentName?: string;
     startedAt?: string;
@@ -2435,17 +2213,17 @@ export async function getAssetPatches(id: string): Promise<{
   });
 
   // Map task status to patch status
-  const mapStatus = (taskStatus: string): 'Installed' | 'Missing' | 'Pending' | 'Failed' => {
-    switch (taskStatus.toLowerCase()) {
-      case 'completed':
-        return 'Installed';
-      case 'failed':
-        return 'Failed';
-      case 'in_progress':
-        return 'Pending';
-      case 'pending':
+  const mapStatus = (taskStatus: string): 'INSTALLED' | 'MISSING' | 'PENDING' | 'FAILED' => {
+    switch (taskStatus) {
+      case 'COMPLETED':
+        return 'INSTALLED';
+      case 'FAILED':
+        return 'FAILED';
+      case 'IN_PROGRESS':
+        return 'PENDING';
+      case 'PENDING':
       default:
-        return 'Pending';
+        return 'PENDING';
     }
   };
 
@@ -2455,9 +2233,9 @@ export async function getAssetPatches(id: string): Promise<{
     patchId: string;
     name: string;
     severity: string;
-    status: 'Installed' | 'Missing' | 'Pending' | 'Failed';
+    status: 'INSTALLED' | 'MISSING' | 'PENDING' | 'FAILED';
     kbNumber?: string;
-    releaseDate?: string;
+    publishedAt?: string;
     deploymentId?: string;
     deploymentName?: string;
     startedAt?: string;
@@ -2480,7 +2258,7 @@ export async function getAssetPatches(id: string): Promise<{
           severity: patch.severity?.toUpperCase() || 'UNSPECIFIED',
           status: taskStatus,
           kbNumber: patch.kbNumber || undefined,
-          releaseDate: patch.releaseDate?.toISOString() || undefined,
+          publishedAt: patch.publishedAt?.toISOString() || undefined,
           deploymentId: deployment.id,
           deploymentName: deployment.name,
           startedAt: task.startedAt?.toISOString() || undefined,
@@ -2519,7 +2297,7 @@ export async function getAssetPatches(id: string): Promise<{
       ...notInDeployed,
     },
     select: {
-      id: true, patchId: true, title: true, severity: true, kbNumber: true, releaseDate: true,
+      id: true, patchId: true, title: true, severity: true, kbNumber: true, publishedAt: true,
       vendor: true, product: true, os: true,
     },
   });
@@ -2541,7 +2319,7 @@ export async function getAssetPatches(id: string): Promise<{
       ...notInDeployed,
     },
     select: {
-      id: true, patchId: true, title: true, severity: true, kbNumber: true, releaseDate: true,
+      id: true, patchId: true, title: true, severity: true, kbNumber: true, publishedAt: true,
     },
   }) : [];
 
@@ -2553,9 +2331,9 @@ export async function getAssetPatches(id: string): Promise<{
         patchId: patch.patchId,
         name: patch.title,
         severity: patch.severity?.toUpperCase() || 'UNSPECIFIED',
-        status: 'Missing',
+        status: 'MISSING',
         kbNumber: patch.kbNumber || undefined,
-        releaseDate: patch.releaseDate?.toISOString() || undefined,
+        publishedAt: patch.publishedAt?.toISOString() || undefined,
       });
     }
   }
@@ -2577,22 +2355,22 @@ export async function getAssetPatches(id: string): Promise<{
 
   for (const patch of data) {
     switch (patch.status) {
-      case 'Installed':
+      case 'INSTALLED':
         summary.installed++;
         break;
-      case 'Failed':
+      case 'FAILED':
         summary.failed++;
         break;
-      case 'Pending':
+      case 'PENDING':
         summary.pending++;
         break;
-      case 'Missing':
+      case 'MISSING':
         summary.missing++;
         break;
     }
 
     // Count critical/security missing
-    if (patch.status !== 'Installed') {
+    if (patch.status !== 'INSTALLED') {
       if (patch.severity === 'CRITICAL') {
         summary.criticalMissing++;
       }
@@ -2634,9 +2412,9 @@ export async function getAssetDeployments(id: string): Promise<{
     patchId?: string;
     patchName?: string;
     softwareName?: string;
-    type: 'patch' | 'software';
+    type: 'PATCH' | 'SOFTWARE';
     date: string;
-    status: 'Success' | 'Failed' | 'Pending' | 'In Progress';
+    status: 'SUCCESS' | 'FAILED' | 'PENDING' | 'IN_PROGRESS';
     errorMessage?: string;
   }>;
 }> {
@@ -2656,9 +2434,9 @@ export async function getAssetDeployments(id: string): Promise<{
     patchId?: string;
     patchName?: string;
     softwareName?: string;
-    type: 'patch' | 'software';
+    type: 'PATCH' | 'SOFTWARE';
     date: string;
-    status: 'Success' | 'Failed' | 'Pending' | 'In Progress';
+    status: 'SUCCESS' | 'FAILED' | 'PENDING' | 'IN_PROGRESS';
     errorMessage?: string;
   }> = [];
 
@@ -2676,17 +2454,17 @@ export async function getAssetDeployments(id: string): Promise<{
   });
 
   // Map task status to deployment status
-  const mapDeploymentStatus = (taskStatus: string): 'Success' | 'Failed' | 'Pending' | 'In Progress' => {
-    switch (taskStatus.toLowerCase()) {
-      case 'completed':
-        return 'Success';
-      case 'failed':
-        return 'Failed';
-      case 'in_progress':
-        return 'In Progress';
-      case 'pending':
+  const mapDeploymentStatus = (taskStatus: string): 'SUCCESS' | 'FAILED' | 'PENDING' | 'IN_PROGRESS' => {
+    switch (taskStatus.toUpperCase()) {
+      case 'COMPLETED':
+        return 'SUCCESS';
+      case 'FAILED':
+        return 'FAILED';
+      case 'IN_PROGRESS':
+        return 'IN_PROGRESS';
+      case 'PENDING':
       default:
-        return 'Pending';
+        return 'PENDING';
     }
   };
 
@@ -2698,7 +2476,7 @@ export async function getAssetDeployments(id: string): Promise<{
       deploymentName: task.deployment.name,
       patchId: patch?.patchId,
       patchName: patch?.title || task.deployment.name,
-      type: 'patch',
+      type: 'PATCH',
       date: (task.completedAt || task.startedAt || task.deployment.createdAt).toISOString(),
       status: mapDeploymentStatus(task.status),
       errorMessage: task.errorMessage || undefined,
@@ -2706,12 +2484,12 @@ export async function getAssetDeployments(id: string): Promise<{
   }
 
   // Get software deployment tasks for this asset
-  // Query by assetId directly, or fall back to endpointId (agent id) for older records
-  const softwareTasksWhere: { OR: Array<{ assetId?: string; endpointId?: string }> } = {
+  // Query by assetId directly, or fall back to agentId for older records
+  const softwareTasksWhere: { OR: Array<{ assetId?: string; agentId?: string }> } = {
     OR: [{ assetId: id }],
   };
   if (asset.agent) {
-    softwareTasksWhere.OR.push({ endpointId: asset.agent.id });
+    softwareTasksWhere.OR.push({ agentId: asset.agent.id });
   }
 
   const softwareTasks = await prisma.softwareDeploymentTask.findMany({
@@ -2733,8 +2511,8 @@ export async function getAssetDeployments(id: string): Promise<{
       id: task.id,
       deploymentId: task.deployment.id,
       deploymentName: task.deployment.deploymentName,
-      softwareName: task.itemName,
-      type: 'software',
+      softwareName: task.packageName,
+      type: 'SOFTWARE',
       date: (task.completedAt || task.startedAt || task.createdAt).toISOString(),
       status: mapDeploymentStatus(task.status),
       errorMessage: task.errorMessage || undefined,
@@ -2769,211 +2547,22 @@ export async function listSoftwareInventory(): Promise<SoftwareInventoryResponse
   }));
 }
 
-// ============================================
-// Software Licenses Service
-// ============================================
-
+// Software Licenses — delegated to BaseCrudService (see software-license-crud.service.ts)
 export async function listSoftwareLicenses(): Promise<SoftwareLicenseResponse[]> {
-  const licenses = await prisma.softwareLicense.findMany({
-    orderBy: { createdAt: 'desc' },
-  });
-
-  return licenses.map(transformSoftwareLicense);
+  const result = await softwareLicenseCrudService.findMany({ limit: 1000 });
+  return result.data;
 }
+export const getSoftwareLicenseById = (id: string) => softwareLicenseCrudService.findById(id);
+export const createSoftwareLicense = (data: SoftwareLicenseCreateZod) => softwareLicenseCrudService.create(data);
+export const updateSoftwareLicense = (id: string, data: SoftwareLicenseUpdateZod) => softwareLicenseCrudService.update(id, data);
+export const deleteSoftwareLicense = (id: string) => softwareLicenseCrudService.delete(id);
 
-export async function getSoftwareLicenseById(id: string): Promise<SoftwareLicenseResponse> {
-  const license = await prisma.softwareLicense.findUnique({
-    where: { id },
-  });
-
-  if (!license) {
-    throw new NotFoundError('Software license not found');
-  }
-
-  return transformSoftwareLicense(license);
-}
-
-export async function createSoftwareLicense(data: SoftwareLicenseCreateInput): Promise<SoftwareLicenseResponse> {
-  const license = await prisma.softwareLicense.create({
-    data: {
-      licenseName: data.licenseName,
-      softwareName: data.softwareName,
-      publisher: data.publisher || null,
-      licenseKey: data.licenseKey || null,
-      purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
-      expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
-      licenseCount: data.licenseCount,
-      vendorName: data.vendorName,
-      cost: data.cost || null,
-      status: data.status,
-      notes: data.notes || null,
-    },
-  });
-
-  return transformSoftwareLicense(license);
-}
-
-export async function updateSoftwareLicense(
-  id: string,
-  data: SoftwareLicenseUpdateInput
-): Promise<SoftwareLicenseResponse> {
-  const existing = await prisma.softwareLicense.findUnique({
-    where: { id },
-  });
-
-  if (!existing) {
-    throw new NotFoundError('Software license not found');
-  }
-
-  const license = await prisma.softwareLicense.update({
-    where: { id },
-    data: {
-      licenseName: data.licenseName ?? undefined,
-      softwareName: data.softwareName ?? undefined,
-      publisher: data.publisher ?? undefined,
-      licenseKey: data.licenseKey ?? undefined,
-      purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : undefined,
-      expiryDate: data.expiryDate ? new Date(data.expiryDate) : undefined,
-      licenseCount: data.licenseCount ?? undefined,
-      vendorName: data.vendorName ?? undefined,
-      cost: data.cost ?? undefined,
-      status: data.status ?? undefined,
-      notes: data.notes ?? undefined,
-    },
-  });
-
-  return transformSoftwareLicense(license);
-}
-
-export async function deleteSoftwareLicense(id: string): Promise<void> {
-  const existing = await prisma.softwareLicense.findUnique({
-    where: { id },
-  });
-
-  if (!existing) {
-    throw new NotFoundError('Software license not found');
-  }
-
-  await prisma.softwareLicense.delete({ where: { id } });
-}
-
-function transformSoftwareLicense(license: any): SoftwareLicenseResponse {
-  return {
-    id: license.id,
-    licenseName: license.licenseName,
-    softwareName: license.softwareName,
-    publisher: license.publisher,
-    licenseKey: license.licenseKey,
-    purchaseDate: license.purchaseDate?.toISOString()?.split('T')[0],
-    expiryDate: license.expiryDate?.toISOString()?.split('T')[0],
-    licenseCount: license.licenseCount,
-    vendorName: license.vendorName,
-    cost: license.cost ? Number(license.cost) : null,
-    status: license.status,
-    notes: license.notes,
-    createdAt: license.createdAt instanceof Date ? license.createdAt.toISOString() : license.createdAt,
-  };
-}
-
-// ============================================
-// OS Licenses Service
-// ============================================
-
+// OS Licenses — delegated to BaseCrudService (see os-license-crud.service.ts)
 export async function listOSLicenses(): Promise<OSLicenseResponse[]> {
-  const licenses = await prisma.oSLicense.findMany({
-    orderBy: { createdAt: 'desc' },
-  });
-
-  return licenses.map(transformOSLicense);
+  const result = await osLicenseCrudService.findMany({ limit: 1000 });
+  return result.data;
 }
-
-export async function getOSLicenseById(id: string): Promise<OSLicenseResponse> {
-  const license = await prisma.oSLicense.findUnique({
-    where: { id },
-  });
-
-  if (!license) {
-    throw new NotFoundError('OS license not found');
-  }
-
-  return transformOSLicense(license);
-}
-
-export async function createOSLicense(data: OSLicenseCreateInput): Promise<OSLicenseResponse> {
-  const license = await prisma.oSLicense.create({
-    data: {
-      licenseName: data.licenseName,
-      osType: data.osType,
-      status: data.status,
-      licenseCount: data.licenseCount,
-      vendorName: data.vendorName,
-      licenseKey: data.licenseKey || null,
-      purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
-      expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
-      publisher: data.publisher || null,
-      cost: data.cost || null,
-      notes: data.notes || null,
-    },
-  });
-
-  return transformOSLicense(license);
-}
-
-export async function updateOSLicense(id: string, data: OSLicenseUpdateInput): Promise<OSLicenseResponse> {
-  const existing = await prisma.oSLicense.findUnique({
-    where: { id },
-  });
-
-  if (!existing) {
-    throw new NotFoundError('OS license not found');
-  }
-
-  const license = await prisma.oSLicense.update({
-    where: { id },
-    data: {
-      licenseName: data.licenseName ?? undefined,
-      osType: data.osType ?? undefined,
-      status: data.status ?? undefined,
-      licenseCount: data.licenseCount ?? undefined,
-      vendorName: data.vendorName ?? undefined,
-      licenseKey: data.licenseKey ?? undefined,
-      purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : undefined,
-      expiryDate: data.expiryDate ? new Date(data.expiryDate) : undefined,
-      publisher: data.publisher ?? undefined,
-      cost: data.cost ?? undefined,
-      notes: data.notes ?? undefined,
-    },
-  });
-
-  return transformOSLicense(license);
-}
-
-export async function deleteOSLicense(id: string): Promise<void> {
-  const existing = await prisma.oSLicense.findUnique({
-    where: { id },
-  });
-
-  if (!existing) {
-    throw new NotFoundError('OS license not found');
-  }
-
-  await prisma.oSLicense.delete({ where: { id } });
-}
-
-function transformOSLicense(license: any): OSLicenseResponse {
-  return {
-    id: license.id,
-    licenseName: license.licenseName,
-    osType: license.osType,
-    status: license.status,
-    licenseCount: license.licenseCount,
-    vendorName: license.vendorName,
-    licenseKey: license.licenseKey,
-    purchaseDate: license.purchaseDate?.toISOString()?.split('T')[0],
-    expiryDate: license.expiryDate?.toISOString()?.split('T')[0],
-    publisher: license.publisher,
-    cost: license.cost,
-    notes: license.notes,
-    createdAt: license.createdAt instanceof Date ? license.createdAt.toISOString() : license.createdAt,
-  };
-}
+export const getOSLicenseById = (id: string) => osLicenseCrudService.findById(id);
+export const createOSLicense = (data: OSLicenseCreateZod) => osLicenseCrudService.create(data);
+export const updateOSLicense = (id: string, data: OSLicenseUpdateZod) => osLicenseCrudService.update(id, data);
+export const deleteOSLicense = (id: string) => osLicenseCrudService.delete(id);

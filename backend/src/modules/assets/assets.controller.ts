@@ -1,18 +1,23 @@
 import { Request, Response, NextFunction } from 'express';
-import * as assetsService from './assets.service';
 import { AgentsService } from '@modules/agents/agents.service';
+import { sendSuccess, sendError, typedQuery } from '@shared/utils';
 import { parsePaginationQuery } from '@shared/utils/pagination';
+import * as assetsService from './assets.service';
+import type { AssetQueryInput, SubCategoryListQueryInput, LifecycleQueryInput, TagQueryInput } from './assets.validators';
+import { categoryCrudService } from './category-crud.service';
+import { subCategoryCrudService } from './subcategory-crud.service';
+import { tagCrudService } from './tag-crud.service';
 
 const agentsService = new AgentsService();
 
 // ============================================
-// Categories Controllers
+// Categories Controllers (via BaseCrudService)
 // ============================================
 
 export async function listCategories(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const categories = await assetsService.listCategories();
-    res.json(categories);
+    const result = await categoryCrudService.findMany();
+    sendSuccess(res, result.data);
   } catch (error) {
     next(error);
   }
@@ -20,8 +25,8 @@ export async function listCategories(req: Request, res: Response, next: NextFunc
 
 export async function getCategoryById(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const category = await assetsService.getCategoryById(req.params.id);
-    res.json(category);
+    const category = await categoryCrudService.findById(req.params.id);
+    sendSuccess(res, category);
   } catch (error) {
     next(error);
   }
@@ -29,8 +34,8 @@ export async function getCategoryById(req: Request, res: Response, next: NextFun
 
 export async function createCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const category = await assetsService.createCategory(req.body);
-    res.status(201).json(category);
+    const category = await categoryCrudService.create(req.body);
+    sendSuccess(res, category, 201);
   } catch (error) {
     next(error);
   }
@@ -38,8 +43,8 @@ export async function createCategory(req: Request, res: Response, next: NextFunc
 
 export async function updateCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const category = await assetsService.updateCategory(req.params.id, req.body);
-    res.json(category);
+    const category = await categoryCrudService.update(req.params.id, req.body);
+    sendSuccess(res, category);
   } catch (error) {
     next(error);
   }
@@ -47,7 +52,7 @@ export async function updateCategory(req: Request, res: Response, next: NextFunc
 
 export async function deleteCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    await assetsService.deleteCategory(req.params.id);
+    await categoryCrudService.delete(req.params.id);
     res.status(204).send();
   } catch (error) {
     next(error);
@@ -55,14 +60,14 @@ export async function deleteCategory(req: Request, res: Response, next: NextFunc
 }
 
 // ============================================
-// SubCategories Controllers
+// SubCategories Controllers (via BaseCrudService)
 // ============================================
 
 export async function listSubCategories(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const categoryId = req.query.categoryId as string | undefined;
-    const subCategories = await assetsService.listSubCategories(categoryId);
-    res.json(subCategories);
+    const { categoryId } = typedQuery<SubCategoryListQueryInput>(req);
+    const subCategories = await subCategoryCrudService.listAll(categoryId);
+    sendSuccess(res, subCategories);
   } catch (error) {
     next(error);
   }
@@ -70,8 +75,8 @@ export async function listSubCategories(req: Request, res: Response, next: NextF
 
 export async function getSubCategoryById(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const subCategory = await assetsService.getSubCategoryById(req.params.id);
-    res.json(subCategory);
+    const subCategory = await subCategoryCrudService.findById(req.params.id);
+    sendSuccess(res, subCategory);
   } catch (error) {
     next(error);
   }
@@ -79,8 +84,8 @@ export async function getSubCategoryById(req: Request, res: Response, next: Next
 
 export async function createSubCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const subCategory = await assetsService.createSubCategory(req.body);
-    res.status(201).json(subCategory);
+    const subCategory = await subCategoryCrudService.create(req.body);
+    sendSuccess(res, subCategory, 201);
   } catch (error) {
     next(error);
   }
@@ -88,8 +93,8 @@ export async function createSubCategory(req: Request, res: Response, next: NextF
 
 export async function updateSubCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const subCategory = await assetsService.updateSubCategory(req.params.id, req.body);
-    res.json(subCategory);
+    const subCategory = await subCategoryCrudService.update(req.params.id, req.body);
+    sendSuccess(res, subCategory);
   } catch (error) {
     next(error);
   }
@@ -97,7 +102,7 @@ export async function updateSubCategory(req: Request, res: Response, next: NextF
 
 export async function deleteSubCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    await assetsService.deleteSubCategory(req.params.id);
+    await subCategoryCrudService.delete(req.params.id);
     res.status(204).send();
   } catch (error) {
     next(error);
@@ -105,17 +110,14 @@ export async function deleteSubCategory(req: Request, res: Response, next: NextF
 }
 
 // ============================================
-// Tags Controllers
+// Tags Controllers (via BaseCrudService)
 // ============================================
 
 export async function listTags(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const result = await assetsService.listTags({
-      search: req.query.search as string | undefined,
-      page: req.query.page ? Number(req.query.page) : undefined,
-      limit: req.query.limit ? Number(req.query.limit) : undefined,
-    });
-    res.json(result);
+    const { search, page, limit } = typedQuery<TagQueryInput>(req);
+    const result = await tagCrudService.findMany({ search, page: page || 1, limit: limit || 50 });
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -123,8 +125,8 @@ export async function listTags(req: Request, res: Response, next: NextFunction):
 
 export async function getTagById(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const tag = await assetsService.getTagById(req.params.id);
-    res.json(tag);
+    const tag = await tagCrudService.findById(req.params.id);
+    sendSuccess(res, tag);
   } catch (error) {
     next(error);
   }
@@ -132,8 +134,8 @@ export async function getTagById(req: Request, res: Response, next: NextFunction
 
 export async function createTag(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const tag = await assetsService.createTag(req.body);
-    res.status(201).json(tag);
+    const tag = await tagCrudService.create(req.body);
+    sendSuccess(res, tag, 201);
   } catch (error) {
     next(error);
   }
@@ -141,8 +143,8 @@ export async function createTag(req: Request, res: Response, next: NextFunction)
 
 export async function updateTag(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const tag = await assetsService.updateTag(req.params.id, req.body);
-    res.json(tag);
+    const tag = await tagCrudService.update(req.params.id, req.body);
+    sendSuccess(res, tag);
   } catch (error) {
     next(error);
   }
@@ -150,7 +152,7 @@ export async function updateTag(req: Request, res: Response, next: NextFunction)
 
 export async function deleteTag(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    await assetsService.deleteTag(req.params.id);
+    await tagCrudService.delete(req.params.id);
     res.status(204).send();
   } catch (error) {
     next(error);
@@ -161,7 +163,7 @@ export async function getPopularTags(req: Request, res: Response, next: NextFunc
   try {
     const limit = req.query.limit ? Number(req.query.limit) : 10;
     const tags = await assetsService.getPopularTags(limit);
-    res.json(tags);
+    sendSuccess(res, tags);
   } catch (error) {
     next(error);
   }
@@ -170,7 +172,7 @@ export async function getPopularTags(req: Request, res: Response, next: NextFunc
 export async function addTagsToAsset(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const tags = await assetsService.addTagsToAsset(req.params.id, req.body.tagIds, req.user?.id);
-    res.json(tags);
+    sendSuccess(res, tags);
   } catch (error) {
     next(error);
   }
@@ -179,7 +181,7 @@ export async function addTagsToAsset(req: Request, res: Response, next: NextFunc
 export async function removeTagFromAsset(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     await assetsService.removeTagFromAsset(req.params.id, req.params.tagId, req.user?.id);
-    res.status(200).json({ message: 'Tag removed from asset' });
+    sendSuccess(res, { message: 'Tag removed from asset' });
   } catch (error) {
     next(error);
   }
@@ -188,7 +190,7 @@ export async function removeTagFromAsset(req: Request, res: Response, next: Next
 export async function bulkAssignTags(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const result = await assetsService.bulkAssignTags(req.body.assetIds, req.body.tagIds);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -200,23 +202,21 @@ export async function bulkAssignTags(req: Request, res: Response, next: NextFunc
 
 export async function listAssets(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
+    const query = typedQuery<AssetQueryInput>(req);
     const pagination = parsePaginationQuery(req.query);
-    const filters = {
-      status: req.query.status as any,
-      operationalStatus: req.query.operationalStatus as any,
-      categoryId: req.query.categoryId as string | undefined,
-      subCategoryId: req.query.subCategoryId as string | undefined,
-      search: req.query.search as string | undefined,
-    };
 
     const result = await assetsService.listAssets({
-      ...filters,
+      status: query.status,
+      operationalStatus: query.operationalStatus,
+      categoryId: query.categoryId,
+      subCategoryId: query.subCategoryId,
+      search: query.search,
       page: pagination.page,
       limit: pagination.limit,
       sort: pagination.sort,
       order: pagination.order || 'desc',
     });
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -225,7 +225,7 @@ export async function listAssets(req: Request, res: Response, next: NextFunction
 export async function getAssetById(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const asset = await assetsService.getAssetById(req.params.id);
-    res.json(asset);
+    sendSuccess(res, asset);
   } catch (error) {
     next(error);
   }
@@ -247,7 +247,7 @@ export async function getAssetFull(req: Request, res: Response, next: NextFuncti
         assetsService.getAssetAuditLog(req.params.id).catch(() => []),
       ]);
 
-    res.json({
+    sendSuccess(res, {
       ...asset,
       lifecycle,
       hardware,
@@ -266,7 +266,7 @@ export async function getAssetFull(req: Request, res: Response, next: NextFuncti
 export async function createAsset(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const asset = await assetsService.createAsset(req.body, req.user?.id);
-    res.status(201).json(asset);
+    sendSuccess(res, asset, 201);
   } catch (error) {
     next(error);
   }
@@ -275,7 +275,7 @@ export async function createAsset(req: Request, res: Response, next: NextFunctio
 export async function updateAsset(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const asset = await assetsService.updateAsset(req.params.id, req.body, req.user?.id);
-    res.json(asset);
+    sendSuccess(res, asset);
   } catch (error) {
     next(error);
   }
@@ -293,7 +293,7 @@ export async function deleteAsset(req: Request, res: Response, next: NextFunctio
 export async function bulkDeleteAssets(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const result = await assetsService.bulkDeleteAssets(req.body.ids, req.user?.id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -305,9 +305,9 @@ export async function bulkDeleteAssets(req: Request, res: Response, next: NextFu
 
 export async function getAssetLifeCycle(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const method = req.query.method as string | undefined;
+    const { method } = typedQuery<LifecycleQueryInput>(req);
     const lifecycle = await assetsService.getAssetLifeCycle(req.params.id, method);
-    res.json(lifecycle);
+    sendSuccess(res, lifecycle);
   } catch (error) {
     next(error);
   }
@@ -316,7 +316,7 @@ export async function getAssetLifeCycle(req: Request, res: Response, next: NextF
 export async function getAssetHardware(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const hardware = await assetsService.getAssetHardware(req.params.id);
-    res.json(hardware || {});
+    sendSuccess(res, hardware || {});
   } catch (error) {
     next(error);
   }
@@ -326,7 +326,7 @@ export async function getAssetHardwareExpanded(req: Request, res: Response, next
   try {
     // Extended hardware info - for now returns same as basic hardware
     const hardware = await assetsService.getAssetHardware(req.params.id);
-    res.json({
+    sendSuccess(res, {
       collectedAt: new Date().toISOString(),
       ...hardware,
     });
@@ -338,7 +338,7 @@ export async function getAssetHardwareExpanded(req: Request, res: Response, next
 export async function getAssetSoftware(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const software = await assetsService.getAssetSoftware(req.params.id);
-    res.json(software || { applications: [], services: [] });
+    sendSuccess(res, software || { applications: [], services: [] });
   } catch (error) {
     next(error);
   }
@@ -347,7 +347,7 @@ export async function getAssetSoftware(req: Request, res: Response, next: NextFu
 export async function getAssetSecurity(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const security = await assetsService.getAssetSecurity(req.params.id);
-    res.json(security || {});
+    sendSuccess(res, security || {});
   } catch (error) {
     next(error);
   }
@@ -356,7 +356,7 @@ export async function getAssetSecurity(req: Request, res: Response, next: NextFu
 export async function getAssetNetwork(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const network = await assetsService.getAssetNetwork(req.params.id);
-    res.json(network || { adapters: [] });
+    sendSuccess(res, network || { adapters: [] });
   } catch (error) {
     next(error);
   }
@@ -365,7 +365,7 @@ export async function getAssetNetwork(req: Request, res: Response, next: NextFun
 export async function getAssetPeripherals(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const peripherals = await assetsService.getAssetPeripherals(req.params.id);
-    res.json(peripherals || { monitors: [], usbDevices: [], printers: [] });
+    sendSuccess(res, peripherals || { monitors: [], usbDevices: [], printers: [] });
   } catch (error) {
     next(error);
   }
@@ -374,7 +374,7 @@ export async function getAssetPeripherals(req: Request, res: Response, next: Nex
 export async function getAssetTelemetry(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const telemetry = await assetsService.getAssetTelemetry(req.params.id);
-    res.json(telemetry || { timestamp: new Date().toISOString() });
+    sendSuccess(res, telemetry || { timestamp: new Date().toISOString() });
   } catch (error) {
     next(error);
   }
@@ -384,7 +384,7 @@ export async function getAssetTelemetryHistory(req: Request, res: Response, next
   try {
     const period = (req.query.period as 'hour' | 'day' | 'week') || 'day';
     const history = await assetsService.getAssetTelemetryHistory(req.params.id, period);
-    res.json(history);
+    sendSuccess(res, history);
   } catch (error) {
     next(error);
   }
@@ -393,7 +393,7 @@ export async function getAssetTelemetryHistory(req: Request, res: Response, next
 export async function getAssetErrors(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const errors = await assetsService.getAssetErrors(req.params.id);
-    res.json(errors);
+    sendSuccess(res, errors);
   } catch (error) {
     next(error);
   }
@@ -402,7 +402,7 @@ export async function getAssetErrors(req: Request, res: Response, next: NextFunc
 export async function getAssetAuditLog(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const auditLog = await assetsService.getAssetAuditLog(req.params.id);
-    res.json(auditLog);
+    sendSuccess(res, auditLog);
   } catch (error) {
     next(error);
   }
@@ -411,7 +411,7 @@ export async function getAssetAuditLog(req: Request, res: Response, next: NextFu
 export async function getAssetPatches(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const patches = await assetsService.getAssetPatches(req.params.id);
-    res.json(patches);
+    sendSuccess(res, patches);
   } catch (error) {
     next(error);
   }
@@ -420,7 +420,7 @@ export async function getAssetPatches(req: Request, res: Response, next: NextFun
 export async function getAssetAlerts(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const alerts = await assetsService.getAssetAlerts(req.params.id);
-    res.json(alerts);
+    sendSuccess(res, alerts);
   } catch (error) {
     next(error);
   }
@@ -429,7 +429,7 @@ export async function getAssetAlerts(req: Request, res: Response, next: NextFunc
 export async function getAssetVulnerabilities(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const vulnerabilities = await assetsService.getAssetVulnerabilities(req.params.id);
-    res.json(vulnerabilities);
+    sendSuccess(res, vulnerabilities);
   } catch (error) {
     next(error);
   }
@@ -438,7 +438,7 @@ export async function getAssetVulnerabilities(req: Request, res: Response, next:
 export async function getAssetDeployments(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const deployments = await assetsService.getAssetDeployments(req.params.id);
-    res.json(deployments);
+    sendSuccess(res, deployments);
   } catch (error) {
     next(error);
   }
@@ -447,10 +447,7 @@ export async function getAssetDeployments(req: Request, res: Response, next: Nex
 export async function uploadAssetAttachment(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     // File upload requires MinIO/S3 integration
-    res.status(501).json({
-      error: 'Not Implemented',
-      message: 'Asset attachment upload is not yet implemented. This feature requires file storage integration.',
-    });
+    sendError(res, 501, 'NOT_IMPLEMENTED', 'Asset attachment upload is not yet implemented. This feature requires file storage integration.');
   } catch (error) {
     next(error);
   }
@@ -463,7 +460,7 @@ export async function uploadAssetAttachment(req: Request, res: Response, next: N
 export async function listSoftwareInventory(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const inventory = await assetsService.listSoftwareInventory();
-    res.json(inventory);
+    sendSuccess(res, inventory);
   } catch (error) {
     next(error);
   }
@@ -475,10 +472,10 @@ export async function getSoftwareInventoryItem(req: Request, res: Response, next
     const inventory = await assetsService.listSoftwareInventory();
     const item = inventory.find((i) => i.id === req.params.id);
     if (!item) {
-      res.status(404).json({ error: 'Software not found' });
+      sendError(res, 404, 'NOT_FOUND', 'Software not found');
       return;
     }
-    res.json(item);
+    sendSuccess(res, item);
   } catch (error) {
     next(error);
   }
@@ -487,10 +484,7 @@ export async function getSoftwareInventoryItem(req: Request, res: Response, next
 export async function importSoftwareInventory(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     // CSV/Excel import requires file parsing implementation
-    res.status(501).json({
-      error: 'Not Implemented',
-      message: 'Software inventory import is not yet implemented. This feature requires CSV/Excel parsing.',
-    });
+    sendError(res, 501, 'NOT_IMPLEMENTED', 'Software inventory import is not yet implemented. This feature requires CSV/Excel parsing.');
   } catch (error) {
     next(error);
   }
@@ -503,7 +497,7 @@ export async function importSoftwareInventory(req: Request, res: Response, next:
 export async function listSoftwareLicenses(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const licenses = await assetsService.listSoftwareLicenses();
-    res.json(licenses);
+    sendSuccess(res, licenses);
   } catch (error) {
     next(error);
   }
@@ -512,7 +506,7 @@ export async function listSoftwareLicenses(req: Request, res: Response, next: Ne
 export async function getSoftwareLicenseById(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const license = await assetsService.getSoftwareLicenseById(req.params.id);
-    res.json(license);
+    sendSuccess(res, license);
   } catch (error) {
     next(error);
   }
@@ -521,7 +515,7 @@ export async function getSoftwareLicenseById(req: Request, res: Response, next: 
 export async function createSoftwareLicense(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const license = await assetsService.createSoftwareLicense(req.body);
-    res.status(201).json(license);
+    sendSuccess(res, license, 201);
   } catch (error) {
     next(error);
   }
@@ -530,7 +524,7 @@ export async function createSoftwareLicense(req: Request, res: Response, next: N
 export async function updateSoftwareLicense(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const license = await assetsService.updateSoftwareLicense(req.params.id, req.body);
-    res.json(license);
+    sendSuccess(res, license);
   } catch (error) {
     next(error);
   }
@@ -548,10 +542,7 @@ export async function deleteSoftwareLicense(req: Request, res: Response, next: N
 export async function importSoftwareLicenses(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     // CSV/Excel import requires file parsing implementation
-    res.status(501).json({
-      error: 'Not Implemented',
-      message: 'Software license import is not yet implemented. This feature requires CSV/Excel parsing.',
-    });
+    sendError(res, 501, 'NOT_IMPLEMENTED', 'Software license import is not yet implemented. This feature requires CSV/Excel parsing.');
   } catch (error) {
     next(error);
   }
@@ -564,7 +555,7 @@ export async function importSoftwareLicenses(req: Request, res: Response, next: 
 export async function listOSLicenses(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const licenses = await assetsService.listOSLicenses();
-    res.json(licenses);
+    sendSuccess(res, licenses);
   } catch (error) {
     next(error);
   }
@@ -573,7 +564,7 @@ export async function listOSLicenses(req: Request, res: Response, next: NextFunc
 export async function getOSLicenseById(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const license = await assetsService.getOSLicenseById(req.params.id);
-    res.json(license);
+    sendSuccess(res, license);
   } catch (error) {
     next(error);
   }
@@ -582,7 +573,7 @@ export async function getOSLicenseById(req: Request, res: Response, next: NextFu
 export async function createOSLicense(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const license = await assetsService.createOSLicense(req.body);
-    res.status(201).json(license);
+    sendSuccess(res, license, 201);
   } catch (error) {
     next(error);
   }
@@ -591,7 +582,7 @@ export async function createOSLicense(req: Request, res: Response, next: NextFun
 export async function updateOSLicense(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const license = await assetsService.updateOSLicense(req.params.id, req.body);
-    res.json(license);
+    sendSuccess(res, license);
   } catch (error) {
     next(error);
   }
@@ -609,10 +600,7 @@ export async function deleteOSLicense(req: Request, res: Response, next: NextFun
 export async function importOSLicenses(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     // CSV/Excel import requires file parsing implementation
-    res.status(501).json({
-      error: 'Not Implemented',
-      message: 'OS license import is not yet implemented. This feature requires CSV/Excel parsing.',
-    });
+    sendError(res, 501, 'NOT_IMPLEMENTED', 'OS license import is not yet implemented. This feature requires CSV/Excel parsing.');
   } catch (error) {
     next(error);
   }
@@ -628,14 +616,14 @@ export async function refreshAssetInventory(req: Request, res: Response, next: N
     const asset = await assetsService.getAssetById(req.params.id);
 
     if (!asset.agentId) {
-      res.status(400).json({ error: 'Asset has no linked agent' });
+      sendError(res, 400, 'BAD_REQUEST', 'Asset has no linked agent');
       return;
     }
 
     // Queue an inventory refresh command for the agent
     const result = await agentsService.queueInventoryRefresh(asset.agentId);
 
-    res.json({
+    sendSuccess(res, {
       message: 'Inventory refresh queued',
       commandId: result.id,
       status: result.status,

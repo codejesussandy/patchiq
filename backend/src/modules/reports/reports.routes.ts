@@ -1,17 +1,16 @@
 import { Router } from 'express';
 import { authenticate, requireUser } from '@middleware/auth';
 import { validateQuery, validateParams, validateBody } from '@middleware/validation';
+import * as controller from './reports.controller';
 import {
   listReportsQuerySchema,
   reportParamsSchema,
-  simpleCreateReportBodySchema,
-  updateReportBodySchema,
+    updateReportBodySchema,
   listSchedulesQuerySchema,
   scheduleParamsSchema,
   createScheduleBodySchema,
   updateScheduleBodySchema,
 } from './reports.validators';
-import * as controller from './reports.controller';
 
 const router = Router();
 

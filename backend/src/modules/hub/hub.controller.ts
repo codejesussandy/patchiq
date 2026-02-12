@@ -4,7 +4,9 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { sendSuccess, sendError, typedQuery } from '@shared/utils';
 import { hubService } from './hub.service';
+import type { ListPackagesQuery, ListBundlesQuery } from './hub.validators';
 
 export class HubController {
   /**
@@ -14,7 +16,7 @@ export class HubController {
   async createPackage(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await hubService.createPackage(req.body, req.user?.id);
-      res.status(201).json({ success: true, data: result });
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -29,7 +31,7 @@ export class HubController {
       const { packageId } = req.params;
 
       if (!req.file) {
-        res.status(400).json({ success: false, error: 'No file provided' });
+        sendError(res, 400, 'BAD_REQUEST', 'No file provided');
         return;
       }
 
@@ -40,13 +42,10 @@ export class HubController {
         req.file.mimetype
       );
 
-      res.json({
-        success: true,
-        data: {
-          objectKey: result.objectKey,
-          checksum: result.checksum,
-          size: result.size.toString(),
-        },
+      sendSuccess(res, {
+        objectKey: result.objectKey,
+        checksum: result.checksum,
+        size: result.size.toString(),
       });
     } catch (error) {
       next(error);
@@ -61,7 +60,7 @@ export class HubController {
     try {
       const { packageId } = req.params;
       const result = await hubService.getPackage(packageId);
-      res.json({ success: true, data: result });
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -75,7 +74,7 @@ export class HubController {
     try {
       const { packageId } = req.params;
       const result = await hubService.updatePackage(packageId, req.body);
-      res.json({ success: true, data: result });
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -89,7 +88,7 @@ export class HubController {
     try {
       const { packageId } = req.params;
       await hubService.deletePackage(packageId);
-      res.json({ success: true, message: 'Package deleted' });
+      sendSuccess(res, { message: 'Package deleted' });
     } catch (error) {
       next(error);
     }
@@ -101,18 +100,9 @@ export class HubController {
    */
   async listPackagesGrouped(req: Request, res: Response, next: NextFunction) {
     try {
-      const filters = {
-        platform: req.query.platform as string | undefined,
-        category: req.query.category as string | undefined,
-        vendor: req.query.vendor as string | undefined,
-        search: req.query.search as string | undefined,
-        isActive: req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined,
-        page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
-        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
-      };
-
+      const filters = typedQuery<ListPackagesQuery>(req);
       const result = await hubService.listPackagesGrouped(filters);
-      res.json({ success: true, ...result });
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -124,18 +114,9 @@ export class HubController {
    */
   async listPackages(req: Request, res: Response, next: NextFunction) {
     try {
-      const filters = {
-        platform: req.query.platform as string | undefined,
-        category: req.query.category as string | undefined,
-        vendor: req.query.vendor as string | undefined,
-        search: req.query.search as string | undefined,
-        isActive: req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined,
-        page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
-        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
-      };
-
+      const filters = typedQuery<ListPackagesQuery>(req);
       const result = await hubService.listPackages(filters);
-      res.json({ success: true, ...result });
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -149,7 +130,7 @@ export class HubController {
     try {
       const { packageId } = req.params;
       const result = await hubService.getPackageDownloadUrl(packageId);
-      res.json({ success: true, data: result });
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -162,7 +143,7 @@ export class HubController {
   async createBundle(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await hubService.createBundle(req.body, req.user?.id);
-      res.status(201).json({ success: true, data: result });
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -176,7 +157,7 @@ export class HubController {
     try {
       const { bundleId } = req.params;
       const result = await hubService.getBundle(bundleId);
-      res.json({ success: true, data: result });
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -188,9 +169,9 @@ export class HubController {
    */
   async listBundles(req: Request, res: Response, next: NextFunction) {
     try {
-      const platform = req.query.platform as string | undefined;
+      const { platform } = typedQuery<ListBundlesQuery>(req);
       const result = await hubService.listBundles(platform);
-      res.json({ success: true, data: result });
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -204,7 +185,7 @@ export class HubController {
     try {
       const { bundleId } = req.params;
       await hubService.deleteBundle(bundleId);
-      res.json({ success: true, message: 'Bundle deleted' });
+      sendSuccess(res, { message: 'Bundle deleted' });
     } catch (error) {
       next(error);
     }
@@ -217,12 +198,9 @@ export class HubController {
   async getStats(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await hubService.getStats();
-      res.json({
-        success: true,
-        data: {
-          ...result,
-          totalSize: result.totalSize.toString(),
-        },
+      sendSuccess(res, {
+        ...result,
+        totalSize: result.totalSize.toString(),
       });
     } catch (error) {
       next(error);
@@ -240,7 +218,7 @@ export class HubController {
   async uploadPackageBundle(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.file) {
-        res.status(400).json({ success: false, error: 'No file provided. Upload a .tar.gz bundle.' });
+        sendError(res, 400, 'BAD_REQUEST', 'No file provided. Upload a .tar.gz bundle.');
         return;
       }
 
@@ -250,11 +228,7 @@ export class HubController {
         req.user?.id
       );
 
-      res.status(201).json({
-        success: true,
-        data: result,
-        message: `Package bundle uploaded successfully. Scripts found: ${result.scriptsFound.join(', ')}`,
-      });
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -267,7 +241,7 @@ export class HubController {
   async createPackageWithScripts(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await hubService.createPackageWithScripts(req.body, req.user?.id);
-      res.status(201).json({ success: true, data: result });
+      sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
     }
@@ -281,7 +255,7 @@ export class HubController {
     try {
       const { packageId } = req.params;
       const result = await hubService.getBundleDownloadInfo(packageId);
-      res.json({ success: true, data: result });
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -311,22 +285,10 @@ export class HubController {
    */
   async getExecutionPayload(req: Request, res: Response, next: NextFunction) {
     try {
-      const { packageId, operationType } = req.params;
+      const { packageId, operationType } = req.params as { packageId: string; operationType: 'install' | 'update' | 'rollback' | 'uninstall' };
 
-      const validOps = ['install', 'update', 'rollback', 'uninstall'];
-      if (!validOps.includes(operationType)) {
-        res.status(400).json({
-          success: false,
-          error: `Invalid operation type. Must be one of: ${validOps.join(', ')}`,
-        });
-        return;
-      }
-
-      const result = await hubService.getExecutionPayload(
-        packageId,
-        operationType as 'install' | 'update' | 'rollback' | 'uninstall'
-      );
-      res.json({ success: true, data: result });
+      const result = await hubService.getExecutionPayload(packageId, operationType);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }

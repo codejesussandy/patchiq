@@ -4,10 +4,21 @@
  * API endpoints for managing patch recommendations
  */
 
+import type { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
+import { BadRequestError } from '@shared/errors';
+import { sendSuccess, sendPaginated } from '@shared/utils';
 import { assetPatchRecommendationService } from './asset-patch-recommendation.service';
 import { validateListRecommendationsQuery, validateRejectRequest } from './asset-patch-recommendation.validator';
-import { BadRequestError } from '@shared/errors';
+
+type RecommendationWithRelations = Prisma.AssetPatchRecommendationGetPayload<{
+  include: {
+    asset: { include: { agent: true } };
+    vulnerability: { include: { references: true } };
+    patch: { include: { bundle: true } };
+    deploymentTask: true;
+  };
+}>;
 
 /**
  * List recommendations for an asset
@@ -26,16 +37,9 @@ export async function listAssetRecommendations(req: Request, res: Response) {
     assetId,
   });
 
-  res.json({
-    success: true,
-    data: result.data,
-    pagination: {
-      page: validation.data.page || 1,
-      limit: validation.data.limit || 50,
-      total: result.total,
-      totalPages: Math.ceil(result.total / (validation.data.limit || 50)),
-    },
-  });
+  const page = validation.data.page || 1;
+  const limit = validation.data.limit || 50;
+  sendPaginated(res, result.data, { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) });
 }
 
 /**
@@ -55,16 +59,9 @@ export async function listPatchRecommendations(req: Request, res: Response) {
     patchId,
   });
 
-  res.json({
-    success: true,
-    data: result.data,
-    pagination: {
-      page: validation.data.page || 1,
-      limit: validation.data.limit || 50,
-      total: result.total,
-      totalPages: Math.ceil(result.total / (validation.data.limit || 50)),
-    },
-  });
+  const page = validation.data.page || 1;
+  const limit = validation.data.limit || 50;
+  sendPaginated(res, result.data, { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) });
 }
 
 /**
@@ -80,10 +77,7 @@ export async function getRecommendation(req: Request, res: Response) {
     throw new BadRequestError('Recommendation not found');
   }
 
-  res.json({
-    success: true,
-    data: recommendation,
-  });
+  sendSuccess(res, recommendation);
 }
 
 /**
@@ -99,11 +93,7 @@ export async function acceptRecommendation(req: Request, res: Response) {
     reason
   );
 
-  res.json({
-    success: true,
-    data: recommendation,
-    message: 'Recommendation accepted',
-  });
+  sendSuccess(res, recommendation);
 }
 
 /**
@@ -123,11 +113,7 @@ export async function rejectRecommendation(req: Request, res: Response) {
     validation.data.reason
   );
 
-  res.json({
-    success: true,
-    data: recommendation,
-    message: 'Recommendation rejected',
-  });
+  sendSuccess(res, recommendation);
 }
 
 /**
@@ -141,40 +127,30 @@ export async function deployRecommendation(req: Request, res: Response) {
   const { id } = req.params;
 
   // Get the recommendation with all relations
-  const recommendation = await assetPatchRecommendationService.getRecommendation(id);
+  const recommendation = await assetPatchRecommendationService.getRecommendation(id) as RecommendationWithRelations | null;
 
   if (!recommendation) {
     throw new BadRequestError('Recommendation not found');
   }
 
-  // Type assertion for relations (asset, patch, asset.agent are included by getRecommendation)
-  const rec = recommendation as any;
-
   // Import deployment services dynamically to avoid circular dependencies
   const { deploymentExecutorService } = await import('@modules/deployments/deployment-executor.service');
 
   // Get agent ID for deployment
-  const agentId = rec.asset?.agent?.id;
+  const agentId = recommendation.asset?.agent?.id;
   if (!agentId) {
     throw new BadRequestError('Asset does not have an associated agent');
   }
 
   // Create a patch deployment for this specific asset and patch
   const deployment = await deploymentExecutorService.createPatchDeployment({
-    name: `Deploy ${rec.patch.title} to ${rec.asset.name}`,
+    name: `Deploy ${recommendation.patch.title} to ${recommendation.asset.name}`,
     patches: [{ id: recommendation.patchId }],
     targetAgentIds: [agentId],
     triggerType: 'manual',
   });
 
-  res.json({
-    success: true,
-    data: {
-      recommendation,
-      deployment,
-    },
-    message: 'Deployment initiated',
-  });
+  sendSuccess(res, { recommendation, deployment });
 }
 
 /**
@@ -183,7 +159,7 @@ export async function deployRecommendation(req: Request, res: Response) {
  */
 export async function getDashboardStats(req: Request, res: Response) {
   // Get organization from user context (assuming auth middleware sets this)
-  const organizationId = (req as any).user?.organizationId;
+  const organizationId = req.user?.organizationId;
 
   if (!organizationId) {
     throw new BadRequestError('Organization not found');
@@ -191,10 +167,7 @@ export async function getDashboardStats(req: Request, res: Response) {
 
   const stats = await assetPatchRecommendationService.getDashboardStats(organizationId);
 
-  res.json({
-    success: true,
-    data: stats,
-  });
+  sendSuccess(res, stats);
 }
 
 /**
@@ -212,14 +185,7 @@ export async function listRecommendations(req: Request, res: Response) {
     validation.data
   );
 
-  res.json({
-    success: true,
-    data: result.data,
-    pagination: {
-      page: validation.data.page || 1,
-      limit: validation.data.limit || 50,
-      total: result.total,
-      totalPages: Math.ceil(result.total / (validation.data.limit || 50)),
-    },
-  });
+  const page = validation.data.page || 1;
+  const limit = validation.data.limit || 50;
+  sendPaginated(res, result.data, { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) });
 }

@@ -3,6 +3,9 @@ import { NotFoundError, BadRequestError } from '@shared/errors';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import type { Prisma } from '@prisma/client';
 import * as fs from 'fs';
+import { createLogger } from '@shared/services/logger';
+
+const logger = createLogger('reports');
 import * as path from 'path';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
@@ -13,9 +16,7 @@ import type {
   ReportFormat,
   ReportFilters,
   ReportSchedule,
-  REPORT_COLUMNS,
-  REPORT_FILTERS,
-} from './reports.types';
+    } from './reports.types';
 import type {
   ListReportsQuery,
   SimpleCreateReportBody,
@@ -32,14 +33,16 @@ const REPORTS_DIR = process.env.REPORTS_DIR || path.join(process.cwd(), 'reports
 const CONTENT_TYPES: Record<ReportFormat, string> = {
   PDF: 'application/pdf',
   CSV: 'text/csv',
-  Excel: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  XLSX: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  JSON: 'application/json',
 };
 
 // File extensions
 const FILE_EXTENSIONS: Record<ReportFormat, string> = {
   PDF: 'pdf',
   CSV: 'csv',
-  Excel: 'xlsx',
+  XLSX: 'xlsx',
+  JSON: 'json',
 };
 
 export class ReportsService {
@@ -106,7 +109,7 @@ export class ReportsService {
         name: data.name,
         type: data.type,
         format: data.format,
-        status: 'draft',
+        status: 'DRAFT',
         parameters: {
           filters: data.filters || {},
           columns: data.columns || [],
@@ -118,7 +121,7 @@ export class ReportsService {
 
     // Start report generation asynchronously
     this.generateReport(report.id).catch((err) => {
-      console.error(`Failed to generate report ${report.id}:`, err);
+      logger.error({ err, reportId: report.id }, 'Failed to generate report');
     });
 
     return this.transformReport(report);
@@ -133,7 +136,7 @@ export class ReportsService {
         name: data.name,
         type: data.type,
         format: 'CSV', // Default, will be updated in step 3
-        status: 'draft',
+        status: 'DRAFT',
         parameters: {
           description: data.description,
         },
@@ -202,11 +205,11 @@ export class ReportsService {
 
     const currentParams = (report.parameters as Record<string, unknown>) || {};
 
-    const updatedReport = await prisma.report.update({
+    await prisma.report.update({
       where: { id: reportId },
       data: {
         format: data.format,
-        status: 'generating',
+        status: 'GENERATING',
         parameters: {
           ...currentParams,
           schedule: data.schedule,
@@ -221,13 +224,13 @@ export class ReportsService {
 
     // Start report generation
     this.generateReport(reportId).catch((err) => {
-      console.error(`Failed to generate report ${reportId}:`, err);
+      logger.error({ err, reportId }, 'Failed to generate report');
     });
 
     return {
       id: reportId,
       name: report.name,
-      status: 'generating',
+      status: 'GENERATING',
       message: 'Report generation started',
     };
   }
@@ -328,11 +331,11 @@ export class ReportsService {
       throw new NotFoundError('Report not found');
     }
 
-    if (report.status === 'generating') {
+    if (report.status === 'GENERATING') {
       throw new BadRequestError('Report is still generating');
     }
 
-    if (report.status === 'failed') {
+    if (report.status === 'FAILED') {
       throw new BadRequestError('Report generation failed');
     }
 
@@ -367,7 +370,7 @@ export class ReportsService {
       throw new NotFoundError('Report not found');
     }
 
-    if (report.status === 'generating') {
+    if (report.status === 'GENERATING') {
       throw new BadRequestError('Report is already generating');
     }
 
@@ -383,7 +386,7 @@ export class ReportsService {
     await prisma.report.update({
       where: { id },
       data: {
-        status: 'generating',
+        status: 'GENERATING',
         filePath: null,
         fileSize: null,
         generatedAt: null,
@@ -392,7 +395,7 @@ export class ReportsService {
 
     // Trigger async generation
     this.generateReport(id).catch((error) => {
-      console.error('Report regeneration failed:', error);
+      logger.error({ err: error }, 'Report regeneration failed');
     });
 
     // Return updated report
@@ -413,47 +416,47 @@ export class ReportsService {
       {
         id: 'patch-template',
         name: 'Patch Status Report',
-        type: 'patch',
+        type: 'PATCH',
         description: 'Comprehensive report of patch status across all endpoints',
-        availableColumns: REPORT_COLUMNS.patch,
+        availableColumns: REPORT_COLUMNS.PATCH,
         defaultColumns: ['patchId', 'software', 'severity', 'status', 'installedEndpoints'],
-        availableFilters: REPORT_FILTERS.patch,
+        availableFilters: REPORT_FILTERS.PATCH,
       },
       {
         id: 'asset-template',
         name: 'Asset Inventory Report',
-        type: 'asset',
+        type: 'ASSET',
         description: 'Complete inventory of all managed assets',
-        availableColumns: REPORT_COLUMNS.asset,
+        availableColumns: REPORT_COLUMNS.ASSET,
         defaultColumns: ['name', 'category', 'status', 'osType', 'ipAddress'],
-        availableFilters: REPORT_FILTERS.asset,
+        availableFilters: REPORT_FILTERS.ASSET,
       },
       {
         id: 'vulnerability-template',
         name: 'Vulnerability Assessment Report',
-        type: 'vulnerability',
+        type: 'VULNERABILITY',
         description: 'Detailed vulnerability analysis across the environment',
-        availableColumns: REPORT_COLUMNS.vulnerability,
+        availableColumns: REPORT_COLUMNS.VULNERABILITY,
         defaultColumns: ['cve', 'severity', 'cvss3BaseScore', 'endpoints', 'published'],
-        availableFilters: REPORT_FILTERS.vulnerability,
+        availableFilters: REPORT_FILTERS.VULNERABILITY,
       },
       {
         id: 'compliance-template',
         name: 'Compliance Status Report',
-        type: 'compliance',
+        type: 'COMPLIANCE',
         description: 'Compliance posture summary for all assets',
-        availableColumns: REPORT_COLUMNS.compliance,
+        availableColumns: REPORT_COLUMNS.COMPLIANCE,
         defaultColumns: ['assetName', 'complianceScore', 'patchesInstalled', 'criticalVulnerabilities'],
-        availableFilters: REPORT_FILTERS.compliance,
+        availableFilters: REPORT_FILTERS.COMPLIANCE,
       },
       {
         id: 'audit-template',
         name: 'Audit Trail Report',
-        type: 'audit',
+        type: 'AUDIT',
         description: 'Complete audit trail of system activities',
-        availableColumns: REPORT_COLUMNS.audit,
+        availableColumns: REPORT_COLUMNS.AUDIT,
         defaultColumns: ['timestamp', 'module', 'operation', 'user', 'status'],
-        availableFilters: REPORT_FILTERS.audit,
+        availableFilters: REPORT_FILTERS.AUDIT,
       },
     ];
 
@@ -509,7 +512,7 @@ export class ReportsService {
   /**
    * Update a schedule
    */
-  async updateSchedule(id: string, data: UpdateScheduleBody, userId?: string) {
+  async updateSchedule(id: string, data: UpdateScheduleBody, _userId?: string) {
     const schedule = await prisma.scheduledReport.findUnique({
       where: { id },
     });
@@ -549,7 +552,7 @@ export class ReportsService {
   /**
    * Delete a schedule
    */
-  async deleteSchedule(id: string, userId?: string): Promise<{ message: string }> {
+  async deleteSchedule(id: string, _userId?: string): Promise<{ message: string }> {
     const schedule = await prisma.scheduledReport.findUnique({
       where: { id },
     });
@@ -581,7 +584,7 @@ export class ReportsService {
       // Update status to generating
       await prisma.report.update({
         where: { id: reportId },
-        data: { status: 'generating' },
+        data: { status: 'GENERATING' },
       });
 
       const params = (report.parameters as Record<string, unknown>) || {};
@@ -612,18 +615,18 @@ export class ReportsService {
       await prisma.report.update({
         where: { id: reportId },
         data: {
-          status: 'completed',
+          status: 'COMPLETED',
           filePath,
           fileSize: BigInt(fileStats.size),
           generatedAt: new Date(),
         },
       });
     } catch (error) {
-      console.error(`Report generation failed for ${reportId}:`, error);
+      logger.error({ err: error, reportId }, 'Report generation failed');
       await prisma.report.update({
         where: { id: reportId },
         data: {
-          status: 'failed',
+          status: 'FAILED',
         },
       });
     }
@@ -634,15 +637,15 @@ export class ReportsService {
    */
   private async getReportData(type: ReportType, filters: ReportFilters): Promise<unknown[]> {
     switch (type) {
-      case 'patch':
+      case 'PATCH':
         return this.getPatchReportData(filters);
-      case 'asset':
+      case 'ASSET':
         return this.getAssetReportData(filters);
-      case 'vulnerability':
+      case 'VULNERABILITY':
         return this.getVulnerabilityReportData(filters);
-      case 'audit':
+      case 'AUDIT':
         return this.getAuditReportData(filters);
-      case 'compliance':
+      case 'COMPLIANCE':
         return this.getComplianceReportData(filters);
       default:
         return [];
@@ -716,7 +719,7 @@ export class ReportsService {
     });
   }
 
-  private async getComplianceReportData(filters: ReportFilters): Promise<unknown[]> {
+  private async getComplianceReportData(_filters: ReportFilters): Promise<unknown[]> {
     return prisma.asset.findMany({
       include: {
         vulnerabilities: {
@@ -800,10 +803,11 @@ export class ReportsService {
     };
 
     // Add data rows
-    data.forEach((record: any) => {
+    data.forEach((record) => {
       const row: Record<string, unknown> = {};
+      const rec = record as Record<string, unknown>;
       columns.forEach((col) => {
-        row[col] = record[col] ?? '';
+        row[col] = rec[col] ?? '';
       });
       worksheet.addRow(row);
     });
@@ -887,7 +891,8 @@ export class ReportsService {
       let rowCount = 0;
       const maxRowsPerPage = Math.floor((doc.page.height - yPosition - 50) / rowHeight);
 
-      data.forEach((record: any, index) => {
+      data.forEach((rawRecord, index) => {
+        const record = rawRecord as Record<string, unknown>;
         // Check if we need a new page
         if (rowCount >= maxRowsPerPage) {
           doc.addPage();
@@ -1017,23 +1022,25 @@ export class ReportsService {
     const [hours, minutes] = (time || '00:00').split(':').map(Number);
 
     switch (frequency) {
-      case 'daily':
+      case 'daily': {
         const nextDaily = new Date(now);
         nextDaily.setHours(hours, minutes, 0, 0);
         if (nextDaily <= now) {
           nextDaily.setDate(nextDaily.getDate() + 1);
         }
         return nextDaily;
+      }
 
-      case 'weekly':
+      case 'weekly': {
         const nextWeekly = new Date(now);
         nextWeekly.setHours(hours, minutes, 0, 0);
         const targetDay = dayOfWeek ?? 1; // Monday default
         const daysUntilTarget = (targetDay - now.getDay() + 7) % 7 || 7;
         nextWeekly.setDate(nextWeekly.getDate() + daysUntilTarget);
         return nextWeekly;
+      }
 
-      case 'monthly':
+      case 'monthly': {
         const nextMonthly = new Date(now);
         nextMonthly.setHours(hours, minutes, 0, 0);
         const targetDate = dayOfMonth ?? 1;
@@ -1042,6 +1049,7 @@ export class ReportsService {
           nextMonthly.setMonth(nextMonthly.getMonth() + 1);
         }
         return nextMonthly;
+      }
 
       default:
         return new Date(now.getTime() + 24 * 60 * 60 * 1000);

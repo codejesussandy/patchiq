@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { authenticate, requireUser } from '@middleware/auth';
 import { validateQuery } from '@middleware/validation';
+import * as controller from './dashboard.controller';
 import {
   chartQuerySchema,
   recentActivityQuerySchema,
   topVulnerabilitiesQuerySchema,
 } from './dashboard.validators';
-import * as controller from './dashboard.controller';
 
 const router = Router();
 

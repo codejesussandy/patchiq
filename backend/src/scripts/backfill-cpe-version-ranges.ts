@@ -13,8 +13,8 @@
  */
 
 import axios from 'axios';
-import { prisma } from '../db/client';
 import { env } from '../config/env';
+import { prisma } from '../db/client';
 
 interface NVDCVEResponse {
   resultsPerPage: number;

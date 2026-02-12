@@ -1,10 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  RocketOutlined,
+  ReloadOutlined,
+  EyeOutlined } from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
 import {
   Row,
   Col,
   Card,
-  Table,
   Typography,
   Button,
   Space,
@@ -14,20 +19,15 @@ import {
   App,
   Modal,
   Empty,
-  Input,
-} from 'antd';
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  RocketOutlined,
-  ReloadOutlined,
-  EyeOutlined,
-} from '@ant-design/icons';
+  Input } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { useNavigate } from 'react-router-dom';
+import { DataTable } from '../../../../components/shared/DataTable';
 import { patchRecommendationService } from '../../../../services/patch-recommendation.service';
 import type { PatchRecommendation } from '../../../../types/patch-recommendation.types';
+import { getErrorMessage } from '../../../../utils/error';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { TextArea } = Input;
 
 // Helper: Severity color mapping
@@ -51,15 +51,15 @@ const getStatusBadgeStatus = (
   status: string
 ): 'success' | 'processing' | 'error' | 'default' | 'warning' => {
   switch (status) {
-    case 'verified':
+    case 'VERIFIED':
       return 'success';
-    case 'deployed':
-    case 'accepted':
+    case 'DEPLOYED':
+    case 'ACCEPTED':
       return 'processing';
-    case 'failed':
-    case 'rejected':
+    case 'FAILED':
+    case 'REJECTED':
       return 'error';
-    case 'recommended':
+    case 'RECOMMENDED':
       return 'warning';
     default:
       return 'default';
@@ -81,31 +81,17 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
   const navigate = useNavigate();
   const { message } = App.useApp();
 
-  const [recommendations, setRecommendations] = useState<PatchRecommendation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: recommendationsResult, isLoading: loading, refetch: fetchData } = useQuery({
+    queryKey: ['patch-recommendations', 'asset', assetId],
+    queryFn: () => patchRecommendationService.getAssetRecommendations(assetId),
+    enabled: !!assetId });
+  const recommendations: PatchRecommendation[] = recommendationsResult?.data || [];
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Modal states
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [selectedRecommendation, setSelectedRecommendation] = useState<string | null>(null);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await patchRecommendationService.getAssetRecommendations(assetId);
-      setRecommendations(result.data);
-    } catch (error: any) {
-      console.error('Failed to fetch recommendations:', error);
-      message.error('Failed to load patch recommendations');
-    } finally {
-      setLoading(false);
-    }
-  }, [assetId, message]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   // Action Handlers
   const handleAccept = async (id: string) => {
@@ -118,13 +104,12 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
           await patchRecommendationService.acceptRecommendation(id);
           message.success('Recommendation accepted');
           fetchData();
-        } catch (error: any) {
-          message.error(error?.response?.data?.message || 'Failed to accept recommendation');
+        } catch (error: unknown) {
+          message.error(getErrorMessage(error, 'Failed to accept recommendation'));
         } finally {
           setActionLoading(null);
         }
-      },
-    });
+      } });
   };
 
   const handleReject = (id: string) => {
@@ -150,8 +135,8 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
       setSelectedRecommendation(null);
       setRejectReason('');
       fetchData();
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || 'Failed to reject recommendation');
+    } catch (error: unknown) {
+      message.error(getErrorMessage(error, 'Failed to reject recommendation'));
     } finally {
       setActionLoading(null);
     }
@@ -181,16 +166,14 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
               </div>
             ),
             okText: 'View Deployments',
-            onOk: () => navigate('/patches/deployed/deployed'),
-          });
+            onOk: () => navigate('/patches/deployed/deployed') });
           fetchData();
-        } catch (error: any) {
-          message.error(error?.response?.data?.message || 'Failed to deploy recommendation');
+        } catch (error: unknown) {
+          message.error(getErrorMessage(error, 'Failed to deploy recommendation'));
         } finally {
           setActionLoading(null);
         }
-      },
-    });
+      } });
   };
 
   // Calculate summary stats
@@ -206,15 +189,13 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
       dataIndex: ['vulnerability', 'cveId'],
       key: 'cveId',
       width: 150,
-      render: (text: string) => <Text strong>{text}</Text>,
-    },
+      render: (text: string) => <Text strong>{text}</Text> },
     {
       title: 'Vulnerability',
       dataIndex: ['vulnerability', 'title'],
       key: 'vulnTitle',
       ellipsis: true,
-      render: (text: string) => <Text>{text}</Text>,
-    },
+      render: (text: string) => <Text>{text}</Text> },
     {
       title: 'Patch',
       dataIndex: ['patch', 'patchId'],
@@ -222,16 +203,14 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
       width: 150,
       render: (text: string, record) => (
         <a onClick={() => navigate(`/patches/${record.patch.id}`)}>{text}</a>
-      ),
-    },
+      ) },
     {
       title: 'Severity',
       dataIndex: 'severity',
       key: 'severity',
       width: 100,
       render: (severity: string) => <Tag color={getSeverityColor(severity)}>{severity}</Tag>,
-      sorter: (a, b) => a.severity.localeCompare(b.severity),
-    },
+      sorter: (a, b) => a.severity.localeCompare(b.severity) },
     {
       title: 'Risk Score',
       dataIndex: 'riskScore',
@@ -239,8 +218,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
       width: 100,
       render: (score: number | null) => <Text>{formatRiskScore(score)}</Text>,
       sorter: (a, b) => (a.riskScore || 0) - (b.riskScore || 0),
-      defaultSortOrder: 'descend',
-    },
+      defaultSortOrder: 'descend' },
     {
       title: 'Status',
       dataIndex: 'status',
@@ -251,8 +229,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
           status={getStatusBadgeStatus(status)}
           text={status.charAt(0).toUpperCase() + status.slice(1)}
         />
-      ),
-    },
+      ) },
     {
       title: 'Actions',
       key: 'actions',
@@ -260,7 +237,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          {record.status === 'recommended' && (
+          {record.status === 'RECOMMENDED' && (
             <>
               <Button
                 type="primary"
@@ -282,7 +259,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
               </Button>
             </>
           )}
-          {record.status === 'accepted' && (
+          {record.status === 'ACCEPTED' && (
             <Button
               type="primary"
               size="small"
@@ -294,7 +271,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
               Deploy
             </Button>
           )}
-          {['deployed', 'verified', 'failed'].includes(record.status) && (
+          {['DEPLOYED', 'VERIFIED', 'FAILED'].includes(record.status) && (
             <Button
               size="small"
               icon={<EyeOutlined />}
@@ -303,12 +280,11 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
               View Deployment
             </Button>
           )}
-          {record.status === 'rejected' && (
+          {record.status === 'REJECTED' && (
             <Text type="secondary">Rejected</Text>
           )}
         </Space>
-      ),
-    },
+      ) },
   ];
 
   if (loading) {
@@ -389,8 +365,8 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
           </Button>
         }
       >
-        <Table
-          dataSource={recommendations}
+        <DataTable
+          data={recommendations}
           columns={columns}
           rowKey="id"
           pagination={{ pageSize: 20 }}

@@ -1,6 +1,6 @@
-import { prisma } from '@db/client';
 import { NotFoundError, BadRequestError, ConflictError } from '@shared/errors';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
+import { prisma } from '@db/client';
 import type {
   OrganizationResponse,
   BranchResponse,

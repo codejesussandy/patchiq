@@ -1,6 +1,9 @@
-import { Request, Response, NextFunction, RequestHandler } from 'express';
-import { prisma } from '@db/client';
 import { Prisma } from '@prisma/client';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { createLogger } from '@shared/services/logger';
+import { prisma } from '@db/client';
+
+const logger = createLogger('audit');
 
 export interface AuditOptions {
   action: string;
@@ -37,7 +40,7 @@ export function audit(options: AuditOptions): RequestHandler {
         prisma.auditLog
           .create({ data: logEntry })
           .catch((error) => {
-            console.error('Failed to create audit log:', error);
+            logger.error({ err: error }, 'Failed to create audit log');
           });
       }
 
@@ -73,7 +76,7 @@ export async function createAuditLog(params: {
 
     await prisma.auditLog.create({ data: logEntry });
   } catch (error) {
-    console.error('Failed to create audit log:', error);
+    logger.error({ err: error }, 'Failed to create audit log');
   }
 }
 

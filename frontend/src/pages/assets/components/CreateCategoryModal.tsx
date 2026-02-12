@@ -9,7 +9,7 @@ import {
   Tag,
 } from 'antd';
 import type { TabsProps } from 'antd';
-import { categoryService } from '../../../services/category.service';
+import { useCreateCategory, useCreateSubCategory } from '../../../hooks/useAssets';
 import type { Category, SubCategory } from '../../../types/asset.types';
 
 interface CreateCategoryModalProps {
@@ -35,10 +35,10 @@ interface SubCategoryFormValues {
 const COLORS = ['blue', 'cyan', 'geekblue', 'gold', 'green', 'lime', 'magenta', 'orange', 'purple', 'red', 'volcano', 'yellow'];
 
 const CRITICALITY_OPTIONS = [
-  { label: 'Critical', value: 'Critical' },
-  { label: 'High', value: 'High' },
-  { label: 'Medium', value: 'Medium' },
-  { label: 'Low', value: 'Low' },
+  { label: 'Critical', value: 'CRITICAL' },
+  { label: 'High', value: 'HIGH' },
+  { label: 'Medium', value: 'MEDIUM' },
+  { label: 'Low', value: 'LOW' },
 ];
 
 export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
@@ -49,38 +49,35 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [activeTab, setActiveTab] = useState<string>('category');
-  const [loading, setLoading] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string>(COLORS[0]);
 
+  const createCategoryMutation = useCreateCategory();
+  const createSubCategoryMutation = useCreateSubCategory();
+  const loading = createCategoryMutation.isPending || createSubCategoryMutation.isPending;
+
   const handleCreateCategory = async (values: CategoryFormValues) => {
-    setLoading(true);
     try {
-      const categoryData: Category = {
-        id: `cat-${Date.now()}`,
+      const categoryData = {
         name: values.categoryName,
         description: values.categoryDescription || '',
         color: selectedColor,
         assetCount: 0,
-      };
+      } as Omit<Category, 'id'>;
 
-      await categoryService.createCategory(categoryData);
+      const result = await createCategoryMutation.mutateAsync(categoryData);
       message.success('Category created successfully');
       form.resetFields();
       setSelectedColor(COLORS[0]);
-      onSuccess(categoryData);
+      onSuccess(result as Category);
       onClose();
-    } catch (error) {
+    } catch {
       message.error('Failed to create category');
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleCreateSubCategory = async (values: SubCategoryFormValues) => {
-    setLoading(true);
     try {
-      const subCategoryData: SubCategory = {
-        id: `subcat-${Date.now()}`,
+      const subCategoryData = {
         categoryId: values.parentCategory,
         name: values.subCategoryName,
         description: values.subCategoryDescription || '',
@@ -88,17 +85,15 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
         businessUnit: values.businessUnit || '',
         department: values.department || '',
         assetCount: 0,
-      };
+      } as Omit<SubCategory, 'id'>;
 
-      await categoryService.createSubCategory(subCategoryData);
+      const result = await createSubCategoryMutation.mutateAsync(subCategoryData);
       message.success('Sub-category created successfully');
       form.resetFields();
-      onSuccess(subCategoryData);
+      onSuccess(result as SubCategory);
       onClose();
-    } catch (error) {
+    } catch {
       message.error('Failed to create sub-category');
-    } finally {
-      setLoading(false);
     }
   };
 

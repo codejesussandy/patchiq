@@ -8,8 +8,11 @@ import { SOFTWARE_CATALOG, type SoftwareTemplate } from './catalog';
 import { fetchLatestVersion, type VendorFetchResult } from './vendor-fetchers';
 import { hubService } from '@modules/hub/hub.service';
 import * as fs from 'fs';
-import * as path from 'path';
+import { createLogger } from '@shared/services/logger';
+
+const logger = createLogger('catalog-sync');
 import * as os from 'os';
+import * as path from 'path';
 import * as tar from 'tar';
 
 export interface SyncResult {
@@ -17,7 +20,7 @@ export interface SyncResult {
   name: string;
   version: string;
   os: string;
-  status: 'created' | 'exists' | 'failed' | 'skipped';
+  status: 'CREATED' | 'EXISTS' | 'FAILED' | 'SKIPPED';
   packageId?: string;
   error?: string;
   downloadSize?: number;
@@ -212,7 +215,7 @@ function generateUninstallScript(
 }
 
 async function downloadFile(url: string): Promise<{ buffer: Buffer; contentLength: number }> {
-  console.log(`[CatalogSync] Downloading: ${url}`);
+  logger.info({ url }, 'Downloading');
   const resp = await fetch(url, {
     headers: { 'User-Agent': 'PatchIQ/1.0' },
     signal: AbortSignal.timeout(300000), // 5 min timeout for large files
@@ -225,7 +228,7 @@ async function downloadFile(url: string): Promise<{ buffer: Buffer; contentLengt
 
   const arrayBuffer = await resp.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  console.log(`[CatalogSync] Downloaded ${(buffer.length / 1024 / 1024).toFixed(1)} MB`);
+  logger.info({ sizeMB: (buffer.length / 1024 / 1024).toFixed(1) }, 'Download completed');
   return { buffer, contentLength: buffer.length };
 }
 
@@ -312,12 +315,12 @@ export async function syncSingleTemplate(
     name: tmpl.name,
     version: '',
     os: targetOs,
-    status: 'failed',
+    status: 'FAILED',
   };
 
   try {
     // 1. Fetch latest version info from vendor API
-    console.log(`[CatalogSync] Fetching latest version for ${tmpl.name} (${targetOs})...`);
+    logger.info({ name: tmpl.name, targetOs }, 'Fetching latest version');
     const vendorResult = await fetchLatestVersion(tmpl, targetOs, arch);
     baseResult.version = vendorResult.latestVersion;
 
@@ -337,7 +340,7 @@ export async function syncSingleTemplate(
         },
       });
       if (existing) {
-        baseResult.status = 'exists';
+        baseResult.status = 'EXISTS';
         baseResult.packageId = existing.packageId;
         return baseResult;
       }
@@ -345,7 +348,7 @@ export async function syncSingleTemplate(
 
     // 3. Download the binary from vendor CDN
     if (!vendorResult.downloadUrl) {
-      baseResult.status = 'failed';
+      baseResult.status = 'FAILED';
       baseResult.error = 'No download URL available';
       return baseResult;
     }
@@ -356,22 +359,23 @@ export async function syncSingleTemplate(
     const fileName = vendorResult.fileName || `installer${path.extname(vendorResult.downloadUrl) || '.exe'}`;
 
     // 4. Create tar.gz bundle with manifest + scripts + binary
-    console.log(`[CatalogSync] Creating bundle for ${tmpl.name} ${vendorResult.latestVersion}...`);
+    logger.info({ name: tmpl.name, version: vendorResult.latestVersion }, 'Creating bundle');
     const bundleBuffer = createBundle(tmpl, vendorResult, targetOs, installerBuffer, fileName);
 
     // 5. Upload via Hub's existing uploadPackageBundle
-    console.log(`[CatalogSync] Uploading bundle (${(bundleBuffer.length / 1024 / 1024).toFixed(1)} MB) to Hub...`);
+    logger.info({ sizeMB: (bundleBuffer.length / 1024 / 1024).toFixed(1) }, 'Uploading bundle to Hub');
     const uploadResult = await hubService.uploadPackageBundle(bundleBuffer, 'bundle.tar.gz', createdBy);
 
-    baseResult.status = 'created';
+    baseResult.status = 'CREATED';
     baseResult.packageId = uploadResult.packageId;
-    console.log(`[CatalogSync] Created Hub package ${uploadResult.packageId} for ${tmpl.name} ${vendorResult.latestVersion}`);
+    logger.info({ packageId: uploadResult.packageId, name: tmpl.name, version: vendorResult.latestVersion }, 'Hub package created');
 
     return baseResult;
-  } catch (error: any) {
-    baseResult.status = 'failed';
-    baseResult.error = error.message;
-    console.error(`[CatalogSync] Failed for ${tmpl.name}: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    baseResult.status = 'FAILED';
+    baseResult.error = message;
+    logger.error({ name: tmpl.name, error: message }, 'Sync failed for template');
     return baseResult;
   }
 }
@@ -393,7 +397,7 @@ export async function syncFromCatalog(options: SyncOptions = {}): Promise<SyncRe
     t.supportedOs.some((o) => o.toLowerCase() === targetOs.toLowerCase())
   );
 
-  console.log(`[CatalogSync] Syncing ${compatible.length} templates for ${targetOs} ${arch}...`);
+  logger.info({ templateCount: compatible.length, targetOs, arch }, 'Syncing templates');
 
   const results: SyncResult[] = [];
 
@@ -403,12 +407,12 @@ export async function syncFromCatalog(options: SyncOptions = {}): Promise<SyncRe
     results.push(result);
   }
 
-  const created = results.filter((r) => r.status === 'created').length;
-  const exists = results.filter((r) => r.status === 'exists').length;
-  const failed = results.filter((r) => r.status === 'failed').length;
-  const skipped = results.filter((r) => r.status === 'skipped').length;
+  const created = results.filter((r) => r.status === 'CREATED').length;
+  const exists = results.filter((r) => r.status === 'EXISTS').length;
+  const failed = results.filter((r) => r.status === 'FAILED').length;
+  const skipped = results.filter((r) => r.status === 'SKIPPED').length;
 
-  console.log(`[CatalogSync] Done: ${created} created, ${exists} already exist, ${skipped} skipped, ${failed} failed`);
+  logger.info({ created, exists, skipped, failed }, 'Catalog sync complete');
 
   return results;
 }

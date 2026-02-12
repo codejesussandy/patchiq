@@ -65,7 +65,7 @@ export const patchTemplateService = {
     os: string = 'Windows',
     arch: string = 'x64',
     templateIds?: string[],
-    onProgress?: (result: any) => void
+    onProgress?: (result: Record<string, unknown>) => void
   ): Promise<void> {
     const response = await fetch(`/v1/patch-templates/sync`, {
       method: 'POST',

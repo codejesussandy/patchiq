@@ -6,8 +6,8 @@
  * recommended → accepted → rejected → deployed → verified → failed
  */
 
+import type { AssetPatchRecommendation, Prisma } from '@prisma/client';
 import { prisma } from '@/db/client';
-import type { AssetPatchRecommendation, Vulnerability, Prisma } from '@prisma/client';
 
 /**
  * Query parameters for listing recommendations
@@ -106,7 +106,7 @@ class AssetPatchRecommendationService {
             assetId,
             vulnerabilityId,
             patchId: patch.id,
-            status: 'recommended',
+            status: 'RECOMMENDED',
             severity: vulnerability.severity,
             cvssScore: vulnerability.cvss3BaseScore,
             epssScore: vulnerability.epss,
@@ -243,7 +243,7 @@ class AssetPatchRecommendationService {
     return prisma.assetPatchRecommendation.update({
       where: { id },
       data: {
-        status: 'accepted',
+        status: 'ACCEPTED',
         acceptedAt: new Date(),
         reason: reason || undefined,
       },
@@ -263,7 +263,7 @@ class AssetPatchRecommendationService {
     return prisma.assetPatchRecommendation.update({
       where: { id },
       data: {
-        status: 'rejected',
+        status: 'REJECTED',
         rejectedAt: new Date(),
         rejectionReason: reason,
       },
@@ -283,7 +283,7 @@ class AssetPatchRecommendationService {
     return prisma.assetPatchRecommendation.update({
       where: { id },
       data: {
-        status: 'deployed',
+        status: 'DEPLOYED',
         deployedAt: new Date(),
         deploymentTaskId,
       },
@@ -299,7 +299,7 @@ class AssetPatchRecommendationService {
     return prisma.assetPatchRecommendation.update({
       where: { id },
       data: {
-        status: 'verified',
+        status: 'VERIFIED',
         verifiedAt: new Date(),
       },
     });
@@ -318,7 +318,7 @@ class AssetPatchRecommendationService {
     return prisma.assetPatchRecommendation.update({
       where: { id },
       data: {
-        status: 'failed',
+        status: 'FAILED',
         failedAt: new Date(),
         failureReason: reason,
       },
@@ -380,7 +380,7 @@ class AssetPatchRecommendationService {
           organizationId,
         },
         severity: 'CRITICAL',
-        status: { in: ['recommended', 'accepted'] },
+        status: { in: ['RECOMMENDED', 'ACCEPTED'] },
       },
     });
 
@@ -472,7 +472,7 @@ class AssetPatchRecommendationService {
       where: {
         assetId,
         patchId,
-        status: { in: ['recommended', 'accepted'] },
+        status: { in: ['RECOMMENDED', 'ACCEPTED'] },
       },
     });
 
@@ -505,9 +505,9 @@ class AssetPatchRecommendationService {
       return;
     }
 
-    if (taskStatus === 'completed') {
+    if (taskStatus === 'COMPLETED') {
       await this.verifyRecommendation(recommendation.id);
-    } else if (taskStatus === 'failed') {
+    } else if (taskStatus === 'FAILED') {
       await this.failRecommendation(
         recommendation.id,
         errorMessage || 'Deployment failed'

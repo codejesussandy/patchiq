@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
-import { App,
-  Table, Input, Button, Typography, Space, Tooltip } from 'antd';
+import { useState, useMemo } from 'react';
 import { ReloadOutlined, DownloadOutlined, SettingOutlined } from '@ant-design/icons';
+import { App,
+  Button, Typography, Space, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { DataTable } from '../../components/shared/DataTable';
+import { useDistributionServers } from '../../hooks/useSettings';
 import { settingsService } from '../../services/settings.service';
 import type { DistributionServer as DistributionServerType } from '../../types/settings.types';
 
@@ -10,43 +12,21 @@ const { Title } = Typography;
 
 export const DistributionServer = () => {
   const { message } = App.useApp();
-  const [data, setData] = useState<DistributionServerType[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { data = [], isLoading: loading, refetch } = useDistributionServers();
   const [searchText, setSearchText] = useState('');
-  const [filteredData, setFilteredData] = useState<DistributionServerType[]>([]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    if (searchText) {
-      const filtered = data.filter(item =>
-        item.name.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.location.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.url.toLowerCase().includes(searchText.toLowerCase())
-      );
-      setFilteredData(filtered);
-    } else {
-      setFilteredData(data);
-    }
+  const filteredData = useMemo(() => {
+    if (!searchText) return data;
+    return data.filter((item: DistributionServerType) =>
+      item.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchText.toLowerCase()) ||
+      item.location.toLowerCase().includes(searchText.toLowerCase()) ||
+      item.url.toLowerCase().includes(searchText.toLowerCase())
+    );
   }, [searchText, data]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const response = await settingsService.getDistributionServers();
-      setData(response);
-    } catch (error) {
-      message.error('Failed to fetch distribution servers');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleRefresh = () => {
-    fetchData();
+    refetch();
   };
 
   const handleExport = async () => {
@@ -61,7 +41,7 @@ export const DistributionServer = () => {
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
       message.success('Distribution servers exported successfully');
-    } catch (error) {
+    } catch {
       message.error('Failed to export distribution servers');
     }
   };
@@ -78,7 +58,7 @@ export const DistributionServer = () => {
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
       message.success('Distribution server downloaded successfully');
-    } catch (error) {
+    } catch {
       message.error('Failed to download distribution server');
     }
   };
@@ -88,7 +68,7 @@ export const DistributionServer = () => {
       await settingsService.deleteDistributionServer(id);
       message.success('Distribution server deleted successfully');
       await fetchData();
-    } catch (error) {
+    } catch {
       message.error('Failed to delete distribution server');
     }
   };
@@ -145,16 +125,16 @@ export const DistributionServer = () => {
         <Title level={3}>Distribution Server</Title>
       </div>
 
-      <Space orientation="vertical" style={{ width: '100%' }} size="large">
-        {/* Search and Action Bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-          <Input
-            placeholder="Search..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            style={{ maxWidth: '300px' }}
-            allowClear
-          />
+      <DataTable
+        columns={columns}
+        data={filteredData}
+        rowKey="id"
+        loading={loading}
+        searchable
+        searchPlaceholder="Search..."
+        searchValue={searchText}
+        onSearch={setSearchText}
+        toolbar={
           <Space>
             <Tooltip title="Refresh">
               <Button
@@ -173,29 +153,22 @@ export const DistributionServer = () => {
               <Button icon={<SettingOutlined />} />
             </Tooltip>
           </Space>
-        </div>
-
-        {/* Table */}
-        <Table
-          columns={columns}
-          dataSource={filteredData}
-          rowKey="id"
-          loading={loading}
-          locale={{
-            emptyText: (
-              <div style={{ textAlign: 'center', padding: '40px' }}>
-                <DownloadOutlined style={{ fontSize: '48px', color: '#bfbfbf', marginBottom: '16px', display: 'block' }} />
-                <span style={{ color: '#8c8c8c' }}>No data</span>
-              </div>
-            ),
-          }}
-          pagination={{
-            pageSize: 10,
-            total: filteredData.length,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
-          }}
-        />
-      </Space>
+        }
+        locale={{
+          emptyText: (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <DownloadOutlined style={{ fontSize: '48px', color: '#bfbfbf', marginBottom: '16px', display: 'block' }} />
+              <span style={{ color: '#8c8c8c' }}>No data</span>
+            </div>
+          ),
+        }}
+        pagination={{
+          current: 1,
+          pageSize: 10,
+          total: filteredData.length,
+          onChange: () => {},
+        }}
+      />
     </div>
   );
 };

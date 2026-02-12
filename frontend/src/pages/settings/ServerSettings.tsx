@@ -1,50 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { App,
   Form, InputNumber, Select, Switch, Button, Space, Typography, Divider, Card, Row, Col } from 'antd';
-import { settingsService } from '../../services/settings.service';
-import type { ServerSettings as ServerSettingsType, ServerSettingsFormData } from '../../types/settings.types';
+import { useServerSettings, useUpdateServerSettings } from '../../hooks/useSettings';
+import type { ServerSettingsFormData } from '../../types/settings.types';
 
 const { Title } = Typography;
 
 export const ServerSettings = () => {
   const { message } = App.useApp();
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
-  const [settings, setSettings] = useState<ServerSettingsType | null>(null);
+  const { data: settings } = useServerSettings();
+  const updateSettingsMutation = useUpdateServerSettings();
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const data = await settingsService.getServerSettings();
-        setSettings(data);
-        form.setFieldsValue({
-          sessionTimeout: data.sessionTimeout,
-          sessionTimeoutMinutes: data.sessionTimeoutMinutes,
-          sessionIdleTimeoutMinutes: data.sessionIdleTimeoutMinutes,
-          endpointOnlineStatusTimeoutHours: data.endpointOnlineStatusTimeoutHours,
-          endpointScanJobTimeoutHours: data.endpointScanJobTimeoutHours,
-          logLevel: data.logLevel,
-        });
-      } catch (error) {
-        console.error('Failed to fetch server settings:', error);
-        message.error('Failed to fetch server settings');
-      }
-    };
-    fetchSettings();
-  }, [form]);
+    if (settings) {
+      form.setFieldsValue({
+        sessionTimeout: settings.sessionTimeout,
+        sessionTimeoutMinutes: settings.sessionTimeoutMinutes,
+        sessionIdleTimeoutMinutes: settings.sessionIdleTimeoutMinutes,
+        endpointOnlineStatusTimeoutHours: settings.endpointOnlineStatusTimeoutHours,
+        endpointScanJobTimeoutHours: settings.endpointScanJobTimeoutHours,
+        logLevel: settings.logLevel,
+      });
+    }
+  }, [settings, form]);
 
   const onFinish = async (values: ServerSettingsFormData) => {
-    setLoading(true);
     try {
-      await settingsService.updateServerSettings(values);
+      await updateSettingsMutation.mutateAsync(values);
       message.success('Server settings updated successfully');
-      const updatedSettings = await settingsService.getServerSettings();
-      setSettings(updatedSettings);
-    } catch (error) {
-      console.error('Error updating server settings:', error);
+    } catch {
       message.error('Failed to update server settings');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -212,7 +198,7 @@ export const ServerSettings = () => {
         {/* Action Buttons */}
         <Form.Item>
           <Space>
-            <Button type="primary" htmlType="submit" loading={loading}>
+            <Button type="primary" htmlType="submit" loading={updateSettingsMutation.isPending}>
               Save
             </Button>
             <Button onClick={handleReset}>

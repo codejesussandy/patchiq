@@ -1,88 +1,56 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import {
+  SearchOutlined,
+  ReloadOutlined,
+  FileTextOutlined,
+  PlusOutlined,
+  DeleteOutlined } from '@ant-design/icons';
 import {
   App,
-  Table,
   Input,
   Button,
   Typography,
   Space,
   Tooltip,
   Popconfirm,
-  Modal,
   Form,
-  Select,
-} from 'antd';
-import {
-  SearchOutlined,
-  ReloadOutlined,
-  FileTextOutlined,
-  PlusOutlined,
-  DeleteOutlined,
-} from '@ant-design/icons';
-import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
-import { settingsService } from '../../services/settings.service';
+  Select } from 'antd';
+import type { ColumnsType} from 'antd/es/table';
+import { DataTable } from '../../components/shared/DataTable';
+import { FormModal } from '../../components/shared/FormModal';
+import { useModal } from '../../hooks/useModal';
+import { useEnrollSecrets, useCreateEnrollSecret, useDeleteEnrollSecret, useOrganizations, useDepartments } from '../../hooks/useSettings';
 import type { EnrollSecret as EnrollSecretType } from '../../types/settings.types';
 
 const { Title } = Typography;
 
 export const EnrollSecret = () => {
   const { message } = App.useApp();
-  const [secrets, setSecrets] = useState<EnrollSecretType[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { data: rawSecrets, isLoading: loading, refetch } = useEnrollSecrets();
+  const { data: rawOrganizations } = useOrganizations();
+  const { data: rawDepartments } = useDepartments();
+  const createSecretMutation = useCreateEnrollSecret();
+  const deleteSecretMutation = useDeleteEnrollSecret();
   const [searchText, setSearchText] = useState('');
-  const [modalVisible, setModalVisible] = useState(false);
   const [viewModalVisible, setViewModalVisible] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string }>>([]);
-  const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
   const [_selectedSecret, setSelectedSecret] = useState<EnrollSecretType | null>(null);
+  const createModal = useModal();
   const [form] = Form.useForm();
   const [viewForm] = Form.useForm();
-  const [pagination, setPagination] = useState<TablePaginationConfig>({
+  const [pagination, setPagination] = useState({
     pageSize: 10,
-    current: 1,
-  });
+    current: 1 });
 
-  useEffect(() => {
-    fetchEnrollSecrets();
-    fetchOrganizationsAndDepartments();
-  }, []);
-
-  const fetchOrganizationsAndDepartments = async () => {
-    try {
-      const [orgs, depts] = await Promise.all([
-        settingsService.getOrganizations(),
-        settingsService.getDepartments(),
-      ]);
-      setOrganizations(orgs || []);
-      setDepartments(depts || []);
-    } catch (error) {
-      console.error('Error fetching organizations and departments:', error);
-    }
-  };
-
-  const fetchEnrollSecrets = async () => {
-    setLoading(true);
-    try {
-      const data = await settingsService.getEnrollSecrets();
-      const formattedData = Array.isArray(data)
-        ? data.map((secret: EnrollSecretType) => ({
-            ...secret,
-            key: secret.id,
-          }))
-        : [];
-      setSecrets(formattedData);
-    } catch (error) {
-      console.error('Error fetching enroll secrets:', error);
-      message.error('Failed to fetch enroll secrets');
-      setSecrets([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const secrets = Array.isArray(rawSecrets)
+    ? rawSecrets.map((secret: EnrollSecretType) => ({
+        ...secret,
+        key: secret.id }))
+    : [];
+  const organizations = rawOrganizations || [];
+  const departments = rawDepartments || [];
 
   const handleRefresh = () => {
-    fetchEnrollSecrets();
+    refetch();
   };
 
   const handleExport = () => {
@@ -123,44 +91,22 @@ export const EnrollSecret = () => {
   };
 
   const handleOpenCreateModal = () => {
-    form.resetFields();
-    setModalVisible(true);
+    createModal.onOpen();
   };
 
-  const handleModalClose = () => {
-    setModalVisible(false);
-    form.resetFields();
-  };
-
-  const handleCreate = async () => {
+  const handleCreateSubmit = async (values: Record<string, unknown>) => {
     try {
-      const values = await form.validateFields();
-      setSubmitting(true);
-
-      await settingsService.createEnrollSecret({
-        name: values.name,
+      await createSecretMutation.mutateAsync({
+        name: values.name as string,
         secret: `${Math.random().toString(36).substring(2, 15)}-${Math.random().toString(36).substring(2, 15)}`,
-        organization: values.organization,
-        department: values.department,
-      });
+        organization: values.organization as string,
+        department: values.department as string });
 
       message.success('Enroll secret created successfully');
-      handleModalClose();
-      fetchEnrollSecrets();
-    } catch (error) {
-      console.error('Error creating enroll secret:', error);
-      if (error instanceof Error && 'errorFields' in error) {
-        // Form validation error, already shown by Form component
-      } else {
-        message.error('Failed to create enroll secret');
-      }
-    } finally {
-      setSubmitting(false);
+      createModal.onClose();
+    } catch {
+      message.error('Failed to create enroll secret');
     }
-  };
-
-  const handleReset = () => {
-    form.resetFields();
   };
 
   const handleOpenViewModal = (secret: EnrollSecretType) => {
@@ -169,8 +115,7 @@ export const EnrollSecret = () => {
       name: secret.name,
       secret: secret.secret,
       organization: secret.organization,
-      department: secret.department,
-    });
+      department: secret.department });
     setViewModalVisible(true);
   };
 
@@ -182,11 +127,9 @@ export const EnrollSecret = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await settingsService.deleteEnrollSecret(id);
+      await deleteSecretMutation.mutateAsync(id);
       message.success('Enroll secret deleted successfully');
-      fetchEnrollSecrets();
-    } catch (error) {
-      console.error('Error deleting enroll secret:', error);
+    } catch {
       message.error('Failed to delete enroll secret');
     }
   };
@@ -210,8 +153,7 @@ export const EnrollSecret = () => {
           {name}
         </span>
       ),
-      sorter: (a, b) => a.name.localeCompare(b.name),
-    },
+      sorter: (a, b) => a.name.localeCompare(b.name) },
     {
       title: 'Secret',
       dataIndex: 'secret',
@@ -223,20 +165,17 @@ export const EnrollSecret = () => {
             ? `${secret.substring(0, 5)}${'*'.repeat(secret.length - 10)}${secret.substring(secret.length - 5)}`
             : '*'.repeat(secret.length);
         return <span>{masked}</span>;
-      },
-    },
+      } },
     {
       title: 'Organization',
       dataIndex: 'organization',
       key: 'organization',
-      sorter: (a, b) => a.organization.localeCompare(b.organization),
-    },
+      sorter: (a, b) => a.organization.localeCompare(b.organization) },
     {
       title: 'Department',
       dataIndex: 'department',
       key: 'department',
-      sorter: (a, b) => a.department.localeCompare(b.department),
-    },
+      sorter: (a, b) => a.department.localeCompare(b.department) },
     {
       title: 'Created On',
       dataIndex: 'createdOn',
@@ -245,13 +184,12 @@ export const EnrollSecret = () => {
         return new Date(date).toLocaleString();
       },
       sorter: (a, b) =>
-        new Date(a.createdOn).getTime() - new Date(b.createdOn).getTime(),
-    },
+        new Date(a.createdOn).getTime() - new Date(b.createdOn).getTime() },
     {
       title: 'Actions',
       key: 'actions',
       width: 80,
-      render: (_text: any, record: EnrollSecretType) => (
+      render: (_text: unknown, record: EnrollSecretType) => (
         <Tooltip title="Delete">
           <Popconfirm
             title="Delete Enroll Secret"
@@ -263,8 +201,7 @@ export const EnrollSecret = () => {
             <Button type="text" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Tooltip>
-      ),
-    },
+      ) },
   ];
 
   return (
@@ -280,8 +217,7 @@ export const EnrollSecret = () => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          gap: '12px',
-        }}
+          gap: '12px' }}
       >
         <Input
           placeholder="Search"
@@ -309,9 +245,9 @@ export const EnrollSecret = () => {
       </div>
 
       {/* Table */}
-      <Table
+      <DataTable
         columns={columns}
-        dataSource={filteredSecrets}
+        data={filteredSecrets}
         loading={loading}
         pagination={pagination}
         onChange={(newPagination) => setPagination(newPagination)}
@@ -321,68 +257,54 @@ export const EnrollSecret = () => {
       />
 
       {/* Create Modal */}
-      <Modal
+      <FormModal
         title="Create Enroll Secret"
-        open={modalVisible}
-        width={600}
-        onCancel={handleModalClose}
-        footer={[
-          <Button key="reset" onClick={handleReset}>
-            Reset
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            loading={submitting}
-            onClick={handleCreate}
-          >
-            Create
-          </Button>,
-        ]}
+        open={createModal.open}
+        onClose={createModal.onClose}
+        onSubmit={handleCreateSubmit}
+        loading={createSecretMutation.isPending}
+        okText="Create"
+        form={form}
       >
-        <Form form={form} layout="vertical" style={{ marginTop: '20px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <Form.Item
-              label={<span>Name <span style={{ color: 'red' }}>*</span></span>}
-              name="name"
-              rules={[
-                { required: true, message: 'Please enter enroll secret name' },
-                { min: 2, message: 'Name must be at least 2 characters' },
-              ]}
-            >
-              <Input placeholder="Name" />
-            </Form.Item>
-
-            <Form.Item
-              label={<span>Organization <span style={{ color: 'red' }}>*</span></span>}
-              name="organization"
-              rules={[{ required: true, message: 'Please select organization' }]}
-            >
-              <Select
-                placeholder="Please Select"
-                options={organizations.map((org) => ({
-                  value: org.name,
-                  label: org.name,
-                }))}
-              />
-            </Form.Item>
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <Form.Item
+            label={<span>Name <span style={{ color: 'red' }}>*</span></span>}
+            name="name"
+            rules={[
+              { required: true, message: 'Please enter enroll secret name' },
+              { min: 2, message: 'Name must be at least 2 characters' },
+            ]}
+          >
+            <Input placeholder="Name" />
+          </Form.Item>
 
           <Form.Item
-            label={<span>Department <span style={{ color: 'red' }}>*</span></span>}
-            name="department"
-            rules={[{ required: true, message: 'Please select department' }]}
+            label={<span>Organization <span style={{ color: 'red' }}>*</span></span>}
+            name="organization"
+            rules={[{ required: true, message: 'Please select organization' }]}
           >
             <Select
               placeholder="Please Select"
-              options={departments.map((dept) => ({
-                value: dept.name,
-                label: dept.name,
-              }))}
+              options={organizations.map((org) => ({
+                value: org.name,
+                label: org.name }))}
             />
           </Form.Item>
-        </Form>
-      </Modal>
+        </div>
+
+        <Form.Item
+          label={<span>Department <span style={{ color: 'red' }}>*</span></span>}
+          name="department"
+          rules={[{ required: true, message: 'Please select department' }]}
+        >
+          <Select
+            placeholder="Please Select"
+            options={departments.map((dept) => ({
+              value: dept.name,
+              label: dept.name }))}
+          />
+        </Form.Item>
+      </FormModal>
 
       {/* View Modal */}
       <Modal

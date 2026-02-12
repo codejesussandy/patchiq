@@ -1,20 +1,18 @@
-import { prisma } from '@/db/client';
-import { NotFoundError } from '@shared/errors';
-import { getPaginationParams, paginate } from '@shared/utils/pagination';
-import { formatDate } from '@shared/utils/date';
 import type { Prisma } from '@prisma/client';
+import { NotFoundError } from '@shared/errors';
+import { createLogger } from '@shared/services/logger';
+import { formatDate } from '@shared/utils/date';
+import { getPaginationParams, paginate } from '@shared/utils/pagination';
+import { withTransaction } from '@shared/utils/transaction';
+import { prisma } from '@/db/client';
+
+const logger = createLogger('jobs');
 import type {
   CreatePatchJobInput,
   PatchJobListQuery,
   CreateVulnerabilityJobInput,
   VulnerabilityJobListQuery,
   UpdateVulnerabilityDBSyncInput,
-  CreateSoftwareCatalogInput,
-  UpdateSoftwareCatalogInput,
-  SoftwareCatalogListQuery,
-  CreateSoftwareBundleInput,
-  UpdateSoftwareBundleInput,
-  SoftwareBundleListQuery,
   CreateSoftwareDeploymentInput,
   SoftwareDeploymentListQuery,
   CreateConfigCatalogInput,
@@ -42,12 +40,6 @@ async function generatePolicyId(prefix: string, model: string): Promise<string> 
       break;
     case 'vulnerabilityJob':
       count = await prisma.vulnerabilityJob.count();
-      break;
-    case 'softwareCatalog':
-      count = await prisma.softwareCatalog.count();
-      break;
-    case 'softwareBundle':
-      count = await prisma.softwareBundle.count();
       break;
     case 'softwareDeployment':
       count = await prisma.softwareDeployment.count();
@@ -266,7 +258,7 @@ export async function createVulnerabilityJob(data: CreateVulnerabilityJobInput, 
   const jobId = await generatePolicyId('VULN-JOB', 'vulnerabilityJob');
 
   let nextRun: Date | null = null;
-  if (data.scanType === 'scheduled' && data.scheduleDate && data.scheduleTime) {
+  if (data.scanType === 'SCHEDULED' && data.scheduleDate && data.scheduleTime) {
     nextRun = new Date(`${data.scheduleDate}T${data.scheduleTime}`);
   }
 
@@ -281,7 +273,7 @@ export async function createVulnerabilityJob(data: CreateVulnerabilityJobInput, 
       scheduleDate: data.scheduleDate,
       scheduleTime: data.scheduleTime,
       recurrence: data.recurrence,
-      status: data.scanType === 'instant' ? 'RUNNING' : 'SCHEDULED',
+      status: data.scanType === 'INSTANT' ? 'RUNNING' : 'SCHEDULED',
       scheduledTime: data.scheduleTime,
       nextRun,
       createdBy: userId,
@@ -289,10 +281,10 @@ export async function createVulnerabilityJob(data: CreateVulnerabilityJobInput, 
   });
 
   // For instant scans, trigger the actual vulnerability scan and track completion
-  if (data.scanType === 'instant') {
-    console.log(`[VulnerabilityJob] ${jobId} triggering scan (scope=${data.scope})`);
+  if (data.scanType === 'INSTANT') {
+    logger.info({ jobId, scope: data.scope }, 'Triggering vulnerability scan');
     executeAndTrackScan(job.id, data.scope, data.endpoints, userId).catch((err) => {
-      console.error(`[VulnerabilityJob] ${jobId} background execution failed:`, err);
+      logger.error({ err, jobId }, 'Vulnerability job background execution failed');
     });
   }
 
@@ -344,8 +336,8 @@ export async function executeAndTrackScan(
     const { vulnerabilitiesService } = await import('@modules/vulnerabilities/vulnerabilities.service');
 
     // Map VulnerabilityJob scope to scan scope
-    const scanScope: 'all' | 'selected' = scope === 'Global' ? 'all' : 'selected';
-    const endpointIds = scope !== 'Global' ? endpoints : undefined;
+    const scanScope: 'ALL' | 'SELECTED' = scope === 'GLOBAL' ? 'ALL' : 'SELECTED';
+    const endpointIds = scope !== 'GLOBAL' ? endpoints : undefined;
 
     const scanResult = await vulnerabilitiesService.triggerScan(
       { scope: scanScope, endpointIds },
@@ -360,7 +352,7 @@ export async function executeAndTrackScan(
     while (Date.now() - startTime < maxWaitMs) {
       await new Promise((resolve) => setTimeout(resolve, 2000));
       const scanJob = await prisma.job.findUnique({ where: { id: scanJobId } });
-      if (!scanJob || scanJob.status === 'completed') {
+      if (!scanJob || scanJob.status === 'COMPLETED') {
         // Look up recurrence for next run calculation
         const vulnJob = await prisma.vulnerabilityJob.findUnique({ where: { id: vulnerabilityJobId } });
         const nextRun = vulnJob ? calculateNextRun(vulnJob.recurrence || null) : null;
@@ -375,7 +367,7 @@ export async function executeAndTrackScan(
         });
         return;
       }
-      if (scanJob.status === 'failed') {
+      if (scanJob.status === 'FAILED') {
         await prisma.vulnerabilityJob.update({
           where: { id: vulnerabilityJobId },
           data: {
@@ -502,313 +494,13 @@ export async function triggerVulnerabilityDBSync() {
 }
 
 // ============================================
-// Software Catalog Service
-// ============================================
-
-export async function listSoftwareCatalog(params: SoftwareCatalogListQuery) {
-  const where: Prisma.SoftwareCatalogWhereInput = {};
-
-  if (params.os) where.os = params.os;
-  if (params.search) {
-    where.applicationName = { contains: params.search, mode: 'insensitive' };
-  }
-
-  const [items, total] = await Promise.all([
-    prisma.softwareCatalog.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      ...getPaginationParams({ page: params.page, limit: params.limit }),
-    }),
-    prisma.softwareCatalog.count({ where }),
-  ]);
-
-  return paginate(
-    items.map((item) => ({
-      id: item.id,
-      deploymentId: item.deploymentId,
-      applicationName: item.applicationName,
-      description: item.description,
-      tags: item.tags,
-      os: item.os,
-      version: item.version,
-      applicationLocationType: item.applicationLocationType,
-      installationCommand: item.installationCommand,
-      uninstallationCommand: item.uninstallationCommand,
-      upgradeCommand: item.upgradeCommand,
-      iconUrl: item.iconUrl,
-      selfService: item.selfService,
-      architecture: item.architecture,
-      applicationType: item.applicationType,
-      applicationFileUrl: item.applicationFileUrl,
-      createdBy: item.createdBy,
-      createdOn: formatDate(item.createdAt),
-    })),
-    total,
-    { page: params.page, limit: params.limit }
-  );
-}
-
-export async function getSoftwareCatalogById(id: string) {
-  const item = await prisma.softwareCatalog.findFirst({
-    where: { OR: [{ id }, { deploymentId: id }] },
-  });
-
-  if (!item) {
-    throw new NotFoundError('Software not found');
-  }
-
-  return {
-    id: item.id,
-    deploymentId: item.deploymentId,
-    applicationName: item.applicationName,
-    description: item.description,
-    tags: item.tags,
-    os: item.os,
-    version: item.version,
-    applicationLocationType: item.applicationLocationType,
-    installationCommand: item.installationCommand,
-    uninstallationCommand: item.uninstallationCommand,
-    upgradeCommand: item.upgradeCommand,
-    iconUrl: item.iconUrl,
-    selfService: item.selfService,
-    architecture: item.architecture,
-    applicationType: item.applicationType,
-    applicationFileUrl: item.applicationFileUrl,
-    createdBy: item.createdBy,
-    createdOn: formatDate(item.createdAt),
-  };
-}
-
-export async function createSoftwareCatalog(data: CreateSoftwareCatalogInput, userId: string) {
-  const deploymentId = await generatePolicyId('SWP', 'softwareCatalog');
-
-  const item = await prisma.softwareCatalog.create({
-    data: {
-      deploymentId,
-      applicationName: data.applicationName,
-      description: data.description,
-      tags: data.tags || [],
-      os: data.os,
-      version: data.version,
-      applicationLocationType: data.applicationLocationType,
-      installationCommand: data.installationCommand,
-      uninstallationCommand: data.uninstallationCommand,
-      upgradeCommand: data.upgradeCommand,
-      iconUrl: data.iconUrl,
-      selfService: data.selfService,
-      architecture: data.architecture,
-      applicationType: data.applicationType,
-      applicationFileUrl: data.applicationFileUrl,
-      createdBy: userId,
-    },
-  });
-
-  return {
-    id: item.id,
-    deploymentId: item.deploymentId,
-    applicationName: item.applicationName,
-    os: item.os,
-    createdBy: item.createdBy,
-    createdOn: formatDate(item.createdAt),
-  };
-}
-
-export async function updateSoftwareCatalog(id: string, data: UpdateSoftwareCatalogInput) {
-  const existing = await prisma.softwareCatalog.findFirst({
-    where: { OR: [{ id }, { deploymentId: id }] },
-  });
-
-  if (!existing) {
-    throw new NotFoundError('Software not found');
-  }
-
-  const updated = await prisma.softwareCatalog.update({
-    where: { id: existing.id },
-    data: {
-      applicationName: data.applicationName,
-      description: data.description,
-      tags: data.tags,
-      os: data.os,
-      version: data.version,
-      applicationLocationType: data.applicationLocationType,
-      installationCommand: data.installationCommand,
-      uninstallationCommand: data.uninstallationCommand,
-      upgradeCommand: data.upgradeCommand,
-      iconUrl: data.iconUrl,
-      selfService: data.selfService,
-      architecture: data.architecture,
-      applicationType: data.applicationType,
-      applicationFileUrl: data.applicationFileUrl,
-    },
-  });
-
-  return {
-    id: updated.id,
-    deploymentId: updated.deploymentId,
-    applicationName: updated.applicationName,
-    os: updated.os,
-    createdBy: updated.createdBy,
-    createdOn: formatDate(updated.createdAt),
-  };
-}
-
-export async function deleteSoftwareCatalog(id: string) {
-  const existing = await prisma.softwareCatalog.findFirst({
-    where: { OR: [{ id }, { deploymentId: id }] },
-  });
-
-  if (!existing) {
-    throw new NotFoundError('Software not found');
-  }
-
-  await prisma.softwareCatalog.delete({ where: { id: existing.id } });
-
-  return { message: 'Software deleted successfully' };
-}
-
-// ============================================
-// Software Bundle Service
-// ============================================
-
-export async function listSoftwareBundles(params: SoftwareBundleListQuery) {
-  const where: Prisma.SoftwareBundleWhereInput = {};
-
-  if (params.os) where.os = params.os;
-
-  const [bundles, total] = await Promise.all([
-    prisma.softwareBundle.findMany({
-      where,
-      include: { items: { include: { software: true } } },
-      orderBy: { createdAt: 'desc' },
-      ...getPaginationParams({ page: params.page, limit: params.limit }),
-    }),
-    prisma.softwareBundle.count({ where }),
-  ]);
-
-  return paginate(
-    bundles.map((bundle) => ({
-      id: bundle.id,
-      bundleId: bundle.bundleId,
-      bundleName: bundle.bundleName,
-      os: bundle.os,
-      description: bundle.description,
-      applications: bundle.items.map((item) => item.softwareId),
-      createdBy: bundle.createdBy,
-      createdOn: formatDate(bundle.createdAt),
-    })),
-    total,
-    { page: params.page, limit: params.limit }
-  );
-}
-
-export async function getSoftwareBundleById(id: string) {
-  const bundle = await prisma.softwareBundle.findFirst({
-    where: { OR: [{ id }, { bundleId: id }] },
-    include: { items: { include: { software: true } } },
-  });
-
-  if (!bundle) {
-    throw new NotFoundError('Bundle not found');
-  }
-
-  return {
-    id: bundle.id,
-    bundleId: bundle.bundleId,
-    bundleName: bundle.bundleName,
-    os: bundle.os,
-    description: bundle.description,
-    applications: bundle.items.map((item) => item.softwareId),
-    createdBy: bundle.createdBy,
-    createdOn: formatDate(bundle.createdAt),
-  };
-}
-
-export async function createSoftwareBundle(data: CreateSoftwareBundleInput, userId: string) {
-  const bundleId = await generatePolicyId('BND', 'softwareBundle');
-
-  const bundle = await prisma.softwareBundle.create({
-    data: {
-      bundleId,
-      bundleName: data.bundleName,
-      os: data.os,
-      description: data.description,
-      createdBy: userId,
-      items: {
-        create: data.applications.map((softwareId) => ({ softwareId })),
-      },
-    },
-    include: { items: true },
-  });
-
-  return {
-    id: bundle.id,
-    bundleId: bundle.bundleId,
-    bundleName: bundle.bundleName,
-    os: bundle.os,
-    applications: bundle.items.map((item) => item.softwareId),
-    createdBy: bundle.createdBy,
-    createdOn: formatDate(bundle.createdAt),
-  };
-}
-
-export async function updateSoftwareBundle(id: string, data: UpdateSoftwareBundleInput) {
-  const existing = await prisma.softwareBundle.findFirst({
-    where: { OR: [{ id }, { bundleId: id }] },
-  });
-
-  if (!existing) {
-    throw new NotFoundError('Bundle not found');
-  }
-
-  // Delete existing items and recreate
-  await prisma.softwareBundleItem.deleteMany({ where: { bundleId: existing.id } });
-
-  const updated = await prisma.softwareBundle.update({
-    where: { id: existing.id },
-    data: {
-      bundleName: data.bundleName,
-      os: data.os,
-      description: data.description,
-      items: data.applications
-        ? { create: data.applications.map((softwareId) => ({ softwareId })) }
-        : undefined,
-    },
-    include: { items: true },
-  });
-
-  return {
-    id: updated.id,
-    bundleId: updated.bundleId,
-    bundleName: updated.bundleName,
-    os: updated.os,
-    applications: updated.items.map((item) => item.softwareId),
-    createdBy: updated.createdBy,
-    createdOn: formatDate(updated.createdAt),
-  };
-}
-
-export async function deleteSoftwareBundle(id: string) {
-  const existing = await prisma.softwareBundle.findFirst({
-    where: { OR: [{ id }, { bundleId: id }] },
-  });
-
-  if (!existing) {
-    throw new NotFoundError('Bundle not found');
-  }
-
-  await prisma.softwareBundle.delete({ where: { id: existing.id } });
-
-  return { message: 'Bundle deleted successfully' };
-}
-
-// ============================================
 // Software Deployment Service
 // ============================================
 
 export async function listSoftwareDeployments(params: SoftwareDeploymentListQuery) {
   const where: Prisma.SoftwareDeploymentWhereInput = {};
 
-  if (params.stage) where.stage = params.stage;
+  if (params.status) where.status = params.status;
 
   const [deployments, total] = await Promise.all([
     prisma.softwareDeployment.findMany({
@@ -833,7 +525,7 @@ export async function listSoftwareDeployments(params: SoftwareDeploymentListQuer
       deploymentPolicy: dep.deploymentPolicy,
       retryCount: dep.retryCount,
       notifyTo: dep.notifyTo,
-      stage: dep.stage,
+      status: dep.status,
       pending: dep.pending,
       succeeded: dep.succeeded,
       failed: dep.failed,
@@ -867,7 +559,7 @@ export async function getSoftwareDeploymentById(id: string) {
     deploymentPolicy: dep.deploymentPolicy,
     retryCount: dep.retryCount,
     notifyTo: dep.notifyTo,
-    stage: dep.stage,
+    status: dep.status,
     pending: dep.pending,
     succeeded: dep.succeeded,
     failed: dep.failed,
@@ -877,32 +569,34 @@ export async function getSoftwareDeploymentById(id: string) {
 }
 
 export async function createSoftwareDeployment(data: CreateSoftwareDeploymentInput, userId: string) {
-  const deploymentId = await generatePolicyId('ADR', 'softwareDeployment');
+  const dep = await withTransaction('createSoftwareDeployment', async (tx) => {
+    const deploymentId = await generatePolicyId('ADR', 'softwareDeployment');
 
-  const dep = await prisma.softwareDeployment.create({
-    data: {
-      deploymentId,
-      deploymentName: data.deploymentName,
-      description: data.description,
-      deploymentType: data.deploymentType,
-      selectionType: data.selectionType,
-      selectedItems: data.selectedItems,
-      scope: data.scope,
-      endpoints: data.endpoints || [],
-      deploymentPolicy: data.deploymentPolicy,
-      retryCount: data.retryCount,
-      notifyTo: data.notifyTo,
-      stage: 'IN_PROGRESS',
-      pending: data.selectedItems.length,
-      createdBy: userId,
-    },
+    return tx.softwareDeployment.create({
+      data: {
+        deploymentId,
+        deploymentName: data.deploymentName,
+        description: data.description,
+        deploymentType: data.deploymentType,
+        selectionType: data.selectionType,
+        selectedItems: data.selectedItems,
+        scope: data.scope,
+        endpoints: data.endpoints || [],
+        deploymentPolicy: data.deploymentPolicy,
+        retryCount: data.retryCount,
+        notifyTo: data.notifyTo,
+        status: 'IN_PROGRESS',
+        pending: data.selectedItems.length,
+        createdBy: userId,
+      },
+    });
   });
 
   return {
     id: dep.id,
     deploymentId: dep.deploymentId,
     deploymentName: dep.deploymentName,
-    stage: dep.stage,
+    status: dep.status,
     pending: dep.pending,
     succeeded: dep.succeeded,
     failed: dep.failed,
@@ -930,11 +624,11 @@ export async function getSoftwareDeploymentTasks(id: string) {
       id: task.id,
       deploymentId: dep.deploymentId,
       endpoint: {
-        name: task.endpointName,
-        os: task.endpointOs,
+        name: task.agentName,
+        os: task.agentOs,
         status: 'Online',
       },
-      name: task.itemName,
+      name: task.packageName,
       status: task.status,
       createdBy: task.createdBy,
       lastUpdated: formatDate(task.updatedAt),
@@ -1245,7 +939,7 @@ export async function deleteConfigBundle(id: string) {
 export async function listConfigDeployments(params: ConfigDeploymentListQuery) {
   const where: Prisma.ConfigDeploymentWhereInput = {};
 
-  if (params.stage) where.stage = params.stage;
+  if (params.status) where.status = params.status;
 
   const [deployments, total] = await Promise.all([
     prisma.configDeployment.findMany({
@@ -1269,7 +963,7 @@ export async function listConfigDeployments(params: ConfigDeploymentListQuery) {
       deploymentPolicy: dep.deploymentPolicy,
       retryCount: dep.retryCount,
       notifyTo: dep.notifyTo,
-      stage: dep.stage,
+      status: dep.status,
       pending: dep.pending,
       succeeded: dep.succeeded,
       failed: dep.failed,
@@ -1291,9 +985,9 @@ export async function createConfigDeployment(data: CreateConfigDeploymentInput, 
         name: data.deploymentName,
         description: data.description,
         targetAgentIds,
-        configurationIds: data.selectionType === 'configuration' ? data.selectedItems : undefined,
-        bundleIds: data.selectionType === 'bundle' ? data.selectedItems : undefined,
-        selectionType: data.selectionType as 'configuration' | 'bundle',
+        configurationIds: data.selectionType === 'CONFIGURATION' ? data.selectedItems : undefined,
+        bundleIds: data.selectionType === 'BUNDLE' ? data.selectedItems : undefined,
+        selectionType: data.selectionType as 'CONFIGURATION' | 'BUNDLE',
         retryCount: data.retryCount,
         createdBy: userId,
       });
@@ -1301,7 +995,7 @@ export async function createConfigDeployment(data: CreateConfigDeploymentInput, 
         id: result.deploymentId,
         deploymentId: result.deploymentId,
         deploymentName: data.deploymentName,
-        stage: 'IN_PROGRESS',
+        status: 'IN_PROGRESS',
         pending: result.tasksCreated,
         succeeded: 0,
         failed: 0,
@@ -1309,36 +1003,38 @@ export async function createConfigDeployment(data: CreateConfigDeploymentInput, 
         createdOn: formatDate(new Date()),
       };
     } catch (err) {
-      console.error('[ConfigDeployment] Executor failed, falling back to record-only:', err);
+      logger.error({ err }, 'Config deployment executor failed, falling back to record-only');
     }
   }
 
   // Fallback: create record without agent execution
-  const deploymentId = await generatePolicyId('CDR', 'configDeployment');
+  const dep = await withTransaction('createConfigDeployment', async (tx) => {
+    const deploymentId = await generatePolicyId('CDR', 'configDeployment');
 
-  const dep = await prisma.configDeployment.create({
-    data: {
-      deploymentId,
-      deploymentName: data.deploymentName,
-      description: data.description,
-      selectionType: data.selectionType,
-      selectedItems: data.selectedItems,
-      scope: data.scope,
-      endpoints: data.endpoints || [],
-      deploymentPolicy: data.deploymentPolicy,
-      retryCount: data.retryCount,
-      notifyTo: data.notifyTo,
-      stage: 'IN_PROGRESS',
-      pending: data.selectedItems.length,
-      createdBy: userId,
-    },
+    return tx.configDeployment.create({
+      data: {
+        deploymentId,
+        deploymentName: data.deploymentName,
+        description: data.description,
+        selectionType: data.selectionType,
+        selectedItems: data.selectedItems,
+        scope: data.scope,
+        endpoints: data.endpoints || [],
+        deploymentPolicy: data.deploymentPolicy,
+        retryCount: data.retryCount,
+        notifyTo: data.notifyTo,
+        status: 'IN_PROGRESS',
+        pending: data.selectedItems.length,
+        createdBy: userId,
+      },
+    });
   });
 
   return {
     id: dep.id,
     deploymentId: dep.deploymentId,
     deploymentName: dep.deploymentName,
-    stage: dep.stage,
+    status: dep.status,
     pending: dep.pending,
     succeeded: dep.succeeded,
     failed: dep.failed,
@@ -1366,11 +1062,11 @@ export async function getConfigDeploymentTasks(id: string) {
       id: task.id,
       deploymentId: dep.deploymentId,
       endpoint: {
-        name: task.endpointName,
-        os: task.endpointOs,
+        name: task.agentName,
+        os: task.agentOs,
         status: 'Online',
       },
-      name: task.itemName,
+      name: task.configName,
       status: task.status,
       createdBy: task.createdBy,
       lastUpdated: formatDate(task.updatedAt),

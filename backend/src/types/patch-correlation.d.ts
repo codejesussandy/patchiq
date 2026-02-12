@@ -23,33 +23,33 @@ export type VulnerabilitySeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UN
 /**
  * Asset vulnerability status
  */
-export type AssetVulnerabilityStatus = 'Open' | 'Mitigated' | 'Resolved' | 'Exception';
+export type AssetVulnerabilityStatus = 'OPEN' | 'MITIGATED' | 'RESOLVED' | 'EXCEPTION';
 
 /**
  * Patch recommendation status lifecycle
  */
 export type RecommendationStatus =
-  | 'recommended'  // Initial state: patch suggested by system
-  | 'accepted'     // Admin accepted recommendation
-  | 'rejected'     // Admin rejected recommendation
-  | 'deployed'     // Deployment in progress
-  | 'verified'     // Deployment succeeded, vulnerability resolved
-  | 'failed';      // Deployment failed
+  | 'RECOMMENDED'  // Initial state: patch suggested by system
+  | 'ACCEPTED'     // Admin accepted recommendation
+  | 'REJECTED'     // Admin rejected recommendation
+  | 'DEPLOYED'     // Deployment in progress
+  | 'VERIFIED'     // Deployment succeeded, vulnerability resolved
+  | 'FAILED';      // Deployment failed
 
 /**
  * Patch approval status
  */
-export type PatchApprovalStatus = 'Pending' | 'Approved' | 'Rejected';
+export type PatchApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 /**
  * Patch test status
  */
-export type PatchTestStatus = 'Not Tested' | 'Tested' | 'Failed';
+export type PatchTestStatus = 'NOT_TESTED' | 'TESTED' | 'TEST_FAILED';
 
 /**
  * Deployment task status
  */
-export type DeploymentTaskStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'rolled_back';
+export type DeploymentTaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'ROLLED_BACK';
 
 /**
  * CPE resolution sources
@@ -574,8 +574,8 @@ export interface Patch {
   /** Approval status */
   approvalStatus: PatchApprovalStatus;
 
-  /** Release date */
-  releaseDate?: Date | null;
+  /** Published date */
+  publishedAt?: Date | null;
   /** Operational status since */
   operationalStatusSince?: Date | null;
 

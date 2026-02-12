@@ -1,14 +1,14 @@
-import { prisma } from '@/db/client';
 import { NotFoundError } from '@shared/errors';
+import { prisma } from '@/db/client';
 import type { ListNotificationsQuery, NotificationHistoryQuery } from './notifications.validators';
 
-export type NotificationCategory = 'agent' | 'deployment' | 'vulnerability' | 'alert' | 'system';
+export type NotificationCategory = 'AGENT' | 'DEPLOYMENT' | 'VULNERABILITY' | 'ALERT' | 'SYSTEM';
 
 interface CreateNotificationInput {
   userId: string;
   title: string;
   message: string;
-  type?: 'info' | 'success' | 'warning' | 'error';
+  type?: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
   category?: NotificationCategory;
   link?: string;
   metadata?: Record<string, unknown>;
@@ -60,7 +60,7 @@ export class NotificationsService {
     const where: Record<string, unknown> = { userId };
 
     if (params.type) where.type = params.type;
-    if ((params as any).category) where.category = (params as any).category;
+    if (params.category) where.category = params.category;
     if (params.read !== undefined) where.read = params.read;
 
     const notifications = await prisma.notification.findMany({
@@ -145,7 +145,7 @@ export class NotificationsService {
       return;
     }
 
-    const category = input.category || 'system';
+    const category = input.category || 'SYSTEM';
 
     // Check in-app preference
     const pref = await prisma.notificationPreference.findUnique({ where: { userId: input.userId } });
@@ -158,7 +158,7 @@ export class NotificationsService {
           userId: input.userId,
           title: input.title,
           message: input.message,
-          type: input.type || 'info',
+          type: input.type || 'INFO',
           category,
           link: input.link,
           metadata: input.metadata as object | undefined,
@@ -188,7 +188,7 @@ export class NotificationsService {
       maybeSendEmail(input.userId, {
         title: input.title,
         message: input.message,
-        type: input.type || 'info',
+        type: input.type || 'INFO',
         category,
         link: input.link,
       }).catch(() => {});
@@ -206,20 +206,20 @@ export class NotificationsService {
     }
 
     const admins = await prisma.user.findMany({
-      where: { role: 'admin', isActive: true, deletedAt: null },
+      where: { role: 'ADMIN', isActive: true, deletedAt: null },
       select: { id: true },
     });
 
     if (admins.length === 0) return;
 
-    const category = input.category || 'system';
+    const category = input.category || 'SYSTEM';
 
     await prisma.notification.createMany({
       data: admins.map((admin) => ({
         userId: admin.id,
         title: input.title,
         message: input.message,
-        type: input.type || 'info',
+        type: input.type || 'INFO',
         category,
         link: input.link,
         metadata: input.metadata as object | undefined,
@@ -235,7 +235,7 @@ export class NotificationsService {
           notification: {
             title: input.title,
             message: input.message,
-            type: input.type || 'info',
+            type: input.type || 'INFO',
             category,
             link: input.link,
           },
@@ -250,7 +250,7 @@ export class NotificationsService {
         maybeSendEmail(admin.id, {
           title: input.title,
           message: input.message,
-          type: input.type || 'info',
+          type: input.type || 'INFO',
           category,
           link: input.link,
         }).catch(() => {});
@@ -277,9 +277,10 @@ export class NotificationsService {
     }
 
     if (params.dateFrom || params.dateTo) {
-      where.createdAt = {};
-      if (params.dateFrom) (where.createdAt as any).gte = new Date(params.dateFrom);
-      if (params.dateTo) (where.createdAt as any).lte = new Date(params.dateTo);
+      const dateFilter: { gte?: Date; lte?: Date } = {};
+      if (params.dateFrom) dateFilter.gte = new Date(params.dateFrom);
+      if (params.dateTo) dateFilter.lte = new Date(params.dateTo);
+      where.createdAt = dateFilter;
     }
 
     const [data, total] = await Promise.all([

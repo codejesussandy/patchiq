@@ -1,4 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
+import { sendSuccess, typedQuery } from '@shared/utils';
+import { deploymentPolicyCrudService } from './deployment-policy-crud.service';
 import * as jobsService from './jobs.service';
 import type {
   CreatePatchJobInput,
@@ -6,12 +8,6 @@ import type {
   CreateVulnerabilityJobInput,
   VulnerabilityJobListQuery,
   UpdateVulnerabilityDBSyncInput,
-  CreateSoftwareCatalogInput,
-  UpdateSoftwareCatalogInput,
-  SoftwareCatalogListQuery,
-  CreateSoftwareBundleInput,
-  UpdateSoftwareBundleInput,
-  SoftwareBundleListQuery,
   CreateSoftwareDeploymentInput,
   SoftwareDeploymentListQuery,
   CreateConfigCatalogInput,
@@ -33,9 +29,9 @@ import type {
 
 export async function listPatchJobs(req: Request, res: Response, next: NextFunction) {
   try {
-    const query = req.query as unknown as PatchJobListQuery;
+    const query = typedQuery<PatchJobListQuery>(req);
     const result = await jobsService.listPatchJobs(query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -45,7 +41,7 @@ export async function getPatchJob(req: Request, res: Response, next: NextFunctio
   try {
     const { id } = req.params;
     const result = await jobsService.getPatchJobById(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -56,7 +52,7 @@ export async function createPatchJob(req: Request, res: Response, next: NextFunc
     const userId = req.user!.id;
     const data = req.body as CreatePatchJobInput;
     const result = await jobsService.createPatchJob(data, userId);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -66,7 +62,7 @@ export async function deletePatchJob(req: Request, res: Response, next: NextFunc
   try {
     const { id } = req.params;
     const result = await jobsService.deletePatchJob(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -78,9 +74,9 @@ export async function deletePatchJob(req: Request, res: Response, next: NextFunc
 
 export async function listVulnerabilityJobs(req: Request, res: Response, next: NextFunction) {
   try {
-    const query = req.query as unknown as VulnerabilityJobListQuery;
+    const query = typedQuery<VulnerabilityJobListQuery>(req);
     const result = await jobsService.listVulnerabilityJobs(query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -90,7 +86,7 @@ export async function getVulnerabilityJob(req: Request, res: Response, next: Nex
   try {
     const { id } = req.params;
     const result = await jobsService.getVulnerabilityJobById(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -101,7 +97,7 @@ export async function createVulnerabilityJob(req: Request, res: Response, next: 
     const userId = req.user!.id;
     const data = req.body as CreateVulnerabilityJobInput;
     const result = await jobsService.createVulnerabilityJob(data, userId);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -111,7 +107,7 @@ export async function deleteVulnerabilityJob(req: Request, res: Response, next: 
   try {
     const { id } = req.params;
     const result = await jobsService.deleteVulnerabilityJob(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -120,7 +116,7 @@ export async function deleteVulnerabilityJob(req: Request, res: Response, next: 
 export async function getVulnerabilityDBSync(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await jobsService.getVulnerabilityDBSync();
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -130,7 +126,7 @@ export async function updateVulnerabilityDBSync(req: Request, res: Response, nex
   try {
     const data = req.body as UpdateVulnerabilityDBSyncInput;
     const result = await jobsService.updateVulnerabilityDBSync(data);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -139,119 +135,7 @@ export async function updateVulnerabilityDBSync(req: Request, res: Response, nex
 export async function triggerVulnerabilityDBSync(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await jobsService.triggerVulnerabilityDBSync();
-    res.status(202).json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-// ============================================
-// Software Catalog Controllers
-// ============================================
-
-export async function listSoftwareCatalog(req: Request, res: Response, next: NextFunction) {
-  try {
-    const query = req.query as unknown as SoftwareCatalogListQuery;
-    const result = await jobsService.listSoftwareCatalog(query);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function getSoftwareCatalog(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { id } = req.params;
-    const result = await jobsService.getSoftwareCatalogById(id);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function createSoftwareCatalog(req: Request, res: Response, next: NextFunction) {
-  try {
-    const userId = req.user!.id;
-    const data = req.body as CreateSoftwareCatalogInput;
-    const result = await jobsService.createSoftwareCatalog(data, userId);
-    res.status(201).json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function updateSoftwareCatalog(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { id } = req.params;
-    const data = req.body as UpdateSoftwareCatalogInput;
-    const result = await jobsService.updateSoftwareCatalog(id, data);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function deleteSoftwareCatalog(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { id } = req.params;
-    const result = await jobsService.deleteSoftwareCatalog(id);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-// ============================================
-// Software Bundle Controllers
-// ============================================
-
-export async function listSoftwareBundles(req: Request, res: Response, next: NextFunction) {
-  try {
-    const query = req.query as unknown as SoftwareBundleListQuery;
-    const result = await jobsService.listSoftwareBundles(query);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function getSoftwareBundle(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { id } = req.params;
-    const result = await jobsService.getSoftwareBundleById(id);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function createSoftwareBundle(req: Request, res: Response, next: NextFunction) {
-  try {
-    const userId = req.user!.id;
-    const data = req.body as CreateSoftwareBundleInput;
-    const result = await jobsService.createSoftwareBundle(data, userId);
-    res.status(201).json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function updateSoftwareBundle(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { id } = req.params;
-    const data = req.body as UpdateSoftwareBundleInput;
-    const result = await jobsService.updateSoftwareBundle(id, data);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function deleteSoftwareBundle(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { id } = req.params;
-    const result = await jobsService.deleteSoftwareBundle(id);
-    res.json(result);
+    sendSuccess(res, result, 202);
   } catch (error) {
     next(error);
   }
@@ -263,9 +147,9 @@ export async function deleteSoftwareBundle(req: Request, res: Response, next: Ne
 
 export async function listSoftwareDeployments(req: Request, res: Response, next: NextFunction) {
   try {
-    const query = req.query as unknown as SoftwareDeploymentListQuery;
+    const query = typedQuery<SoftwareDeploymentListQuery>(req);
     const result = await jobsService.listSoftwareDeployments(query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -275,7 +159,7 @@ export async function getSoftwareDeployment(req: Request, res: Response, next: N
   try {
     const { id } = req.params;
     const result = await jobsService.getSoftwareDeploymentById(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -286,7 +170,7 @@ export async function createSoftwareDeployment(req: Request, res: Response, next
     const userId = req.user!.id;
     const data = req.body as CreateSoftwareDeploymentInput;
     const result = await jobsService.createSoftwareDeployment(data, userId);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -296,7 +180,7 @@ export async function getSoftwareDeploymentTasks(req: Request, res: Response, ne
   try {
     const { id } = req.params;
     const result = await jobsService.getSoftwareDeploymentTasks(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -306,7 +190,7 @@ export async function deleteSoftwareDeployment(req: Request, res: Response, next
   try {
     const { id } = req.params;
     const result = await jobsService.deleteSoftwareDeployment(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -318,9 +202,9 @@ export async function deleteSoftwareDeployment(req: Request, res: Response, next
 
 export async function listConfigCatalog(req: Request, res: Response, next: NextFunction) {
   try {
-    const query = req.query as unknown as ConfigCatalogListQuery;
+    const query = typedQuery<ConfigCatalogListQuery>(req);
     const result = await jobsService.listConfigCatalog(query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -330,7 +214,7 @@ export async function getConfigCatalog(req: Request, res: Response, next: NextFu
   try {
     const { id } = req.params;
     const result = await jobsService.getConfigCatalogById(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -341,7 +225,7 @@ export async function createConfigCatalog(req: Request, res: Response, next: Nex
     const userId = req.user!.id;
     const data = req.body as CreateConfigCatalogInput;
     const result = await jobsService.createConfigCatalog(data, userId);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -352,7 +236,7 @@ export async function updateConfigCatalog(req: Request, res: Response, next: Nex
     const { id } = req.params;
     const data = req.body as UpdateConfigCatalogInput;
     const result = await jobsService.updateConfigCatalog(id, data);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -362,7 +246,7 @@ export async function deleteConfigCatalog(req: Request, res: Response, next: Nex
   try {
     const { id } = req.params;
     const result = await jobsService.deleteConfigCatalog(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -374,9 +258,9 @@ export async function deleteConfigCatalog(req: Request, res: Response, next: Nex
 
 export async function listConfigBundles(req: Request, res: Response, next: NextFunction) {
   try {
-    const query = req.query as unknown as ConfigBundleListQuery;
+    const query = typedQuery<ConfigBundleListQuery>(req);
     const result = await jobsService.listConfigBundles(query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -386,7 +270,7 @@ export async function getConfigBundle(req: Request, res: Response, next: NextFun
   try {
     const { id } = req.params;
     const result = await jobsService.getConfigBundleById(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -397,7 +281,7 @@ export async function createConfigBundle(req: Request, res: Response, next: Next
     const userId = req.user!.id;
     const data = req.body as CreateConfigBundleInput;
     const result = await jobsService.createConfigBundle(data, userId);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -408,7 +292,7 @@ export async function updateConfigBundle(req: Request, res: Response, next: Next
     const { id } = req.params;
     const data = req.body as UpdateConfigBundleInput;
     const result = await jobsService.updateConfigBundle(id, data);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -418,7 +302,7 @@ export async function deleteConfigBundle(req: Request, res: Response, next: Next
   try {
     const { id } = req.params;
     const result = await jobsService.deleteConfigBundle(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -430,9 +314,9 @@ export async function deleteConfigBundle(req: Request, res: Response, next: Next
 
 export async function listConfigDeployments(req: Request, res: Response, next: NextFunction) {
   try {
-    const query = req.query as unknown as ConfigDeploymentListQuery;
+    const query = typedQuery<ConfigDeploymentListQuery>(req);
     const result = await jobsService.listConfigDeployments(query);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -443,7 +327,7 @@ export async function createConfigDeployment(req: Request, res: Response, next: 
     const userId = req.user!.id;
     const data = req.body as CreateConfigDeploymentInput;
     const result = await jobsService.createConfigDeployment(data, userId);
-    res.status(201).json(result);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -453,7 +337,7 @@ export async function getConfigDeploymentTasks(req: Request, res: Response, next
   try {
     const { id } = req.params;
     const result = await jobsService.getConfigDeploymentTasks(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -463,21 +347,21 @@ export async function deleteConfigDeployment(req: Request, res: Response, next: 
   try {
     const { id } = req.params;
     const result = await jobsService.deleteConfigDeployment(id);
-    res.json(result);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
 }
 
 // ============================================
-// Deployment Policy Controllers
+// Deployment Policy Controllers (via BaseCrudService)
 // ============================================
 
 export async function listDeploymentPolicies(req: Request, res: Response, next: NextFunction) {
   try {
-    const query = req.query as unknown as DeploymentPolicyListQuery;
-    const result = await jobsService.listDeploymentPolicies(query);
-    res.json(result);
+    const query = typedQuery<DeploymentPolicyListQuery>(req);
+    const result = await deploymentPolicyCrudService.listPaginated(query);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -486,8 +370,8 @@ export async function listDeploymentPolicies(req: Request, res: Response, next: 
 export async function getDeploymentPolicy(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
-    const result = await jobsService.getDeploymentPolicyById(id);
-    res.json(result);
+    const result = await deploymentPolicyCrudService.findById(id);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -497,8 +381,8 @@ export async function createDeploymentPolicy(req: Request, res: Response, next: 
   try {
     const userId = req.user!.id;
     const data = req.body as CreateDeploymentPolicyInput;
-    const result = await jobsService.createDeploymentPolicy(data, userId);
-    res.status(201).json(result);
+    const result = await deploymentPolicyCrudService.createWithUser(data, userId);
+    sendSuccess(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -508,8 +392,8 @@ export async function updateDeploymentPolicy(req: Request, res: Response, next: 
   try {
     const { id } = req.params;
     const data = req.body as UpdateDeploymentPolicyInput;
-    const result = await jobsService.updateDeploymentPolicy(id, data);
-    res.json(result);
+    const result = await deploymentPolicyCrudService.updateByIdOrPolicyId(id, data);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }
@@ -518,8 +402,8 @@ export async function updateDeploymentPolicy(req: Request, res: Response, next: 
 export async function deleteDeploymentPolicy(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
-    const result = await jobsService.deleteDeploymentPolicy(id);
-    res.json(result);
+    const result = await deploymentPolicyCrudService.deleteByIdOrPolicyId(id);
+    sendSuccess(res, result);
   } catch (error) {
     next(error);
   }

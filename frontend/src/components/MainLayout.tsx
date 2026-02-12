@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { Layout, Menu, Input, Avatar, Button, Tooltip, Tag, Popover, Divider } from 'antd';
 import {
   SearchOutlined,
   SettingOutlined,
@@ -27,16 +26,18 @@ import {
   BankOutlined,
   BellOutlined,
 } from '@ant-design/icons';
+import type { MenuProps } from 'antd';
+import { Layout, Menu, Input, Avatar, Button, Tooltip, Tag, Popover, Divider } from 'antd';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Logo } from './Logo';
+import { useAuth } from '../contexts/AuthContext';
 import { categoryService } from '../services/category.service';
 import { settingsService } from '../services/settings.service';
-import { useAuth } from '../contexts/AuthContext';
 import type { Category, SubCategory } from '../types/asset.types';
 import { CategoryManagementModal } from './CategoryManagementModal';
-import { NotificationDropdown } from './NotificationDropdown';
 import { AIChatPanel } from './chat/AIChatPanel';
 import { SparklesIcon } from './chat/SparklesIcon';
+import { Logo } from './Logo';
+import { NotificationDropdown } from './NotificationDropdown';
 
 const { Header, Sider, Content } = Layout;
 
@@ -64,7 +65,7 @@ interface Organization {
 
 export const MainLayout = ({ children }: MainLayoutProps) => {
   const { user, logout } = useAuth();
-  const [collapsed, setCollapsed] = useState(true); // Start collapsed
+  const [_collapsed, _setCollapsed] = useState(true); // Start collapsed
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const [pinned, setPinned] = useState(false);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -81,7 +82,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(user?.organizationId || null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
-  const searchInputRef = useRef<any>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [selectedPatchTab, setSelectedPatchTab] = useState<string>('all-patches');
   const [chatOpen, setChatOpen] = useState(false);
 
@@ -119,15 +120,10 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       ]);
       setCategories(Array.isArray(cats) ? cats : []);
       setSubCategories(Array.isArray(subs) ? subs : []);
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
+    } catch {
+      // silently fail — category sidebar will just be empty
     }
   };
-
-  useEffect(() => {
-    fetchCategories();
-    fetchOrganizations();
-  }, []);
 
   const fetchOrganizations = async () => {
     try {
@@ -137,6 +133,13 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       // Silently fail — orgs dropdown will just be empty
     }
   };
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    fetchCategories();
+    fetchOrganizations();
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const getUserInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -165,8 +168,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
 
   const getRoleBadgeColor = () => {
     switch (user?.role) {
-      case 'admin': return 'red';
-      case 'manager': return 'orange';
+      case 'ADMIN': return 'red';
+      case 'MANAGER': return 'orange';
       default: return 'blue';
     }
   };
@@ -186,6 +189,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     }
   };
 
+  /* eslint-disable react-hooks/set-state-in-effect -- sync route to UI state */
   // Update selected asset tab based on current route
   useEffect(() => {
     if (location.pathname.startsWith('/assets')) {
@@ -244,6 +248,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       setExpandedMenus([]);
     }
   }, [location.pathname, navigate]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleCategoryManagementClose = () => {
     setCategoryManagementModalOpen(false);
@@ -907,7 +912,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                 mode="inline"
                 inlineCollapsed={!isExpanded}
                 selectedKeys={[selectedPatchTab]}
-                items={patchesTabItems as any}
+                items={patchesTabItems as MenuProps['items']}
                 onClick={({ key }) => handlePatchTabChange(key)}
                 style={{ background: 'transparent', border: 'none' }}
               />
@@ -938,7 +943,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                   inlineCollapsed={!isExpanded}
                   selectedKeys={getSelectedSideMenu()}
                   openKeys={isExpanded ? expandedMenus : []}
-                  items={sidebarConfig?.items as any}
+                  items={sidebarConfig?.items as MenuProps['items']}
                   onClick={({ key }) => handleSideMenuClick(key)}
                   onOpenChange={(keys) => setExpandedMenus(keys as string[])}
                   style={{ background: 'transparent', border: 'none', paddingTop: '8px' }}
@@ -1009,7 +1014,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                 <Menu
                   mode="inline"
                   selectedKeys={getSelectedSideMenu()}
-                  items={patchOsCategories as any}
+                  items={patchOsCategories as MenuProps['items']}
                   onClick={({ key }) => handleSideMenuClick(key)}
                   style={{ background: 'transparent', border: 'none', paddingTop: '4px' }}
                 />
@@ -1020,7 +1025,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                   mode="inline"
                   selectedKeys={getSelectedSideMenu()}
                   openKeys={expandedAssetSections}
-                  items={getCategoryMenuItems() as any}
+                  items={getCategoryMenuItems() as MenuProps['items']}
                   onClick={({ key }) => handleSideMenuClick(key)}
                   onOpenChange={(keys) => setExpandedAssetSections(keys as string[])}
                   style={{ background: 'transparent', border: 'none', paddingTop: '4px' }}
