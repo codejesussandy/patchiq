@@ -3,9 +3,9 @@
 > **Owner:** Dev 2 (Track B)
 > **Sprint:** 1 — Fix & Ship
 > **Priority:** Must Have (Week 1-2) items first, then Should Have (Week 3-4)
-> **Last Updated:** 2026-02-12 (B.1-B.5, B.8, B.10 Complete)
-> **Implementation Status:** 7/13 Features Complete ✅ (B.1, B.2, B.3, B.4, B.5, B.8, B.10)
-> **Latest:** B.8 (Sample Seed Data) — 5 agents, 5 assets, 8 patches, 5 CVEs, 15 software installations ✅
+> **Last Updated:** 2026-02-12 (B.1-B.5, B.8-B.10 Complete)
+> **Implementation Status:** 8/13 Features Complete ✅ (B.1, B.2, B.3, B.4, B.5, B.8, B.9, B.10)
+> **Latest:** B.9 (Agent Version Paths) — Added file paths, sizes, checksums for 5 agent versions ✅
 
 ---
 
@@ -492,9 +492,9 @@ This seed data unblocks patch-CVE correlation work in Sprint 2, as the system no
 
 ---
 
-### B.9 — Fix Agent Version Seed File Paths
+### B.9 — Fix Agent Version Seed File Paths ✅
 
-**Priority:** P0 (Must Have) | **Effort:** ~half day | **Dependencies:** None
+**Priority:** P0 (Must Have) | **Effort:** ~half day | **Dependencies:** None | **Status:** ✅ **COMPLETE**
 
 #### Problem Statement
 
@@ -530,6 +530,66 @@ The seed creates 5 agent version records (Windows amd64, Linux amd64/arm64, Mac 
 | File | Line | Change |
 |------|------|--------|
 | `backend/src/db/prisma/seed.ts` | 369-386 | Add `filePath`, `fileSize`, `checksum` fields to agent version upserts |
+
+#### Implementation Notes
+
+**Completed:** 2026-02-12
+
+**Agent Version File Paths Added:**
+
+| Platform | Architecture | Version | File Path | File Size | Checksum |
+|----------|--------------|---------|-----------|-----------|----------|
+| WINDOWS | amd64 | 1.0.0 | `agents/patchiq-agent-windows-amd64-1.0.0.exe` | 15 MB | sha256:a1b2... (placeholder) |
+| LINUX | amd64 | 1.0.0 | `agents/patchiq-agent-linux-amd64-1.0.0` | 12 MB | sha256:b2c3... (placeholder) |
+| LINUX | arm64 | 1.0.0 | `agents/patchiq-agent-linux-arm64-1.0.0` | 11 MB | sha256:c3d4... (placeholder) |
+| MACOS | amd64 | 1.0.0 | `agents/patchiq-agent-darwin-amd64-1.0.0` | 14 MB | sha256:d4e5... (placeholder) |
+| MACOS | arm64 | 1.0.0 | `agents/patchiq-agent-darwin-arm64-1.0.0` | 13 MB | sha256:e5f6... (placeholder) |
+
+**Implementation Highlights:**
+- ✅ Convention-based file paths: `agents/patchiq-agent-{platform}-{arch}-{version}{ext}`
+- ✅ Realistic file sizes using BigInt (11-15 MB range)
+- ✅ Placeholder SHA256 checksums (format: `sha256:{hex}`)
+- ✅ Fixed platform naming: 'Mac' → 'MACOS' for consistency with enums
+- ✅ Documentation comment explaining the convention
+- ✅ Console.log warnings about needing to build binaries
+
+**File Sizes (BigInt bytes):**
+- Windows amd64: 15,728,640 bytes (~15 MB)
+- Linux amd64: 12,582,912 bytes (~12 MB)
+- Linux arm64: 11,534,336 bytes (~11 MB)
+- macOS amd64: 14,680,064 bytes (~14 MB)
+- macOS arm64: 13,631,488 bytes (~13 MB)
+
+**Platform Naming Consistency:**
+- All platforms now use UPPERCASE enum values: WINDOWS, LINUX, MACOS
+- Matches backend validators: `z.enum(['WINDOWS', 'MACOS', 'LINUX'])`
+- Matches OSFamily type: `'WINDOWS' | 'MACOS' | 'LINUX'`
+- File paths use lowercase darwin (build output convention)
+
+**Setup Instructions Added:**
+```
+⚠️  Agent binaries not included in seed. Run `make agent-release` to build, then upload to MinIO.
+   Expected paths in MinIO bucket: agents/patchiq-agent-{platform}-{arch}-{version}{.exe}
+```
+
+**To Enable Agent Downloads:**
+1. Run `make agent-release` to build binaries for all platforms
+2. Upload built binaries to MinIO bucket at the seeded paths
+3. Real SHA256 checksums will be generated during the build process
+4. Agent management UI will then have working download links
+
+**Verification:**
+- TypeScript: ✅ Schema compliance verified (String?, BigInt?, String?)
+- QA Agent: ✅ PASS with platform fix applied
+- Idempotency: ✅ Upsert pattern maintains idempotent seeding
+- Path Convention: ✅ Matches actual build output from `make agent-release`
+- Consistency: ✅ All 5 platforms have complete metadata
+
+**Impact:**
+- Agent management UI can now display download links (when binaries uploaded)
+- File size information visible before download
+- Placeholder checksums document the expected format
+- Clear instructions for completing the setup
 
 ---
 
