@@ -48,7 +48,7 @@ export const tagService = {
 
   // Bulk operations
   async bulkAssignTags(assetIds: string[], tagIds: string[]): Promise<void> {
-    await api.post('/tags/bulk-assign', { assetIds, tagIds });
+    await api.post('/assets/bulk-tags', { assetIds, tagIds });
   },
 
   async bulkRemoveTags(assetIds: string[], tagIds: string[]): Promise<void> {
