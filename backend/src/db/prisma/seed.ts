@@ -355,12 +355,49 @@ async function main() {
   // ============================================
 
   console.log('\nSeeding agent versions...');
+  // Agent binaries stored in MinIO bucket: "agents/patchiq-agent-{platform}-{arch}-{version}{ext}"
+  // To make downloads work: run `make agent-release` to build binaries, then upload to MinIO
   const agentVersions = [
-    { platform: 'WINDOWS', architecture: 'amd64', version: '1.0.0' },
-    { platform: 'LINUX', architecture: 'amd64', version: '1.0.0' },
-    { platform: 'LINUX', architecture: 'arm64', version: '1.0.0' },
-    { platform: 'Mac', architecture: 'amd64', version: '1.0.0' },
-    { platform: 'Mac', architecture: 'arm64', version: '1.0.0' },
+    {
+      platform: 'WINDOWS',
+      architecture: 'amd64',
+      version: '1.0.0',
+      filePath: 'agents/patchiq-agent-windows-amd64-1.0.0.exe',
+      fileSize: BigInt(15728640), // ~15 MB
+      checksum: 'sha256:a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6', // Placeholder
+    },
+    {
+      platform: 'LINUX',
+      architecture: 'amd64',
+      version: '1.0.0',
+      filePath: 'agents/patchiq-agent-linux-amd64-1.0.0',
+      fileSize: BigInt(12582912), // ~12 MB
+      checksum: 'sha256:b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1', // Placeholder
+    },
+    {
+      platform: 'LINUX',
+      architecture: 'arm64',
+      version: '1.0.0',
+      filePath: 'agents/patchiq-agent-linux-arm64-1.0.0',
+      fileSize: BigInt(11534336), // ~11 MB
+      checksum: 'sha256:c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2', // Placeholder
+    },
+    {
+      platform: 'MACOS',
+      architecture: 'amd64',
+      version: '1.0.0',
+      filePath: 'agents/patchiq-agent-darwin-amd64-1.0.0',
+      fileSize: BigInt(14680064), // ~14 MB
+      checksum: 'sha256:d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2c3', // Placeholder
+    },
+    {
+      platform: 'MACOS',
+      architecture: 'arm64',
+      version: '1.0.0',
+      filePath: 'agents/patchiq-agent-darwin-arm64-1.0.0',
+      fileSize: BigInt(13631488), // ~13 MB
+      checksum: 'sha256:e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2c3d4', // Placeholder
+    },
   ];
 
   for (const av of agentVersions) {
@@ -377,11 +414,16 @@ async function main() {
         platform: av.platform,
         architecture: av.architecture,
         version: av.version,
+        filePath: av.filePath,
+        fileSize: av.fileSize,
+        checksum: av.checksum,
         lastUpdatedAt: new Date(),
       },
     });
   }
   console.log('Created', agentVersions.length, 'agent versions');
+  console.log('⚠️  Agent binaries not included in seed. Run `make agent-release` to build, then upload to MinIO.');
+  console.log('   Expected paths in MinIO bucket: agents/patchiq-agent-{platform}-{arch}-{version}{.exe}');
 
   // ============================================
   // Sample Agents
