@@ -559,6 +559,7 @@ async function main() {
       category: 'Security',
       cveNumbers: ['CVE-2025-11001', 'CVE-2025-11002'],
       approvalStatus: 'Approved',
+      supersededBy: ['PATCH-7ZIP-2500'],
     },
     {
       patchId: 'PATCH-7ZIP-2500',
@@ -625,6 +626,7 @@ async function main() {
           testStatus: 'Passed',
           status: 'Active',
           supersedes: patchData.supersedes || [],
+          supersededBy: patchData.supersededBy || [],
         },
       });
     } else {
@@ -637,6 +639,7 @@ async function main() {
           testStatus: 'Passed',
           status: 'Active',
           supersedes: patchData.supersedes || [],
+          supersededBy: patchData.supersededBy || [],
         },
       });
     }

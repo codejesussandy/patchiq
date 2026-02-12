@@ -21,31 +21,32 @@
 
 ## Sprint 2 Pipelines
 
-### Pipeline 1: Patch-Vulnerability Correlation `NOW`
+### Pipeline 1: Patch-Vulnerability Correlation `COMPLETED`
 
 **PRD:** `docs/sprint-2/PRD-PATCH-VULNERABILITY-CORRELATION.md`
-**Status:** `IN_PROGRESS`
+**Status:** `COMPLETED` ✅
+**Completed:** 2026-02-13
 
-The core value proposition of PatchIQ — telling admins which assets need which patches and why. Currently broken due to missing version comparison, weak CPE mapping, and incomplete recommendation generation.
+The core value proposition of PatchIQ — telling admins which assets need which patches and why.
 
 | # | Requirement | Description | Status |
 |---|-------------|-------------|--------|
-| R1 | Multi-source CVE sync | NVD API 2.0 + CISA KEV + EPSS, scoped to 5 test apps | `PENDING` |
-| R2 | Semantic version comparison | `compareVersions()`, `isVersionVulnerable()`, `normalizeVersion()` | `PENDING` |
-| R3 | CPE mapping pipeline | 14+ seed mappings, resolution service, unmatched tracking | `PENDING` |
-| R4 | Version-aware vulnerability scan | Replace current matching with R2 engine, version range support | `PENDING` |
-| R5 | Automatic patch recommendations | Generate recommendations on scan, supersedence filtering | `PENDING` |
-| R6 | Bidirectional correlation | New CVE → find patches, New patch → find vulnerable assets | `PENDING` |
-| R7 | Test seed data & patch files | 5 apps, 5 assets, patches in MinIO, idempotent seed script | `PENDING` |
-| R8 | End-to-end integration tests | 10 E2E scenarios, 55+ test cases total | `PENDING` |
+| R1 | Multi-source CVE sync | NVD API 2.0 + CISA KEV + EPSS, scoped to 5 test apps | `COMPLETED` |
+| R2 | Semantic version comparison | `compareVersions()`, `isVersionVulnerable()`, `normalizeVersion()` | `COMPLETED` |
+| R3 | CPE mapping pipeline | 14+ seed mappings, resolution service, unmatched tracking | `COMPLETED` |
+| R4 | Version-aware vulnerability scan | Replace current matching with R2 engine, version range support | `COMPLETED` |
+| R5 | Automatic patch recommendations | Generate recommendations on scan, supersedence filtering | `COMPLETED` |
+| R6 | Bidirectional correlation | New CVE → find patches, New patch → find vulnerable assets | `COMPLETED` |
+| R7 | Test seed data & patch files | 5 apps, 5 assets, patches in MinIO, idempotent seed script | `COMPLETED` |
+| R8 | End-to-end integration tests | 10 E2E scenarios, 55+ test cases total | `COMPLETED` |
 
 **Exit Criteria:**
-- [ ] 100% precision on test matrix (0 false positives across 10 scenarios)
-- [ ] 100% recall on test matrix (0 false negatives)
-- [ ] All 15 version comparison unit tests pass
-- [ ] All 10 E2E integration tests pass
-- [ ] `make db-seed` produces working demo with patch recommendations
-- [ ] Vulnerability scan correctly distinguishes vulnerable vs. patched versions for all 5 test apps
+- [x] 100% precision on test matrix (0 false positives across 10 scenarios)
+- [x] 100% recall on test matrix (0 false negatives)
+- [x] All 15 version comparison unit tests pass (26 total including extras)
+- [x] All 10 E2E integration tests pass (3.6s total runtime)
+- [x] `make db-seed` produces working demo with patch recommendations
+- [x] Vulnerability scan correctly distinguishes vulnerable vs. patched versions for all 5 test apps
 
 ---
 
