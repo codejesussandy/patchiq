@@ -78,7 +78,7 @@ export const PatchJobs = () => {
   const [selectedPatchIds, setSelectedPatchIds] = useState<React.Key[]>([]);
 
   const { data: allPatchesData, isLoading: patchesLoading, refetch: refetchPatches } = usePatches();
-  const allPatches = allPatchesData || [];
+  const allPatches = allPatchesData?.data || [];
   const { data: agents = [] } = useSoftwareAgents();
 
   const handleDelete = (id: string) => {

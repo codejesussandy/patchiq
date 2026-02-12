@@ -30,7 +30,8 @@ export const AllPatches = () => {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { data: patches = [], isLoading: loading } = usePatches();
+  const { data: patchesData, isLoading: loading } = usePatches();
+  const patches = patchesData?.data || [];
   const discoverPatchesMutation = useDiscoverPatches();
   const deletePatchMutation = useDeletePatch();
   const createPatchMutation = useCreatePatch();

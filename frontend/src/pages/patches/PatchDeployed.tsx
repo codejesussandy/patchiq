@@ -16,7 +16,8 @@ const { Option } = Select;
 export const PatchDeployed = () => {
   const { message } = App.useApp();
   const { data: deployments = [], isLoading: loading } = useDeployments();
-  const { data: patches = [] } = usePatches();
+  const { data: patchesData } = usePatches();
+  const patches = patchesData?.data || [];
   const createDeploymentMutation = useCreateDeployment();
   const [searchText, setSearchText] = useState('');
 

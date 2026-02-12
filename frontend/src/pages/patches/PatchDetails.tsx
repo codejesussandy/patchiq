@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeftOutlined, EditOutlined, MoreOutlined, EyeOutlined, RocketOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, EditOutlined, MoreOutlined, EyeOutlined, RocketOutlined, PlusOutlined } from '@ant-design/icons';
 import { formatEnum } from '@shared/types';
 import type { MenuProps } from 'antd';
 import {
@@ -9,6 +9,7 @@ import {
 import dayjs from 'dayjs';
 import { useParams, useNavigate } from 'react-router-dom';
 import { SeverityBadge, EndpointDetailsDrawer, OSIcon } from '../../components/patches';
+import { PatchSearchSelect } from '../../components/PatchSearchSelect';
 import { DataTable } from '../../components/shared/DataTable';
 import { useAgents } from '../../hooks/useAgents';
 import { useTags } from '../../hooks/useAssets';
@@ -18,7 +19,7 @@ import {
 } from '../../hooks/usePatches';
 import { usePatchRecommendationsForPatch } from '../../hooks/usePatchRecommendations';
 import { useCveSuggestions } from '../../hooks/useVulnerabilities';
-import { patchService, type AffectedSoftware, type Endpoint } from '../../services/patch.service';
+import { patchService, type AffectedSoftware, type Endpoint, type Patch } from '../../services/patch.service';
 import type { PatchRecommendation } from '../../types/patch-recommendation.types';
 import { getErrorMessage } from '../../utils/error';
 import { AffectedProductsStep } from './components/AffectedProductsStep';
@@ -38,7 +39,7 @@ export const PatchDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: patch = null, isLoading: loading } = usePatch(id || '');
+  const { data: patch = null, isLoading: loading, refetch } = usePatch(id || '');
   const { data: affectedSoftwares = [] } = useAffectedSoftwares(id || '');
   const { data: vulnerabilities = [] } = usePatchVulnerabilities(id || '');
   const { data: endpoints = [] } = usePatchEndpoints(id || '');
@@ -49,6 +50,11 @@ export const PatchDetails = () => {
 
   const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(null);
   const [endpointDrawerOpen, setEndpointDrawerOpen] = useState(false);
+
+  // Supersedence state
+  const [addSupersedenceModalOpen, setAddSupersedenceModalOpen] = useState(false);
+  const [selectedPatchId, setSelectedPatchId] = useState<string | null>(null);
+  const [selectedPatch, setSelectedPatch] = useState<Patch | null>(null);
 
   // Edit Modal
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -162,6 +168,47 @@ export const PatchDetails = () => {
     ];
   };
 
+  // Supersedence handlers
+  const handleAddSupersedence = async () => {
+    if (!selectedPatchId || !patch) return;
+
+    try {
+      await patchService.addSupersedence(patch.id, selectedPatchId);
+      message.success('Supersedence relationship added successfully');
+      setAddSupersedenceModalOpen(false);
+      setSelectedPatchId(null);
+      setSelectedPatch(null);
+      refetch(); // Refresh patch details
+    } catch (error: unknown) {
+      const errorMsg = (error as { response?: { data?: { error?: string } } }).response?.data?.error || 'Failed to add supersedence relationship';
+      message.error(errorMsg);
+      // eslint-disable-next-line no-console
+      console.error('Add supersedence error:', error);
+    }
+  };
+
+  const handleRemoveSupersedence = (targetPatchId: string) => {
+    if (!patch) return;
+    Modal.confirm({
+      title: 'Remove Supersedence Relationship',
+      content: `Are you sure you want to remove the supersedence relationship with patch ${targetPatchId}?`,
+      okText: 'Remove',
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          await patchService.removeSupersedence(patch.id, targetPatchId);
+          message.success('Supersedence relationship removed successfully');
+          refetch();
+        } catch (error: unknown) {
+          const errorMsg = (error as { response?: { data?: { error?: string } } }).response?.data?.error || 'Failed to remove supersedence relationship';
+          message.error(errorMsg);
+          // eslint-disable-next-line no-console
+          console.error('Remove supersedence error:', error);
+        }
+      },
+    });
+  };
+
   // Details Tab
   const renderDetailsTab = () => {
     if (!patch) return null;
@@ -212,22 +259,80 @@ export const PatchDetails = () => {
             </Row>
           </>
         )}
-        {((patch.supersededBy && patch.supersededBy.length > 0) || (patch.supersedes && patch.supersedes.length > 0)) && (
-          <>
+        {/* Supersedence Section - Always show for adding relationships */}
+        <>
             <Divider style={{ margin: '16px 0' }} />
-            <Text strong style={{ display: 'block', marginBottom: 12 }}>Supersedence</Text>
-            <Row gutter={24}>
-              {patch.supersededBy && patch.supersededBy.length > 0 && (
-                <Col span={12}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Replaced By</Text>
-                  <Space wrap>{patch.supersededBy.map((kb) => <Tag key={kb}>{kb}</Tag>)}</Space></Col>
+            <Text strong style={{ display: 'block', marginBottom: 12 }}>
+              Supersedence
+            </Text>
+
+            {/* Superseded By Section */}
+            {patch.supersededBy && patch.supersededBy.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                  Replaced By (Newer Versions)
+                </Text>
+                <Space wrap>
+                  {patch.supersededBy.map((patchId) => (
+                    <Tag
+                      key={patchId}
+                      color="red"
+                      closable
+                      onClose={(e) => {
+                        e.preventDefault();
+                        handleRemoveSupersedence(patchId);
+                      }}
+                    >
+                      {patchId}
+                    </Tag>
+                  ))}
+                </Space>
+              </div>
+            )}
+
+            {/* Supersedes Section */}
+            <div style={{ marginBottom: 16 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 8,
+                }}
+              >
+                <Text type="secondary">Replaces (Older Versions)</Text>
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() => setAddSupersedenceModalOpen(true)}
+                >
+                  Add
+                </Button>
+              </div>
+              {patch.supersedes && patch.supersedes.length > 0 ? (
+                <Space wrap>
+                  {patch.supersedes.map((patchId) => (
+                    <Tag
+                      key={patchId}
+                      color="green"
+                      closable
+                      onClose={(e) => {
+                        e.preventDefault();
+                        handleRemoveSupersedence(patchId);
+                      }}
+                    >
+                      {patchId}
+                    </Tag>
+                  ))}
+                </Space>
+              ) : (
+                <Text type="secondary" italic style={{ fontSize: '13px' }}>
+                  No older patches superseded
+                </Text>
               )}
-              {patch.supersedes && patch.supersedes.length > 0 && (
-                <Col span={12}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Replaces</Text>
-                  <Space wrap>{patch.supersedes.map((kb) => <Tag key={kb}>{kb}</Tag>)}</Space></Col>
-              )}
-            </Row>
-          </>
-        )}
+            </div>
+        </>
       </div>
     );
   };
@@ -321,6 +426,57 @@ export const PatchDetails = () => {
       <DeployModal open={deployModalVisible} deployForm={deployForm} selectedPatches={patch ? [patch] : []}
         agents={agents} loading={deployLoading} onSubmit={handleDeploySubmit}
         onCancel={() => { setDeployModalVisible(false); deployForm.resetFields(); }} />
+
+      {/* Add Supersedence Modal */}
+      <Modal
+        title="Add Supersedence Relationship"
+        open={addSupersedenceModalOpen}
+        onCancel={() => {
+          setAddSupersedenceModalOpen(false);
+          setSelectedPatchId(null);
+          setSelectedPatch(null);
+        }}
+        onOk={handleAddSupersedence}
+        okText="Add Relationship"
+        okButtonProps={{ disabled: !selectedPatchId }}
+        width={600}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Text>
+            Mark <strong>{patch?.title || patch?.software}</strong> as superseding (replacing) an older patch:
+          </Text>
+        </div>
+        <PatchSearchSelect
+          value={selectedPatchId || undefined}
+          onChange={(patchId, patchObj) => {
+            setSelectedPatchId(patchId);
+            setSelectedPatch(patchObj || null);
+          }}
+          excludeIds={[patch?.id || '', ...(patch?.supersedes || [])]}
+          placeholder="Search by patch title, ID, or KB number..."
+        />
+        {selectedPatch && (
+          <div
+            style={{
+              marginTop: 16,
+              padding: 12,
+              background: '#f5f5f5',
+              borderRadius: 4,
+            }}
+          >
+            <Text strong>Selected Patch:</Text>
+            <div style={{ marginTop: 8 }}>
+              <div>{selectedPatch.title || selectedPatch.software}</div>
+              <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                {selectedPatch.patchId}
+                {selectedPatch.kbNumber && ` • ${selectedPatch.kbNumber}`}
+                {' • '}
+                {selectedPatch.severity}
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

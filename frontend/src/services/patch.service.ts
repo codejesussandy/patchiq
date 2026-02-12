@@ -41,10 +41,14 @@ export type EndpointDeployment = AssetDeployment;
 
 export const patchService = {
   // Patches
-  async getPatches(): Promise<Patch[]> {
-    const response = await api.get(`/patches`);
-    // Paginated response: interceptor returns { data: T[], ...meta }
-    return response.data.data || [];
+  async getPatches(params?: { search?: string; limit?: number; includeSuperseded?: boolean }): Promise<{ data: Patch[]; total: number }> {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    // Note: includeSuperseded is a UI-only filter, backend returns all patches
+    const response = await api.get(`/patches${queryParams.toString() ? `?${queryParams.toString()}` : ''}`);
+    // Paginated response: interceptor returns { data: T[], total, page, limit, totalPages }
+    return { data: response.data.data || [], total: response.data.total || 0 };
   },
 
   async getPatch(id: string): Promise<Patch> {
@@ -221,5 +225,40 @@ export const patchService = {
 
   async deleteZeroTouchConfig(id: string): Promise<void> {
     await api.delete(`/zero-touch-configs/${id}`);
+  },
+
+  // Supersedence Management
+  /**
+   * Get patches that this patch supersedes (replaces)
+   */
+  async getSupersededPatches(patchId: string): Promise<Patch[]> {
+    const response = await api.get(`/patches/${patchId}/superseded`);
+    return response.data;
+  },
+
+  /**
+   * Get patches that supersede (replace) this patch
+   */
+  async getSupersedingPatches(patchId: string): Promise<Patch[]> {
+    const response = await api.get(`/patches/${patchId}/superseding`);
+    return response.data;
+  },
+
+  /**
+   * Mark a patch as superseded by the current patch
+   * @param patchId - The current patch ID (UUID) - the newer one
+   * @param targetId - The patch ID (UUID) being superseded - the older one
+   */
+  async addSupersedence(patchId: string, targetId: string): Promise<void> {
+    await api.post(`/patches/${patchId}/supersede/${targetId}`);
+  },
+
+  /**
+   * Remove a supersedence relationship
+   * @param patchId - The current patch ID (UUID)
+   * @param targetId - The patch ID (UUID) to remove from supersedence
+   */
+  async removeSupersedence(patchId: string, targetId: string): Promise<void> {
+    await api.delete(`/patches/${patchId}/supersede/${targetId}`);
   },
 };
