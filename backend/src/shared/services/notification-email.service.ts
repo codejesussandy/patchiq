@@ -6,7 +6,7 @@ import { prisma } from '@/db/client';
  * Load SMTP configuration from the Settings table.
  * Returns null if no mail server is configured.
  */
-async function loadMailConfig(): Promise<MailServerConfig | null> {
+export async function loadMailConfig(): Promise<MailServerConfig | null> {
   const settings = await prisma.setting.findMany({
     where: { category: 'mail' },
   });

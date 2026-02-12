@@ -28,7 +28,7 @@ These are critical — the platform is broken without them.
 | # | Item | Why | Files | Status |
 |---|------|-----|-------|--------|
 | A.1 | **Create missing API routes** | 8 frontend service calls hit endpoints that don't exist. Every one is a user-facing crash. | See table below | `COMPLETED` |
-| A.2 | **Wire email service into workflows** | `email.service.ts` exists (Nodemailer) but password reset, invitations, and reports have `// TODO` stubs — all no-ops. Users can't recover accounts. | Wire `email.service.ts` into `auth.service.ts:220`, `users.service.ts:307,398`, `reports.controller.ts:166` | `PENDING` |
+| A.2 | **Wire email service into workflows** | `email.service.ts` exists (Nodemailer) but password reset, invitations, and reports have `// TODO` stubs — all no-ops. Users can't recover accounts. | Wire `email.service.ts` into `auth.service.ts:220`, `users.service.ts:307,398`, `reports.controller.ts:166` | `COMPLETED` |
 | A.3 | **CVE sync background job** | `syncVulnerabilityDatabase()` updates a timestamp but never queues work. Vulnerability data goes stale. **Sprint 2 prerequisite (patch-CVE correlation).** | `jobs.service.ts:489`, `settings.service.ts:786`, new BullMQ worker | `PENDING` |
 | A.8 | **Wrap raw SQL in error handling** | 4 raw `$queryRaw` queries in dashboard.service.ts throw unhandled errors on any schema change. Dashboard crashes for all users. | `dashboard.service.ts:360,569,636,698` — add try/catch, fallback to empty data | `PENDING` |
 

@@ -5,7 +5,8 @@ import * as controller from './reports.controller';
 import {
   listReportsQuerySchema,
   reportParamsSchema,
-    updateReportBodySchema,
+  updateReportBodySchema,
+  sendReportBodySchema,
   listSchedulesQuerySchema,
   scheduleParamsSchema,
   createScheduleBodySchema,
@@ -77,6 +78,6 @@ router.get('/:id/download', validateParams(reportParamsSchema), controller.downl
 router.post('/:id/regenerate', validateParams(reportParamsSchema), controller.regenerateReport);
 
 // POST /v1/reports/:id/send - Send report via email
-router.post('/:id/send', validateParams(reportParamsSchema), controller.sendReport);
+router.post('/:id/send', validateParams(reportParamsSchema), validateBody(sendReportBodySchema), controller.sendReport);
 
 export default router;
