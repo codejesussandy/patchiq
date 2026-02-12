@@ -14,7 +14,8 @@ import {
   Tooltip,
   Popconfirm,
   Form,
-  Select } from 'antd';
+  Select,
+  Modal } from 'antd';
 import type { ColumnsType} from 'antd/es/table';
 import { DataTable } from '../../components/shared/DataTable';
 import { FormModal } from '../../components/shared/FormModal';
@@ -249,8 +250,12 @@ export const EnrollSecret = () => {
         columns={columns}
         data={filteredSecrets}
         loading={loading}
-        pagination={pagination}
-        onChange={(newPagination) => setPagination(newPagination)}
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: filteredSecrets.length,
+          onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+        }}
         rowKey="id"
         size="small"
         style={{ backgroundColor: 'white', borderRadius: '4px' }}

@@ -67,12 +67,12 @@ export const DistributionServer = () => {
     try {
       await settingsService.deleteDistributionServer(id);
       message.success('Distribution server deleted successfully');
-      await fetchData();
+      refetch();
     } catch {
       message.error('Failed to delete distribution server');
     }
   };
-  void _handleDelete; // Reserved for future use
+  void _handleDelete; // Reserved for future use when delete UI is added
 
   const columns: ColumnsType<DistributionServerType> = [
     {

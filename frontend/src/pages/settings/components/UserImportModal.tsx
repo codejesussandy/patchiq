@@ -60,7 +60,7 @@ export const UserImportModal = ({
         accept=".csv"
         maxCount={1}
         beforeUpload={onImportFile}
-        fileList={importFile ? [importFile as unknown as { uid: string; name: string }] : []}
+        fileList={importFile ? [{ uid: '-1', name: importFile.name, status: 'done' as const }] : []}
         onRemove={onRemoveFile}
       >
         <p style={{ fontSize: '32px', marginBottom: '12px' }}>
