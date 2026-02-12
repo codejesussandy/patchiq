@@ -1,4 +1,4 @@
-export { patchRoutes, deploymentRoutes, patchTestRoutes, zeroTouchConfigRoutes } from './patches.routes';
+export { patchRoutes, patchTestRoutes, zeroTouchConfigRoutes } from './patches.routes';
 export { default as assetPatchRecommendationRoutes } from './asset-patch-recommendation.routes';
 export * as patchesService from './patches.service';
 export { assetPatchRecommendationService } from './asset-patch-recommendation.service';
@@ -14,9 +14,6 @@ export {
   rejectPatchSchema,
   testApproveQuerySchema,
   scanEndpointsSchema,
-  createDeploymentSchema,
-  deploymentIdParamSchema,
-  deploymentListQuerySchema,
   createPatchTestSchema,
   patchTestIdParamSchema,
   patchTestListQuerySchema,

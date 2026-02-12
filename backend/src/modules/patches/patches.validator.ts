@@ -9,8 +9,6 @@ const osSchema = z.enum(['WINDOWS', 'MACOS', 'UBUNTU', 'LINUX']);
 const _testStatusSchema = z.enum(['NOT_TESTED', 'TESTED', 'TEST_FAILED']);
 const testResultSchema = z.enum(['PASSED', 'FAILED']);
 const _approvalStatusSchema = z.enum(['PENDING', 'APPROVED', 'REJECTED']);
-const deploymentTypeSchema = z.enum(['INSTALL', 'ROLLBACK']);
-const deploymentStatusSchema = z.enum(['IN_PROGRESS', 'COMPLETED', 'FAILED', 'INSTALLED', 'PENDING']);
 const applicationTypeSchema = z.enum(['ALL', 'INCLUDE', 'EXCLUDE']);
 const scopeTypeSchema = z.enum(['ALL_COMPUTERS', 'SCOPE', 'SPECIFIC_GROUPS']);
 
@@ -131,35 +129,6 @@ export const scanEndpointsSchema = z.object({
 });
 
 // ============================================
-// Deployment Schemas
-// ============================================
-
-export const createDeploymentSchema = z.object({
-  name: z.string().min(1, 'Deployment name is required'),
-  description: z.string().optional(),
-  type: deploymentTypeSchema,
-  configType: z.enum(['INSTALL', 'ROLLBACK']).optional().default('INSTALL'),
-  scope: z.enum(['GLOBAL', 'GROUP', 'ENDPOINT']).optional().default('ENDPOINT'),
-  schedule: z.string().optional(),
-  targetGroups: z.array(z.string()).optional().default([]),
-  patches: z.array(z.string().uuid()).min(1, 'At least one patch is required'),
-  skipApprovalCheck: z.boolean().optional().default(false),
-  triggerType: z.enum(['MANUAL', 'SCHEDULED', 'ZERO_TOUCH', 'POLICY']).optional().default('MANUAL'),
-  autoRollback: z.boolean().optional().default(false),
-});
-
-export const deploymentIdParamSchema = z.object({
-  id: z.string().uuid('Invalid deployment ID'),
-});
-
-export const deploymentListQuerySchema = z.object({
-  page: z.coerce.number().int().positive().optional().default(1),
-  limit: z.coerce.number().int().positive().max(100).optional().default(20),
-  type: deploymentTypeSchema.optional(),
-  status: deploymentStatusSchema.optional(),
-});
-
-// ============================================
 // Patch Test Schemas
 // ============================================
 
@@ -254,27 +223,6 @@ export const zeroTouchConfigListQuerySchema = z.object({
 });
 
 // ============================================
-// Patch Deployment from UI Schema
-// ============================================
-
-export const createPatchDeploymentFromUISchema = z.object({
-  name: z.string().min(1, 'Deployment name is required'),
-  description: z.string().optional(),
-  targetAgentIds: z.array(z.string()).min(1, 'At least one target agent is required'),
-  patches: z.array(z.object({
-    id: z.string(),
-    patchId: z.string().optional(),
-    name: z.string().optional(),
-    description: z.string().optional(),
-    severity: z.string().optional(),
-    type: z.string().optional(),
-  })).min(1, 'At least one patch is required'),
-  retryCount: z.number().int().positive().optional().default(1),
-  skipApprovalCheck: z.boolean().optional().default(false),
-  autoRollback: z.boolean().optional().default(false),
-});
-
-// ============================================
 // Type Exports
 // ============================================
 
@@ -284,9 +232,6 @@ export type PatchListQuery = z.infer<typeof patchListQuerySchema>;
 export type TestPatchInput = z.infer<typeof testPatchSchema>;
 export type RejectPatchInput = z.infer<typeof rejectPatchSchema>;
 export type ScanEndpointsInput = z.infer<typeof scanEndpointsSchema>;
-export type CreateDeploymentInput = z.infer<typeof createDeploymentSchema>;
-export type DeploymentListQuery = z.infer<typeof deploymentListQuerySchema>;
 export type CreatePatchTestInput = z.infer<typeof createPatchTestSchema>;
 export type CreateZeroTouchConfigInput = z.infer<typeof createZeroTouchConfigSchema>;
 export type UpdateZeroTouchConfigInput = z.infer<typeof updateZeroTouchConfigSchema>;
-export type CreatePatchDeploymentFromUIInput = z.infer<typeof createPatchDeploymentFromUISchema>;

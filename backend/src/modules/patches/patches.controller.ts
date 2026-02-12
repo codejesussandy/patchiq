@@ -10,13 +10,15 @@ import type {
   UpdatePatchInput,
   TestPatchInput,
   RejectPatchInput,
-  CreateDeploymentInput,
-  DeploymentListQuery,
   CreatePatchTestInput,
   CreateZeroTouchConfigInput,
   UpdateZeroTouchConfigInput,
-  CreatePatchDeploymentFromUIInput,
 } from './patches.validator';
+import type {
+  CreateDeploymentInput,
+  DeploymentListQuery,
+  CreatePatchDeploymentFromUIInput,
+} from '@modules/deployments/deployment.validators';
 
 // Inline types for validated query params (schemas defined in patches.validator.ts)
 import type { z } from 'zod';
