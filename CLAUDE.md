@@ -10,13 +10,13 @@ PatchIQ is a patch and vulnerability management platform with a TypeScript monor
 - **Agent**: Go 1.22 binary for collecting hardware/software inventory
 - **Shared**: TypeScript types shared between frontend and backend (single source of truth)
 
-## Active Documentation
+## Documentation
 
-- **`docs/ROADMAP.md`** — Codebase overhaul roadmap (Now/Next/Later phases)
-- **`docs/PRD-PHASE1-TYPE-SAFETY.md`** — Current phase: Type Safety & Shared Contracts
-- **`docs/.archive/`** — Old docs preserved for reference (not actively used)
-
-**Before starting any implementation work**, read the ROADMAP to understand current priorities, then read the relevant PRD for the active phase.
+- **`docs/sprint-0/ROADMAP.md`** — Codebase overhaul roadmap (all 4 phases completed)
+- **`docs/sprint-0/PRD-PHASE{1-4}-*.md`** — PRDs for each completed phase
+- **`backend/src/CONVENTIONS.md`** — Backend service architecture guidelines (Phase 2)
+- **`docs/.archive/`** — Old docs preserved for reference
+- Each backend module has its own `README.md` with endpoint tables and data flow
 
 ## Common Commands
 
@@ -27,6 +27,7 @@ make dev-services     # Start infrastructure only (DB, Redis, MinIO)
 make dev-backend      # Backend with hot reload (run from separate terminal)
 make dev-frontend     # Frontend with HMR (run from separate terminal)
 make dev-agent        # Agent with Air hot reload
+make dev-fresh        # Full reset (drop + migrate + seed + start)
 ```
 
 ### Testing
@@ -47,7 +48,7 @@ cd frontend && npm run test:debug         # Debug mode
 ```bash
 make db-migrate       # Run Prisma migrations
 make db-seed          # Seed with sample data
-make db-studio        # Open Prisma Studio on :5555
+make db-studio        # Open Prisma Studio
 make db-reset         # Drop + migrate + seed
 ```
 
@@ -55,6 +56,8 @@ make db-reset         # Drop + migrate + seed
 ```bash
 make check            # Quick validation (types + lint)
 make check-all        # Full validation (types + lint + build)
+make check-types      # TypeScript only
+make check-lint       # Lint only
 cd backend && npm run lint:fix   # Auto-fix backend lint
 cd frontend && npm run lint      # Frontend lint
 ```
@@ -69,6 +72,7 @@ cd backend && npm run generate:types   # Same, from backend directory
 ```bash
 cd agent && go build -o patchify-agent ./cmd/agent   # Build binary
 make agent-run                                        # Run without hot reload
+make agent-release                                    # Multi-platform builds
 ```
 
 ## Architecture
@@ -109,21 +113,34 @@ make agent-run                                        # Run without hot reload
 - **Agent UI** (localhost:4504): Local web UI embedded in Go agent binary
 - **PatchIQ UI** (localhost:5173): Central management platform via nginx
 
+**Backend Service Layer (Phase 2):**
+- `BaseCrudService` abstract class for standard CRUD operations — extend and override `transform()`
+- `withTransaction()` helper for multi-step Prisma operations
+- Pino structured logging via `createLogger()` factory (per-module loggers)
+- Request ID middleware chains correlation IDs through logs
+- See `backend/src/CONVENTIONS.md` for full guidelines
+
+**Frontend Data Layer (Phase 3):**
+- React Query (TanStack) for all server state — 19 hook files in `hooks/`
+- Zero manual `useState`/`useEffect` for data fetching
+- Shared components: `DataTable`, `FormModal`, `ConfirmModal`, `FilterDrawer`
+- Custom hooks: `useTableParams`, `useDebouncedSearch`, `useModal`, `usePolling`, `useExport`
+
 ## Code Structure
 
 ### Backend (`/backend/src/`)
-- `modules/` — Feature modules (18 total: auth, agents, assets, patches, vulnerabilities, jobs, deployments, discovery, dashboard, reports, settings, hub, patch-templates, patch-repository, notifications, alerts, software-catalog)
-  - Each module has: `*.controller.ts`, `*.service.ts`, `*.validator.ts`
+- `modules/` — 17 feature modules (agents, alerts, assets, auth, dashboard, deployments, discovery, hub, jobs, notifications, patch-repository, patch-templates, patches, reports, settings, software-catalog, vulnerabilities)
+  - Each module has: `*.controller.ts`, `*.service.ts`, `*.validator.ts`, `README.md`
 - `db/prisma/` — Schema (schema.prisma), migrations, seed.ts
-- `middleware/` — Auth, error handling, validation, audit, rate limiting
-- `shared/` — Utilities, validators, types, errors, services (MinIO, email, SSE, etc.)
+- `middleware/` — Auth, error handling, validation, audit-logger, request-logger, rate limiting
+- `shared/` — Utilities, validators, types, errors, services (MinIO, email, SSE, logger, base-crud, etc.)
 
 ### Frontend (`/frontend/src/`)
-- `pages/` — Route pages (91 components)
-- `components/` — Reusable components (14 components)
+- `pages/` — Route pages (~165 components, decomposed per Phase 3)
+- `components/` — Reusable components (18 files including shared DataTable, FormModal, ConfirmModal, FilterDrawer)
 - `services/` — API client layer (18 service files via axios)
+- `hooks/` — 19 React Query hooks + utility hooks
 - `contexts/` — React contexts (AuthContext)
-- `hooks/` — Custom hooks (useNotificationSSE)
 - `types/` — TypeScript interfaces (17 type files)
 
 ### Agent (`/agent/`)
@@ -135,15 +152,17 @@ make agent-run                                        # Run without hot reload
 
 ### Shared (`/shared/types/`)
 - `index.ts` — Main exports
-- `enums.ts` — Shared enum definitions
-- `models.ts` — Prisma-derived model types
+- `enums.ts` / `enums.generated.ts` — Shared enum definitions (hand-maintained + auto-generated)
+- `models.ts` / `models.generated.ts` — Prisma-derived model types (hand-maintained + auto-generated)
 - `api.ts` — API request/response contract types
 
 ## Key Files
 
 - `/backend/src/db/prisma/schema.prisma` — Database schema (source of truth for data models)
 - `/backend/src/app.ts` — Express routes setup
-- `/frontend/src/App.tsx` — React router
+- `/backend/src/CONVENTIONS.md` — Backend service architecture guidelines
+- `/backend/src/shared/services/base-crud.service.ts` — Abstract CRUD base class
+- `/frontend/src/App.tsx` — React router (~710 lines, all routes)
 - `/shared/types/` — Shared TypeScript definitions (single source of truth for types)
 - `/docker-compose.yml` — Full infrastructure
 
@@ -164,7 +183,7 @@ import { config } from '@config/index';         // src/config/
 - **API responses use standard envelope** — `{ success, data, meta?, error? }`
 
 ### API Conventions
-- All endpoints return the standard response envelope (see PRD-PHASE1 R3)
+- All endpoints return the standard response envelope
 - Backend field names are authoritative — frontend adapts
 - Zod validation on every endpoint before hitting service layer
 - Prisma transactions for all multi-step operations
@@ -173,6 +192,12 @@ import { config } from '@config/index';         // src/config/
 - Keep page components under 400 lines — extract sub-components
 - Services handle API calls, components handle UI — no API calls in components directly
 - One module = one domain concern with controller/service/validator pattern
+- Use React Query hooks for data fetching, never raw useState/useEffect
+
+### Quality Gates (Phase 4)
+- Strict ESLint: `no-console: error`, import ordering enforced, `no-floating-promises`
+- Pre-commit hooks (husky + lint-staged): typecheck + lint on staged files, blocks bad commits
+- API contract tests validate response shapes against Zod schemas for critical endpoints
 
 ## Test Credentials
 
