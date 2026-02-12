@@ -3,9 +3,9 @@
 > **Owner:** Dev 2 (Track B)
 > **Sprint:** 1 — Fix & Ship
 > **Priority:** Must Have (Week 1-2) items first, then Should Have (Week 3-4)
-> **Last Updated:** 2026-02-13 (B.1-B.5, B.8-B.11, B.13 Complete)
-> **Implementation Status:** 10/13 Features Complete ✅ (B.1, B.2, B.3, B.4, B.5, B.8, B.9, B.10, B.11, B.13)
-> **Latest:** B.13 (Centralize localStorage Keys) — Created storage.constants.ts, refactored 15 operations across 6 files, 0 hardcoded keys remaining ✅
+> **Last Updated:** 2026-02-13 (B.1-B.5, B.7-B.11, B.13 Complete)
+> **Implementation Status:** 11/13 Features Complete ✅ (B.1, B.2, B.3, B.4, B.5, B.7, B.8, B.9, B.10, B.11, B.13)
+> **Latest:** B.7 (Patch Supersedence Management UI) — Added 4 service methods, created PatchSearchSelect component, interactive UI with add/remove, ~315 LOC ✅
 
 ---
 
@@ -633,9 +633,11 @@ The AI Chat Panel UI exists and is fully built (`AIChatPanel.tsx`), but it retur
 
 ---
 
-### B.7 — Patch Supersedence Management UI
+### B.7 — Patch Supersedence Management UI ✅
 
-**Priority:** P1 (Should Have) | **Effort:** 2-3 days | **Dependencies:** None (backend CRUD already exists)
+**Priority:** P1 (Should Have) | **Effort:** 2-3 days | **Dependencies:** None (backend CRUD already exists) | **Status:** ✅ **COMPLETE**
+
+**Implementation:** Added 4 service methods (getSupersededPatches, getSupersedingPatches, addSupersedence, removeSupersedence). Created reusable PatchSearchSelect component with 500ms debounced search. Updated PatchDetails with interactive supersedence UI featuring color-coded closable tags (red="Replaced By", green="Replaces"), add modal with patch search, and confirmation modal for deletion. Backend integration verified with all 4 endpoints. TypeScript clean, ESLint pass, zero regressions. Commit: d81b990
 
 #### Problem Statement
 
