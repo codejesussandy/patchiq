@@ -5,6 +5,7 @@ import {
   ColumnWidthOutlined,
 } from '@ant-design/icons';
 import { Button, Tooltip } from 'antd';
+import aiService from '@/services/ai.service';
 const suggestedPrompts = [
   'What can PatchIQ AI assist with?',
   'How do I deploy patches?',
@@ -85,8 +86,7 @@ export const AIChatPanel = ({ open, onClose }: AIChatPanelProps) => {
     setWidth(DEFAULT_WIDTH);
   };
 
-  /* eslint-disable react-hooks/purity -- only called from event handlers, not during render */
-  const sendMessage = (text: string) => {
+  const sendMessage = async (text: string) => {
     if (!text.trim()) return;
 
     const userMsg: Message = {
@@ -99,18 +99,55 @@ export const AIChatPanel = ({ open, onClose }: AIChatPanelProps) => {
     setInput('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const response = 'AI assistant is coming soon. This feature will be powered by a real AI backend to help you manage patches, vulnerabilities, and deployments.';
+    try {
+      // Convert messages to API format (last 20 messages)
+      const conversationHistory = messages
+        .slice(-20)
+        .map(msg => ({
+          role: msg.sender === 'user' ? 'user' : ('assistant' as const),
+          content: msg.text
+        }));
+
+      // Call AI service
+      const response = await aiService.sendChatMessage({
+        message: text.trim(),
+        conversationHistory
+      });
+
+      // Add bot response
       const botMsg: Message = {
         id: `bot-${Date.now()}`,
-        text: response,
+        text: response.message,
         sender: 'bot',
       };
       setMessages((prev) => [...prev, botMsg]);
+
+    } catch (err: unknown) {
+      // User-friendly error messages
+      let errorMessage = 'Something went wrong. Please try again.';
+      const error = err as { response?: { status?: number } };
+      if (error.response?.status === 429) {
+        errorMessage = 'You\'re sending messages too quickly. Please wait a moment.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Session expired. Please refresh the page.';
+      } else if (error.response?.status === 503 || error.response?.status === 502) {
+        errorMessage = 'AI service is temporarily unavailable. Please try again later.';
+      } else if (error.response?.status === 504) {
+        errorMessage = 'Request timed out. The AI is taking too long to respond.';
+      }
+
+      // Show error as bot message
+      const errorMsg: Message = {
+        id: `error-${Date.now()}`,
+        text: `⚠️ ${errorMessage}`,
+        sender: 'bot',
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+
+    } finally {
       setIsTyping(false);
-    }, 800 + Math.random() * 700);
+    }
   };
-  /* eslint-enable react-hooks/purity */
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
