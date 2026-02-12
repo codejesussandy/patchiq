@@ -114,7 +114,7 @@ export const MarketPlace = () => {
         <Input placeholder="Search..." prefix={<SearchOutlined />} style={{ flex: 1, maxWidth: '400px' }} value={searchText}
           onChange={(e) => { setSearchText(e.target.value); setPagination({ ...pagination, current: 1 }); }} />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-          <Tooltip title="Defaults"><Button onClick={() => message.info('Restore defaults')}>Defaults</Button></Tooltip>
+          <Tooltip title="Coming in Sprint 2"><Button onClick={() => message.info('Coming soon')} disabled>Defaults</Button></Tooltip>
           <Tooltip title="Export"><Button icon={<DownloadOutlined />} onClick={handleExport} disabled={integrations.length === 0}>Export</Button></Tooltip>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateIntegration}>Create</Button>
         </div>

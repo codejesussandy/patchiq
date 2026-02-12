@@ -44,7 +44,7 @@ export const AgentApprovalSettings = () => {
         <Title level={2}>Agent Approval Settings</Title>
       </div>
 
-      <Form form={form} layout="vertical" initialValues={initialValues}>
+      <Form form={form} layout="vertical">
         <Form.Item
           label={
             <span>

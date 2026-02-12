@@ -55,17 +55,17 @@ export const DeploymentPolicies = () => {
 
   const handleDeleteConfirm = async () => {
     if (!deleteModal.selectedItem) return;
-    try { await deletePolicyMutation.mutateAsync(deleteModal.selectedItem.id); message.success('Job deleted successfully'); deleteModal.onClose(); }
-    catch { message.error('Failed to delete job'); }
+    try { await deletePolicyMutation.mutateAsync(deleteModal.selectedItem.id); message.success('Policy deleted successfully'); deleteModal.onClose(); }
+    catch { message.error('Failed to delete policy'); }
   };
 
   const handleDrawerSubmit = async () => {
     try {
       const values = await drawerForm.validateFields();
-      if (editingPolicy && drawerMode === 'edit') { await updatePolicyMutation.mutateAsync({ id: editingPolicy.id, data: values }); message.success('Job updated successfully'); }
-      else if (drawerMode === 'create') { await createPolicyMutation.mutateAsync(values); message.success('Job created successfully'); }
+      if (editingPolicy && drawerMode === 'edit') { await updatePolicyMutation.mutateAsync({ id: editingPolicy.id, data: values }); message.success('Policy updated successfully'); }
+      else if (drawerMode === 'create') { await createPolicyMutation.mutateAsync(values); message.success('Policy created successfully'); }
       handleDrawerClose();
-    } catch { message.error(`Failed to ${editingPolicy && drawerMode === 'edit' ? 'update' : 'create'} job`); }
+    } catch { message.error(`Failed to ${editingPolicy && drawerMode === 'edit' ? 'update' : 'create'} policy`); }
   };
 
   const handleApplyFilters = () => {
@@ -81,8 +81,8 @@ export const DeploymentPolicies = () => {
     const csv = [['ID', 'Name', 'Description', 'Type', 'Created By', 'Created On'], ...filteredPolicies.map((p) => [p.id, p.name, p.description, p.type, p.createdBy, p.createdAt])]
       .map((row) => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' }); const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'jobs.csv'; a.click(); window.URL.revokeObjectURL(url);
-    message.success('Jobs exported successfully');
+    const a = document.createElement('a'); a.href = url; a.download = 'policies.csv'; a.click(); window.URL.revokeObjectURL(url);
+    message.success('Policies exported successfully');
   };
 
   const allColumns: ColumnsType<DeploymentPolicy> = [
@@ -116,7 +116,7 @@ export const DeploymentPolicies = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}><Title level={2}>Jobs</Title></div>
+      <div style={{ marginBottom: '32px' }}><Title level={2}>Deployment Policies</Title></div>
 
       <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <Input placeholder="Search..." prefix={<SearchOutlined />} style={{ flex: 1, maxWidth: '400px' }} value={searchText}
@@ -137,18 +137,18 @@ export const DeploymentPolicies = () => {
           showTotal: (total, range) => `showing ${range[0]}-${range[1]} of ${total} items` }}
         style={{ marginBottom: '24px' }} />
 
-      <Modal title={drawerMode === 'create' ? 'Create Job' : drawerMode === 'edit' ? 'Edit Job' : 'View Job'} open={drawerVisible}
+      <Modal title={drawerMode === 'create' ? 'Create Policy' : drawerMode === 'edit' ? 'Edit Policy' : 'View Policy'} open={drawerVisible}
         onCancel={handleDrawerClose} width={600}
         footer={drawerMode !== 'view' ? [
           <Button key="cancel" onClick={handleDrawerClose}>Cancel</Button>,
-          <Button key="submit" type="primary" onClick={handleDrawerSubmit}>{drawerMode === 'create' ? 'Create' : 'Update'} Job</Button>,
+          <Button key="submit" type="primary" onClick={handleDrawerSubmit}>{drawerMode === 'create' ? 'Create' : 'Update'} Policy</Button>,
         ] : [
           <Button key="close" onClick={handleDrawerClose}>Close</Button>,
           <Button key="edit" type="primary" onClick={() => setDrawerMode('edit')}>Edit</Button>,
         ]}>
         <Form form={drawerForm} layout="vertical" autoComplete="off">
-          <Form.Item label="Job Name" name="name" rules={[{ required: true, message: 'Please enter job name' }]}>
-            <Input placeholder="Job Name" disabled={drawerMode === 'view'} />
+          <Form.Item label="Policy Name" name="name" rules={[{ required: true, message: 'Please enter policy name' }]}>
+            <Input placeholder="Policy Name" disabled={drawerMode === 'view'} />
           </Form.Item>
           <Form.Item label="Description" name="description" rules={[{ required: true, message: 'Please enter description' }]}>
             <Input.TextArea placeholder="Description" disabled={drawerMode === 'view'} rows={3} />
@@ -167,7 +167,7 @@ export const DeploymentPolicies = () => {
         </Form>
       </Modal>
 
-      <ConfirmModal title="Delete Job" description={`Are you sure you want to delete "${deleteModal.selectedItem?.name}"?`}
+      <ConfirmModal title="Delete Policy" description={`Are you sure you want to delete "${deleteModal.selectedItem?.name}"?`}
         open={deleteModal.open} onConfirm={handleDeleteConfirm} onCancel={deleteModal.onClose} loading={deletePolicyMutation.isPending} confirmText="Delete" danger />
 
       <ColumnFilterModal open={filterModalVisible} form={filterForm} columns={FILTER_COLUMNS}

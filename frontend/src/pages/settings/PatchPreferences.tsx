@@ -163,9 +163,6 @@ export const PatchPreferences = () => {
                 Sync Now
               </Button>
               <Button onClick={handleReset} loading={loading}>
-                Undo
-              </Button>
-              <Button onClick={handleReset} loading={loading}>
                 Reset
               </Button>
             </div>
