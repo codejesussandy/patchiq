@@ -1,8 +1,6 @@
 import { prisma } from '@/db/client';
 import { Prisma } from '@prisma/client';
 import { NotFoundError } from '@shared/errors';
-
-const logger = createLogger('agents');
 import { cveDatabase } from '@shared/services/cve-database.service';
 import { createLogger } from '@shared/services/logger';
 import { calculateAgentStatus } from '@shared/utils/agent-status';
@@ -29,6 +27,8 @@ import type {
   CommandResultInput,
   InventoryInput,
   } from './agents.validators';
+
+const logger = createLogger('agents');
 
 export class AgentsService {
   /**

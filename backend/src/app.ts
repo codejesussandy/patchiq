@@ -5,8 +5,6 @@ import { apiReference } from '@scalar/express-api-reference';
 import cors from 'cors';
 import express, { Application } from 'express';
 import helmet from 'helmet';
-
-const logger = createLogger('app');
 import { agentsRoutes, agentApiRoutes, agentVersionsRoutes } from '@modules/agents';
 import { assetsRoutes } from '@modules/assets';
 import { authRoutes, userRoutes } from '@modules/auth';
@@ -26,6 +24,8 @@ import { createLogger } from '@shared/services/logger';
 import { config } from '@config/index';
 import { errorHandler, notFoundHandler, defaultRateLimiter } from '@middleware/index';
 import { requestIdMiddleware } from '@middleware/request-logger';
+
+const logger = createLogger('app');
 
 export function createApp(): Application {
   const app = express();

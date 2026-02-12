@@ -69,7 +69,6 @@ module.exports = {
     {
       files: [
         'src/db/prisma/seed.ts',
-        'src/db/prisma/seed-patches.ts',
         'src/db/prisma/seeds/**/*.ts',
         'src/db/prisma/scripts/**/*.ts',
         'src/scripts/**/*.ts',

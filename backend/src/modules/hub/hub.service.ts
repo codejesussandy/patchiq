@@ -6,8 +6,6 @@
 
 import { prisma } from '@/db/client';
 import { v4 as uuidv4 } from 'uuid';
-
-const logger = createLogger('hub');
 import crypto from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -38,6 +36,7 @@ import {
 } from './hub.types';
 
 const _pipelineAsync = promisify(pipeline);
+const logger = createLogger('hub');
 
 class HubService {
   // ============================================

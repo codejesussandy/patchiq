@@ -5,7 +5,11 @@ import {
   ColumnWidthOutlined,
 } from '@ant-design/icons';
 import { Button, Tooltip } from 'antd';
-import { getMockResponse, suggestedPrompts } from './mockResponses';
+const suggestedPrompts = [
+  'What can PatchIQ AI assist with?',
+  'How do I deploy patches?',
+  'Show me security overview',
+];
 import { SparklesIcon } from './SparklesIcon';
 import './AIChatPanel.css';
 
@@ -96,7 +100,7 @@ export const AIChatPanel = ({ open, onClose }: AIChatPanelProps) => {
     setIsTyping(true);
 
     setTimeout(() => {
-      const response = getMockResponse(text);
+      const response = 'AI assistant is coming soon. This feature will be powered by a real AI backend to help you manage patches, vulnerabilities, and deployments.';
       const botMsg: Message = {
         id: `bot-${Date.now()}`,
         text: response,
