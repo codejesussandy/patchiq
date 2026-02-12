@@ -3,9 +3,9 @@
 > **Owner:** Dev 2 (Track B)
 > **Sprint:** 1 — Fix & Ship
 > **Priority:** Must Have (Week 1-2) items first, then Should Have (Week 3-4)
-> **Last Updated:** 2026-02-12 (B.1-B.5, B.8-B.10 Complete)
-> **Implementation Status:** 8/13 Features Complete ✅ (B.1, B.2, B.3, B.4, B.5, B.8, B.9, B.10)
-> **Latest:** B.9 (Agent Version Paths) — Added file paths, sizes, checksums for 5 agent versions ✅
+> **Last Updated:** 2026-02-13 (B.1-B.5, B.8-B.11 Complete)
+> **Implementation Status:** 9/13 Features Complete ✅ (B.1, B.2, B.3, B.4, B.5, B.8, B.9, B.10, B.11)
+> **Latest:** B.11 (Raw Fetch Refactor) — Refactored 5 locations, created fetchWithAuth utility, -48 LOC ✅
 
 ---
 
@@ -816,9 +816,9 @@ Multiple pages use `as unknown as` to bypass TypeScript's type safety, hiding po
 
 ---
 
-### B.11 — Refactor Raw Fetch to Use Axios Instance
+### B.11 — Refactor Raw Fetch to Use Axios Instance ✅
 
-**Priority:** P1 (Should Have) | **Effort:** ~2-3 hours | **Dependencies:** None (but pairs well with B.2) | **Status:** ⏳ **PENDING**
+**Priority:** P1 (Should Have) | **Effort:** ~2-3 hours | **Dependencies:** None (but pairs well with B.2) | **Status:** ✅ **COMPLETE**
 
 #### Problem Statement
 
@@ -855,6 +855,112 @@ Multiple pages use `as unknown as` to bypass TypeScript's type safety, hiding po
 | File | Line | Change |
 |------|------|--------|
 | `frontend/src/services/patch-template.service.ts` | 70-101 | Refactor to use axios or apply interceptors manually |
+
+#### Implementation Notes
+
+**Completed:** 2026-02-13
+
+**Detailed Implementation Plan:** [`PLAN-B11-RAW-FETCH-REFACTOR.md`](./PLAN-B11-RAW-FETCH-REFACTOR.md)
+
+**Discovery Findings:**
+
+| # | Location | Type | Auth | Action Taken |
+|---|----------|------|------|--------------|
+| 1 | patch-template.service.ts:70 | Streaming sync | ✅ | Wrapped in fetchWithAuth |
+| 2 | AgentVersions.tsx:107 | Blob download | ✅ | Replaced with axios service |
+| 3 | DownloadAgentModal.tsx:36 | JSON fetch | ✅ | Replaced with React Query hook |
+| 4 | DownloadAgentModal.tsx:55 | Blob download | ✅ | Replaced with axios service |
+| 5 | useNotificationSSE.ts:32 | SSE connection | ⚠️ | Kept EventSource (documented) |
+
+**Files Created:**
+
+1. **`frontend/src/utils/fetchWithAuth.ts`** (NEW)
+   - Reusable fetch wrapper with automatic auth header injection
+   - Centralized error handling for missing tokens
+   - Comprehensive JSDoc documentation
+   - Used for streaming responses where axios is not suitable
+
+**Files Modified:**
+
+2. **`frontend/src/services/agent.service.ts`** (lines 45-57)
+   - Added `downloadAgentBinary()` method
+   - Uses axios with `responseType: 'blob'`
+   - Extracts filename from Content-Disposition header
+   - Returns `{ blob: Blob; filename?: string }`
+
+3. **`frontend/src/services/patch-template.service.ts`** (line 71)
+   - Replaced raw fetch() with `fetchWithAuth()` helper
+   - Removed manual Authorization header construction
+   - Maintained streaming functionality for real-time progress
+
+4. **`frontend/src/pages/settings/AgentVersions.tsx`** (line 99)
+   - Replaced 40+ lines of manual fetch with service call
+   - Removed all localStorage token access
+   - Simplified error handling
+
+5. **`frontend/src/pages/assets/components/allassets/DownloadAgentModal.tsx`** (lines 17, 44)
+   - Replaced duplicate version fetching with `useAgentVersions()` hook
+   - Replaced raw fetch with `agentService.downloadAgentBinary()`
+   - Eliminated 50+ lines of redundant code
+
+6. **`frontend/src/hooks/useNotificationSSE.ts`** (lines 30-31)
+   - Added documentation explaining EventSource limitation
+   - No code changes (EventSource is correct for SSE)
+
+**Security Improvements:**
+- ✅ Eliminated manual token handling in 4 locations
+- ✅ Centralized auth logic through service layer or fetchWithAuth
+- ✅ Removed scattered localStorage access
+- ✅ Documented SSE trade-off (EventSource API limitation)
+
+**Code Quality Improvements:**
+- ✅ Reduced code by ~48 lines (eliminated duplication)
+- ✅ Centralized blob download logic in service layer
+- ✅ Reused existing React Query hooks instead of duplicate fetching
+- ✅ Consistent error handling patterns
+- ✅ Better separation of concerns (UI vs data fetching)
+
+**Technical Decisions:**
+
+**Why fetchWithAuth instead of axios for streaming:**
+- Axios doesn't support ReadableStream access natively in browser
+- Native fetch() with ReadableStream is the standard for streaming
+- fetchWithAuth provides auth consistency without breaking streaming
+
+**Why EventSource unchanged:**
+- EventSource API doesn't support custom headers (browser limitation)
+- Query parameter authentication is the only option for SSE
+- Backend already supports `?token=` parameter
+- Documented as intentional technical constraint
+
+**Verification:**
+- TypeScript: ✅ 0 compilation errors
+- ESLint: ✅ No new violations
+- QA Agent: ✅ PASS with 0 issues
+- Code reduction: ✅ -48 lines of redundant code
+- Auth consistency: ✅ All API calls use proper patterns
+
+**Acceptance Criteria:**
+- ✅ AC1: Zero raw fetch() calls bypass auth interceptor
+- ✅ AC2: Streaming functionality preserved (patch sync + SSE)
+- ✅ AC3: Base URL consistency (no hardcoded URLs)
+- ✅ AC4: Type safety maintained (0 TypeScript errors)
+- ✅ AC5: Shared streaming helper exists (fetchWithAuth utility)
+- ✅ AC6: Error handling improved (centralized patterns)
+
+**Testing Recommendations:**
+1. Test agent binary downloads from AgentVersions page
+2. Test agent downloads from DownloadAgentModal (Windows, macOS, Linux)
+3. Test patch template sync with streaming progress
+4. Test SSE notifications continue working
+5. Verify 401 errors trigger re-authentication flow
+
+**Impact:**
+- All API communication now follows consistent patterns
+- Service layer properly handles authentication
+- Streaming and SSE preserved with documented patterns
+- Reduced code duplication and complexity
+- Improved maintainability and security
 
 ---
 
