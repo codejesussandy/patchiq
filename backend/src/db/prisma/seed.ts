@@ -1207,6 +1207,263 @@ async function main() {
   }
   console.log('Created', allSoftware.length, 'software installations across', createdAssets.length, 'assets');
 
+  // ============================================
+  // Test Seed Data for Vulnerability Correlation (R7)
+  // ============================================
+
+  console.log('\nSeeding test assets and software for vulnerability correlation...');
+
+  // Create 5 test assets
+  const testAssets = [
+    {
+      name: 'ASSET-WIN-01',
+      type: 'Endpoint',
+      status: 'In Use',
+      os: 'Windows',
+      osVersion: '10',
+      osEdition: 'Professional',
+      architecture: 'x86_64',
+      ipAddress: '192.168.1.10',
+      macAddress: '00:11:22:33:44:01',
+      manufacturer: 'Dell',
+      model: 'OptiPlex 7090',
+      hostname: 'ws-001-dell.company.local',
+    },
+    {
+      name: 'ASSET-WIN-02',
+      type: 'Server',
+      status: 'In Use',
+      os: 'Windows',
+      osVersion: '2019',
+      osEdition: 'Standard',
+      architecture: 'x86_64',
+      ipAddress: '192.168.1.20',
+      macAddress: '00:11:22:33:44:02',
+      manufacturer: 'HP',
+      model: 'ProLiant DL360',
+      hostname: 'server-win-02.company.local',
+    },
+    {
+      name: 'ASSET-LIN-01',
+      type: 'Server',
+      status: 'In Use',
+      os: 'Linux',
+      osVersion: '22.04 LTS',
+      osEdition: 'Ubuntu',
+      architecture: 'x86_64',
+      ipAddress: '192.168.1.30',
+      macAddress: '00:11:22:33:44:03',
+      manufacturer: 'Lenovo',
+      model: 'ThinkSystem SR650',
+      hostname: 'server-lin-01.company.local',
+    },
+    {
+      name: 'ASSET-LIN-02',
+      type: 'Endpoint',
+      status: 'In Use',
+      os: 'Linux',
+      osVersion: '24.04 LTS',
+      osEdition: 'Ubuntu',
+      architecture: 'x86_64',
+      ipAddress: '192.168.1.40',
+      macAddress: '00:11:22:33:44:04',
+      manufacturer: 'Dell',
+      model: 'XPS 13',
+      hostname: 'dev-lin-02.company.local',
+    },
+    {
+      name: 'ASSET-MAC-01',
+      type: 'Endpoint',
+      status: 'In Use',
+      os: 'macOS',
+      osVersion: '13.6',
+      osEdition: 'Monterey',
+      architecture: 'arm64',
+      ipAddress: '192.168.1.50',
+      macAddress: '00:11:22:33:44:05',
+      manufacturer: 'Apple',
+      model: 'MacBook Pro 16',
+      hostname: 'mbp-001.company.local',
+    },
+  ];
+
+  const createdAssets: Record<string, string> = {};
+  for (const assetData of testAssets) {
+    // Check if asset already exists by name
+    let asset = await prisma.asset.findFirst({
+      where: { name: assetData.name },
+    });
+
+    if (!asset) {
+      asset = await prisma.asset.create({
+        data: {
+          ...assetData,
+          organizationId: org.id,
+          locationId: location.id,
+        },
+      });
+    }
+    createdAssets[assetData.name] = asset.id;
+  }
+  console.log('Created/Updated', testAssets.length, 'test assets');
+
+  // Create AssetSoftware records with vulnerable versions
+  const softwareRecords = [
+    // ASSET-WIN-01: Firefox, 7-Zip, Notepad++, Node.js
+    { assetName: 'ASSET-WIN-01', name: 'Mozilla Firefox', version: '115.0', vendor: 'Mozilla', cpeVendor: 'mozilla', cpeProduct: 'firefox' },
+    { assetName: 'ASSET-WIN-01', name: '7-Zip', version: '24.05', vendor: 'Igor Pavlov', cpeVendor: '7-zip', cpeProduct: '7-zip' },
+    { assetName: 'ASSET-WIN-01', name: 'Notepad++', version: '8.8.8', vendor: 'Notepad++ Team', cpeVendor: 'notepad\\+\\+', cpeProduct: 'notepad\\+\\+' },
+    { assetName: 'ASSET-WIN-01', name: 'Node.js', version: '16.20.0', vendor: 'Node.js Foundation', cpeVendor: 'nodejs', cpeProduct: 'node.js' },
+    // ASSET-WIN-02: 7-Zip, Node.js, OpenSSL
+    { assetName: 'ASSET-WIN-02', name: '7-Zip', version: '24.05', vendor: 'Igor Pavlov', cpeVendor: '7-zip', cpeProduct: '7-zip' },
+    { assetName: 'ASSET-WIN-02', name: 'Node.js', version: '16.20.0', vendor: 'Node.js Foundation', cpeVendor: 'nodejs', cpeProduct: 'node.js' },
+    { assetName: 'ASSET-WIN-02', name: 'OpenSSL', version: '3.0.8', vendor: 'OpenSSL Project', cpeVendor: 'openssl', cpeProduct: 'openssl' },
+    // ASSET-LIN-01: Firefox, OpenSSL, Node.js
+    { assetName: 'ASSET-LIN-01', name: 'Firefox', version: '115.0', vendor: 'Mozilla Foundation', cpeVendor: 'mozilla', cpeProduct: 'firefox' },
+    { assetName: 'ASSET-LIN-01', name: 'OpenSSL', version: '3.0.8', vendor: 'OpenSSL Project', cpeVendor: 'openssl', cpeProduct: 'openssl' },
+    { assetName: 'ASSET-LIN-01', name: 'Node.js', version: '16.20.0', vendor: 'Node.js Foundation', cpeVendor: 'nodejs', cpeProduct: 'node.js' },
+    // ASSET-LIN-02: Firefox, Node.js, OpenSSL
+    { assetName: 'ASSET-LIN-02', name: 'Firefox', version: '115.0', vendor: 'Mozilla Foundation', cpeVendor: 'mozilla', cpeProduct: 'firefox' },
+    { assetName: 'ASSET-LIN-02', name: 'Node.js', version: '16.20.0', vendor: 'Node.js Foundation', cpeVendor: 'nodejs', cpeProduct: 'node.js' },
+    { assetName: 'ASSET-LIN-02', name: 'OpenSSL', version: '3.0.8', vendor: 'OpenSSL Project', cpeVendor: 'openssl', cpeProduct: 'openssl' },
+    // ASSET-MAC-01: Firefox (safe 120.0), Node.js (vulnerable), OpenSSL (safe 3.0.19)
+    { assetName: 'ASSET-MAC-01', name: 'Firefox', version: '120.0', vendor: 'Mozilla', cpeVendor: 'mozilla', cpeProduct: 'firefox' },
+    { assetName: 'ASSET-MAC-01', name: 'Node.js', version: '16.20.0', vendor: 'Node.js Foundation', cpeVendor: 'nodejs', cpeProduct: 'node.js' },
+    { assetName: 'ASSET-MAC-01', name: 'OpenSSL', version: '3.0.19', vendor: 'OpenSSL Project', cpeVendor: 'openssl', cpeProduct: 'openssl' },
+  ];
+
+  let softwareCreated = 0;
+  for (const sw of softwareRecords) {
+    const assetId = createdAssets[sw.assetName];
+    const existing = await prisma.assetSoftware.findFirst({
+      where: { assetId, name: sw.name, version: sw.version },
+    });
+
+    if (!existing) {
+      await prisma.assetSoftware.create({
+        data: {
+          assetId,
+          name: sw.name,
+          version: sw.version,
+          vendor: sw.vendor,
+          cpeVendor: sw.cpeVendor,
+          cpeProduct: sw.cpeProduct,
+          normalizedVersion: sw.version,
+          matchConfidence: 1.0,
+        },
+      });
+      softwareCreated++;
+    }
+  }
+  console.log('Created', softwareCreated, 'asset software records');
+
+  // Create Patch records for test applications with CVE numbers
+  const patches = [
+    {
+      patchId: 'PATCH-FIREFOX-116',
+      title: 'Firefox 116.0 Security Update',
+      software: 'Firefox',
+      vendor: 'Mozilla',
+      product: 'firefox',
+      severity: 'CRITICAL',
+      category: 'Security',
+      cveNumbers: ['CVE-2025-11111', 'CVE-2025-11112'],
+      approvalStatus: 'Approved',
+    },
+    {
+      patchId: 'PATCH-7ZIP-2408',
+      title: '7-Zip 24.08 Update',
+      software: '7-Zip',
+      vendor: 'Igor Pavlov',
+      product: '7-zip',
+      severity: 'HIGH',
+      category: 'Security',
+      cveNumbers: ['CVE-2025-11001', 'CVE-2025-11002'],
+      approvalStatus: 'Approved',
+    },
+    {
+      patchId: 'PATCH-7ZIP-2500',
+      title: '7-Zip 25.00 Update',
+      software: '7-Zip',
+      vendor: 'Igor Pavlov',
+      product: '7-zip',
+      severity: 'HIGH',
+      category: 'Security',
+      cveNumbers: ['CVE-2025-11001', 'CVE-2025-11002'],
+      approvalStatus: 'Approved',
+      supersedes: ['PATCH-7ZIP-2408'],
+    },
+    {
+      patchId: 'PATCH-NOTEPAD-889',
+      title: 'Notepad++ 8.8.9 Update',
+      software: 'Notepad++',
+      vendor: 'Notepad++ Team',
+      product: 'notepad\\+\\+',
+      severity: 'MEDIUM',
+      category: 'Security',
+      cveNumbers: ['CVE-2025-15556'],
+      approvalStatus: 'Approved',
+    },
+    {
+      patchId: 'PATCH-OPENSSL-3019',
+      title: 'OpenSSL 3.0.19 Security Update',
+      software: 'OpenSSL',
+      vendor: 'OpenSSL Project',
+      product: 'openssl',
+      severity: 'HIGH',
+      category: 'Security',
+      cveNumbers: ['CVE-2025-15467'],
+      approvalStatus: 'Approved',
+    },
+    {
+      patchId: 'PATCH-NODE-1620.2',
+      title: 'Node.js 16.20.2 Security Update',
+      software: 'Node.js',
+      vendor: 'Node.js Foundation',
+      product: 'node.js',
+      severity: 'CRITICAL',
+      category: 'Security',
+      cveNumbers: ['CVE-2025-59465'],
+      approvalStatus: 'Approved',
+    },
+  ];
+
+  for (const patchData of patches) {
+    const existing = await prisma.patch.findFirst({ where: { patchId: patchData.patchId } });
+
+    if (!existing) {
+      await prisma.patch.create({
+        data: {
+          patchId: patchData.patchId,
+          title: patchData.title,
+          software: patchData.software,
+          vendor: patchData.vendor,
+          product: patchData.product,
+          severity: patchData.severity,
+          category: patchData.category,
+          cveNumbers: patchData.cveNumbers,
+          approvalStatus: patchData.approvalStatus,
+          testStatus: 'Passed',
+          status: 'Active',
+          supersedes: patchData.supersedes || [],
+        },
+      });
+    } else {
+      // Update to ensure CVE numbers and approval status are correct
+      await prisma.patch.update({
+        where: { patchId: patchData.patchId },
+        data: {
+          cveNumbers: patchData.cveNumbers,
+          approvalStatus: patchData.approvalStatus,
+          testStatus: 'Passed',
+          status: 'Active',
+          supersedes: patchData.supersedes || [],
+        },
+      });
+    }
+  }
+  console.log('Created', patches.length, 'patch records');
+
   // Asset alerts are now created by the real-time alert evaluation engine
   // (see backend/src/modules/alerts/alert-evaluation.service.ts)
 
@@ -1214,6 +1471,12 @@ async function main() {
   console.log('\n=== Login Credentials ===');
   console.log('Admin: admin@patchiq.io / admin123');
   console.log('Demo:  demo@patchiq.io / demo123');
+  console.log('\n=== Test Assets Created (for Vulnerability Correlation) ===');
+  console.log('ASSET-WIN-01: Windows workstation (Firefox 115.0, 7-Zip 24.05, Notepad++ 8.8.8, Node.js 16.20.0)');
+  console.log('ASSET-WIN-02: Windows server (7-Zip 24.05, Node.js 16.20.0, OpenSSL 3.0.8)');
+  console.log('ASSET-LIN-01: Linux server (Firefox 115.0, OpenSSL 3.0.8, Node.js 16.20.0)');
+  console.log('ASSET-LIN-02: Linux workstation (Firefox 115.0, Node.js 16.20.0, OpenSSL 3.0.8)');
+  console.log('ASSET-MAC-01: macOS workstation (Firefox 120.0 [safe], Node.js 16.20.0, OpenSSL 3.0.19 [safe])');
 }
 
 main()
