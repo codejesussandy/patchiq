@@ -6,6 +6,9 @@ export { OrganizationsService, organizationsService } from './organizations.serv
 export { UsersService, usersService } from './users.service';
 export { SettingsService, settingsService } from './settings.service';
 
+// LDAP Sync Worker
+export { startLdapSyncWorker, shutdownLdapSyncWorker, setupLdapRepeatableSync } from './ldap-sync.worker';
+
 // Controller
 export { SettingsController, settingsController } from './settings.controller';
 

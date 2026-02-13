@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '@middleware/auth';
+import { audit, AuditAction, AuditResource } from '@middleware/audit';
+import { checkPermission } from '@middleware/rbac';
 import { validateBody, validateQuery, validateParams } from '@middleware/validation';
 import * as controller from './patches.controller';
 import {
@@ -30,6 +32,7 @@ const router = Router();
 router.get(
   '/',
   authenticate,
+  checkPermission('patches', 'view'),
   validateQuery(patchListQuerySchema),
   controller.listPatches
 );
@@ -38,6 +41,7 @@ router.get(
 router.get(
   '/test-approve',
   authenticate,
+  checkPermission('patches', 'view'),
   validateQuery(testApproveQuerySchema),
   controller.getPatchesPendingTestApproval
 );
@@ -46,6 +50,8 @@ router.get(
 router.post(
   '/discover',
   authenticate,
+  checkPermission('patches', 'add'),
+  audit({ action: AuditAction.SCAN, resource: AuditResource.PATCH }),
   controller.discoverPatches
 );
 
@@ -53,7 +59,9 @@ router.post(
 router.post(
   '/',
   authenticate,
+  checkPermission('patches', 'add'),
   validateBody(createPatchSchema),
+  audit({ action: AuditAction.CREATE, resource: AuditResource.PATCH }),
   controller.createPatch
 );
 
@@ -61,6 +69,7 @@ router.post(
 router.get(
   '/:id',
   authenticate,
+  checkPermission('patches', 'view'),
   validateParams(patchIdParamSchema),
   controller.getPatch
 );
@@ -69,8 +78,10 @@ router.get(
 router.put(
   '/:id',
   authenticate,
+  checkPermission('patches', 'edit'),
   validateParams(patchIdParamSchema),
   validateBody(updatePatchSchema),
+  audit({ action: AuditAction.UPDATE, resource: AuditResource.PATCH, getResourceId: (req) => req.params.id }),
   controller.updatePatch
 );
 
@@ -78,7 +89,9 @@ router.put(
 router.delete(
   '/:id',
   authenticate,
+  checkPermission('patches', 'delete'),
   validateParams(patchIdParamSchema),
+  audit({ action: AuditAction.DELETE, resource: AuditResource.PATCH, getResourceId: (req) => req.params.id }),
   controller.deletePatch
 );
 
@@ -90,6 +103,7 @@ router.delete(
 router.get(
   '/:id/affected-softwares',
   authenticate,
+  checkPermission('patches', 'view'),
   validateParams(patchIdParamSchema),
   controller.getAffectedProducts
 );
@@ -98,7 +112,9 @@ router.get(
 router.post(
   '/:id/affected-softwares',
   authenticate,
+  checkPermission('patches', 'add'),
   validateParams(patchIdParamSchema),
+  audit({ action: AuditAction.CREATE, resource: AuditResource.PATCH, getResourceId: (req) => req.params.id }),
   controller.addAffectedProduct
 );
 
@@ -106,7 +122,9 @@ router.post(
 router.delete(
   '/:id/affected-softwares/:productId',
   authenticate,
+  checkPermission('patches', 'delete'),
   validateParams(patchIdParamSchema),
+  audit({ action: AuditAction.DELETE, resource: AuditResource.PATCH, getResourceId: (req) => req.params.id }),
   controller.removeAffectedProduct
 );
 
@@ -114,6 +132,7 @@ router.delete(
 router.get(
   '/:id/bundle/stream',
   authenticate,
+  checkPermission('patches', 'view'),
   validateParams(patchIdParamSchema),
   controller.streamPatchBundle
 );
@@ -122,6 +141,7 @@ router.get(
 router.get(
   '/:id/vulnerabilities',
   authenticate,
+  checkPermission('patches', 'view'),
   validateParams(patchIdParamSchema),
   controller.getVulnerabilities
 );
@@ -130,8 +150,10 @@ router.get(
 router.post(
   '/:id/scan-endpoints',
   authenticate,
+  checkPermission('patches', 'edit'),
   validateParams(patchIdParamSchema),
   validateBody(scanEndpointsSchema),
+  audit({ action: AuditAction.SCAN, resource: AuditResource.PATCH, getResourceId: (req) => req.params.id }),
   controller.scanEndpoints
 );
 
@@ -139,6 +161,7 @@ router.post(
 router.get(
   '/:id/endpoints',
   authenticate,
+  checkPermission('patches', 'view'),
   validateParams(patchIdParamSchema),
   controller.getEndpoints
 );
@@ -147,6 +170,7 @@ router.get(
 router.get(
   '/:id/recommendations',
   authenticate,
+  checkPermission('patches', 'view'),
   validateParams(patchIdParamSchema),
   async (req, res) => {
     const { listPatchRecommendations } = await import('./asset-patch-recommendation.controller');
@@ -162,6 +186,7 @@ router.get(
 router.get(
   '/:id/superseded',
   authenticate,
+  checkPermission('patches', 'view'),
   validateParams(patchIdParamSchema),
   controller.getSupersededPatches
 );
@@ -170,6 +195,7 @@ router.get(
 router.get(
   '/:id/superseding',
   authenticate,
+  checkPermission('patches', 'view'),
   validateParams(patchIdParamSchema),
   controller.getSupersedingPatches
 );
@@ -178,7 +204,9 @@ router.get(
 router.post(
   '/:id/supersede/:targetId',
   authenticate,
+  checkPermission('patches', 'edit'),
   validateParams(patchIdParamSchema),
+  audit({ action: AuditAction.UPDATE, resource: AuditResource.PATCH, getResourceId: (req) => req.params.id }),
   controller.supersedePatch
 );
 
@@ -186,7 +214,9 @@ router.post(
 router.delete(
   '/:id/supersede/:targetId',
   authenticate,
+  checkPermission('patches', 'delete'),
   validateParams(patchIdParamSchema),
+  audit({ action: AuditAction.DELETE, resource: AuditResource.PATCH, getResourceId: (req) => req.params.id }),
   controller.removeSupersedence
 );
 
@@ -198,8 +228,10 @@ router.delete(
 router.post(
   '/:id/test',
   authenticate,
+  checkPermission('patches', 'edit'),
   validateParams(patchIdParamSchema),
   validateBody(testPatchSchema),
+  audit({ action: AuditAction.TEST, resource: AuditResource.PATCH, getResourceId: (req) => req.params.id }),
   controller.testPatch
 );
 
@@ -207,7 +239,9 @@ router.post(
 router.post(
   '/:id/approve',
   authenticate,
+  checkPermission('patches', 'edit'),
   validateParams(patchIdParamSchema),
+  audit({ action: AuditAction.APPROVE, resource: AuditResource.PATCH, getResourceId: (req) => req.params.id }),
   controller.approvePatch
 );
 
@@ -215,8 +249,10 @@ router.post(
 router.post(
   '/:id/reject',
   authenticate,
+  checkPermission('patches', 'edit'),
   validateParams(patchIdParamSchema),
   validateBody(rejectPatchSchema),
+  audit({ action: AuditAction.REJECT, resource: AuditResource.PATCH, getResourceId: (req) => req.params.id }),
   controller.rejectPatch
 );
 
@@ -230,6 +266,7 @@ const patchTestsRouter = Router();
 patchTestsRouter.get(
   '/',
   authenticate,
+  checkPermission('patches', 'view'),
   validateQuery(patchTestListQuerySchema),
   controller.listPatchTests
 );
@@ -238,7 +275,9 @@ patchTestsRouter.get(
 patchTestsRouter.post(
   '/',
   authenticate,
+  checkPermission('patches', 'add'),
   validateBody(createPatchTestSchema),
+  audit({ action: AuditAction.CREATE, resource: AuditResource.PATCH_TEST }),
   controller.createPatchTest
 );
 
@@ -246,6 +285,7 @@ patchTestsRouter.post(
 patchTestsRouter.get(
   '/:id',
   authenticate,
+  checkPermission('patches', 'view'),
   validateParams(patchTestIdParamSchema),
   controller.getPatchTest
 );
@@ -254,7 +294,9 @@ patchTestsRouter.get(
 patchTestsRouter.put(
   '/:id/approve',
   authenticate,
+  checkPermission('patches', 'edit'),
   validateParams(patchTestIdParamSchema),
+  audit({ action: AuditAction.APPROVE, resource: AuditResource.PATCH_TEST, getResourceId: (req) => req.params.id }),
   controller.approvePatchTest
 );
 
@@ -262,7 +304,9 @@ patchTestsRouter.put(
 patchTestsRouter.delete(
   '/:id',
   authenticate,
+  checkPermission('patches', 'delete'),
   validateParams(patchTestIdParamSchema),
+  audit({ action: AuditAction.DELETE, resource: AuditResource.PATCH_TEST, getResourceId: (req) => req.params.id }),
   controller.deletePatchTest
 );
 
@@ -276,6 +320,7 @@ const zeroTouchConfigsRouter = Router();
 zeroTouchConfigsRouter.get(
   '/',
   authenticate,
+  checkPermission('patches', 'view'),
   validateQuery(zeroTouchConfigListQuerySchema),
   controller.listZeroTouchConfigs
 );
@@ -284,7 +329,9 @@ zeroTouchConfigsRouter.get(
 zeroTouchConfigsRouter.post(
   '/',
   authenticate,
+  checkPermission('patches', 'add'),
   validateBody(createZeroTouchConfigSchema),
+  audit({ action: AuditAction.CREATE, resource: AuditResource.ZERO_TOUCH_CONFIG }),
   controller.createZeroTouchConfig
 );
 
@@ -292,6 +339,7 @@ zeroTouchConfigsRouter.post(
 zeroTouchConfigsRouter.get(
   '/:id',
   authenticate,
+  checkPermission('patches', 'view'),
   validateParams(zeroTouchConfigIdParamSchema),
   controller.getZeroTouchConfig
 );
@@ -300,8 +348,10 @@ zeroTouchConfigsRouter.get(
 zeroTouchConfigsRouter.put(
   '/:id',
   authenticate,
+  checkPermission('patches', 'edit'),
   validateParams(zeroTouchConfigIdParamSchema),
   validateBody(updateZeroTouchConfigSchema),
+  audit({ action: AuditAction.UPDATE, resource: AuditResource.ZERO_TOUCH_CONFIG, getResourceId: (req) => req.params.id }),
   controller.updateZeroTouchConfig
 );
 
@@ -309,7 +359,9 @@ zeroTouchConfigsRouter.put(
 zeroTouchConfigsRouter.delete(
   '/:id',
   authenticate,
+  checkPermission('patches', 'delete'),
   validateParams(zeroTouchConfigIdParamSchema),
+  audit({ action: AuditAction.DELETE, resource: AuditResource.ZERO_TOUCH_CONFIG, getResourceId: (req) => req.params.id }),
   controller.deleteZeroTouchConfig
 );
 

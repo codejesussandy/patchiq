@@ -1,9 +1,25 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { WHITELIST_SOURCES } from '../../modules/patch-repository/whitelist-sources.seed';
 import { seedCpeMappings } from './seeds/cpe-mappings.seed';
 
 const prisma = new PrismaClient();
+
+// Inline encryption function for seed (avoids config dependency)
+function encrypt(text: string): string {
+  const encryptionKey = process.env.ENCRYPTION_KEY || 'default-dev-key-change-in-production';
+  const key = crypto.scryptSync(encryptionKey, 'salt', 32);
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+
+  const authTag = cipher.getAuthTag();
+
+  return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
+}
 
 async function main() {
   console.log('Starting database seed...');
@@ -78,7 +94,7 @@ async function main() {
   // ============================================
 
   // Create admin role
-  await prisma.role.upsert({
+  const adminRole = await prisma.role.upsert({
     where: { name: 'admin' },
     update: {},
     create: {
@@ -95,13 +111,19 @@ async function main() {
         reports: { view: true, add: true, edit: true, delete: true },
         dashboard: { view: true, add: true, edit: true, delete: true },
         settings: { view: true, add: true, edit: true, delete: true },
+        deployments: { view: true, add: true, edit: true, delete: true },
+        notifications: { view: true, add: true, edit: true, delete: true },
+        hub: { view: true, add: true, edit: true, delete: true },
+        'patch-repository': { view: true, add: true, edit: true, delete: true },
+        'patch-templates': { view: true, add: true, edit: true, delete: true },
+        ai: { view: true, add: true, edit: true, delete: true },
       },
     },
   });
   console.log('Created admin role');
 
   // Create user role
-  await prisma.role.upsert({
+  const userRole = await prisma.role.upsert({
     where: { name: 'user' },
     update: {},
     create: {
@@ -118,10 +140,81 @@ async function main() {
         reports: { view: true, add: false, edit: false, delete: false },
         dashboard: { view: true, add: false, edit: false, delete: false },
         settings: { view: false, add: false, edit: false, delete: false },
+        deployments: { view: true, add: false, edit: false, delete: false },
+        notifications: { view: true, add: false, edit: false, delete: false },
+        hub: { view: false, add: false, edit: false, delete: false },
+        'patch-repository': { view: true, add: false, edit: false, delete: false },
+        'patch-templates': { view: true, add: false, edit: false, delete: false },
+        ai: { view: true, add: false, edit: false, delete: false },
       },
     },
   });
   console.log('Created user role');
+
+  // ============================================
+  // LDAP Configuration (Dev)
+  // ============================================
+
+  // Dev OpenLDAP config
+  const ldapConfig = await prisma.ldapConfig.upsert({
+    where: { id: '550e8400-e29b-41d4-a716-446655440001' },
+    update: {},
+    create: {
+      id: '550e8400-e29b-41d4-a716-446655440001',
+      name: 'Dev OpenLDAP',
+      host: 'localhost',
+      port: 3389,
+      baseDn: 'dc=corp,dc=example,dc=com',
+      bindDnEnc: encrypt('cn=admin,dc=corp,dc=example,dc=com'),
+      bindPasswordEnc: encrypt('admin-ldap-password'),
+      userFilter: '(objectClass=inetOrgPerson)',
+      isActive: true,
+      userSearchBase: 'ou=People,dc=corp,dc=example,dc=com',
+      groupSearchBase: 'ou=Groups,dc=corp,dc=example,dc=com',
+      groupFilter: '(objectClass=groupOfNames)',
+      emailAttribute: 'mail',
+      nameAttribute: 'cn',
+      usernameAttribute: 'uid',
+      groupMemberAttribute: 'member',
+      syncEnabled: false,
+      syncInterval: 360,
+    },
+  });
+  console.log('Created dev LDAP config:', ldapConfig.name);
+
+  // Create LDAP group mappings
+  await prisma.ldapGroupMapping.upsert({
+    where: {
+      ldapConfigId_ldapGroupDn: {
+        ldapConfigId: ldapConfig.id,
+        ldapGroupDn: 'cn=IT-Admins,ou=Groups,dc=corp,dc=example,dc=com',
+      },
+    },
+    update: {},
+    create: {
+      ldapConfigId: ldapConfig.id,
+      ldapGroupDn: 'cn=IT-Admins,ou=Groups,dc=corp,dc=example,dc=com',
+      roleId: adminRole.id,
+      priority: 10,
+    },
+  });
+
+  await prisma.ldapGroupMapping.upsert({
+    where: {
+      ldapConfigId_ldapGroupDn: {
+        ldapConfigId: ldapConfig.id,
+        ldapGroupDn: 'cn=IT-Users,ou=Groups,dc=corp,dc=example,dc=com',
+      },
+    },
+    update: {},
+    create: {
+      ldapConfigId: ldapConfig.id,
+      ldapGroupDn: 'cn=IT-Users,ou=Groups,dc=corp,dc=example,dc=com',
+      roleId: userRole.id,
+      priority: 5,
+    },
+  });
+  console.log('Created LDAP group mappings: IT-Admins → admin, IT-Users → user');
 
   // ============================================
   // Users
@@ -136,7 +229,7 @@ async function main() {
       email: 'admin@patchiq.io',
       passwordHash: adminPasswordHash,
       name: 'System Administrator',
-      role: 'ADMIN',
+      roleId: adminRole.id,
       organizationId: org.id,
       departmentId: department.id,
       locationId: location.id,
@@ -155,7 +248,7 @@ async function main() {
       email: 'demo@patchiq.io',
       passwordHash: demoPasswordHash,
       name: 'Demo User',
-      role: 'USER',
+      roleId: userRole.id,
       organizationId: org.id,
       departmentId: department.id,
       locationId: location.id,
@@ -191,6 +284,27 @@ async function main() {
   // NOTE: No sample vulnerabilities seeded — vulnerabilities come from real CVE database sync (NVD, CISA KEV).
 
   // ============================================
+  // Password Policy
+  // ============================================
+
+  await prisma.setting.upsert({
+    where: { key: 'passwordPolicy' },
+    update: {},
+    create: {
+      key: 'passwordPolicy',
+      value: {
+        minCharacterCount: 8,
+        minNumbers: true,
+        minLowerCaseCharacters: true,
+        minUpperCaseCharacters: true,
+        minSpecialCharacters: true,
+      },
+      category: 'security',
+    },
+  });
+  console.log('Created default password policy');
+
+  // ============================================
   // Computer Groups
   // ============================================
 
@@ -218,11 +332,11 @@ async function main() {
   // ============================================
 
   const deploymentPolicies = [
-    { policyId: 'POL-0001', name: 'Immediate Critical', description: 'Deploy critical patches immediately without delay', type: 'INSTANT', supportedModule: 'All', relatedType: 'Critical' },
-    { policyId: 'POL-0002', name: 'Scheduled Maintenance Window', description: 'Deploy during weekly maintenance window (Sunday 2-6 AM)', type: 'SCHEDULE', supportedModule: 'Patch', relatedType: 'No Relation' },
-    { policyId: 'POL-0003', name: 'Test First Policy', description: 'Deploy to test group first, then production after 48h', type: 'SCHEDULE', supportedModule: 'All', relatedType: 'Important' },
-    { policyId: 'POL-0004', name: 'Security Updates Only', description: 'Automatic deployment for security-classified patches', type: 'INSTANT', supportedModule: 'Security', relatedType: 'Critical' },
-    { policyId: 'POL-0005', name: 'Monthly Rollup', description: 'Deploy cumulative updates on the second Tuesday of each month', type: 'SCHEDULE', supportedModule: 'Patch', relatedType: 'Optional' },
+    { policyId: 'DPOL-0001', name: 'Immediate Critical', description: 'Deploy critical patches immediately without delay', type: 'INSTANT', supportedModule: 'All', relatedType: 'Critical' },
+    { policyId: 'DPOL-0002', name: 'Scheduled Maintenance Window', description: 'Deploy during weekly maintenance window (Sunday 2-6 AM)', type: 'SCHEDULE', supportedModule: 'Patch', relatedType: 'No Relation' },
+    { policyId: 'DPOL-0003', name: 'Test First Policy', description: 'Deploy to test group first, then production after 48h', type: 'SCHEDULE', supportedModule: 'All', relatedType: 'Important' },
+    { policyId: 'DPOL-0004', name: 'Security Updates Only', description: 'Automatic deployment for security-classified patches', type: 'INSTANT', supportedModule: 'Security', relatedType: 'Critical' },
+    { policyId: 'DPOL-0005', name: 'Monthly Rollup', description: 'Deploy cumulative updates on the second Tuesday of each month', type: 'SCHEDULE', supportedModule: 'Patch', relatedType: 'Optional' },
   ];
 
   for (const policy of deploymentPolicies) {
@@ -233,6 +347,61 @@ async function main() {
     });
   }
   console.log('Created', deploymentPolicies.length, 'deployment policies');
+
+  // ============================================
+  // Distribution Servers
+  // ============================================
+
+  const distributionServers = [
+    {
+      name: 'Primary Hub',
+      description: 'Main distribution server in US-East datacenter',
+      location: 'US-East',
+      url: 'https://patch-hub-east.internal.company.com',
+      version: '2.1.0',
+      status: 'Active',
+    },
+    {
+      name: 'EU Relay',
+      description: 'European distribution point for EU-based agents',
+      location: 'EU-West (Frankfurt)',
+      url: 'https://patch-relay-eu.internal.company.com',
+      version: '2.1.0',
+      status: 'Active',
+    },
+    {
+      name: 'APAC Relay',
+      description: 'Asia-Pacific distribution point',
+      location: 'AP-Southeast (Singapore)',
+      url: 'https://patch-relay-apac.internal.company.com',
+      version: '2.0.5',
+      status: 'Active',
+    },
+    {
+      name: 'Staging Server',
+      description: 'Pre-production testing server for patch validation',
+      location: 'US-West',
+      url: 'https://patch-staging.internal.company.com',
+      version: '2.2.0-beta',
+      status: 'Maintenance',
+    },
+    {
+      name: 'Legacy Relay',
+      description: 'Deprecated server pending decommission',
+      location: 'US-Central',
+      url: 'https://patch-legacy.internal.company.com',
+      version: '1.9.3',
+      status: 'Inactive',
+    },
+  ];
+
+  for (const server of distributionServers) {
+    const existing = await prisma.distributionServer.findFirst({ where: { name: server.name } });
+    if (!existing) {
+      await prisma.distributionServer.create({ data: server });
+    }
+  }
+  console.log('Created', distributionServers.length, 'distribution servers');
 
   // ============================================
   // Settings

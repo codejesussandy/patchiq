@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '@middleware/auth';
+import { audit, AuditAction, AuditResource } from '@middleware/audit';
+import { checkPermission } from '@middleware/rbac';
 import { validateQuery, validateParams, validateBody } from '@middleware/validation';
 import { notificationsController } from './notifications.controller';
 import {
@@ -20,24 +22,24 @@ router.get('/stream', validateQuery(sseTokenQuerySchema), notificationsControlle
 router.use(authenticate);
 
 // Static routes BEFORE parameterized routes
-router.get('/', validateQuery(listNotificationsQuerySchema), notificationsController.listNotifications);
-router.get('/unread-count', notificationsController.getUnreadCount);
-router.put('/mark-all-read', notificationsController.markAllAsRead);
+router.get('/', checkPermission('notifications', 'view'), validateQuery(listNotificationsQuerySchema), notificationsController.listNotifications);
+router.get('/unread-count', checkPermission('notifications', 'view'), notificationsController.getUnreadCount);
+router.put('/mark-all-read', checkPermission('notifications', 'edit'), audit({ action: AuditAction.UPDATE, resource: AuditResource.NOTIFICATION }), notificationsController.markAllAsRead);
 
 // History + Bulk
-router.get('/history', validateQuery(notificationHistoryQuerySchema), notificationsController.getHistory);
-router.put('/bulk-read', validateBody(bulkNotificationSchema), notificationsController.bulkMarkAsRead);
-router.delete('/bulk', validateBody(bulkNotificationSchema), notificationsController.bulkDelete);
+router.get('/history', checkPermission('notifications', 'view'), validateQuery(notificationHistoryQuerySchema), notificationsController.getHistory);
+router.put('/bulk-read', checkPermission('notifications', 'edit'), validateBody(bulkNotificationSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.NOTIFICATION }), notificationsController.bulkMarkAsRead);
+router.delete('/bulk', checkPermission('notifications', 'delete'), validateBody(bulkNotificationSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.NOTIFICATION }), notificationsController.bulkDelete);
 
 // Preferences
-router.get('/preferences', notificationsController.getPreferences);
-router.put('/preferences', validateBody(notificationPreferencesSchema), notificationsController.updatePreferences);
+router.get('/preferences', checkPermission('notifications', 'view'), notificationsController.getPreferences);
+router.put('/preferences', checkPermission('notifications', 'edit'), validateBody(notificationPreferencesSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.NOTIFICATION_PREFERENCES }), notificationsController.updatePreferences);
 
 // Parameterized routes
-router.put('/:id/read', validateParams(notificationIdParamSchema), notificationsController.markAsRead);
-router.delete('/:id', validateParams(notificationIdParamSchema), notificationsController.deleteNotification);
+router.put('/:id/read', checkPermission('notifications', 'edit'), validateParams(notificationIdParamSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.NOTIFICATION, getResourceId: (req) => req.params.id }), notificationsController.markAsRead);
+router.delete('/:id', checkPermission('notifications', 'delete'), validateParams(notificationIdParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.NOTIFICATION, getResourceId: (req) => req.params.id }), notificationsController.deleteNotification);
 
 // Delete all (clear) - uses DELETE on root
-router.delete('/', notificationsController.clearAll);
+router.delete('/', checkPermission('notifications', 'delete'), audit({ action: AuditAction.DELETE, resource: AuditResource.NOTIFICATION }), notificationsController.clearAll);
 
 export { router as notificationsRoutes };

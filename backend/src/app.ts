@@ -20,11 +20,13 @@ import { deploymentRoutes } from '@modules/deployments';
 import { reportsRoutes } from '@modules/reports';
 import { settingsRoutes } from '@modules/settings';
 import { aiRoutes } from '@modules/ai';
+import { alertRoutes } from '@modules/alerts';
 import { vulnerabilityRoutes } from '@modules/vulnerabilities';
 import cveSyncRoutes from '@modules/vulnerabilities/cve-sync.routes';
 import { createLogger } from '@shared/services/logger';
 import { config } from '@config/index';
 import { errorHandler, notFoundHandler, defaultRateLimiter } from '@middleware/index';
+import { authenticate } from '@middleware/auth';
 import { requestIdMiddleware } from '@middleware/request-logger';
 
 const logger = createLogger('app');
@@ -239,6 +241,9 @@ export function createApp(): Application {
 
   // Notifications routes
   app.use(`/${config.apiVersion}/notifications`, notificationsRoutes);
+
+  // Alerts routes (cross-asset alert management)
+  app.use(`/${config.apiVersion}/alerts`, authenticate, alertRoutes);
 
   // Tags routes (included in assets module)
 

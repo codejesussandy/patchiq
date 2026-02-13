@@ -19,7 +19,7 @@ export class AuthController {
   login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const input: LoginInput = req.body;
-      const result = await this.authService.login(input.email, input.password);
+      const result = await this.authService.login(input.email, input.password, input.authType);
 
       sendSuccess(res, result);
     } catch (error) {

@@ -1,0 +1,11 @@
+dn: ou=People,dc=corp,dc=example,dc=com
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Groups,dc=corp,dc=example,dc=com
+objectClass: organizationalUnit
+ou: Groups
+
+dn: ou=Service Accounts,dc=corp,dc=example,dc=com
+objectClass: organizationalUnit
+ou: Service Accounts

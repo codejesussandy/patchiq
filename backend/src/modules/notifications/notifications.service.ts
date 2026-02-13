@@ -56,6 +56,14 @@ export function setEmailSender(fn: typeof maybeSendEmail) {
 // ============================================
 
 export class NotificationsService {
+  /**
+   * Get default email preference for a given category when no preference record exists.
+   * Defaults: VULNERABILITY and ALERT have email=true, others have email=false.
+   */
+  private getDefaultEmailEnabled(category: NotificationCategory): boolean {
+    return category === 'VULNERABILITY' || category === 'ALERT';
+  }
+
   async getNotifications(userId: string, params: ListNotificationsQuery) {
     const where: Record<string, unknown> = { userId };
 
@@ -150,7 +158,9 @@ export class NotificationsService {
     // Check in-app preference
     const pref = await prisma.notificationPreference.findUnique({ where: { userId: input.userId } });
     const inAppKey = `${category}InApp` as keyof typeof pref;
+    const emailKey = `${category}Email` as keyof typeof pref;
     const inAppEnabled = pref ? (pref[inAppKey] as boolean) !== false : true;
+    const emailEnabled = pref ? (pref[emailKey] as boolean) !== false : this.getDefaultEmailEnabled(category);
 
     if (inAppEnabled) {
       const notification = await prisma.notification.create({
@@ -183,8 +193,8 @@ export class NotificationsService {
       }
     }
 
-    // Send email (fire-and-forget)
-    if (maybeSendEmail) {
+    // Send email (fire-and-forget) — only if user has email enabled for this category
+    if (emailEnabled && maybeSendEmail) {
       maybeSendEmail(input.userId, {
         title: input.title,
         message: input.message,
@@ -205,8 +215,12 @@ export class NotificationsService {
       return;
     }
 
+    // Get all users with admin role
+    const adminRole = await prisma.role.findUnique({ where: { name: 'admin' } });
+    if (!adminRole) return;
+
     const admins = await prisma.user.findMany({
-      where: { role: 'ADMIN', isActive: true, deletedAt: null },
+      where: { role: { id: adminRole.id }, isActive: true, deletedAt: null },
       select: { id: true },
     });
 
@@ -214,46 +228,69 @@ export class NotificationsService {
 
     const category = input.category || 'SYSTEM';
 
-    await prisma.notification.createMany({
-      data: admins.map((admin) => ({
-        userId: admin.id,
-        title: input.title,
-        message: input.message,
-        type: input.type || 'INFO',
-        category,
-        link: input.link,
-        metadata: input.metadata as object | undefined,
-      })),
+    // Get all admin preferences to filter in-app notifications
+    const preferences = await prisma.notificationPreference.findMany({
+      where: { userId: { in: admins.map((a) => a.id) } },
+    });
+    const prefMap = new Map(preferences.map((p) => [p.userId, p]));
+
+    // Filter admins based on in-app preference
+    const inAppKey = `${category}InApp` as keyof (typeof preferences)[0];
+    const adminsWithInApp = admins.filter((admin) => {
+      const pref = prefMap.get(admin.id);
+      return pref ? (pref[inAppKey] as boolean) !== false : true;
     });
 
-    // Push via SSE to all admins
-    const adminIds = admins.map((a) => a.id);
-    if (sseManager) {
-      sseManager.broadcast(
-        {
-          type: 'notification',
-          notification: {
-            title: input.title,
-            message: input.message,
-            type: input.type || 'INFO',
-            category,
-            link: input.link,
-          },
-        },
-        adminIds,
-      );
-    }
-
-    // Send email to each admin (fire-and-forget)
-    if (maybeSendEmail) {
-      for (const admin of admins) {
-        maybeSendEmail(admin.id, {
+    if (adminsWithInApp.length > 0) {
+      await prisma.notification.createMany({
+        data: adminsWithInApp.map((admin) => ({
+          userId: admin.id,
           title: input.title,
           message: input.message,
           type: input.type || 'INFO',
           category,
           link: input.link,
-        }).catch(() => {});
+          metadata: input.metadata as object | undefined,
+        })),
+      });
+
+      // Push via SSE to admins with in-app enabled
+      const adminIds = adminsWithInApp.map((a) => a.id);
+      if (sseManager) {
+        sseManager.broadcast(
+          {
+            type: 'notification',
+            notification: {
+              title: input.title,
+              message: input.message,
+              type: input.type || 'INFO',
+              category,
+              link: input.link,
+            },
+          },
+          adminIds,
+        );
+      }
+    }
+
+    // Send email to each admin who has email enabled (fire-and-forget)
+    if (maybeSendEmail) {
+      const emailKey = `${category}Email` as keyof (typeof preferences)[0];
+      const defaultEmailEnabled = this.getDefaultEmailEnabled(category);
+
+      for (const admin of admins) {
+        const pref = prefMap.get(admin.id);
+        const emailEnabled = pref ? (pref[emailKey] as boolean) !== false : defaultEmailEnabled;
+
+        if (emailEnabled) {
+          maybeSendEmail(admin.id, {
+            title: input.title,
+            message: input.message,
+            type: input.type || 'INFO',
+            category,
+            link: input.link,
+          }).catch(() => {});
+        }
       }
     }
   }

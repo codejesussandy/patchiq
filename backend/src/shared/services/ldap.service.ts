@@ -160,7 +160,228 @@ export async function searchUsers(
   }
 }
 
+export interface LdapAuthConfig {
+  host: string;
+  port: number;
+  baseDn: string;
+  bindDn: string;
+  bindPassword: string;
+  useTLS?: boolean;
+  userSearchBase?: string;
+  emailAttribute?: string;
+  nameAttribute?: string;
+  userFilter?: string;
+  groupSearchBase?: string;
+  groupFilter?: string;
+  groupMemberAttribute?: string;
+}
+
+export interface LdapAuthResult {
+  dn: string;
+  email: string;
+  name: string;
+  memberOf: string[];
+}
+
+/**
+ * Authenticate a user via LDAP.
+ * 1. Bind as service account
+ * 2. Search for user by email
+ * 3. Bind as found user (verify password)
+ * 4. Extract user attributes (email, name, groups)
+ *
+ * For OpenLDAP, memberOf overlay is often not enabled, so we search
+ * for groups that contain the user as a member.
+ */
+export async function authenticateUser(
+  email: string,
+  password: string,
+  ldapConfig: LdapAuthConfig
+): Promise<LdapAuthResult | null> {
+  const protocol = ldapConfig.useTLS ? 'ldaps' : 'ldap';
+  const url = `${protocol}://${ldapConfig.host}:${ldapConfig.port}`;
+
+  const client = new Client({
+    url,
+    timeout: 10000,
+    connectTimeout: 10000,
+    tlsOptions: ldapConfig.useTLS
+      ? { rejectUnauthorized: false }
+      : undefined,
+  });
+
+  try {
+    // Step 1: Bind as service account
+    await client.bind(ldapConfig.bindDn, ldapConfig.bindPassword);
+
+    // Step 2: Search for user by email
+    const emailAttr = ldapConfig.emailAttribute || 'mail';
+    const nameAttr = ldapConfig.nameAttribute || 'cn';
+    const searchBase = ldapConfig.userSearchBase || ldapConfig.baseDn;
+    const userFilter = ldapConfig.userFilter
+      ? `(&(${emailAttr}=${email})${ldapConfig.userFilter})`
+      : `(&(${emailAttr}=${email})(objectClass=inetOrgPerson))`;
+
+    const searchResult = await client.search(searchBase, {
+      scope: 'sub',
+      filter: userFilter,
+      attributes: ['dn', emailAttr, nameAttr, 'memberOf'],
+      sizeLimit: 1,
+    });
+
+    if (searchResult.searchEntries.length === 0) {
+      return null; // User not found
+    }
+
+    const userEntry = searchResult.searchEntries[0];
+    const userDn = userEntry.dn;
+
+    // Step 3: Bind as found user to verify password
+    // Create a separate client for user bind to avoid interfering with service account
+    const userClient = new Client({
+      url,
+      timeout: 10000,
+      connectTimeout: 10000,
+      tlsOptions: ldapConfig.useTLS
+        ? { rejectUnauthorized: false }
+        : undefined,
+    });
+
+    try {
+      await userClient.bind(userDn, password);
+    } catch {
+      // Invalid password
+      return null;
+    } finally {
+      try {
+        await userClient.unbind();
+      } catch {
+        // Ignore unbind errors
+      }
+    }
+
+    // Step 4: Extract user attributes
+    const userEmail = extractStringAttribute(userEntry, emailAttr) || email;
+    const userName = extractStringAttribute(userEntry, nameAttr) || email.split('@')[0];
+
+    // Step 5: Find groups (OpenLDAP doesn't always have memberOf overlay)
+    // Search for groups that have this user as a member
+    const groupSearchBase = ldapConfig.groupSearchBase || ldapConfig.baseDn;
+    const groupMemberAttr = ldapConfig.groupMemberAttribute || 'member';
+    const groupFilter = `(&(objectClass=groupOfNames)(${groupMemberAttr}=${userDn}))`;
+
+    let memberOf: string[] = [];
+    try {
+      const groupResult = await client.search(groupSearchBase, {
+        scope: 'sub',
+        filter: groupFilter,
+        attributes: ['dn'],
+        sizeLimit: 100,
+      });
+      memberOf = groupResult.searchEntries.map((entry) => entry.dn);
+    } catch {
+      // Group search may fail; continue without groups
+    }
+
+    // Also check if memberOf is directly on the user entry (Active Directory style)
+    if (memberOf.length === 0 && userEntry.memberOf) {
+      memberOf = normalizeToArray(userEntry.memberOf);
+    }
+
+    return {
+      dn: userDn,
+      email: userEmail,
+      name: userName,
+      memberOf,
+    };
+  } finally {
+    try {
+      await client.unbind();
+    } catch {
+      // Ignore unbind errors
+    }
+  }
+}
+
+/**
+ * Search for groups in LDAP directory.
+ * Returns group DNs, CNs, and member counts.
+ */
+export async function searchGroups(
+  ldapConfig: LdapAuthConfig
+): Promise<Array<{ dn: string; cn: string; memberCount: number; members: string[] }>> {
+  const protocol = ldapConfig.useTLS ? 'ldaps' : 'ldap';
+  const url = `${protocol}://${ldapConfig.host}:${ldapConfig.port}`;
+
+  const client = new Client({
+    url,
+    timeout: 10000,
+    connectTimeout: 10000,
+    tlsOptions: ldapConfig.useTLS
+      ? { rejectUnauthorized: false }
+      : undefined,
+  });
+
+  try {
+    await client.bind(ldapConfig.bindDn, ldapConfig.bindPassword);
+
+    const searchBase = ldapConfig.groupSearchBase || ldapConfig.baseDn;
+    const groupMemberAttr = ldapConfig.groupMemberAttribute || 'member';
+    const filter = ldapConfig.groupFilter || '(objectClass=groupOfNames)';
+
+    const searchResult = await client.search(searchBase, {
+      scope: 'sub',
+      filter,
+      attributes: ['dn', 'cn', groupMemberAttr],
+      sizeLimit: 200,
+    });
+
+    return searchResult.searchEntries.map((entry) => {
+      const members = normalizeToArray(entry[groupMemberAttr]);
+      return {
+        dn: entry.dn,
+        cn: extractStringAttribute(entry, 'cn') || entry.dn,
+        memberCount: members.length,
+        members,
+      };
+    });
+  } finally {
+    try {
+      await client.unbind();
+    } catch {
+      // Ignore unbind errors
+    }
+  }
+}
+
+/**
+ * Normalize an LDAP attribute value to a string array.
+ * LDAP attributes can be a string, Buffer, or array of either.
+ */
+function normalizeToArray(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((v) => (v instanceof Buffer ? v.toString() : String(v)));
+  }
+  if (value instanceof Buffer) return [value.toString()];
+  return [String(value)];
+}
+
+/**
+ * Extract a string attribute from an LDAP entry.
+ * Handles both string and Buffer values.
+ */
+function extractStringAttribute(entry: Record<string, unknown>, attr: string): string | null {
+  const value = entry[attr];
+  if (!value) return null;
+  if (value instanceof Buffer) return value.toString();
+  if (Array.isArray(value)) return value[0] instanceof Buffer ? value[0].toString() : String(value[0]);
+  return String(value);
+}
+
 export const ldapService = {
   testConnection,
   searchUsers,
+  authenticateUser,
+  searchGroups,
 };

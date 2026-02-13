@@ -20,7 +20,7 @@ export function normalizeVersion(raw: string): string {
   }
 
   // Remove leading 'v' or 'V'
-  let cleaned = raw.replace(/^v/i, '');
+  const cleaned = raw.replace(/^v/i, '');
 
   // Extract only the numeric parts with dots (e.g., "3.0.13" from "3.0.13-1ubuntu3.1")
   const match = cleaned.match(/^(\d+(?:\.\d+)*)/);

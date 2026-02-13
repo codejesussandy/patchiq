@@ -1,0 +1,178 @@
+dn: cn=john.admin,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: john.admin
+sn: Admin
+givenName: John
+uid: john.admin
+mail: john.admin@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=sarah.admin,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: sarah.admin
+sn: Admin
+givenName: Sarah
+uid: sarah.admin
+mail: sarah.admin@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=jane.patches,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: jane.patches
+sn: Patches
+givenName: Jane
+uid: jane.patches
+mail: jane.patches@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=tom.patches,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: tom.patches
+sn: Patches
+givenName: Tom
+uid: tom.patches
+mail: tom.patches@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=bob.security,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: bob.security
+sn: Security
+givenName: Bob
+uid: bob.security
+mail: bob.security@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=eve.security,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: eve.security
+sn: Security
+givenName: Eve
+uid: eve.security
+mail: eve.security@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=alice.user,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: alice.user
+sn: User
+givenName: Alice
+uid: alice.user
+mail: alice.user@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=charlie.user,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: charlie.user
+sn: User
+givenName: Charlie
+uid: charlie.user
+mail: charlie.user@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=diana.user,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: diana.user
+sn: User
+givenName: Diana
+uid: diana.user
+mail: diana.user@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=frank.user,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: frank.user
+sn: User
+givenName: Frank
+uid: frank.user
+mail: frank.user@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=grace.user,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: grace.user
+sn: User
+givenName: Grace
+uid: grace.user
+mail: grace.user@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=hank.multi,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: hank.multi
+sn: Multi
+givenName: Hank
+uid: hank.multi
+mail: hank.multi@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=iris.multi,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: iris.multi
+sn: Multi
+givenName: Iris
+uid: iris.multi
+mail: iris.multi@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=jack.nogroup,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: jack.nogroup
+sn: Nogroup
+givenName: Jack
+uid: jack.nogroup
+mail: jack.nogroup@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=kate.disabled,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: kate.disabled
+sn: Disabled
+givenName: Kate
+uid: kate.disabled
+mail: kate.disabled@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=leo.noemail,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: leo.noemail
+sn: Noemail
+givenName: Leo
+uid: leo.noemail
+userPassword: LdapPass123!
+
+dn: cn=mike.special,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: mike.special
+sn: Special
+givenName: Mike
+uid: mike.special
+mail: mike.special+tag@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=Nina Ünïcödë,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: Nina Ünïcödë
+sn: Ünïcödë
+givenName: Nina
+uid: nina.unicode
+mail: nina.unicode@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=oscar.longdn,ou=People,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: oscar.longdn
+sn: Longdn
+givenName: Oscar
+uid: oscar.longdn
+mail: oscar.longdn@corp.example.com
+userPassword: LdapPass123!
+
+dn: cn=pam.svc,ou=Service Accounts,dc=corp,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: pam.svc
+sn: Svc
+givenName: Pam
+uid: pam.svc
+mail: pam.svc@corp.example.com
+userPassword: LdapPass123!

@@ -1,6 +1,6 @@
 import { prisma } from '@/db/client';
 import { Prisma } from '@prisma/client';
-import { NotFoundError } from '@shared/errors';
+import { NotFoundError, ConflictError, ForbiddenError, UnauthorizedError } from '@shared/errors';
 import { cveDatabase } from '@shared/services/cve-database.service';
 import { createLogger } from '@shared/services/logger';
 import { calculateAgentStatus } from '@shared/utils/agent-status';
@@ -10,6 +10,8 @@ import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import { withTransaction } from '@shared/utils/transaction';
 import { evaluateAlertsForAsset, evaluateSecurityAlertsForAsset } from '@/modules/alerts/alert-evaluation.service';
 import { notificationsService } from '@/modules/notifications/notifications.service';
+import { settingsService } from '@modules/settings/settings.service';
+import { getTypedServerSettings } from '@modules/settings/server-settings';
 import type {
   AgentResponse,
   AgentDownloadResponse,
@@ -26,6 +28,8 @@ import type {
   HeartbeatInput,
   CommandResultInput,
   InventoryInput,
+  CreateAgentVersionInput,
+  UpdateAgentVersionInput,
   } from './agents.validators';
 
 const logger = createLogger('agents');
@@ -35,13 +39,20 @@ export class AgentsService {
    * Register a new agent or re-register existing one
    */
   async registerAgent(input: RegisterAgentInput): Promise<RegisterAgentResponse> {
+    // Step 1: Validate enrollment secret
+    console.log(`[DEBUG registerAgent] machineId=${input.machineId}, enrollSecret=${input.enrollSecret ? 'provided' : 'undefined'}`);
+    const enrollResult = await settingsService.validateEnrollSecret(input.enrollSecret);
+    console.log(`[DEBUG registerAgent] enrollResult=${enrollResult ? JSON.stringify(enrollResult) : 'null'}`);
+
     // Check if agent already exists
     const existingAgent = await prisma.agent.findUnique({
       where: { machineId: input.machineId },
     });
 
     if (existingAgent) {
-      // Re-registration - update agent info
+      // Re-registration - validate enrollment secret but don't increment usage
+      // (Re-registration is allowed with the same secret without consuming additional uses)
+
       const agent = await withTransaction('reRegisterAgent', async (tx) => {
         const agentUpdateData: Record<string, unknown> = {
           hostname: input.hostname,
@@ -94,12 +105,44 @@ export class AgentsService {
         tokenExpiresIn: 3600,
         config: await this.getDefaultConfig(),
         isReRegistration: true,
+        status: existingAgent.status as any,
         message: 'Agent re-registered successfully',
       };
     }
 
+    // Determine initial status based on agent approval settings
+    let initialStatus = 'CONNECTED';
+    try {
+      const approvalSettings = await settingsService.getAgentApprovalSettings();
+      if (approvalSettings.approvalType === 'MANUAL') {
+        initialStatus = 'PENDING_APPROVAL';
+      }
+    } catch {
+      // Default to auto-approve if settings not found
+    }
+
     // Create new agent and asset in a transaction
     const [agent, asset] = await withTransaction('registerAgent', async (tx) => {
+      // Increment enrollment secret usage count atomically with agent creation
+      if (enrollResult) {
+        console.log(`[DEBUG registerAgent] Incrementing enrollment secret usage: secretId=${enrollResult.id}`);
+        const updatedSecret = await tx.enrollSecret.update({
+          where: { id: enrollResult.id },
+          data: { usedCount: { increment: 1 } },
+        });
+        console.log(`[DEBUG registerAgent] Updated secret usedCount=${updatedSecret.usedCount}, maxUses=${updatedSecret.maxUses}`);
+
+        // Re-validate usage limit after increment (prevents race conditions)
+        // Use > because if maxUses=1, after first registration usedCount=1, which is allowed
+        // Second registration will increment to 2, which is > 1, so it will fail
+        if (updatedSecret.maxUses !== null && updatedSecret.usedCount > updatedSecret.maxUses) {
+          console.log(`[DEBUG registerAgent] Usage limit exceeded: usedCount=${updatedSecret.usedCount} > maxUses=${updatedSecret.maxUses}`);
+          throw new UnauthorizedError('Enrollment secret usage limit reached');
+        }
+      } else {
+        console.log(`[DEBUG registerAgent] No enrollResult, skipping usage increment`);
+      }
+
       // Create asset first
       const asset = await tx.asset.create({
         data: {
@@ -129,7 +172,7 @@ export class AgentsService {
           macAddress: input.macAddress,
           serialNumber: input.serialNumber,
           assetId: asset.id,
-          status: 'CONNECTED',
+          status: initialStatus,
           lastHeartbeat: new Date(),
           capabilities: ['scan', 'deploy', 'reboot', 'update'],
         },
@@ -161,6 +204,7 @@ export class AgentsService {
       tokenExpiresIn: 3600,
       config: await this.getDefaultConfig(),
       isReRegistration: false,
+      status: initialStatus as any,
     };
   }
 
@@ -174,6 +218,11 @@ export class AgentsService {
 
     if (!agent) {
       throw new NotFoundError('Agent not found');
+    }
+
+    // Reject heartbeats from agents that have been rejected
+    if (agent.status === 'REJECTED') {
+      throw new ForbiddenError('Agent has been rejected. Contact your administrator.');
     }
 
     // Check if inventory was requested before we update
@@ -251,7 +300,7 @@ export class AgentsService {
       ];
     }
 
-    const [agents, total] = await Promise.all([
+    const [agents, total, serverSettings] = await Promise.all([
       prisma.agent.findMany({
         where,
         include: {
@@ -262,14 +311,18 @@ export class AgentsService {
         ...getPaginationParams(params),
       }),
       prisma.agent.count({ where }),
+      getTypedServerSettings(),
     ]);
+
+    // R1B: Use configured endpoint online status timeout
+    const offlineThresholdSeconds = serverSettings.endpointOnlineStatusTimeoutHours * 3600;
 
     // Transform to match frontend expectations
     const transformedAgents: AgentResponse[] = agents.map((agent) => ({
       id: agent.id,
       machineId: agent.machineId,
       name: agent.name,
-      status: calculateAgentStatus(agent),
+      status: calculateAgentStatus(agent, offlineThresholdSeconds),
       os: agent.os,
       osVersion: agent.osVersion,
       agentVersion: agent.agentVersion,
@@ -311,11 +364,15 @@ export class AgentsService {
       throw new NotFoundError('Agent not found');
     }
 
+    // R1B: Use configured endpoint online status timeout
+    const serverSettings = await getTypedServerSettings();
+    const offlineThresholdSeconds = serverSettings.endpointOnlineStatusTimeoutHours * 3600;
+
     return {
       id: agent.id,
       machineId: agent.machineId,
       name: agent.name,
-      status: calculateAgentStatus(agent),
+      status: calculateAgentStatus(agent, offlineThresholdSeconds),
       os: agent.os,
       osVersion: agent.osVersion,
       agentVersion: agent.agentVersion,
@@ -395,11 +452,15 @@ export class AgentsService {
       });
     });
 
+    // R1B: Use configured endpoint online status timeout
+    const updateServerSettings = await getTypedServerSettings();
+    const updateOfflineThresholdSeconds = updateServerSettings.endpointOnlineStatusTimeoutHours * 3600;
+
     return {
       id: finalAgent!.id,
       machineId: finalAgent!.machineId,
       name: finalAgent!.name,
-      status: calculateAgentStatus(finalAgent!),
+      status: calculateAgentStatus(finalAgent!, updateOfflineThresholdSeconds),
       os: finalAgent!.os,
       osVersion: finalAgent!.osVersion,
       agentVersion: finalAgent!.agentVersion,
@@ -692,13 +753,7 @@ export class AgentsService {
       orderBy: { lastUpdatedAt: 'desc' },
     });
 
-    return versions.map((v) => ({
-      id: v.id,
-      platform: v.platform,
-      architecture: v.architecture,
-      version: v.version,
-      lastUpdatedAt: v.lastUpdatedAt.toISOString(),
-    }));
+    return versions.map((v) => this.transformAgentVersion(v));
   }
 
   /**
@@ -747,14 +802,20 @@ export class AgentsService {
    * Get default agent config
    */
   private async getDefaultConfig(): Promise<AgentConfig> {
+    // Read from settings table (same as settings service)
+    const { settingsService } = await import('@modules/settings');
+    const config = await settingsService.getAgentConfig();
+    const refreshCycle = (config.agentRefreshCycle as number) || 300;
+
     return {
-      heartbeatIntervalSeconds: 60,
+      heartbeatIntervalSeconds: refreshCycle,
+      agentRefreshCycle: refreshCycle,
       inventoryScheduleCron: '0 */6 * * *',
       telemetryIntervalSeconds: 60,
       telemetryEnabled: true,
       patchScanScheduleCron: '0 2 * * *',
       logLevel: 'info',
-    };
+    } as AgentConfig;
   }
 
   /**
@@ -1290,6 +1351,183 @@ export class AgentsService {
     });
 
     return tokens;
+  }
+
+  /**
+   * Create a new agent version
+   */
+  async createAgentVersion(input: CreateAgentVersionInput): Promise<AgentVersionResponse> {
+    // Check for duplicate
+    const existing = await prisma.agentVersion.findUnique({
+      where: {
+        platform_architecture_version: {
+          platform: input.platform,
+          architecture: input.architecture,
+          version: input.version
+        }
+      },
+    });
+
+    if (existing) {
+      throw new ConflictError('Version already exists for this platform and architecture');
+    }
+
+    // If setting as recommended, clear others for same platform+arch
+    if (input.isRecommended) {
+      await prisma.agentVersion.updateMany({
+        where: {
+          platform: input.platform,
+          architecture: input.architecture,
+          isRecommended: true
+        },
+        data: { isRecommended: false },
+      });
+    }
+
+    const version = await prisma.agentVersion.create({
+      data: {
+        platform: input.platform,
+        architecture: input.architecture,
+        version: input.version,
+        releaseNotes: input.releaseNotes || null,
+        isRecommended: input.isRecommended || false,
+        lastUpdatedAt: new Date(),
+      },
+    });
+
+    return this.transformAgentVersion(version);
+  }
+
+  /**
+   * Update an existing agent version
+   */
+  async updateAgentVersion(id: string, input: UpdateAgentVersionInput): Promise<AgentVersionResponse> {
+    const existing = await prisma.agentVersion.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundError('Agent version not found');
+    }
+
+    // If setting as recommended, clear others
+    if (input.isRecommended) {
+      await prisma.agentVersion.updateMany({
+        where: {
+          platform: existing.platform,
+          architecture: existing.architecture,
+          isRecommended: true,
+          NOT: { id }
+        },
+        data: { isRecommended: false },
+      });
+    }
+
+    const updated = await prisma.agentVersion.update({
+      where: { id },
+      data: {
+        ...(input.releaseNotes !== undefined ? { releaseNotes: input.releaseNotes } : {}),
+        ...(input.isRecommended !== undefined ? { isRecommended: input.isRecommended } : {}),
+        ...(input.isDeprecated !== undefined ? { isDeprecated: input.isDeprecated } : {}),
+        lastUpdatedAt: new Date(),
+      },
+    });
+
+    return this.transformAgentVersion(updated);
+  }
+
+  /**
+   * Delete an agent version
+   */
+  async deleteAgentVersion(id: string) {
+    const existing = await prisma.agentVersion.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundError('Agent version not found');
+    }
+
+    // If file exists in MinIO, try to delete it
+    if (existing.filePath) {
+      try {
+        const { minioStorage } = await import('@shared/services/minio.service');
+        await minioStorage.initialize();
+        await minioStorage.deleteObject(existing.filePath, 'agents');
+      } catch (e) {
+        logger.warn({ id, filePath: existing.filePath }, 'Failed to delete agent binary from MinIO');
+      }
+    }
+
+    await prisma.agentVersion.delete({ where: { id } });
+    return { message: 'Agent version deleted' };
+  }
+
+  /**
+   * Get latest agent version for platform/architecture
+   */
+  async getLatestAgentVersionForPlatform(platform: string, architecture: string): Promise<AgentVersionResponse> {
+    // First try recommended
+    let version = await prisma.agentVersion.findFirst({
+      where: { platform, architecture, isRecommended: true, isDeprecated: false },
+    });
+
+    // Fallback to latest non-deprecated by creation date
+    if (!version) {
+      version = await prisma.agentVersion.findFirst({
+        where: { platform, architecture, isDeprecated: false },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    if (!version) {
+      throw new NotFoundError('No agent version found');
+    }
+
+    return this.transformAgentVersion(version);
+  }
+
+  /**
+   * List agent versions with filters
+   */
+  async listAgentVersionsFiltered(params: { platform?: string; deprecated?: string }) {
+    const where: Record<string, unknown> = {};
+    if (params.platform) where.platform = params.platform;
+    if (params.deprecated === 'false') where.isDeprecated = false;
+    if (params.deprecated === 'true') where.isDeprecated = true;
+
+    const versions = await prisma.agentVersion.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return versions.map(v => this.transformAgentVersion(v));
+  }
+
+  /**
+   * Increment download count for a version
+   */
+  async incrementDownloadCount(id: string) {
+    await prisma.agentVersion.update({
+      where: { id },
+      data: { downloadCount: { increment: 1 } },
+    });
+  }
+
+  /**
+   * Transform AgentVersion model to response type
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private transformAgentVersion(v: any): AgentVersionResponse {
+    return {
+      id: v.id,
+      platform: v.platform,
+      architecture: v.architecture,
+      version: v.version,
+      filePath: v.filePath,
+      fileSize: v.fileSize ? Number(v.fileSize) : null,
+      checksum: v.checksum,
+      releaseNotes: v.releaseNotes || null,
+      isRecommended: v.isRecommended ?? false,
+      isDeprecated: v.isDeprecated ?? false,
+      downloadCount: v.downloadCount ?? 0,
+      lastUpdatedAt: v.lastUpdatedAt.toISOString(),
+      createdAt: v.createdAt.toISOString(),
+    };
   }
 }
 

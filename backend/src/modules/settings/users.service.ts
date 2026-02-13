@@ -6,6 +6,7 @@ import { hashPassword, generateToken, hashString } from '@shared/utils/crypto';
 import { addDuration } from '@shared/utils/date';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import { withTransaction } from '@shared/utils/transaction';
+import { validatePassword } from '@shared/utils/password-policy';
 import { prisma } from '@db/client';
 import { config } from '@config/index';
 
@@ -61,7 +62,7 @@ export class UsersService {
     }
 
     if (params.role) {
-      where.role = params.role;
+      where.role = { name: params.role };
     }
 
     if (params.organizationId) {
@@ -79,6 +80,7 @@ export class UsersService {
       prisma.user.findMany({
         where,
         include: {
+          role: { select: { name: true } },
           organization: { select: { name: true } },
           department: { select: { name: true } },
           location: { select: { name: true } },
@@ -97,6 +99,7 @@ export class UsersService {
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
+        role: { select: { name: true } },
         organization: { select: { name: true } },
         department: { select: { name: true } },
         location: { select: { name: true } },
@@ -120,27 +123,37 @@ export class UsersService {
       throw new ConflictError('Email already exists');
     }
 
-    // Validate role exists
-    if (input.role) {
-      const role = await prisma.role.findUnique({
-        where: { name: input.role },
-      });
-      if (!role) {
-        throw new BadRequestError(`Role '${input.role}' not found`);
-      }
+    // Resolve role by name (default to 'user')
+    const roleName = input.role || 'user';
+    const role = await prisma.role.findUnique({
+      where: { name: roleName },
+    });
+    if (!role) {
+      throw new BadRequestError(`Role '${roleName}' not found`);
     }
 
-    // Generate password if provided
-    const passwordHash = input.password
-      ? await hashPassword(input.password)
-      : await hashPassword(generateToken(12));
+    // Validate password against policy if provided
+    let passwordHash: string;
+    if (input.password) {
+      const violations = await validatePassword(input.password, prisma);
+      if (violations.length > 0) {
+        throw new BadRequestError('Password does not meet security requirements', {
+          code: 'PASSWORD_POLICY_VIOLATION',
+          details: violations,
+        });
+      }
+      passwordHash = await hashPassword(input.password);
+    } else {
+      // Generate random password if not provided
+      passwordHash = await hashPassword(generateToken(12));
+    }
 
     const user = await prisma.user.create({
       data: {
         email: input.email.toLowerCase(),
         passwordHash,
         name: input.name,
-        role: input.role || 'user',
+        roleId: role.id,
         organizationId: input.organizationId,
         departmentId: input.departmentId,
         locationId: input.locationId,
@@ -149,6 +162,7 @@ export class UsersService {
         isOnboarded: !!input.password,
       },
       include: {
+        role: { select: { name: true } },
         organization: { select: { name: true } },
         department: { select: { name: true } },
         location: { select: { name: true } },
@@ -159,7 +173,7 @@ export class UsersService {
     await this.createAuditLog(createdById, 'CREATE', 'user', user.id, {
       email: user.email,
       name: user.name,
-      role: user.role,
+      role: user.role.name,
     });
 
     return this.transformUserDetail(user);
@@ -168,13 +182,15 @@ export class UsersService {
   async updateUser(id: string, input: UpdateUserInput, updatedById?: string): Promise<UserDetailResponse> {
     const user = await prisma.user.findUnique({
       where: { id },
+      include: { role: { select: { name: true } } },
     });
 
     if (!user || user.deletedAt) {
       throw new NotFoundError('User not found');
     }
 
-    // Validate role exists if provided
+    // Resolve new role if provided
+    let newRoleId: string | undefined;
     if (input.role) {
       const role = await prisma.role.findUnique({
         where: { name: input.role },
@@ -182,11 +198,12 @@ export class UsersService {
       if (!role) {
         throw new BadRequestError(`Role '${input.role}' not found`);
       }
+      newRoleId = role.id;
     }
 
     const oldData = {
       name: user.name,
-      role: user.role,
+      role: user.role.name,
       organizationId: user.organizationId,
       departmentId: user.departmentId,
       locationId: user.locationId,
@@ -196,13 +213,14 @@ export class UsersService {
       where: { id },
       data: {
         name: input.name,
-        role: input.role,
+        roleId: newRoleId,
         organizationId: input.organizationId,
         departmentId: input.departmentId,
         locationId: input.locationId,
         contactNumber: input.contactNumber,
       },
       include: {
+        role: { select: { name: true } },
         organization: { select: { name: true } },
         department: { select: { name: true } },
         location: { select: { name: true } },
@@ -214,7 +232,7 @@ export class UsersService {
       before: oldData,
       after: {
         name: updated.name,
-        role: updated.role,
+        role: updated.role.name,
         organizationId: updated.organizationId,
         departmentId: updated.departmentId,
         locationId: updated.locationId,
@@ -265,7 +283,7 @@ export class UsersService {
       throw new ConflictError('Email already exists');
     }
 
-    // Validate role exists
+    // Validate role exists and get its ID
     const role = await prisma.role.findUnique({
       where: { name: input.role },
     });
@@ -283,7 +301,7 @@ export class UsersService {
         email: input.email.toLowerCase(),
         passwordHash,
         name: input.name,
-        role: input.role,
+        roleId: role.id,
         organizationId: input.organizationId,
         departmentId: input.departmentId,
         locationId: input.locationId,
@@ -304,7 +322,7 @@ export class UsersService {
     // Create audit log
     await this.createAuditLog(invitedById, 'INVITE', 'user', user.id, {
       email: user.email,
-      role: user.role,
+      role: input.role,
     });
 
     // Send invitation email (fire-and-forget)
@@ -399,6 +417,12 @@ export class UsersService {
       throw new NotFoundError('User not found');
     }
 
+    if (user.authSource === 'LDAP') {
+      throw new BadRequestError(
+        'Password reset is not available for LDAP-authenticated users. Contact your directory administrator.'
+      );
+    }
+
     // Generate reset token
     const resetToken = generateToken();
     const tokenHash = hashString(resetToken);
@@ -473,7 +497,7 @@ export class UsersService {
     email: string;
     name: string | null;
     contactNumber: string | null;
-    role: string;
+    role: { name: string };
     isActive: boolean;
     isOnboarded: boolean;
     deletedAt: Date | null;
@@ -497,7 +521,7 @@ export class UsersService {
       email: user.email,
       name: user.name,
       contactNumber: user.contactNumber,
-      role: user.role,
+      role: user.role.name,
       status,
       organization: user.organization?.name ?? null,
       department: user.department?.name ?? null,
@@ -512,7 +536,7 @@ export class UsersService {
     email: string;
     name: string | null;
     contactNumber: string | null;
-    role: string;
+    role: { name: string };
     isActive: boolean;
     isOnboarded: boolean;
     deletedAt: Date | null;
@@ -564,34 +588,23 @@ export class UsersService {
   async listRoles(): Promise<RoleResponse[]> {
     const roles = await prisma.role.findMany({
       orderBy: [{ isSystem: 'desc' }, { name: 'asc' }],
+      include: { _count: { select: { users: { where: { deletedAt: null } } } } },
     });
 
-    // Get user counts for each role
-    const userCounts = await prisma.user.groupBy({
-      by: ['role'],
-      where: { deletedAt: null },
-      _count: true,
-    });
-
-    const userCountMap = new Map(userCounts.map(uc => [uc.role, uc._count]));
-
-    return roles.map(role => this.transformRole(role, userCountMap.get(role.name) ?? 0));
+    return roles.map(role => this.transformRole(role, role._count.users));
   }
 
   async getRole(id: string): Promise<RoleResponse> {
     const role = await prisma.role.findUnique({
       where: { id },
+      include: { _count: { select: { users: { where: { deletedAt: null } } } } },
     });
 
     if (!role) {
       throw new NotFoundError('Role not found');
     }
 
-    const userCount = await prisma.user.count({
-      where: { role: role.name, deletedAt: null },
-    });
-
-    return this.transformRole(role, userCount);
+    return this.transformRole(role, role._count.users);
   }
 
   async createRole(input: CreateRoleInput): Promise<RoleResponse> {
@@ -601,7 +614,7 @@ export class UsersService {
     });
 
     if (existing) {
-      throw new ConflictError('Role name already exists');
+      throw new ConflictError(`Role with name '${input.name}' already exists`);
     }
 
     const role = await prisma.role.create({
@@ -625,9 +638,14 @@ export class UsersService {
       throw new NotFoundError('Role not found');
     }
 
-    // Cannot change system role name
-    if (role.isSystem && input.name && input.name !== role.name) {
-      throw new BadRequestError('Cannot modify system role name');
+    // System role protection
+    if (role.isSystem) {
+      if (input.name && input.name !== role.name) {
+        throw new BadRequestError('Cannot rename system role');
+      }
+      // Silently strip permissions for system roles — frontend forms send the full object back.
+      // This prevents accidental modification while not breaking the edit-description flow.
+      input = { ...input, permissions: undefined };
     }
 
     const { updated, userCount } = await withTransaction('updateRole', async (tx) => {
@@ -637,7 +655,7 @@ export class UsersService {
           where: { name: input.name },
         });
         if (existing) {
-          throw new ConflictError('Role name already exists');
+          throw new ConflictError(`Role with name '${input.name}' already exists`);
         }
       }
 
@@ -651,7 +669,7 @@ export class UsersService {
       });
 
       const userCount = await tx.user.count({
-        where: { role: updated.name, deletedAt: null },
+        where: { roleId: updated.id, deletedAt: null },
       });
 
       return { updated, userCount };
@@ -673,13 +691,24 @@ export class UsersService {
       throw new BadRequestError('Cannot delete system role');
     }
 
-    // Check if role is in use
-    const usersWithRole = await prisma.user.count({
-      where: { role: role.name, deletedAt: null },
+    // Check if role is in use by active users (orphan prevention)
+    const activeUsersWithRole = await prisma.user.count({
+      where: { roleId: role.id, deletedAt: null },
     });
 
-    if (usersWithRole > 0) {
-      throw new ConflictError('Role is assigned to users');
+    if (activeUsersWithRole > 0) {
+      throw new BadRequestError(
+        `Cannot delete role with ${activeUsersWithRole} assigned user(s). Reassign them first.`
+      );
+    }
+
+    // Reassign soft-deleted users to default 'user' role so FK constraint doesn't block deletion
+    const defaultRole = await prisma.role.findUnique({ where: { name: 'user' } });
+    if (defaultRole) {
+      await prisma.user.updateMany({
+        where: { roleId: role.id, deletedAt: { not: null } },
+        data: { roleId: defaultRole.id },
+      });
     }
 
     await prisma.role.delete({

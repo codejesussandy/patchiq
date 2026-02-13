@@ -2,6 +2,11 @@ import https from 'https';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
+import { prisma } from '@/db/client';
+import { decrypt } from '@shared/utils/crypto';
+import { createLogger } from './logger';
+
+const logger = createLogger('proxy-service');
 
 export interface ProxyConfig {
   host: string;
@@ -153,6 +158,63 @@ export async function testConnection(config: ProxyConfig): Promise<ProxyTestResu
   });
 }
 
+/**
+ * Get proxy agent for outbound HTTP requests based on saved proxy settings.
+ * Returns undefined if proxy is disabled.
+ */
+export async function getProxyAgent(): Promise<HttpProxyAgent<string> | HttpsProxyAgent<string> | SocksProxyAgent | undefined> {
+  try {
+    // Read proxy settings from DB
+    const settings = await prisma.setting.findMany({
+      where: { category: 'proxy' },
+    });
+
+    const config: Record<string, unknown> = {};
+    for (const setting of settings) {
+      const key = setting.key.replace('proxy.', '');
+      config[key] = setting.value;
+    }
+
+    // If proxy is not enabled, return undefined
+    if (!config.enabled) {
+      return undefined;
+    }
+
+    // Validate required fields
+    if (!config.host || !config.port || !config.protocol) {
+      logger.warn('Proxy is enabled but missing required fields (host, port, protocol)');
+      return undefined;
+    }
+
+    // Decrypt password if present
+    let password: string | undefined;
+    if (config.password) {
+      try {
+        password = decrypt(config.password as string);
+      } catch (error) {
+        logger.error({ err: error }, 'Failed to decrypt proxy password');
+        return undefined;
+      }
+    }
+
+    // Build proxy config
+    const proxyConfig: ProxyConfig = {
+      host: config.host as string,
+      port: Number(config.port),
+      protocol: config.protocol as 'HTTP' | 'HTTPS' | 'SOCKS5',
+      username: config.username as string | undefined,
+      password,
+    };
+
+    // Create and return appropriate agent
+    return createProxyAgent(proxyConfig);
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to get proxy agent');
+    return undefined;
+  }
+}
+
 export const proxyService = {
   testConnection,
+  getProxyAgent,
 };

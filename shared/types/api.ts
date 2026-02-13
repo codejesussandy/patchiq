@@ -168,12 +168,19 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface UserRoleInfo {
+  id: string;
+  name: string;
+  permissions: RolePermissions;
+}
+
 export interface UserPublic {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
   role: string;
+  roleInfo: UserRoleInfo;
   isOnboarded: boolean;
   organizationId?: string | null;
   departmentId?: string | null;
@@ -231,6 +238,7 @@ export interface UserMeResponse {
   name: string | null;
   contactNumber: string | null;
   role: string;
+  roleInfo: UserRoleInfo;
   organizationId: string | null;
   departmentId: string | null;
   locationId: string | null;
@@ -272,6 +280,7 @@ export interface AgentRegistrationResponse {
   tokenExpiresIn: number;
   config: AgentConfig;
   isReRegistration: boolean;
+  status: AgentStatusEnum;
   message?: string;
 }
 
@@ -328,7 +337,15 @@ export interface AgentVersionResponse {
   platform: string;
   architecture: string;
   version: string;
+  filePath: string | null;
+  fileSize: number | null;
+  checksum: string | null;
+  releaseNotes: string | null;
+  isRecommended: boolean;
+  isDeprecated: boolean;
+  downloadCount: number;
   lastUpdatedAt: string;
+  createdAt: string;
 }
 
 export interface CommandResponse {
@@ -1700,10 +1717,16 @@ export interface RolePermissions {
   patches?: ModulePermissions;
   vulnerabilities?: ModulePermissions;
   jobs?: ModulePermissions;
+  deployments?: ModulePermissions;
   discovery?: ModulePermissions;
   reports?: ModulePermissions;
   dashboard?: ModulePermissions;
   settings?: ModulePermissions;
+  hub?: ModulePermissions;
+  'patch-repository'?: ModulePermissions;
+  'patch-templates'?: ModulePermissions;
+  ai?: ModulePermissions;
+  notifications?: ModulePermissions;
 }
 
 export interface RoleResponse {
@@ -1858,9 +1881,11 @@ export interface ComputerGroupResponse {
   id: string;
   name: string;
   description: string | null;
-  criteria: Record<string, unknown> | null;
-  memberCount: number;
+  endpoints: string[];
+  endpointCount: number;
+  createdBy: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface DeploymentPolicyResponse {
@@ -1927,7 +1952,10 @@ export interface DistributionServerResponse {
   location: string | null;
   url: string;
   version: string | null;
-  createdOn: string;
+  status: 'Active' | 'Inactive' | 'Maintenance';
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RedHatNominationResponse {

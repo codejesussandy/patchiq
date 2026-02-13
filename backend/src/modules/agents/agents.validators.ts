@@ -25,6 +25,7 @@ export const registerAgentSchema = z.object({
   macAddress: z.string().optional(),
   timezone: z.string().optional(),
   locale: z.string().optional(),
+  enrollSecret: z.string().optional(),
 });
 
 // Heartbeat schema
@@ -74,6 +75,21 @@ export const telemetrySchema = z.object({
   systemErrors: z.object({}).passthrough().optional(),
 }).passthrough();
 
+// Agent Version Lifecycle schemas (R4)
+export const createAgentVersionSchema = z.object({
+  platform: z.enum(['windows', 'linux', 'darwin']),
+  architecture: z.enum(['amd64', 'arm64']),
+  version: z.string().regex(/^\d+\.\d+\.\d+$/, 'Version must be in semver format: X.Y.Z'),
+  releaseNotes: z.string().max(5000).optional(),
+  isRecommended: z.boolean().optional().default(false),
+});
+
+export const updateAgentVersionSchema = z.object({
+  releaseNotes: z.string().max(5000).optional(),
+  isRecommended: z.boolean().optional(),
+  isDeprecated: z.boolean().optional(),
+});
+
 // Type exports
 export type ListAgentsQuery = z.infer<typeof listAgentsQuerySchema>;
 export type RegisterAgentInput = z.infer<typeof registerAgentSchema>;
@@ -81,3 +97,5 @@ export type HeartbeatInput = z.infer<typeof heartbeatSchema>;
 export type CommandResultInput = z.infer<typeof commandResultSchema>;
 export type InventoryInput = z.infer<typeof inventorySchema>;
 export type TelemetryInput = z.infer<typeof telemetrySchema>;
+export type CreateAgentVersionInput = z.infer<typeof createAgentVersionSchema>;
+export type UpdateAgentVersionInput = z.infer<typeof updateAgentVersionSchema>;

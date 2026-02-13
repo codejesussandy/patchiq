@@ -3,6 +3,7 @@ import { setSseManager, setEmailSender } from '@modules/notifications';
 import { startWorker, shutdownWorker, patchRepositoryService } from '@modules/patch-repository';
 import { startCveSyncWorker, shutdownCveSyncWorker, setupRepeatableSync } from '@modules/vulnerabilities';
 import { startDiscoveryScanWorker, shutdownDiscoveryScanWorker } from '@modules/discovery';
+import { startLdapSyncWorker, shutdownLdapSyncWorker, setupLdapRepeatableSync } from '@modules/settings';
 import { executeDeployment } from '@modules/patches/patches.service';
 import { createLogger } from '@shared/services/logger';
 import { maybeSendNotificationEmail } from '@shared/services/notification-email.service';
@@ -183,6 +184,15 @@ async function main() {
     logger.error({ err: error }, 'Failed to start discovery scan worker');
   }
 
+  // Start LDAP sync BullMQ worker + repeatable schedule
+  try {
+    startLdapSyncWorker();
+    await setupLdapRepeatableSync();
+    logger.info('LDAP sync worker started with repeatable schedule');
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to start LDAP sync worker');
+  }
+
   const server = app.listen(config.port, '0.0.0.0', () => {
     logger.info({ environment: config.nodeEnv, port: config.port, apiVersion: config.apiVersion }, 'PatchIQ Backend Server started');
   });
@@ -230,6 +240,13 @@ async function main() {
         logger.info('CVE sync worker stopped');
       } catch (error) {
         logger.error({ err: error }, 'Error shutting down CVE sync worker');
+      }
+
+      try {
+        await shutdownLdapSyncWorker();
+        logger.info('LDAP sync worker stopped');
+      } catch (error) {
+        logger.error({ err: error }, 'Error shutting down LDAP sync worker');
       }
 
       try {

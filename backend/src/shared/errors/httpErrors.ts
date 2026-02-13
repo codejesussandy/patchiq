@@ -63,6 +63,12 @@ export class InternalServerError extends HttpError {
   }
 }
 
+export class ServiceUnavailableError extends HttpError {
+  constructor(message: string = 'Service Unavailable') {
+    super(503, 'ServiceUnavailable', message);
+  }
+}
+
 export class ValidationError extends HttpError {
   constructor(errors: Record<string, string>) {
     super(400, 'ValidationError', 'Validation failed', { errors });

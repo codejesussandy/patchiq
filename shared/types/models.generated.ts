@@ -17,7 +17,12 @@ export interface User {
   contactNumber: string | null;
   timezone: string | null;
   avatar: string | null;
-  role: string;
+  authSource: string;
+  ldapDn: string | null;
+  ldapConfigId: string | null;
+  roleId: string;
+  role?: Role;
+  ldapConfig?: LdapConfig | null;
   isActive: boolean;
   isOnboarded: boolean;
   lastLoginAt: string | null;
@@ -35,6 +40,8 @@ export interface User {
   auditLogs?: AuditLog[];
   notifications?: Notification[];
   notificationPreference?: NotificationPreference | null;
+  acknowledgedAlerts?: AssetAlert[];
+  resolvedAlerts?: AssetAlert[];
 }
 
 export interface RefreshToken {
@@ -67,6 +74,7 @@ export interface Organization {
   users?: User[];
   branches?: Branch[];
   assets?: Asset[];
+  enrollSecrets?: EnrollSecret[];
 }
 
 export interface Branch {
@@ -90,6 +98,7 @@ export interface Department {
   createdAt: string;
   updatedAt: string;
   users?: User[];
+  enrollSecrets?: EnrollSecret[];
 }
 
 export interface Location {
@@ -113,6 +122,8 @@ export interface Role {
   permissions: unknown;
   createdAt: string;
   updatedAt: string;
+  users?: User[];
+  groupMappings?: LdapGroupMapping[];
 }
 
 export interface Agent {
@@ -141,6 +152,7 @@ export interface Agent {
   telemetry?: AgentTelemetry[];
   tags?: AgentTagRelation[];
   groups?: AgentGroupMembership[];
+  redHatNomination?: RedHatNomination | null;
 }
 
 export interface AgentCommand {
@@ -216,6 +228,10 @@ export interface AgentVersion {
   filePath: string | null;
   fileSize: string | null;
   checksum: string | null;
+  releaseNotes: string | null;
+  isRecommended: boolean;
+  isDeprecated: boolean;
+  downloadCount: number;
   lastUpdatedAt: string;
   createdAt: string;
 }
@@ -260,6 +276,7 @@ export interface Asset {
   depreciationType: string | null;
   depreciationRate: string | null;
   invoiceNumber: string | null;
+  riskScore: number | null;
   categoryId: string | null;
   category?: Category | null;
   subCategoryId: string | null;
@@ -280,6 +297,7 @@ export interface Asset {
   softwareTasks?: SoftwareDeploymentTask[];
   alerts?: AssetAlert[];
   patchRecommendations?: AssetPatchRecommendation[];
+  attachments?: AssetAttachment[];
 }
 
 export interface AssetHardware {
@@ -913,6 +931,37 @@ export interface Setting {
   updatedAt: string;
 }
 
+export interface EnrollSecret {
+  id: string;
+  name: string;
+  secret: string;
+  organizationId: string | null;
+  organization?: Organization | null;
+  departmentId: string | null;
+  department?: Department | null;
+  expiresAt: string | null;
+  maxUses: number | null;
+  usedCount: number;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RedHatNomination {
+  id: string;
+  agentId: string;
+  agent?: Agent;
+  name: string;
+  status: string;
+  endpoint: number;
+  scheduledTime: string | null;
+  lastSyncTime: string | null;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AlertConfig {
   id: string;
   type: string;
@@ -932,8 +981,53 @@ export interface LdapConfig {
   bindPasswordEnc: string;
   userFilter: string | null;
   isActive: boolean;
+  userSearchBase: string | null;
+  groupSearchBase: string | null;
+  groupFilter: string | null;
+  emailAttribute: string;
+  nameAttribute: string;
+  usernameAttribute: string;
+  groupMemberAttribute: string;
+  syncEnabled: boolean;
+  syncInterval: number;
+  lastSyncAt: string | null;
+  lastSyncStatus: string | null;
   createdAt: string;
   updatedAt: string;
+  users?: User[];
+  groupMappings?: LdapGroupMapping[];
+  syncJobs?: LdapSyncJob[];
+}
+
+export interface LdapGroupMapping {
+  id: string;
+  ldapConfigId: string;
+  ldapConfig?: LdapConfig;
+  ldapGroupDn: string;
+  roleId: string;
+  role?: Role;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LdapSyncJob {
+  id: string;
+  ldapConfigId: string;
+  ldapConfig?: LdapConfig;
+  status: string;
+  triggerType: string;
+  usersFound: number;
+  usersCreated: number;
+  usersUpdated: number;
+  usersDeactivated: number;
+  usersReactivated: number;
+  errors: number;
+  syncLog: unknown | null;
+  errorLog: unknown | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
 }
 
 export interface AuditLog {
@@ -1277,6 +1371,19 @@ export interface DeploymentPolicy {
   updatedAt: string;
 }
 
+export interface DistributionServer {
+  id: string;
+  name: string;
+  description: string | null;
+  location: string | null;
+  url: string;
+  version: string | null;
+  status: string;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AssetAlert {
   id: string;
   assetId: string;
@@ -1292,6 +1399,13 @@ export interface AssetAlert {
   resolvedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+  acknowledger?: User | null;
+  acknowledgNote: string | null;
+  resolvedBy: string | null;
+  resolver?: User | null;
+  resolutionNote: string | null;
 }
 
 export interface Notification {
@@ -1334,6 +1448,35 @@ export interface VendorLogo {
   logoUrl: string;
   fileName: string;
   objectKey: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Integration {
+  id: string;
+  name: string;
+  description: string | null;
+  type: string;
+  enabled: boolean;
+  iconUrl: string | null;
+  config: unknown | null;
+  status: string;
+  lastChecked: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssetAttachment {
+  id: string;
+  assetId: string;
+  asset?: Asset;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  storageKey: string;
+  uploadedBy: string | null;
+  uploadedAt: string;
   createdAt: string;
   updatedAt: string;
 }

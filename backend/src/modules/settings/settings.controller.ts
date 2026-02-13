@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { sendSuccess, sendError, typedQuery } from '@shared/utils';
+import { NotFoundError } from '@shared/errors';
 import { alertConfigCrudService } from './alert-config-crud.service';
+import { integrationCrudService } from './integration-crud.service';
 import { organizationsService } from './organizations.service';
 import { settingsService } from './settings.service';
 import type {
@@ -26,6 +28,8 @@ import type {
   UpdateAlertConfigInput,
   CreateLdapConfigInput,
   UpdateLdapConfigInput,
+  CreateGroupMappingInput,
+  UpdateGroupMappingInput,
   UpdateServerSettingsInput,
   UpdateAgentConfigInput,
   UpdateProxyServerInput,
@@ -34,6 +38,7 @@ import type {
   TestMailServerInput,
   UpdateLicenseInput,
   UpdateVulnerabilityPreferenceInput,
+  ListIntegrationsQuery,
 } from './settings.validators';
 import { usersService } from './users.service';
 
@@ -536,6 +541,57 @@ export class SettingsController {
   }
 
   // ============================================
+  // LDAP Group Mappings
+  // ============================================
+
+  async listGroupMappings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.listGroupMappings(req.params.id);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createGroupMapping(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const input = req.body as CreateGroupMappingInput;
+      const result = await settingsService.createGroupMapping(req.params.id, input);
+      sendSuccess(res, result, 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateGroupMapping(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const input = req.body as UpdateGroupMappingInput;
+      const result = await settingsService.updateGroupMapping(req.params.mapId, input);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteGroupMapping(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await settingsService.deleteGroupMapping(req.params.mapId);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async discoverGroups(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.discoverGroups(req.params.id);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================
   // Server Settings
   // ============================================
 
@@ -640,7 +696,7 @@ export class SettingsController {
   async testMailServer(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const input = req.body as TestMailServerInput;
-      const result = await settingsService.testMailServer(input);
+      const result = await settingsService.testMailServer(input.testEmail);
       sendSuccess(res, result);
     } catch (error) {
       next(error);
@@ -778,8 +834,8 @@ export class SettingsController {
 
   async listComputerGroups(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const result = await settingsService.listComputerGroups();
-      sendSuccess(res, result);
+      const result = await settingsService.listComputerGroups(req.query as Record<string, string>);
+      sendSuccess(res, { data: result.data, meta: result.meta });
     } catch (error) {
       next(error);
     }
@@ -796,7 +852,7 @@ export class SettingsController {
 
   async createComputerGroup(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const result = await settingsService.createComputerGroup(req.body);
+      const result = await settingsService.createComputerGroup(req.body, req.user?.id);
       sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
@@ -836,8 +892,8 @@ export class SettingsController {
 
   async listDeploymentPolicies(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const result = await settingsService.listDeploymentPolicies();
-      sendSuccess(res, result);
+      const result = await settingsService.listDeploymentPolicies(req.query as Record<string, string>);
+      sendSuccess(res, { data: result.data, meta: result.meta });
     } catch (error) {
       next(error);
     }
@@ -854,7 +910,7 @@ export class SettingsController {
 
   async createDeploymentPolicy(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const result = await settingsService.createDeploymentPolicy(req.body);
+      const result = await settingsService.createDeploymentPolicy(req.body, req.user?.id);
       sendSuccess(res, result, 201);
     } catch (error) {
       next(error);
@@ -907,6 +963,21 @@ export class SettingsController {
         logoFile
       );
       sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getBrandingLogo(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const logoUrl = await settingsService.getBrandingLogo();
+
+      if (!logoUrl) {
+        return next(new NotFoundError('No branding logo configured'));
+      }
+
+      // Redirect to the MinIO presigned URL (1-hour expiry)
+      res.redirect(302, logoUrl);
     } catch (error) {
       next(error);
     }
@@ -1053,6 +1124,302 @@ export class SettingsController {
   async updatePatchManagementSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await settingsService.updatePatchManagementSettings(req.body);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================
+  // Patch Preferences (R3)
+  // ============================================
+  async getPatchPreferences(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try { const result = await settingsService.getPatchPreferences(); sendSuccess(res, result); } catch (error) { next(error); }
+  }
+  async updatePatchPreferences(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try { const result = await settingsService.updatePatchPreferences(req.body); sendSuccess(res, result); } catch (error) { next(error); }
+  }
+  async syncPatchNow(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try { const result = await settingsService.syncPatchNow(); sendSuccess(res, result); } catch (error) { next(error); }
+  }
+
+  // ============================================
+  // Distribution Servers (R4)
+  // ============================================
+  async listDistributionServers(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try { const result = await settingsService.listDistributionServers(req.query as Record<string, string>); sendSuccess(res, result); } catch (error) { next(error); }
+  }
+  async getDistributionServer(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try { const result = await settingsService.getDistributionServer(req.params.id); sendSuccess(res, result); } catch (error) { next(error); }
+  }
+  async createDistributionServer(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try { const result = await settingsService.createDistributionServer(req.body, req.user?.id); sendSuccess(res, result, 201); } catch (error) { next(error); }
+  }
+  async updateDistributionServer(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try { const result = await settingsService.updateDistributionServer(req.params.id, req.body); sendSuccess(res, result); } catch (error) { next(error); }
+  }
+  async deleteDistributionServer(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try { await settingsService.deleteDistributionServer(req.params.id); res.status(204).send(); } catch (error) { next(error); }
+  }
+
+  // ============================================
+  // Password Policy
+  // ============================================
+
+  async getPasswordPolicy(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const policy = await settingsService.getPasswordPolicy();
+      sendSuccess(res, policy);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updatePasswordPolicy(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const policy = await settingsService.updatePasswordPolicy(req.body);
+      sendSuccess(res, policy);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================
+  // LDAP Sync
+  // ============================================
+
+  async triggerSync(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const job = await settingsService.triggerLdapSync(id);
+      sendSuccess(res, job, 202);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async listSyncJobs(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const jobs = await settingsService.listSyncJobs(id);
+      sendSuccess(res, jobs);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getSyncJob(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { jobId } = req.params;
+      const job = await settingsService.getSyncJob(jobId);
+      sendSuccess(res, job);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================
+  // Agent Config Reset — Pipeline 2E R3
+  // ============================================
+
+  async resetAgentConfig(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.resetAgentConfig();
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================
+  // Agent Approval Settings — Pipeline 2E R2
+  // ============================================
+
+  async getAgentApprovalSettings(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.getAgentApprovalSettings();
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateAgentApprovalSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.updateAgentApprovalSettings(req.body);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================
+  // Enroll Secrets — Pipeline 2E R1
+  // ============================================
+
+  async listEnrollSecrets(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.listEnrollSecrets();
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getEnrollSecret(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.getEnrollSecret(req.params.id);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createEnrollSecret(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.createEnrollSecret(req.body, req.user?.id || '');
+      sendSuccess(res, result, 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateEnrollSecret(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.updateEnrollSecret(req.params.id, req.body);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteEnrollSecret(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await settingsService.deleteEnrollSecret(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================
+  // RedHat Nominations — Pipeline 2E R5
+  // ============================================
+
+  async listRedHatNominations(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.listRedHatNominations();
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getRedHatNomination(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.getRedHatNomination(req.params.id);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createRedHatNomination(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.createRedHatNomination(req.body, req.user?.id || '');
+      sendSuccess(res, result, 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateRedHatNomination(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await settingsService.updateRedHatNomination(req.params.id, req.body, req.user?.id || '');
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteRedHatNomination(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await settingsService.deleteRedHatNomination(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================
+  // Integrations (R5 — Marketplace CRUD)
+  // ============================================
+
+  async listIntegrations(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const query = typedQuery<ListIntegrationsQuery>(req);
+      const result = await integrationCrudService.findMany({
+        page: query.page,
+        limit: query.limit,
+        search: query.search,
+        type: query.type,
+        enabled: query.enabled,
+      });
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getIntegration(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await integrationCrudService.findById(req.params.id);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createIntegration(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await integrationCrudService.create(req.body);
+      sendSuccess(res, result, 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateIntegration(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await integrationCrudService.update(req.params.id, req.body);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteIntegration(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await integrationCrudService.delete(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async toggleIntegration(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { enabled } = req.body;
+      const result = await integrationCrudService.toggle(req.params.id, enabled);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async testIntegration(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await integrationCrudService.testConnection(req.params.id);
       sendSuccess(res, result);
     } catch (error) {
       next(error);

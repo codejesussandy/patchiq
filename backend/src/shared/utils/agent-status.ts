@@ -5,13 +5,15 @@
  * (which is only set to 'Connected' on heartbeat and never updated to 'Disconnected'),
  * this function computes status on-demand from the lastHeartbeat timestamp.
  *
- * Agent heartbeats every 60s. After 3 missed heartbeats (180s), consider offline.
+ * @param offlineThresholdSeconds - Configurable threshold; defaults to 180s (3 missed heartbeats).
+ *   When using server settings, this is derived from endpointOnlineStatusTimeoutHours.
  */
 
-const OFFLINE_THRESHOLD_SECONDS = 180; // 3 minutes (3 missed heartbeats)
+const DEFAULT_OFFLINE_THRESHOLD_SECONDS = 180; // 3 minutes (3 missed heartbeats)
 
 export function calculateAgentStatus(
-  agent: { lastHeartbeat: Date | null; status: string } | null | undefined
+  agent: { lastHeartbeat: Date | null; status: string } | null | undefined,
+  offlineThresholdSeconds: number = DEFAULT_OFFLINE_THRESHOLD_SECONDS
 ): 'CONNECTED' | 'DISCONNECTED' | 'ERROR' | 'PENDING' {
   if (!agent) return 'DISCONNECTED';
 
@@ -23,7 +25,7 @@ export function calculateAgentStatus(
   const timeSinceHeartbeat = (now.getTime() - lastHeartbeatTime.getTime()) / 1000;
 
   // If heartbeat is stale, agent is disconnected
-  if (timeSinceHeartbeat > OFFLINE_THRESHOLD_SECONDS) {
+  if (timeSinceHeartbeat > offlineThresholdSeconds) {
     return 'DISCONNECTED';
   }
 

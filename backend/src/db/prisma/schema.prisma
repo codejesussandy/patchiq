@@ -24,7 +24,12 @@ model User {
   contactNumber String?   @map("contact_number")
   timezone      String?   @default("UTC") // NEW: User timezone preference
   avatar        String? // NEW: Avatar URL or path
-  role          String    @default("USER")
+  authSource    String    @default("LOCAL") @map("auth_source")
+  ldapDn        String?   @map("ldap_dn")
+  ldapConfigId  String?   @map("ldap_config_id")
+  roleId        String    @map("role_id")
+  role          Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  ldapConfig    LdapConfig? @relation(fields: [ldapConfigId], references: [id], onDelete: SetNull)
   isActive      Boolean   @default(true) @map("is_active")
   isOnboarded   Boolean   @default(false) @map("is_onboarded")
   lastLoginAt   DateTime? @map("last_login_at")
@@ -45,7 +50,10 @@ model User {
   auditLogs              AuditLog[]
   notifications          Notification[]
   notificationPreference NotificationPreference?
+  acknowledgedAlerts     AssetAlert[] @relation("alertAcknowledger")
+  resolvedAlerts         AssetAlert[] @relation("alertResolver")
 
+  @@index([roleId])
   @@index([organizationId])
   @@index([departmentId])
   @@index([locationId])
@@ -90,9 +98,10 @@ model Organization {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  users    User[]
-  branches Branch[]
-  assets   Asset[]
+  users         User[]
+  branches      Branch[]
+  assets        Asset[]
+  enrollSecrets EnrollSecret[]
 
   @@map("organizations")
 }
@@ -122,7 +131,8 @@ model Department {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  users User[]
+  users         User[]
+  enrollSecrets EnrollSecret[]
 
   @@unique([branchId, name])
   @@map("departments")
@@ -157,6 +167,9 @@ model Role {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  users         User[]
+  groupMappings LdapGroupMapping[]
+
   @@map("roles")
 }
 
@@ -188,10 +201,11 @@ model Agent {
   assetId String? @unique @map("asset_id")
   asset   Asset?  @relation(fields: [assetId], references: [id], onDelete: SetNull)
 
-  commands  AgentCommand[]
-  telemetry AgentTelemetry[]
-  tags      AgentTagRelation[]
-  groups    AgentGroupMembership[]
+  commands          AgentCommand[]
+  telemetry         AgentTelemetry[]
+  tags              AgentTagRelation[]
+  groups            AgentGroupMembership[]
+  redHatNomination  RedHatNomination?
 
   @@index([status])
   @@map("agents")
@@ -294,6 +308,10 @@ model AgentVersion {
   filePath      String?  @map("file_path")
   fileSize      BigInt?  @map("file_size")
   checksum      String?
+  releaseNotes  String?  @map("release_notes")
+  isRecommended Boolean  @default(false) @map("is_recommended")
+  isDeprecated  Boolean  @default(false) @map("is_deprecated")
+  downloadCount Int      @default(0) @map("download_count")
   lastUpdatedAt DateTime @map("last_updated_at")
   createdAt     DateTime @default(now()) @map("created_at")
 
@@ -347,6 +365,9 @@ model Asset {
   depreciationType String?  @map("depreciation_type") // "Straight Line" | "Declining Balance"
   depreciationRate Decimal? @map("depreciation_rate") @db.Decimal(5, 2)
   invoiceNumber    String?  @map("invoice_number")
+
+  // Risk score (computed from vulnerability data)
+  riskScore Float? @map("risk_score")
 
   // Category relations
   categoryId    String?      @map("category_id")
@@ -1299,6 +1320,41 @@ model Setting {
   @@map("settings")
 }
 
+model EnrollSecret {
+  id             String    @id @default(uuid())
+  name           String
+  secret         String    @unique
+  organizationId String?   @map("organization_id")
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  departmentId   String?   @map("department_id")
+  department     Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  expiresAt      DateTime? @map("expires_at")
+  maxUses        Int?      @map("max_uses")
+  usedCount      Int       @default(0) @map("used_count")
+  isActive       Boolean   @default(true) @map("is_active")
+  createdBy      String    @map("created_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@map("enroll_secrets")
+}
+
+model RedHatNomination {
+  id            String    @id @default(uuid())
+  agentId       String    @unique @map("agent_id")
+  agent         Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  name          String
+  status        String    @default("PENDING")
+  endpoint      Int       @default(0)
+  scheduledTime String?   @map("scheduled_time")
+  lastSyncTime  DateTime? @map("last_sync_time")
+  updatedBy     String?   @map("updated_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("redhat_nominations")
+}
+
 model AlertConfig {
   id        String   @id @default(uuid())
   type      String
@@ -1320,10 +1376,66 @@ model LdapConfig {
   bindPasswordEnc String   @map("bind_password_enc")
   userFilter      String?  @map("user_filter")
   isActive        Boolean  @default(true) @map("is_active")
+
+  userSearchBase       String?   @map("user_search_base")
+  groupSearchBase      String?   @map("group_search_base")
+  groupFilter          String?   @map("group_filter")
+  emailAttribute       String    @default("mail") @map("email_attribute")
+  nameAttribute        String    @default("cn") @map("name_attribute")
+  usernameAttribute    String    @default("uid") @map("username_attribute")
+  groupMemberAttribute String    @default("member") @map("group_member_attribute")
+  syncEnabled          Boolean   @default(false) @map("sync_enabled")
+  syncInterval         Int       @default(360) @map("sync_interval")
+  lastSyncAt           DateTime? @map("last_sync_at")
+  lastSyncStatus       String?   @map("last_sync_status")
+
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
+  users         User[]
+  groupMappings LdapGroupMapping[]
+  syncJobs      LdapSyncJob[]
+
   @@map("ldap_configs")
+}
+
+model LdapGroupMapping {
+  id           String     @id @default(uuid())
+  ldapConfigId String     @map("ldap_config_id")
+  ldapConfig   LdapConfig @relation(fields: [ldapConfigId], references: [id], onDelete: Cascade)
+  ldapGroupDn  String     @map("ldap_group_dn")
+  roleId       String     @map("role_id")
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  priority     Int        @default(0)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@unique([ldapConfigId, ldapGroupDn])
+  @@index([ldapConfigId])
+  @@map("ldap_group_mappings")
+}
+
+model LdapSyncJob {
+  id               String     @id @default(uuid())
+  ldapConfigId     String     @map("ldap_config_id")
+  ldapConfig       LdapConfig @relation(fields: [ldapConfigId], references: [id], onDelete: Cascade)
+  status           String     @default("PENDING")
+  triggerType      String     @default("MANUAL") @map("trigger_type")
+  usersFound       Int        @default(0) @map("users_found")
+  usersCreated     Int        @default(0) @map("users_created")
+  usersUpdated     Int        @default(0) @map("users_updated")
+  usersDeactivated Int        @default(0) @map("users_deactivated")
+  usersReactivated Int        @default(0) @map("users_reactivated")
+  errors           Int        @default(0)
+  syncLog          Json?      @map("sync_log")
+  errorLog         Json?      @map("error_log")
+  startedAt        DateTime?  @map("started_at")
+  completedAt      DateTime?  @map("completed_at")
+  createdAt        DateTime   @default(now()) @map("created_at")
+
+  @@index([ldapConfigId, status])
+  @@index([createdAt])
+  @@map("ldap_sync_jobs")
 }
 
 // ============================================
@@ -1786,6 +1898,22 @@ model DeploymentPolicy {
   @@map("deployment_policies")
 }
 
+model DistributionServer {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  location    String?
+  url         String
+  version     String?
+  status      String   @default("Active")  // Active | Inactive | Maintenance
+  createdBy   String?  @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("distribution_servers")
+}
+
 // ============================================
 // Asset Alerts (triggered alert events per asset)
 // ============================================
@@ -1805,9 +1933,21 @@ model AssetAlert {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  // Acknowledgment tracking
+  acknowledgedAt DateTime? @map("acknowledged_at")
+  acknowledgedBy String?   @map("acknowledged_by")
+  acknowledger   User?     @relation("alertAcknowledger", fields: [acknowledgedBy], references: [id])
+  acknowledgNote String?   @map("acknowledge_note")
+
+  // Resolution tracking
+  resolvedBy     String?   @map("resolved_by")
+  resolver       User?     @relation("alertResolver", fields: [resolvedBy], references: [id])
+  resolutionNote String?   @map("resolution_note")
+
   @@index([assetId])
   @@index([severity])
   @@index([status])
+  @@index([status, severity])
   @@map("asset_alerts")
 }
 
@@ -1870,6 +2010,30 @@ model VendorLogo {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("vendor_logos")
+}
+
+// ============================================
+// Integration Model (Marketplace/Integrations)
+// ============================================
+
+model Integration {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  type        String                    // siem, ticketing, notification, monitoring, backup, custom
+  enabled     Boolean   @default(false)
+  iconUrl     String?   @map("icon_url")
+  config      Json?                     // Connection details
+  status      String    @default("disconnected")  // connected, disconnected, error
+  lastChecked DateTime? @map("last_checked")
+  createdBy   String?   @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([name])
+  @@index([type])
+  @@index([enabled])
+  @@map("integrations")
 }
 
 model AssetAttachment {

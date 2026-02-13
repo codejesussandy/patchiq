@@ -81,6 +81,36 @@ services:
     networks:
       - patchiq_network
 
+  # OpenLDAP - Directory Services (for LDAP/AD integration testing)
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: patchiq_openldap
+    environment:
+      LDAP_ORGANISATION: "Corp Example"
+      LDAP_DOMAIN: "corp.example.com"
+      LDAP_BASE_DN: "dc=corp,dc=example,dc=com"
+      LDAP_ADMIN_PASSWORD: "admin-ldap-password"
+      LDAP_CONFIG_PASSWORD: "config-password"
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: "readonly"
+      LDAP_READONLY_USER_PASSWORD: "readonly-password"
+      LDAP_TLS: "false"
+    ports:
+      - "${LDAP_PORT:-3389}:389"
+      - "${LDAPS_PORT:-6360}:636"
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+      - ./docker/openldap/seed:/container/service/slapd/assets/config/bootstrap/ldif/custom:ro
+    command: "--copy-service"
+    healthcheck:
+      test: ["CMD", "ldapsearch", "-x", "-H", "ldap://localhost", "-b", "dc=corp,dc=example,dc=com", "-D", "cn=admin,dc=corp,dc=example,dc=com", "-w", "admin-ldap-password", "(objectClass=organization)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - patchiq_network
+
   # MinIO - S3-compatible patch storage
   minio:
     image: minio/minio:RELEASE.2022-05-26T05-48-41Z
@@ -218,6 +248,8 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  ldap_data:
+  ldap_config:
   minio_data:
   pgadmin_data:
 

@@ -1,8 +1,10 @@
+import crypto from 'crypto';
 import { prisma } from '@db/client';
-import { NotFoundError, BadRequestError } from '@shared/errors';
+import { NotFoundError, BadRequestError, ConflictError, UnauthorizedError, ForbiddenError } from '@shared/errors';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import { encrypt, decrypt } from '@shared/utils/crypto';
-import { emailService, type MailServerConfig } from '@shared/services/email.service';
+import { emailService } from '@shared/services/email.service';
+import { loadMailConfig } from '@shared/services/notification-email.service';
 import { createLogger } from '@shared/services/logger';
 
 const logger = createLogger('settings');
@@ -231,6 +233,14 @@ export class SettingsService {
       data: updateData,
     });
 
+    // Update BullMQ schedule if sync settings changed
+    try {
+      const { updateLdapSyncSchedule } = await import('./ldap-sync.worker');
+      await updateLdapSyncSchedule(id);
+    } catch (err) {
+      logger.error({ err, ldapConfigId: id }, 'Failed to update LDAP sync schedule');
+    }
+
     return this.transformLdapConfig(updated);
   }
 
@@ -241,6 +251,14 @@ export class SettingsService {
 
     if (!config) {
       throw new NotFoundError('LDAP configuration not found');
+    }
+
+    // Remove BullMQ scheduled job before deleting config
+    try {
+      const { removeLdapSyncSchedule } = await import('./ldap-sync.worker');
+      await removeLdapSyncSchedule(id);
+    } catch (err) {
+      logger.error({ err, ldapConfigId: id }, 'Failed to remove LDAP sync schedule');
     }
 
     await prisma.ldapConfig.delete({
@@ -337,7 +355,7 @@ export class SettingsService {
     return result;
   }
 
-  async updateServerSettings(input: Record<string, unknown>): Promise<Record<string, unknown>> {
+  async updateServerSettings(input: Record<string, unknown>, userId?: string, ipAddress?: string): Promise<Record<string, unknown>> {
     const updates = Object.entries(input).filter(([, value]) => value !== undefined);
 
     for (const [key, value] of updates) {
@@ -345,6 +363,21 @@ export class SettingsService {
         where: { key: `server.${key}` },
         update: { value: JSON.parse(JSON.stringify(value)) },
         create: { key: `server.${key}`, value: JSON.parse(JSON.stringify(value)), category: 'server' },
+      });
+    }
+
+    // R7B: Audit logging for server settings mutation
+    if (userId) {
+      const changedFields = Object.keys(input).join(', ');
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'UPDATE',
+          resource: 'server-settings',
+          resourceId: null,
+          details: `Updated server settings: ${changedFields}`,
+          ipAddress: ipAddress || 'unknown',
+        },
       });
     }
 
@@ -362,16 +395,13 @@ export class SettingsService {
       systemActionRefreshCycle: 300,
       endpointVlanRefreshCycle: 600,
       patchScanningRefreshCycle: 3600,
-      ssdmRefreshCycle: 300,
-      processRefreshCycle: 300,
+      softwareRefreshCycle: 3600,
+      hardwareRefreshCycle: 3600,
+      systemProcessRefreshCycle: 600,
+      systemServiceRefreshCycle: 600,
       networkRefreshCycle: 600,
-      certificateRefreshCycle: 3600,
-      startupItemsRefreshCycle: 3600,
-      usersRefreshCycle: 3600,
-      systemResourcesRefreshCycle: 60,
-      systemServicesRefreshCycle: 300,
-      fimEventsRefreshCycle: 60,
-      softwareMeterRefreshCycle: 3600,
+      networkSharesRefreshCycle: 3600,
+      riskDetectionRefreshCycle: 7200,
     };
 
     const result = { ...defaults };
@@ -394,6 +424,11 @@ export class SettingsService {
       });
     }
 
+    return this.getAgentConfig();
+  }
+
+  async resetAgentConfig(): Promise<Record<string, unknown>> {
+    await prisma.setting.deleteMany({ where: { category: 'agent' } });
     return this.getAgentConfig();
   }
 
@@ -420,7 +455,7 @@ export class SettingsService {
     return result;
   }
 
-  async updateProxyServer(input: Record<string, unknown>): Promise<Record<string, unknown>> {
+  async updateProxyServer(input: Record<string, unknown>, userId?: string, ipAddress?: string): Promise<Record<string, unknown>> {
     const updates = Object.entries(input).filter(([, value]) => value !== undefined);
 
     for (const [key, value] of updates) {
@@ -433,6 +468,21 @@ export class SettingsService {
         where: { key: `proxy.${key}` },
         update: { value: JSON.parse(JSON.stringify(storedValue)) },
         create: { key: `proxy.${key}`, value: JSON.parse(JSON.stringify(storedValue)), category: 'proxy' },
+      });
+    }
+
+    // R7B: Audit logging for proxy settings mutation (mask password)
+    if (userId) {
+      const changedFields = Object.keys(input).map(k => k === 'password' ? 'password (updated)' : k).join(', ');
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'UPDATE',
+          resource: 'proxy-settings',
+          resourceId: null,
+          details: `Updated proxy settings: ${changedFields}`,
+          ipAddress: ipAddress || 'unknown',
+        },
       });
     }
 
@@ -471,7 +521,6 @@ export class SettingsService {
       where: { category: 'mail' },
     });
 
-    // Build internal config first
     const internal: Record<string, unknown> = {
       host: '',
       port: 587,
@@ -479,87 +528,53 @@ export class SettingsService {
       username: null,
       fromAddress: null,
       fromName: null,
-      enableAuthentication: false,
     };
 
     for (const setting of settings) {
       const key = setting.key.replace('mail.', '');
-      // Don't return encrypted password
       if (key !== 'password') {
         internal[key] = setting.value;
       }
     }
 
-    // Convert secure (boolean) to protocol (NONE/SSL/TLS)
     let protocol: 'NONE' | 'SSL' | 'TLS' = 'NONE';
     if (internal.secure === true) {
-      // Port 465 typically uses SSL, others use TLS
       protocol = internal.port === 465 ? 'SSL' : 'TLS';
     }
 
-    // Return with frontend field names
     return {
-      smtpHost: internal.host,
-      smtpPort: internal.port,
-      protocol,
-      email: internal.fromAddress,
-      enableAuthentication: internal.enableAuthentication || !!internal.username,
-      username: internal.username,
-      fromName: internal.fromName,
-      // Also return backend names for compatibility
       host: internal.host,
       port: internal.port,
-      secure: internal.secure,
+      protocol,
       fromAddress: internal.fromAddress,
+      fromName: internal.fromName,
+      username: internal.username,
+      password: null,
     };
   }
 
-  async updateMailServer(input: Record<string, unknown>): Promise<Record<string, unknown>> {
-    // Normalize frontend field names to backend field names
+  async updateMailServer(input: Record<string, unknown>, userId?: string, ipAddress?: string): Promise<Record<string, unknown>> {
+    const PASSWORD_SENTINEL = '********';
     const normalized: Record<string, unknown> = {};
 
-    // Map smtpHost -> host
-    if (input.smtpHost !== undefined) {
-      normalized.host = input.smtpHost;
-    } else if (input.host !== undefined) {
-      normalized.host = input.host;
-    }
-
-    // Map smtpPort -> port
-    if (input.smtpPort !== undefined) {
-      normalized.port = Number(input.smtpPort);
-    } else if (input.port !== undefined) {
-      normalized.port = Number(input.port);
-    }
-
-    // Map protocol (NONE/SSL/TLS) -> secure (boolean)
+    if (input.host !== undefined) normalized.host = input.host;
+    if (input.port !== undefined) normalized.port = Number(input.port);
     if (input.protocol !== undefined) {
       normalized.secure = input.protocol !== 'NONE';
-    } else if (input.secure !== undefined) {
-      normalized.secure = input.secure;
     }
-
-    // Map email -> fromAddress
-    if (input.email !== undefined) {
-      normalized.fromAddress = input.email;
-    } else if (input.fromAddress !== undefined) {
-      normalized.fromAddress = input.fromAddress;
-    }
-
-    // Handle enableAuthentication flag
-    if (input.enableAuthentication !== undefined) {
-      normalized.enableAuthentication = input.enableAuthentication;
-    }
-
-    // Pass through username, password, fromName
-    if (input.username !== undefined) normalized.username = input.username;
-    if (input.password !== undefined) normalized.password = input.password;
+    if (input.fromAddress !== undefined) normalized.fromAddress = input.fromAddress;
     if (input.fromName !== undefined) normalized.fromName = input.fromName;
+    if (input.username !== undefined) normalized.username = input.username;
+
+    // Only update password if a real new value is provided (not the sentinel or empty)
+    const password = input.password as string | undefined;
+    if (password && password !== PASSWORD_SENTINEL) {
+      normalized.password = password;
+    }
 
     const updates = Object.entries(normalized).filter(([, value]) => value !== undefined);
 
     for (const [key, value] of updates) {
-      // Encrypt password if provided
       let storedValue: unknown = value;
       if (key === 'password' && value) {
         storedValue = encrypt(value as string);
@@ -571,61 +586,45 @@ export class SettingsService {
       });
     }
 
+    // R7B: Audit logging for mail settings mutation (mask password)
+    if (userId) {
+      const changedFields = Object.keys(normalized).map(k => k === 'password' ? 'password (updated)' : k).join(', ');
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'UPDATE',
+          resource: 'mail-settings',
+          resourceId: null,
+          details: `Updated mail settings: ${changedFields}`,
+          ipAddress: ipAddress || 'unknown',
+        },
+      });
+    }
+
     return this.getMailServer();
   }
 
-  async testMailServer(input: Record<string, unknown>): Promise<SuccessResponse> {
-    // Normalize frontend field names to backend field names
-    const host = (input.smtpHost || input.host) as string;
-    const port = Number(input.smtpPort || input.port);
-    const testEmail = input.testEmail as string;
+  async testMailServer(testEmail: string): Promise<SuccessResponse> {
+    const mailConfig = await loadMailConfig();
 
-    // Determine secure from protocol or secure flag
-    let secure = false;
-    if (input.protocol !== undefined) {
-      secure = input.protocol !== 'NONE';
-    } else if (input.secure !== undefined) {
-      secure = input.secure as boolean;
+    if (!mailConfig) {
+      throw new BadRequestError('Mail server not configured. Save configuration first.');
     }
 
-    // Get password - if provided use it, otherwise try to get stored one
-    let password = input.password as string | undefined;
-    if (!password && input.enableAuthentication) {
-      // Try to get stored password
-      const storedPassword = await prisma.setting.findUnique({
-        where: { key: 'mail.password' },
-      });
-      if (storedPassword?.value) {
-        try {
-          password = decrypt(storedPassword.value as string);
-        } catch {
-          // Password couldn't be decrypted
-        }
-      }
-    }
+    logger.info({ host: mailConfig.host, port: mailConfig.port, testEmail }, 'Testing mail server connection');
 
-    const mailConfig: MailServerConfig = {
-      host,
-      port,
-      secure,
-      username: input.username as string | undefined,
-      password,
-      fromAddress: (input.email || input.fromAddress) as string | undefined,
-      fromName: input.fromName as string | undefined,
-    };
-
-    logger.info({ host, port, secure, testEmail }, 'Testing mail server connection');
-
-    // Send actual test email
     const result = await emailService.sendTestEmail(mailConfig, testEmail);
 
     if (!result.success) {
-      throw new BadRequestError(result.message);
+      return {
+        success: false,
+        message: result.message,
+      };
     }
 
     return {
       success: true,
-      message: result.message,
+      message: 'Test email sent successfully',
     };
   }
 
@@ -799,9 +798,13 @@ export class SettingsService {
   // ============================================
 
   async getPlatformLicense(): Promise<Record<string, unknown>> {
+    const { computeLicenseStatus } = await import('./license.service');
     const settings = await prisma.setting.findMany({
       where: { category: 'license' },
     });
+
+    // Count real agents for usedEndpoints
+    const usedEndpoints = await prisma.agent.count();
 
     const defaults: Record<string, unknown> = {
       licenseTo: 'Unlicensed',
@@ -814,11 +817,12 @@ export class SettingsService {
       productVersion: '1.0.0',
       issueDate: new Date().toISOString().split('T')[0],
       expiresOn: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      numberOfEndpoints: 10,
-      usedEndpoints: 0,
+      numberOfEndpoints: 25,
+      usedEndpoints,
       activationCode: '',
       remainingDays: 30,
-      remainingEndpoints: 10,
+      remainingEndpoints: 25 - usedEndpoints,
+      status: 'TRIAL',
     };
 
     const result = { ...defaults };
@@ -827,39 +831,65 @@ export class SettingsService {
       result[key] = setting.value;
     }
 
-    // Calculate remaining days and endpoints
+    // Always compute usedEndpoints from real agent count
+    result.usedEndpoints = usedEndpoints;
+
+    // Calculate remaining days
     if (result.expiresOn) {
       const expiryDate = new Date(result.expiresOn as string);
       const today = new Date();
       result.remainingDays = Math.max(0, Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
     }
-    result.remainingEndpoints = Math.max(0, (result.numberOfEndpoints as number) - (result.usedEndpoints as number));
+
+    // Calculate remaining endpoints
+    const numberOfEndpoints = typeof result.numberOfEndpoints === 'string'
+      ? parseInt(result.numberOfEndpoints as string, 10)
+      : result.numberOfEndpoints as number;
+    result.remainingEndpoints = Math.max(0, numberOfEndpoints - usedEndpoints);
+
+    // Compute status
+    result.status = computeLicenseStatus(
+      result.licenseType as string,
+      result.expiresOn as string,
+      usedEndpoints,
+      numberOfEndpoints,
+    );
 
     return result;
   }
 
   async updatePlatformLicense(licenseCode: string): Promise<Record<string, unknown>> {
-    // TODO: Validate license code with license server
-    logger.info({ licenseCode }, 'Validating license code');
+    const { validateLicenseFormat, getLicenseType, getLicenseEndpointLimit, getLicenseExpiryDays } = await import('./license.service');
 
-    // For now, simulate a valid license
-    const licenseData = {
+    // Validate license code format and checksum
+    const validation = validateLicenseFormat(licenseCode);
+    if (!validation.valid) {
+      throw new BadRequestError(validation.error || 'Invalid license code');
+    }
+
+    const licenseType = getLicenseType(licenseCode);
+    const numberOfEndpoints = getLicenseEndpointLimit(licenseType);
+    const expiryDays = getLicenseExpiryDays(licenseType);
+
+    logger.info({ licenseCode: `****-****-****-${licenseCode.slice(-4)}`, licenseType }, 'License validated');
+
+    const licenseData: Record<string, unknown> = {
       licenseTo: 'PatchIQ Customer',
-      licenseType: 'Enterprise',
-      email: 'customer@example.com',
-      productCode: 'PATCHIQ-ENT',
+      licenseType,
+      productCode: 'PATCHIQ',
       productVersion: '1.0.0',
       issueDate: new Date().toISOString().split('T')[0],
-      expiresOn: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      numberOfEndpoints: 1000,
+      expiresOn: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      numberOfEndpoints,
       activationCode: licenseCode,
     };
 
-    for (const [key, value] of Object.entries(licenseData)) {
+    for (const [key, val] of Object.entries(licenseData)) {
+      const jsonVal = val as string | number;
       await prisma.setting.upsert({
         where: { key: `license.${key}` },
-        update: { value },
-        create: { key: `license.${key}`, value, category: 'license' },
+        update: { value: jsonVal },
+        create: { key: `license.${key}`, value: jsonVal, category: 'license' },
       });
     }
 
@@ -957,13 +987,27 @@ export class SettingsService {
   }
 
   // ============================================
-  // Computer Groups
+  // Computer Groups (R1 — Hardened)
   // ============================================
 
-  async listComputerGroups() {
-    return prisma.computerGroup.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
+  async listComputerGroups(params: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }) {
+    const page = Number(params.page) || 1;
+    const limit = Number(params.limit) || 10;
+    const skip = (page - 1) * limit;
+    const where: Record<string, unknown> = {};
+    if (params.search) {
+      where.OR = [
+        { name: { contains: params.search, mode: 'insensitive' } },
+        { description: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
+    const orderBy: Record<string, string> = {};
+    if (params.sortBy) { orderBy[params.sortBy] = params.sortOrder || 'asc'; } else { orderBy.createdAt = 'desc'; }
+    const [data, total] = await Promise.all([
+      prisma.computerGroup.findMany({ where, orderBy, skip, take: limit }),
+      prisma.computerGroup.count({ where }),
+    ]);
+    return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
   }
 
   async getComputerGroup(id: string) {
@@ -972,27 +1016,48 @@ export class SettingsService {
     return group;
   }
 
-  async createComputerGroup(data: { name: string; description?: string; endpoints?: string[] }) {
+  async createComputerGroup(data: { name: string; description?: string | null; endpoints?: string[] }, userId?: string) {
+    const existing = await prisma.computerGroup.findFirst({
+      where: { name: { equals: data.name, mode: 'insensitive' } },
+    });
+    if (existing) throw new ConflictError(`Computer group with name '${data.name}' already exists`);
+
+    const endpoints = data.endpoints || [];
+    if (endpoints.length > 0) {
+      const assets = await prisma.asset.findMany({ where: { id: { in: endpoints } }, select: { id: true } });
+      const foundIds = new Set(assets.map(a => a.id));
+      const missing = endpoints.filter(ep => !foundIds.has(ep));
+      if (missing.length > 0) throw new BadRequestError(`Endpoints not found: [${missing.join(', ')}]`);
+    }
+
     return prisma.computerGroup.create({
-      data: {
-        name: data.name,
-        description: data.description,
-        endpoints: data.endpoints || [],
-        endpointCount: data.endpoints?.length || 0,
-      },
+      data: { name: data.name, description: data.description ?? null, endpoints, endpointCount: endpoints.length, createdBy: userId || null },
     });
   }
 
-  async updateComputerGroup(id: string, data: { name?: string; description?: string; endpoints?: string[] }) {
+  async updateComputerGroup(id: string, data: { name?: string; description?: string | null; endpoints?: string[] }) {
     const group = await prisma.computerGroup.findUnique({ where: { id } });
     if (!group) throw new NotFoundError('Computer group not found');
-    return prisma.computerGroup.update({
-      where: { id },
-      data: {
-        ...data,
-        endpointCount: data.endpoints ? data.endpoints.length : undefined,
-      },
-    });
+
+    if (data.name) {
+      const existing = await prisma.computerGroup.findFirst({
+        where: { name: { equals: data.name, mode: 'insensitive' }, id: { not: id } },
+      });
+      if (existing) throw new ConflictError(`Computer group with name '${data.name}' already exists`);
+    }
+
+    if (data.endpoints && data.endpoints.length > 0) {
+      const assets = await prisma.asset.findMany({ where: { id: { in: data.endpoints } }, select: { id: true } });
+      const foundIds = new Set(assets.map(a => a.id));
+      const missing = data.endpoints.filter(ep => !foundIds.has(ep));
+      if (missing.length > 0) throw new BadRequestError(`Endpoints not found: [${missing.join(', ')}]`);
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.endpoints !== undefined) { updateData.endpoints = data.endpoints; updateData.endpointCount = data.endpoints.length; }
+    return prisma.computerGroup.update({ where: { id }, data: updateData });
   }
 
   async deleteComputerGroup(id: string) {
@@ -1003,65 +1068,187 @@ export class SettingsService {
 
   async getAvailableEndpoints() {
     const assets = await prisma.asset.findMany({
-      select: {
-        id: true,
-        hostname: true,
-        ipAddress: true,
-        status: true,
-      },
+      select: { id: true, hostname: true, ipAddress: true, status: true },
       orderBy: { hostname: 'asc' },
     });
-    return assets.map((a) => ({
-      id: a.id,
-      name: a.hostname,
-      ipAddress: a.ipAddress,
-      status: a.status === 'In Use' ? 'Online' : 'Offline',
-    }));
+    return assets.map((a) => ({ id: a.id, name: a.hostname, ipAddress: a.ipAddress, status: a.status === 'In Use' ? 'Online' : 'Offline' }));
   }
 
   // ============================================
-  // Deployment Policies
+  // Deployment Policies (R2 — Consolidated DPOL-XXXX)
   // ============================================
 
-  async listDeploymentPolicies() {
-    return prisma.deploymentPolicy.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
+  async listDeploymentPolicies(params: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string; type?: string }) {
+    const page = Number(params.page) || 1;
+    const limit = Number(params.limit) || 10;
+    const skip = (page - 1) * limit;
+    const where: Record<string, unknown> = {};
+    if (params.search) {
+      where.OR = [
+        { name: { contains: params.search, mode: 'insensitive' } },
+        { description: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
+    if (params.type) where.type = params.type;
+    const orderBy: Record<string, string> = {};
+    if (params.sortBy) { orderBy[params.sortBy] = params.sortOrder || 'asc'; } else { orderBy.createdAt = 'desc'; }
+    const [data, total] = await Promise.all([
+      prisma.deploymentPolicy.findMany({ where, orderBy, skip, take: limit }),
+      prisma.deploymentPolicy.count({ where }),
+    ]);
+    return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
   }
 
   async getDeploymentPolicy(id: string) {
-    const policy = await prisma.deploymentPolicy.findUnique({ where: { id } });
+    const policy = await prisma.deploymentPolicy.findFirst({ where: { OR: [{ id }, { policyId: id }] } });
     if (!policy) throw new NotFoundError('Deployment policy not found');
     return policy;
   }
 
-  async createDeploymentPolicy(data: { name: string; description?: string; type?: string; supportedModule?: string; relatedType?: string }) {
-    const count = await prisma.deploymentPolicy.count();
+  async createDeploymentPolicy(data: { name: string; description?: string; type?: string; supportedModule?: string; relatedType?: string }, userId?: string) {
+    const existing = await prisma.deploymentPolicy.findFirst({ where: { name: { equals: data.name, mode: 'insensitive' } } });
+    if (existing) throw new ConflictError(`Deployment policy with name '${data.name}' already exists`);
+
+    const lastPolicy = await prisma.deploymentPolicy.findFirst({ where: { policyId: { startsWith: 'DPOL-' } }, orderBy: { policyId: 'desc' } });
+    let nextNum = 1;
+    if (lastPolicy) { const m = lastPolicy.policyId.match(/DPOL-(\d+)/); if (m) nextNum = parseInt(m[1], 10) + 1; }
+    const policyId = `DPOL-${String(nextNum).padStart(4, '0')}`;
+
     return prisma.deploymentPolicy.create({
-      data: {
-        policyId: `POL-${String(count + 1).padStart(4, '0')}`,
-        name: data.name,
-        description: data.description,
-        type: data.type || 'INSTANT',
-        supportedModule: data.supportedModule || 'All',
-        relatedType: data.relatedType || 'No Relation',
-      },
+      data: { policyId, name: data.name, description: data.description, type: data.type || 'INSTANT', supportedModule: data.supportedModule || 'All', relatedType: data.relatedType || 'No Relation', createdBy: userId || null },
     });
   }
 
   async updateDeploymentPolicy(id: string, data: { name?: string; description?: string; type?: string; supportedModule?: string; relatedType?: string }) {
-    const policy = await prisma.deploymentPolicy.findUnique({ where: { id } });
+    const policy = await prisma.deploymentPolicy.findFirst({ where: { OR: [{ id }, { policyId: id }] } });
     if (!policy) throw new NotFoundError('Deployment policy not found');
-    return prisma.deploymentPolicy.update({
-      where: { id },
-      data,
-    });
+    if (data.name) {
+      const dup = await prisma.deploymentPolicy.findFirst({ where: { name: { equals: data.name, mode: 'insensitive' }, id: { not: policy.id } } });
+      if (dup) throw new ConflictError(`Deployment policy with name '${data.name}' already exists`);
+    }
+    return prisma.deploymentPolicy.update({ where: { id: policy.id }, data });
   }
 
   async deleteDeploymentPolicy(id: string) {
-    const policy = await prisma.deploymentPolicy.findUnique({ where: { id } });
+    const policy = await prisma.deploymentPolicy.findFirst({ where: { OR: [{ id }, { policyId: id }] } });
     if (!policy) throw new NotFoundError('Deployment policy not found');
-    await prisma.deploymentPolicy.delete({ where: { id } });
+    await prisma.deploymentPolicy.delete({ where: { id: policy.id } });
+  }
+
+  // ============================================
+  // Patch Preferences (R3 — singleton via Setting table)
+  // ============================================
+
+  private readonly defaultPatchPreferences = {
+    enablePatching: true,
+    corridorOnlyApprovedPatch: false,
+    patchSyncForOS: ['Windows'] as string[],
+    patchApprovalPolicy: 'ManuallyApproves' as const,
+    enableThirdPartyPatching: false,
+    patchApprovalScheduleTime: '02:00:00',
+    scheduleTime: '03:00:00',
+    zeroTouchDeploymentScheduleTime: '04:00:00',
+    lastSyncedAt: null as string | null,
+  };
+
+  async getPatchPreferences() {
+    const setting = await prisma.setting.findFirst({ where: { key: 'patch-preferences', category: 'patch-preferences' } });
+    if (!setting) {
+      const created = await prisma.setting.create({
+        data: { key: 'patch-preferences', value: JSON.parse(JSON.stringify(this.defaultPatchPreferences)), category: 'patch-preferences' },
+      });
+      return { id: created.id, ...this.defaultPatchPreferences, createdAt: created.createdAt.toISOString() };
+    }
+    const v = setting.value as Record<string, unknown>;
+    return {
+      id: setting.id,
+      enablePatching: v.enablePatching ?? this.defaultPatchPreferences.enablePatching,
+      corridorOnlyApprovedPatch: v.corridorOnlyApprovedPatch ?? this.defaultPatchPreferences.corridorOnlyApprovedPatch,
+      patchSyncForOS: (v.patchSyncForOS as string[]) ?? this.defaultPatchPreferences.patchSyncForOS,
+      patchApprovalPolicy: (v.patchApprovalPolicy as string) ?? this.defaultPatchPreferences.patchApprovalPolicy,
+      enableThirdPartyPatching: v.enableThirdPartyPatching ?? this.defaultPatchPreferences.enableThirdPartyPatching,
+      patchApprovalScheduleTime: (v.patchApprovalScheduleTime as string) ?? this.defaultPatchPreferences.patchApprovalScheduleTime,
+      scheduleTime: (v.scheduleTime as string) ?? this.defaultPatchPreferences.scheduleTime,
+      zeroTouchDeploymentScheduleTime: (v.zeroTouchDeploymentScheduleTime as string) ?? this.defaultPatchPreferences.zeroTouchDeploymentScheduleTime,
+      lastSyncedAt: (v.lastSyncedAt as string | null) ?? null,
+      createdAt: setting.createdAt.toISOString(),
+    };
+  }
+
+  async updatePatchPreferences(input: Record<string, unknown>) {
+    const setting = await prisma.setting.findFirst({ where: { key: 'patch-preferences', category: 'patch-preferences' } });
+    const currentValue = setting ? (setting.value as Record<string, unknown>) : { ...this.defaultPatchPreferences };
+    const merged = { ...currentValue, ...input };
+    if (setting) {
+      const updated = await prisma.setting.update({ where: { id: setting.id }, data: { value: JSON.parse(JSON.stringify(merged)) } });
+      return { id: updated.id, ...(updated.value as Record<string, unknown>), createdAt: updated.createdAt.toISOString() };
+    }
+    const created = await prisma.setting.create({
+      data: { key: 'patch-preferences', value: JSON.parse(JSON.stringify(merged)), category: 'patch-preferences' },
+    });
+    return { id: created.id, ...(created.value as Record<string, unknown>), createdAt: created.createdAt.toISOString() };
+  }
+
+  async syncPatchNow() {
+    const syncedAt = new Date().toISOString();
+    await this.updatePatchPreferences({ lastSyncedAt: syncedAt });
+    return { message: 'Patch sync triggered', syncedAt };
+  }
+
+  // ============================================
+  // Distribution Servers
+  // ============================================
+
+  async listDistributionServers(params: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }) {
+    const page = params.page || 1;
+    const limit = params.limit || 10;
+    const skip = (page - 1) * limit;
+    const where: Record<string, unknown> = {};
+    if (params.search) {
+      where.OR = [
+        { name: { contains: params.search, mode: 'insensitive' } },
+        { description: { contains: params.search, mode: 'insensitive' } },
+        { location: { contains: params.search, mode: 'insensitive' } },
+        { url: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
+    const orderBy: Record<string, string> = {};
+    if (params.sortBy) { orderBy[params.sortBy] = params.sortOrder || 'asc'; } else { orderBy.createdAt = 'desc'; }
+    const [data, total] = await Promise.all([
+      prisma.distributionServer.findMany({ where, orderBy, skip, take: limit }),
+      prisma.distributionServer.count({ where }),
+    ]);
+    return { data: data.map(s => ({ ...s, createdAt: s.createdAt.toISOString(), updatedAt: s.updatedAt.toISOString() })), meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  }
+
+  async getDistributionServer(id: string) {
+    const server = await prisma.distributionServer.findUnique({ where: { id } });
+    if (!server) throw new NotFoundError('Distribution server not found');
+    return { ...server, createdAt: server.createdAt.toISOString(), updatedAt: server.updatedAt.toISOString() };
+  }
+
+  async createDistributionServer(data: { name: string; description?: string | null; location?: string | null; url: string; version?: string | null; status?: string }, userId?: string) {
+    const existing = await prisma.distributionServer.findFirst({ where: { name: { equals: data.name, mode: 'insensitive' } } });
+    if (existing) throw new ConflictError(`Distribution server with name '${data.name}' already exists`);
+    const server = await prisma.distributionServer.create({ data: { name: data.name, description: data.description || null, location: data.location || null, url: data.url, version: data.version || null, status: data.status || 'Active', createdBy: userId || null } });
+    return { ...server, createdAt: server.createdAt.toISOString(), updatedAt: server.updatedAt.toISOString() };
+  }
+
+  async updateDistributionServer(id: string, data: { name?: string; description?: string | null; location?: string | null; url?: string; version?: string | null; status?: string }) {
+    const server = await prisma.distributionServer.findUnique({ where: { id } });
+    if (!server) throw new NotFoundError('Distribution server not found');
+    if (data.name && data.name.toLowerCase() !== server.name.toLowerCase()) {
+      const existing = await prisma.distributionServer.findFirst({ where: { name: { equals: data.name, mode: 'insensitive' }, id: { not: id } } });
+      if (existing) throw new ConflictError(`Distribution server with name '${data.name}' already exists`);
+    }
+    const updated = await prisma.distributionServer.update({ where: { id }, data });
+    return { ...updated, createdAt: updated.createdAt.toISOString(), updatedAt: updated.updatedAt.toISOString() };
+  }
+
+  async deleteDistributionServer(id: string) {
+    const server = await prisma.distributionServer.findUnique({ where: { id } });
+    if (!server) throw new NotFoundError('Distribution server not found');
+    await prisma.distributionServer.delete({ where: { id } });
   }
 
   // ============================================
@@ -1085,13 +1272,39 @@ export class SettingsService {
       result[key] = setting.value;
     }
 
+
+    // Replace logoUrl with permanent endpoint if logoObjectKey exists
+    if (result.logoObjectKey) {
+      result.logoUrl = '/v1/settings/branding/logo';
+    }
+
     return result;
   }
 
+
+  async getBrandingLogo(): Promise<string | null> {
+    const setting = await prisma.setting.findUnique({
+      where: { key: 'branding.logoObjectKey' },
+    });
+
+    if (!setting?.value) {
+      return null;
+    }
+
+    // Generate fresh presigned URL with 1-hour expiry
+    const objectKey = setting.value as string;
+    return minioStorage.getPresignedUrl(objectKey, { expirySeconds: 3600 });
+  }
+
+
   async updateBranding(
     input: { companyName?: string },
-    logoFile?: { buffer: Buffer; originalname: string; mimetype: string }
+    logoFile?: { buffer: Buffer; originalname: string; mimetype: string },
+    userId?: string,
+    ipAddress?: string
   ): Promise<Record<string, unknown>> {
+    const changedFields: string[] = [];
+
     // Update company name if provided
     if (input.companyName !== undefined) {
       await prisma.setting.upsert({
@@ -1099,6 +1312,7 @@ export class SettingsService {
         update: { value: JSON.parse(JSON.stringify(input.companyName)) },
         create: { key: 'branding.companyName', value: JSON.parse(JSON.stringify(input.companyName)), category: 'branding' },
       });
+      changedFields.push('companyName');
     }
 
     // Upload logo if provided
@@ -1133,6 +1347,22 @@ export class SettingsService {
         update: { value: JSON.parse(JSON.stringify(objectKey)) },
         create: { key: 'branding.logoObjectKey', value: JSON.parse(JSON.stringify(objectKey)), category: 'branding' },
       });
+
+      changedFields.push(`logo file (${logoFile.originalname})`);
+    }
+
+    // R7B: Audit logging for branding mutation
+    if (userId && changedFields.length > 0) {
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'UPDATE',
+          resource: 'branding',
+          resourceId: null,
+          details: `Updated branding: ${changedFields.join(', ')}`,
+          ipAddress: ipAddress || 'unknown',
+        },
+      });
     }
 
     return this.getBranding();
@@ -1164,7 +1394,7 @@ export class SettingsService {
     return result;
   }
 
-  async updateRiskScoreSettings(input: Record<string, unknown>): Promise<Record<string, unknown>> {
+  async updateRiskScoreSettings(input: Record<string, unknown>, userId?: string, ipAddress?: string): Promise<Record<string, unknown>> {
     const updates = Object.entries(input).filter(([, value]) => value !== undefined);
 
     for (const [key, value] of updates) {
@@ -1175,7 +1405,35 @@ export class SettingsService {
       });
     }
 
-    return this.getRiskScoreSettings();
+    // R7B: Audit logging for risk score settings mutation
+    if (userId) {
+      const changedFields = Object.keys(input).join(', ');
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'UPDATE',
+          resource: 'risk-score-settings',
+          resourceId: null,
+          details: `Updated risk score settings: ${changedFields}`,
+          ipAddress: ipAddress || 'unknown',
+        },
+      });
+    }
+
+    const result = await this.getRiskScoreSettings();
+
+    // When applyDefaultSettings=true, return equal weights regardless of stored values
+    if (result.applyDefaultSettings === true) {
+      return {
+        ...result,
+        vulnerabilityScoreWeight: 0.25,
+        vulnerabilitySeverityWeight: 0.25,
+        threatsWeight: 0.25,
+        endpointVisitsWeight: 0.25,
+      };
+    }
+
+    return result;
   }
 
   // ============================================
@@ -1190,7 +1448,7 @@ export class SettingsService {
     const defaults: Record<string, unknown> = {
       connectionType: 'Local',
       remoteSessionIndicator: false,
-      userConsent: true,
+      userConsent: false,
     };
 
     const result = { ...defaults };
@@ -1202,7 +1460,7 @@ export class SettingsService {
     return result;
   }
 
-  async updateRemoteDesktopSettings(input: Record<string, unknown>): Promise<Record<string, unknown>> {
+  async updateRemoteDesktopSettings(input: Record<string, unknown>, userId?: string, ipAddress?: string): Promise<Record<string, unknown>> {
     const updates = Object.entries(input).filter(([, value]) => value !== undefined);
 
     for (const [key, value] of updates) {
@@ -1210,6 +1468,21 @@ export class SettingsService {
         where: { key: `remote-desktop.${key}` },
         update: { value: JSON.parse(JSON.stringify(value)) },
         create: { key: `remote-desktop.${key}`, value: JSON.parse(JSON.stringify(value)), category: 'remote-desktop' },
+      });
+    }
+
+    // R7B: Audit logging for remote desktop settings mutation
+    if (userId) {
+      const changedFields = Object.keys(input).join(', ');
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'UPDATE',
+          resource: 'remote-desktop-settings',
+          resourceId: null,
+          details: `Updated remote desktop settings: ${changedFields}`,
+          ipAddress: ipAddress || 'unknown',
+        },
       });
     }
 
@@ -1241,9 +1514,27 @@ export class SettingsService {
     return logo;
   }
 
+
+  async getVendorLogoImage(id: string): Promise<string | null> {
+    const logo = await prisma.vendorLogo.findUnique({ where: { id } });
+    if (!logo) {
+      throw new NotFoundError('Vendor logo not found');
+    }
+
+    if (!logo.objectKey) {
+      return null;
+    }
+
+    // Generate fresh presigned URL with 1-hour expiry
+    return minioStorage.getPresignedUrl(logo.objectKey, { expirySeconds: 3600 });
+  }
+
+
   async createVendorLogo(
     data: { name: string; type: string },
-    logoFile: { buffer: Buffer; originalname: string; mimetype: string }
+    logoFile: { buffer: Buffer; originalname: string; mimetype: string },
+    userId?: string,
+    ipAddress?: string
   ) {
     const objectKey = `vendor-logos/${data.type}/${Date.now()}-${logoFile.originalname}`;
 
@@ -1257,7 +1548,7 @@ export class SettingsService {
     // Get presigned URL (7 days expiry)
     const logoUrl = await minioStorage.getPresignedUrl(objectKey, { expirySeconds: 604800 });
 
-    return prisma.vendorLogo.create({
+    const logo = await prisma.vendorLogo.create({
       data: {
         name: data.name,
         type: data.type,
@@ -1266,19 +1557,45 @@ export class SettingsService {
         objectKey,
       },
     });
+
+    // R7B: Audit logging for vendor logo creation
+    if (userId) {
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'CREATE',
+          resource: 'vendor-logo',
+          resourceId: logo.id,
+          details: `Created vendor logo: ${data.name} (${logoFile.originalname})`,
+          ipAddress: ipAddress || 'unknown',
+        },
+      });
+    }
+
+    return logo;
   }
 
   async updateVendorLogo(
     id: string,
     data: { name?: string; type?: string },
-    logoFile?: { buffer: Buffer; originalname: string; mimetype: string }
+    logoFile?: { buffer: Buffer; originalname: string; mimetype: string },
+    userId?: string,
+    ipAddress?: string
   ) {
     const existing = await prisma.vendorLogo.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Vendor logo not found');
 
     const updateData: Record<string, unknown> = {};
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.type !== undefined) updateData.type = data.type;
+    const changedFields: string[] = [];
+
+    if (data.name !== undefined) {
+      updateData.name = data.name;
+      changedFields.push('name');
+    }
+    if (data.type !== undefined) {
+      updateData.type = data.type;
+      changedFields.push('type');
+    }
 
     // If new logo file provided, upload it
     if (logoFile) {
@@ -1305,15 +1622,32 @@ export class SettingsService {
       updateData.logoUrl = logoUrl;
       updateData.fileName = logoFile.originalname;
       updateData.objectKey = objectKey;
+      changedFields.push(`logo file (${logoFile.originalname})`);
     }
 
-    return prisma.vendorLogo.update({
+    const logo = await prisma.vendorLogo.update({
       where: { id },
       data: updateData,
     });
+
+    // R7B: Audit logging for vendor logo update
+    if (userId && changedFields.length > 0) {
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'UPDATE',
+          resource: 'vendor-logo',
+          resourceId: id,
+          details: `Updated vendor logo: ${existing.name} — ${changedFields.join(', ')}`,
+          ipAddress: ipAddress || 'unknown',
+        },
+      });
+    }
+
+    return logo;
   }
 
-  async deleteVendorLogo(id: string) {
+  async deleteVendorLogo(id: string, userId?: string, ipAddress?: string) {
     const logo = await prisma.vendorLogo.findUnique({ where: { id } });
     if (!logo) throw new NotFoundError('Vendor logo not found');
 
@@ -1327,6 +1661,20 @@ export class SettingsService {
     }
 
     await prisma.vendorLogo.delete({ where: { id } });
+
+    // R7B: Audit logging for vendor logo deletion
+    if (userId) {
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'DELETE',
+          resource: 'vendor-logo',
+          resourceId: id,
+          details: `Deleted vendor logo: ${logo.name}`,
+          ipAddress: ipAddress || 'unknown',
+        },
+      });
+    }
   }
   // ============================================
   // Patch Management Settings (singleton)
@@ -1366,6 +1714,708 @@ export class SettingsService {
 
     return this.getPatchManagementSettings();
   }
+
+  async getPasswordPolicy(): Promise<Record<string, unknown>> {
+    const setting = await prisma.setting.findUnique({
+      where: { key: 'passwordPolicy' },
+    });
+
+    const defaults = {
+      minCharacterCount: 8,
+      minNumbers: true,
+      minLowerCaseCharacters: true,
+      minUpperCaseCharacters: true,
+      minSpecialCharacters: true,
+    };
+
+    if (!setting || !setting.value) {
+      return defaults;
+    }
+
+    return { ...defaults, ...(setting.value as Record<string, unknown>) };
+  }
+
+  async updatePasswordPolicy(input: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const policy = await this.getPasswordPolicy();
+    const updated = { ...policy, ...input };
+
+    await prisma.setting.upsert({
+      where: { key: 'passwordPolicy' },
+      update: { value: updated as unknown as Record<string, string> },
+      create: { key: 'passwordPolicy', value: updated as unknown as Record<string, string>, category: 'security' },
+    });
+
+    return this.getPasswordPolicy();
+  }
+
+  // ============================================
+  // LDAP Group Mappings
+  // ============================================
+
+  async listGroupMappings(ldapConfigId: string) {
+    const config = await prisma.ldapConfig.findUnique({ where: { id: ldapConfigId } });
+    if (!config) throw new NotFoundError('LDAP configuration not found');
+
+    const mappings = await prisma.ldapGroupMapping.findMany({
+      where: { ldapConfigId },
+      include: { role: { select: { id: true, name: true } } },
+      orderBy: { priority: 'desc' },
+    });
+
+    return mappings.map((m) => ({
+      id: m.id,
+      ldapGroupDn: m.ldapGroupDn,
+      roleId: m.roleId,
+      roleName: m.role.name,
+      priority: m.priority,
+      createdAt: m.createdAt,
+      updatedAt: m.updatedAt,
+    }));
+  }
+
+  async createGroupMapping(ldapConfigId: string, input: { ldapGroupDn: string; roleId: string; priority?: number }) {
+    const config = await prisma.ldapConfig.findUnique({ where: { id: ldapConfigId } });
+    if (!config) throw new NotFoundError('LDAP configuration not found');
+
+    const role = await prisma.role.findUnique({ where: { id: input.roleId } });
+    if (!role) throw new BadRequestError('Role not found');
+
+    const existing = await prisma.ldapGroupMapping.findUnique({
+      where: { ldapConfigId_ldapGroupDn: { ldapConfigId, ldapGroupDn: input.ldapGroupDn } },
+    });
+    if (existing) {
+      const err = new BadRequestError('Group mapping already exists for this LDAP group');
+      (err as unknown as { statusCode: number }).statusCode = 409;
+      throw err;
+    }
+
+    const mapping = await prisma.ldapGroupMapping.create({
+      data: {
+        ldapConfigId,
+        ldapGroupDn: input.ldapGroupDn,
+        roleId: input.roleId,
+        priority: input.priority ?? 0,
+      },
+      include: { role: { select: { id: true, name: true } } },
+    });
+
+    return {
+      id: mapping.id,
+      ldapGroupDn: mapping.ldapGroupDn,
+      roleId: mapping.roleId,
+      roleName: mapping.role.name,
+      priority: mapping.priority,
+      createdAt: mapping.createdAt,
+    };
+  }
+
+  async updateGroupMapping(mappingId: string, input: { ldapGroupDn?: string; roleId?: string; priority?: number }) {
+    const existing = await prisma.ldapGroupMapping.findUnique({ where: { id: mappingId } });
+    if (!existing) throw new NotFoundError('Group mapping not found');
+
+    if (input.roleId) {
+      const role = await prisma.role.findUnique({ where: { id: input.roleId } });
+      if (!role) throw new BadRequestError('Role not found');
+    }
+
+    const mapping = await prisma.ldapGroupMapping.update({
+      where: { id: mappingId },
+      data: {
+        ...(input.ldapGroupDn && { ldapGroupDn: input.ldapGroupDn }),
+        ...(input.roleId && { roleId: input.roleId }),
+        ...(input.priority !== undefined && { priority: input.priority }),
+      },
+      include: { role: { select: { id: true, name: true } } },
+    });
+
+    return {
+      id: mapping.id,
+      ldapGroupDn: mapping.ldapGroupDn,
+      roleId: mapping.roleId,
+      roleName: mapping.role.name,
+      priority: mapping.priority,
+      createdAt: mapping.createdAt,
+      updatedAt: mapping.updatedAt,
+    };
+  }
+
+  async deleteGroupMapping(mappingId: string) {
+    const existing = await prisma.ldapGroupMapping.findUnique({ where: { id: mappingId } });
+    if (!existing) throw new NotFoundError('Group mapping not found');
+
+    await prisma.ldapGroupMapping.delete({ where: { id: mappingId } });
+  }
+
+  async discoverGroups(ldapConfigId: string) {
+    const config = await prisma.ldapConfig.findUnique({ where: { id: ldapConfigId } });
+    if (!config) throw new NotFoundError('LDAP configuration not found');
+
+    const { searchGroups } = await import('@shared/services/ldap.service');
+
+    const groups = await searchGroups({
+      host: config.host,
+      port: config.port,
+      baseDn: config.baseDn,
+      bindDn: decrypt(config.bindDnEnc),
+      bindPassword: decrypt(config.bindPasswordEnc),
+      groupSearchBase: config.groupSearchBase || undefined,
+      groupFilter: config.groupFilter || undefined,
+      groupMemberAttribute: config.groupMemberAttribute,
+    });
+
+    return groups;
+  }
+
+  // ============================================
+  // LDAP Sync
+  // ============================================
+
+  async triggerLdapSync(ldapConfigId: string) {
+    const config = await prisma.ldapConfig.findUnique({ where: { id: ldapConfigId } });
+    if (!config) throw new NotFoundError('LDAP configuration not found');
+
+    // Check for running sync
+    const running = await prisma.ldapSyncJob.findFirst({
+      where: { ldapConfigId, status: 'RUNNING' },
+    });
+    if (running) {
+      const err = new BadRequestError('A sync is already in progress for this LDAP configuration');
+      (err as unknown as { statusCode: number }).statusCode = 409;
+      throw err;
+    }
+
+    // Create sync job
+    const job = await prisma.ldapSyncJob.create({
+      data: {
+        ldapConfigId,
+        status: 'RUNNING',
+        triggerType: 'MANUAL',
+        startedAt: new Date(),
+      },
+    });
+
+    // Run sync asynchronously
+    this.executeLdapSync(config, job.id).catch((err) => {
+      logger.error({ err, jobId: job.id }, 'LDAP sync failed');
+    });
+
+    return { id: job.id, status: 'RUNNING', triggerType: 'MANUAL' };
+  }
+
+  private async executeLdapSync(config: { id: string; host: string; port: number; baseDn: string; bindDnEnc: string; bindPasswordEnc: string; userSearchBase: string | null; userFilter: string | null; groupSearchBase: string | null; groupFilter: string | null; groupMemberAttribute: string }, jobId: string) {
+    const syncLog: Array<{ action: string; email: string; detail: string }> = [];
+    const errorLog: Array<{ email?: string; error: string }> = [];
+    let usersFound = 0, usersCreated = 0, usersUpdated = 0, usersDeactivated = 0, usersReactivated = 0, errors = 0;
+
+    try {
+      const { searchUsers, searchGroups } = await import('@shared/services/ldap.service');
+
+      const decryptedConfig = {
+        host: config.host,
+        port: config.port,
+        baseDn: config.baseDn,
+        bindDn: decrypt(config.bindDnEnc),
+        bindPassword: decrypt(config.bindPasswordEnc),
+        userSearchBase: config.userSearchBase || undefined,
+        userFilter: config.userFilter || '(objectClass=inetOrgPerson)',
+      };
+
+      // Search for all LDAP users
+      const { users: ldapUsers } = await searchUsers(
+        decryptedConfig,
+        decryptedConfig.userFilter,
+        1000
+      );
+
+      // Search for all groups to determine membership
+      const groups = await searchGroups({
+        ...decryptedConfig,
+        groupSearchBase: config.groupSearchBase || undefined,
+        groupFilter: config.groupFilter || '(objectClass=groupOfNames)',
+        groupMemberAttribute: config.groupMemberAttribute || 'member',
+      });
+
+      usersFound = ldapUsers.length;
+      const ldapDnSet = new Set<string>();
+
+      // Get group mappings for role resolution
+      const mappings = await prisma.ldapGroupMapping.findMany({
+        where: { ldapConfigId: config.id },
+        include: { role: true },
+        orderBy: { priority: 'desc' },
+      });
+
+      const defaultRole = await prisma.role.findFirst({
+        where: { name: 'user', isSystem: true },
+      });
+
+      for (const ldapUser of ldapUsers) {
+        const email = ldapUser.mail ? String(ldapUser.mail).toLowerCase() : null;
+        const dn = String(ldapUser.dn);
+        const name = String(ldapUser.cn || '');
+
+        if (!email) {
+          syncLog.push({ action: 'skipped', email: dn, detail: 'No email attribute' });
+          continue;
+        }
+
+        ldapDnSet.add(dn.toLowerCase());
+
+        // Determine user's group membership from groups
+        const userGroups: string[] = [];
+        for (const group of groups) {
+          const members = group.members || [];
+          if (members.some((m: string) => m.toLowerCase() === dn.toLowerCase())) {
+            userGroups.push(group.dn);
+          }
+        }
+
+        // Resolve role
+        let roleId = defaultRole!.id;
+        for (const mapping of mappings) {
+          if (userGroups.some(g => g.toLowerCase() === mapping.ldapGroupDn.toLowerCase())) {
+            roleId = mapping.roleId;
+            break;
+          }
+        }
+
+        try {
+          const existingUser = await prisma.user.findUnique({ where: { email } });
+
+          if (existingUser) {
+            if (existingUser.authSource === 'LOCAL') {
+              syncLog.push({ action: 'skipped', email, detail: 'Local user — not overwritten' });
+              continue;
+            }
+            if (existingUser.ldapConfigId && existingUser.ldapConfigId !== config.id) {
+              syncLog.push({ action: 'skipped', email, detail: 'Belongs to different LDAP config' });
+              continue;
+            }
+
+            // Update existing LDAP user
+            const wasInactive = !existingUser.isActive;
+            await prisma.user.update({
+              where: { id: existingUser.id },
+              data: {
+                name,
+                ldapDn: dn,
+                ldapConfigId: config.id,
+                roleId,
+                isActive: true,
+                authSource: 'LDAP',
+              },
+            });
+
+            if (wasInactive) {
+              usersReactivated++;
+              syncLog.push({ action: 'reactivated', email, detail: 'Found in LDAP directory again' });
+            } else {
+              usersUpdated++;
+              syncLog.push({ action: 'updated', email, detail: `Role: ${roleId}` });
+            }
+          } else {
+            // Create new user
+            await prisma.user.create({
+              data: {
+                email,
+                name,
+                passwordHash: '',
+                authSource: 'LDAP',
+                ldapDn: dn,
+                ldapConfigId: config.id,
+                roleId,
+                isActive: true,
+              },
+            });
+            usersCreated++;
+            syncLog.push({ action: 'created', email, detail: `Role: ${roleId}` });
+          }
+        } catch (err) {
+          errors++;
+          errorLog.push({ email, error: err instanceof Error ? err.message : String(err) });
+        }
+      }
+
+      // Detect removed users (deactivate)
+      const existingLdapUsers = await prisma.user.findMany({
+        where: { authSource: 'LDAP', ldapConfigId: config.id, isActive: true },
+      });
+
+      for (const localUser of existingLdapUsers) {
+        if (localUser.ldapDn && !ldapDnSet.has(localUser.ldapDn.toLowerCase())) {
+          await prisma.user.update({
+            where: { id: localUser.id },
+            data: { isActive: false },
+          });
+          usersDeactivated++;
+          syncLog.push({ action: 'deactivated', email: localUser.email, detail: 'No longer in LDAP directory' });
+        }
+      }
+
+      // Update job as completed
+      await prisma.ldapSyncJob.update({
+        where: { id: jobId },
+        data: {
+          status: errors > 0 ? 'COMPLETED_WITH_ERRORS' : 'COMPLETED',
+          usersFound,
+          usersCreated,
+          usersUpdated,
+          usersDeactivated,
+          usersReactivated,
+          errors,
+          syncLog: JSON.parse(JSON.stringify(syncLog)),
+          errorLog: errorLog.length > 0 ? JSON.parse(JSON.stringify(errorLog)) : undefined,
+          completedAt: new Date(),
+        },
+      });
+
+      // Update LdapConfig lastSync fields
+      await prisma.ldapConfig.update({
+        where: { id: config.id },
+        data: {
+          lastSyncAt: new Date(),
+          lastSyncStatus: errors > 0 ? 'partial' : 'success',
+        },
+      });
+
+    } catch (err) {
+      // Sync failed completely
+      await prisma.ldapSyncJob.update({
+        where: { id: jobId },
+        data: {
+          status: 'FAILED',
+          errors: 1,
+          errorLog: JSON.parse(JSON.stringify([{ error: err instanceof Error ? err.message : String(err) }])),
+          completedAt: new Date(),
+        },
+      });
+
+      await prisma.ldapConfig.update({
+        where: { id: config.id },
+        data: {
+          lastSyncAt: new Date(),
+          lastSyncStatus: 'failed',
+        },
+      });
+    }
+  }
+
+  async listSyncJobs(ldapConfigId: string) {
+    const config = await prisma.ldapConfig.findUnique({ where: { id: ldapConfigId } });
+    if (!config) throw new NotFoundError('LDAP configuration not found');
+
+    return prisma.ldapSyncJob.findMany({
+      where: { ldapConfigId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        status: true,
+        triggerType: true,
+        usersFound: true,
+        usersCreated: true,
+        usersUpdated: true,
+        usersDeactivated: true,
+        usersReactivated: true,
+        errors: true,
+        startedAt: true,
+        completedAt: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async getSyncJob(jobId: string) {
+    const job = await prisma.ldapSyncJob.findUnique({ where: { id: jobId } });
+    if (!job) throw new NotFoundError('Sync job not found');
+    return job;
+  }
+
+  // ============================================
+  // Enroll Secrets
+  // ============================================
+
+  async createEnrollSecret(data: { name: string; organizationId?: string; departmentId?: string; expiresAt?: string | null; maxUses?: number | null }, userId: string) {
+    const secret = crypto.randomBytes(32).toString('hex');
+    const record = await prisma.enrollSecret.create({
+      data: {
+        name: data.name, secret,
+        organizationId: data.organizationId || null,
+        departmentId: data.departmentId || null,
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+        maxUses: data.maxUses ?? null, createdBy: userId,
+      },
+      include: { organization: true, department: true },
+    });
+    return {
+      id: record.id, name: record.name, secret: record.secret,
+      organizationId: record.organizationId, organization: record.organization?.name || null,
+      departmentId: record.departmentId, department: record.department?.name || null,
+      expiresAt: record.expiresAt?.toISOString() || null,
+      maxUses: record.maxUses, usedCount: record.usedCount, isActive: record.isActive,
+      createdBy: record.createdBy,
+      createdAt: record.createdAt.toISOString(), updatedAt: record.updatedAt.toISOString(),
+    };
+  }
+
+  async listEnrollSecrets() {
+    const records = await prisma.enrollSecret.findMany({
+      include: { organization: true, department: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    return records.map(r => ({
+      id: r.id, name: r.name, secret: r.secret.substring(0, 8) + '...',
+      organizationId: r.organizationId, organization: r.organization?.name || null,
+      departmentId: r.departmentId, department: r.department?.name || null,
+      expiresAt: r.expiresAt?.toISOString() || null,
+      maxUses: r.maxUses, usedCount: r.usedCount, isActive: r.isActive,
+      createdBy: r.createdBy,
+      createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString(),
+    }));
+  }
+
+  async getEnrollSecret(id: string) {
+    const r = await prisma.enrollSecret.findUnique({ where: { id }, include: { organization: true, department: true } });
+    if (!r) throw new NotFoundError('Enrollment secret not found');
+    return {
+      id: r.id, name: r.name, secret: r.secret.substring(0, 8) + '...',
+      organizationId: r.organizationId, organization: r.organization?.name || null,
+      departmentId: r.departmentId, department: r.department?.name || null,
+      expiresAt: r.expiresAt?.toISOString() || null,
+      maxUses: r.maxUses, usedCount: r.usedCount, isActive: r.isActive,
+      createdBy: r.createdBy,
+      createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString(),
+    };
+  }
+
+  async updateEnrollSecret(id: string, data: Record<string, unknown>) {
+    const existing = await prisma.enrollSecret.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Enrollment secret not found');
+    const updateData: Record<string, unknown> = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.organizationId !== undefined) updateData.organizationId = data.organizationId;
+    if (data.departmentId !== undefined) updateData.departmentId = data.departmentId;
+    if (data.expiresAt !== undefined) updateData.expiresAt = data.expiresAt ? new Date(data.expiresAt as string) : null;
+    if (data.maxUses !== undefined) updateData.maxUses = data.maxUses;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    const r = await prisma.enrollSecret.update({ where: { id }, data: updateData, include: { organization: true, department: true } });
+    return {
+      id: r.id, name: r.name, secret: r.secret.substring(0, 8) + '...',
+      organizationId: r.organizationId, organization: r.organization?.name || null,
+      departmentId: r.departmentId, department: r.department?.name || null,
+      expiresAt: r.expiresAt?.toISOString() || null,
+      maxUses: r.maxUses, usedCount: r.usedCount, isActive: r.isActive,
+      createdBy: r.createdBy,
+      createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString(),
+    };
+  }
+
+  async deleteEnrollSecret(id: string) {
+    const existing = await prisma.enrollSecret.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Enrollment secret not found');
+    await prisma.enrollSecret.delete({ where: { id } });
+    return { message: 'Enrollment secret deleted' };
+  }
+
+  async validateEnrollSecret(secretValue: string | undefined): Promise<{ id: string; organizationId: string | null; departmentId: string | null } | null> {
+    const activeCount = await prisma.enrollSecret.count({ where: { isActive: true } });
+    console.log(`[DEBUG validateEnrollSecret] activeCount=${activeCount}, secretValue=${secretValue ? 'provided' : 'undefined'}`);
+
+    if (activeCount === 0) {
+      if (!secretValue) {
+        console.log('[DEBUG validateEnrollSecret] No secrets configured, returning null (open registration)');
+        return null;
+      }
+      console.log('[DEBUG validateEnrollSecret] Secret provided but no active secrets, returning null');
+      return null;
+    }
+    if (!secretValue) {
+      console.log('[DEBUG validateEnrollSecret] No secret provided but secrets exist, throwing error');
+      throw new UnauthorizedError('Enrollment secret required');
+    }
+    const secret = await prisma.enrollSecret.findUnique({ where: { secret: secretValue } });
+    if (!secret) throw new UnauthorizedError('Invalid enrollment secret');
+    if (!secret.isActive) throw new UnauthorizedError('Enrollment secret is inactive');
+    if (secret.expiresAt && secret.expiresAt < new Date()) throw new UnauthorizedError('Enrollment secret has expired');
+    if (secret.maxUses !== null && secret.usedCount >= secret.maxUses) throw new UnauthorizedError('Enrollment secret usage limit reached');
+    console.log(`[DEBUG validateEnrollSecret] Returning secret id=${secret.id}`);
+    return { id: secret.id, organizationId: secret.organizationId, departmentId: secret.departmentId };
+  }
+
+  async incrementEnrollSecretUsage(secretId: string): Promise<void> {
+    await prisma.enrollSecret.update({ where: { id: secretId }, data: { usedCount: { increment: 1 } } });
+  }
+
+  // ============================================
+  // Agent Approval Settings
+  // ============================================
+
+  async getAgentApprovalSettings() {
+    const setting = await prisma.setting.findUnique({ where: { key: 'agent-approval-settings' } });
+    if (!setting) return { approvalType: 'MANUAL', autoApprovalBasedOn: 'ALL', criteria: {} };
+    const val = setting.value as Record<string, unknown>;
+    return { approvalType: (val.approvalType as string) || 'MANUAL', autoApprovalBasedOn: (val.autoApprovalBasedOn as string) || 'ALL', criteria: val.criteria || {} };
+  }
+
+  async updateAgentApprovalSettings(data: Record<string, unknown>) {
+    const current = await this.getAgentApprovalSettings();
+    const merged = { ...current, ...data };
+    await prisma.setting.upsert({
+      where: { key: 'agent-approval-settings' },
+      update: { value: JSON.parse(JSON.stringify(merged)) },
+      create: { key: 'agent-approval-settings', value: JSON.parse(JSON.stringify(merged)), category: 'agent' },
+    });
+    return merged;
+  }
+
+  // ============================================
+  // RedHat Nominations
+  // ============================================
+
+  async createRedHatNomination(data: { agentId: string; name: string; scheduledTime?: string | null; endpoint?: number }, userId: string) {
+    const agent = await prisma.agent.findUnique({ where: { id: data.agentId } });
+    if (!agent) throw new NotFoundError('Agent not found');
+    const osVersion = (agent.osVersion || '').toLowerCase();
+    if (!osVersion.includes('red hat') && !osVersion.includes('centos') && !osVersion.includes('rhel')) throw new BadRequestError('Agent OS must be Red Hat Enterprise Linux or CentOS');
+    const existing = await prisma.redHatNomination.findUnique({ where: { agentId: data.agentId } });
+    if (existing) throw new ConflictError('Agent already nominated');
+    const nomination = await prisma.redHatNomination.create({
+      data: { agentId: data.agentId, name: data.name, scheduledTime: data.scheduledTime || null, endpoint: data.endpoint || 0, updatedBy: userId },
+      include: { agent: { select: { id: true, hostname: true, os: true, osVersion: true, status: true, ipAddress: true } } },
+    });
+    return this.transformNomination(nomination);
+  }
+
+  async listRedHatNominations() {
+    const nominations = await prisma.redHatNomination.findMany({
+      include: { agent: { select: { id: true, hostname: true, os: true, osVersion: true, status: true, ipAddress: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return nominations.map(n => this.transformNomination(n));
+  }
+
+  async getRedHatNomination(id: string) {
+    const nomination = await prisma.redHatNomination.findUnique({
+      where: { id },
+      include: { agent: { select: { id: true, hostname: true, os: true, osVersion: true, status: true, ipAddress: true } } },
+    });
+    if (!nomination) throw new NotFoundError('Red Hat nomination not found');
+    return this.transformNomination(nomination);
+  }
+
+  async updateRedHatNomination(id: string, data: Record<string, unknown>, userId: string) {
+    const existing = await prisma.redHatNomination.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Red Hat nomination not found');
+    const updateData: Record<string, unknown> = { updatedBy: userId };
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.scheduledTime !== undefined) updateData.scheduledTime = data.scheduledTime;
+    if (data.endpoint !== undefined) updateData.endpoint = data.endpoint;
+    const nomination = await prisma.redHatNomination.update({
+      where: { id }, data: updateData,
+      include: { agent: { select: { id: true, hostname: true, os: true, osVersion: true, status: true, ipAddress: true } } },
+    });
+    return this.transformNomination(nomination);
+  }
+
+  async deleteRedHatNomination(id: string) {
+    const existing = await prisma.redHatNomination.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Red Hat nomination not found');
+    await prisma.redHatNomination.delete({ where: { id } });
+    return { message: 'Red Hat nomination deleted' };
+  }
+
+  private transformNomination(n: { id: string; agentId: string; agent: { id: string; hostname: string | null; os: string | null; osVersion: string | null; status: string; ipAddress: string | null } | null; name: string; status: string; endpoint: number; scheduledTime: string | null; lastSyncTime: Date | null; updatedBy: string | null; createdAt: Date; updatedAt: Date }) {
+    return { id: n.id, agentId: n.agentId, agent: n.agent, name: n.name, status: n.status, endpoint: n.endpoint, scheduledTime: n.scheduledTime, lastSyncTime: n.lastSyncTime?.toISOString() || null, updatedBy: n.updatedBy, createdAt: n.createdAt.toISOString(), updatedAt: n.updatedAt.toISOString() };
+  }
+
 }
 
 export const settingsService = new SettingsService();
+
+// ============================================
+// Standalone Consumer Functions (R5 + R6)
+// ============================================
+
+export async function getRemoteDesktopSettings(): Promise<{
+  connectionType: string;
+  remoteSessionIndicator: boolean;
+  userConsent: boolean;
+}> {
+  const result = await settingsService.getRemoteDesktopSettings();
+  return {
+    connectionType: (result.connectionType as string) || 'Local',
+    remoteSessionIndicator: (result.remoteSessionIndicator as boolean) ?? false,
+    userConsent: (result.userConsent as boolean) ?? false,
+  };
+}
+
+export async function getRiskScoreWeights(): Promise<{
+  applyDefaultSettings: boolean;
+  vulnerabilityScoreWeight: number;
+  vulnerabilitySeverityWeight: number;
+  threatsWeight: number;
+  endpointVisitsWeight: number;
+}> {
+  const result = await settingsService.getRiskScoreSettings();
+  const applyDefault = (result.applyDefaultSettings as boolean) ?? true;
+  if (applyDefault) {
+    return {
+      applyDefaultSettings: true,
+      vulnerabilityScoreWeight: 0.25,
+      vulnerabilitySeverityWeight: 0.25,
+      threatsWeight: 0.25,
+      endpointVisitsWeight: 0.25,
+    };
+  }
+  return {
+    applyDefaultSettings: false,
+    vulnerabilityScoreWeight: (result.vulnerabilityScoreWeight as number) ?? 0.25,
+    vulnerabilitySeverityWeight: (result.vulnerabilitySeverityWeight as number) ?? 0.25,
+    threatsWeight: (result.threatsWeight as number) ?? 0.25,
+    endpointVisitsWeight: (result.endpointVisitsWeight as number) ?? 0.25,
+  };
+}
+
+const SEVERITY_SCORES: Record<string, number> = {
+  CRITICAL: 1.0, HIGH: 0.75, MEDIUM: 0.5, LOW: 0.25,
+};
+
+export async function computeAssetRiskScores(): Promise<void> {
+  const weights = await getRiskScoreWeights();
+  const assets = await prisma.asset.findMany({
+    where: { vulnerabilities: { some: { status: 'Open' } } },
+    select: {
+      id: true,
+      vulnerabilities: {
+        where: { status: 'Open' },
+        select: {
+          vulnerability: {
+            select: { epss: true, cvss3BaseScore: true, severity: true, exploitable: true },
+          },
+        },
+      },
+    },
+  });
+  for (const asset of assets) {
+    const vulns = asset.vulnerabilities.map((av) => av.vulnerability);
+    if (vulns.length === 0) continue;
+    const scores = vulns.map((v) => {
+      if (v.epss != null) return v.epss / 100;
+      if (v.cvss3BaseScore != null) return v.cvss3BaseScore / 10;
+      return 0;
+    });
+    const vulnScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const severityScore = Math.max(...vulns.map((v) => SEVERITY_SCORES[v.severity.toUpperCase()] ?? 0));
+    const threatScore = vulns.some((v) => v.exploitable) ? 1.0 : 0.0;
+    const endpointVisitsScore = 0.5;
+    const riskScore =
+      vulnScore * weights.vulnerabilityScoreWeight +
+      severityScore * weights.vulnerabilitySeverityWeight +
+      threatScore * weights.threatsWeight +
+      endpointVisitsScore * weights.endpointVisitsWeight;
+    await prisma.asset.update({
+      where: { id: asset.id },
+      data: { riskScore: Math.round(riskScore * 1000) / 1000 },
+    });
+  }
+}

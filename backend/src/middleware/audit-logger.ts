@@ -15,13 +15,25 @@ const SENSITIVE_FIELDS = new Set([
   'accessToken',
   'secret',
   'authorization',
+  'apiKey',
+  'apiSecret',
+  'smtpPassword',
+  'bindPassword',
+  'privateKey',
+  'clientSecret',
+  'webhookSecret',
 ]);
+
+const LICENSE_FIELDS = new Set(['licenseKey', 'licenseCode', 'activationKey']);
 
 function redactObject(obj: Record<string, unknown>): Record<string, unknown> {
   const redacted: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     if (SENSITIVE_FIELDS.has(key)) {
       redacted[key] = '[REDACTED]';
+    } else if (LICENSE_FIELDS.has(key) && typeof value === 'string') {
+      // Show last 4 chars only for license keys
+      redacted[key] = value.length > 4 ? '****-****-' + value.slice(-4) : '[REDACTED]';
     } else if (value && typeof value === 'object' && !Array.isArray(value)) {
       redacted[key] = redactObject(value as Record<string, unknown>);
     } else {
