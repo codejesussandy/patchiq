@@ -48,6 +48,15 @@ module.exports = {
     },
     {
       ...sharedConfig,
+      displayName: 'unit-inline',
+      testMatch: [
+        '<rootDir>/src/shared/**/__tests__/*.test.ts',
+        '<rootDir>/src/modules/**/__tests__/*.test.ts',
+      ],
+      testTimeout: 30000,
+    },
+    {
+      ...sharedConfig,
       displayName: 'integration',
       testMatch: ['<rootDir>/tests/integration/**/*.test.ts'],
       setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],

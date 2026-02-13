@@ -1702,8 +1702,8 @@ export async function autoCorrelateCves(patchId: string): Promise<string[]> {
   if (patch.vendor && patch.product) {
     const vulnSoftware = await prisma.vulnerabilitySoftware.findMany({
       where: {
-        cpeVendor: { equals: patch.vendor.toLowerCase(), mode: 'insensitive' },
-        cpeProduct: { equals: patch.product.toLowerCase(), mode: 'insensitive' },
+        cpeVendor: patch.vendor,
+        cpeProduct: patch.product,
       },
       select: { vulnerability: { select: { cveId: true } } },
       take: 100,
