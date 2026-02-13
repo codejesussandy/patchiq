@@ -133,6 +133,13 @@ export async function createPatch(data: CreatePatchInput) {
   // Link patch to vulnerabilities via CVE numbers (outside transaction — uses bulk operations)
   await updateVulnerabilityPatchStatus(patch.id, patch.cveNumbers);
 
+  // Direction B: Generate recommendations for existing vulnerable assets
+  if (patch.cveNumbers && patch.cveNumbers.length > 0) {
+    generateRecommendationsForPatchCves(patch.id, patch.cveNumbers).catch((err) => {
+      logger.error({ err, patchId: patch.id }, 'Direction B recommendation generation failed');
+    });
+  }
+
   // Fire-and-forget operations outside the transaction
   if (!patch.cveNumbers || patch.cveNumbers.length === 0) {
     autoCorrelateCves(patch.id).catch((err) => {
@@ -1695,8 +1702,8 @@ export async function autoCorrelateCves(patchId: string): Promise<string[]> {
   if (patch.vendor && patch.product) {
     const vulnSoftware = await prisma.vulnerabilitySoftware.findMany({
       where: {
-        cpeVendor: { equals: patch.vendor.toLowerCase(), mode: 'insensitive' },
-        cpeProduct: { equals: patch.product.toLowerCase(), mode: 'insensitive' },
+        cpeVendor: patch.vendor,
+        cpeProduct: patch.product,
       },
       select: { vulnerability: { select: { cveId: true } } },
       take: 100,
@@ -1777,7 +1784,111 @@ export async function autoCorrelateCves(patchId: string): Promise<string[]> {
     data: { patchAvailable: true },
   });
 
+  // Direction B: Generate recommendations for existing vulnerable assets
+  generateRecommendationsForPatchCves(patchId, cveArray).catch((err) => {
+    logger.error({ err, patchId }, 'Direction B recommendation generation after auto-correlate failed');
+  });
+
   return cveArray;
+}
+
+/**
+ * Direction B: Generate AssetPatchRecommendations for all assets that have
+ * open vulnerabilities matching the given CVE IDs.
+ *
+ * Called after patch creation or auto-correlation to ensure existing
+ * vulnerable assets get recommendations for the new patch.
+ */
+export async function generateRecommendationsForPatchCves(
+  patchId: string,
+  cveNumbers: string[],
+): Promise<number> {
+  if (!cveNumbers || cveNumbers.length === 0) return 0;
+
+  // Find all vulnerability IDs for these CVEs
+  const vulns = await prisma.vulnerability.findMany({
+    where: { cveId: { in: cveNumbers } },
+    select: { id: true, cveId: true, severity: true, cvss3BaseScore: true, epss: true },
+  });
+
+  if (vulns.length === 0) return 0;
+
+  const vulnIds = vulns.map(v => v.id);
+
+  // Find all open AssetVulnerability records for these vulnerabilities
+  const assetVulns = await prisma.assetVulnerability.findMany({
+    where: {
+      vulnerabilityId: { in: vulnIds },
+      status: 'Open',
+    },
+    select: {
+      assetId: true,
+      vulnerabilityId: true,
+    },
+  });
+
+  if (assetVulns.length === 0) return 0;
+
+  // Get the patch details for the recommendation
+  const patch = await prisma.patch.findUnique({
+    where: { id: patchId },
+    select: { id: true, software: true, title: true, supersededBy: true },
+  });
+
+  if (!patch || (patch.supersededBy && patch.supersededBy.length > 0)) {
+    // Don't create recommendations for superseded patches
+    return 0;
+  }
+
+  let created = 0;
+  const vulnMap = new Map(vulns.map(v => [v.id, v]));
+
+  for (const av of assetVulns) {
+    const vuln = vulnMap.get(av.vulnerabilityId);
+    if (!vuln) continue;
+
+    // Check if recommendation already exists
+    const existing = await prisma.assetPatchRecommendation.findFirst({
+      where: {
+        assetId: av.assetId,
+        vulnerabilityId: av.vulnerabilityId,
+        patchId,
+      },
+    });
+
+    if (!existing) {
+      const riskScore = Math.min(
+        Math.round(
+          (vuln.cvss3BaseScore || 0) * 10 * 0.5 +
+          (vuln.epss || 0) * 0.3 +
+          ({ CRITICAL: 20, HIGH: 15, MEDIUM: 10, LOW: 5 }[vuln.severity] || 0)
+        ),
+        100,
+      );
+
+      await prisma.assetPatchRecommendation.create({
+        data: {
+          assetId: av.assetId,
+          vulnerabilityId: av.vulnerabilityId,
+          patchId,
+          status: 'RECOMMENDED',
+          severity: vuln.severity,
+          cvssScore: vuln.cvss3BaseScore,
+          epssScore: vuln.epss,
+          riskScore,
+          reason: `Auto-recommended: ${vuln.cveId} fix available via ${patch.title || patch.software || 'patch'}`,
+          affectedSoftware: patch.software || patch.title || '',
+        },
+      });
+      created++;
+    }
+  }
+
+  if (created > 0) {
+    logger.info({ patchId, created, cveCount: cveNumbers.length }, 'Direction B: Generated recommendations for existing vulnerable assets');
+  }
+
+  return created;
 }
 
 // ============================================

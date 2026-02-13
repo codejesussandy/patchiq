@@ -45,7 +45,9 @@ export const CPE_MAPPINGS: CpeMappingSeed[] = [
   // Mozilla Firefox
   { agentName: 'Mozilla Firefox', agentVendor: 'Mozilla', cpeVendor: 'mozilla', cpeProduct: 'firefox', platform: 'all', confidence: 1.0 },
   { agentName: 'Mozilla Firefox', agentVendor: 'Mozilla Corporation', cpeVendor: 'mozilla', cpeProduct: 'firefox', platform: 'all', confidence: 1.0 },
+  { agentName: 'Firefox', agentVendor: 'Mozilla', cpeVendor: 'mozilla', cpeProduct: 'firefox', platform: 'all', confidence: 1.0 },
   { agentName: 'Firefox', cpeVendor: 'mozilla', cpeProduct: 'firefox', platform: 'all', confidence: 0.95 },
+  { agentName: 'firefox', agentVendor: 'Mozilla Foundation', cpeVendor: 'mozilla', cpeProduct: 'firefox', platform: 'linux', confidence: 1.0 },
   { agentName: 'firefox', cpeVendor: 'mozilla', cpeProduct: 'firefox', platform: 'linux', confidence: 0.95 },
   { agentName: 'firefox-esr', cpeVendor: 'mozilla', cpeProduct: 'firefox_esr', platform: 'linux', confidence: 0.95 },
 
@@ -58,8 +60,11 @@ export const CPE_MAPPINGS: CpeMappingSeed[] = [
   // ============================================
 
   // OpenSSL
+  { agentName: 'OpenSSL', agentVendor: 'OpenSSL Project', cpeVendor: 'openssl', cpeProduct: 'openssl', platform: 'all', confidence: 1.0 },
+  { agentName: 'openssl', agentVendor: 'OpenSSL Project', cpeVendor: 'openssl', cpeProduct: 'openssl', platform: 'all', confidence: 1.0 },
   { agentName: 'openssl', cpeVendor: 'openssl', cpeProduct: 'openssl', platform: 'all', confidence: 1.0 },
   { agentName: 'OpenSSL', cpeVendor: 'openssl', cpeProduct: 'openssl', platform: 'all', confidence: 1.0 },
+  { agentName: 'libssl', agentVendor: 'OpenSSL Project', cpeVendor: 'openssl', cpeProduct: 'openssl', platform: 'linux', confidence: 1.0 },
   { agentName: 'libssl3', cpeVendor: 'openssl', cpeProduct: 'openssl', platform: 'linux', packageManager: 'dpkg', confidence: 0.95 },
   { agentName: 'libssl1.1', cpeVendor: 'openssl', cpeProduct: 'openssl', platform: 'linux', packageManager: 'dpkg', confidence: 0.95 },
   { agentName: 'libssl1.0.0', cpeVendor: 'openssl', cpeProduct: 'openssl', platform: 'linux', packageManager: 'dpkg', confidence: 0.95 },
@@ -148,6 +153,9 @@ export const CPE_MAPPINGS: CpeMappingSeed[] = [
   // ============================================
 
   // Node.js
+  { agentName: 'Node.js', agentVendor: 'Node.js Foundation', cpeVendor: 'nodejs', cpeProduct: 'node.js', platform: 'all', confidence: 1.0 },
+  { agentName: 'nodejs', agentVendor: 'Node.js Foundation', cpeVendor: 'nodejs', cpeProduct: 'node.js', platform: 'all', confidence: 1.0 },
+  { agentName: 'node', agentVendor: 'Node.js Foundation', cpeVendor: 'nodejs', cpeProduct: 'node.js', platform: 'all', confidence: 1.0 },
   { agentName: 'nodejs', cpeVendor: 'nodejs', cpeProduct: 'node.js', platform: 'all', confidence: 1.0 },
   { agentName: 'Node.js', cpeVendor: 'nodejs', cpeProduct: 'node.js', platform: 'all', confidence: 1.0 },
   { agentName: 'node', cpeVendor: 'nodejs', cpeProduct: 'node.js', platform: 'all', confidence: 0.95 },
@@ -382,7 +390,9 @@ export const CPE_MAPPINGS: CpeMappingSeed[] = [
 
   // 7-Zip
   { agentName: '7-Zip', agentVendor: 'Igor Pavlov', cpeVendor: '7-zip', cpeProduct: '7-zip', platform: 'windows', confidence: 1.0 },
+  { agentName: '7zip', agentVendor: 'Igor Pavlov', cpeVendor: '7-zip', cpeProduct: '7-zip', platform: 'windows', confidence: 1.0 },
   { agentName: '7zip', cpeVendor: '7-zip', cpeProduct: '7-zip', platform: 'all', confidence: 0.95 },
+  { agentName: 'p7zip', agentVendor: 'Igor Pavlov', cpeVendor: '7-zip', cpeProduct: '7-zip', platform: 'linux', confidence: 1.0 },
   { agentName: 'p7zip', cpeVendor: '7-zip', cpeProduct: '7-zip', platform: 'linux', confidence: 0.9 },
   { agentName: 'p7zip-full', cpeVendor: '7-zip', cpeProduct: '7-zip', platform: 'linux', packageManager: 'dpkg', confidence: 0.9 },
 
@@ -409,6 +419,7 @@ export const CPE_MAPPINGS: CpeMappingSeed[] = [
 
   // Notepad++
   { agentName: 'Notepad++', agentVendor: 'Notepad++ Team', cpeVendor: 'notepad\\+\\+', cpeProduct: 'notepad\\+\\+', platform: 'windows', confidence: 1.0 },
+  { agentName: 'notepad-plus-plus', agentVendor: 'Notepad++ Team', cpeVendor: 'notepad\\+\\+', cpeProduct: 'notepad\\+\\+', platform: 'windows', confidence: 1.0 },
   { agentName: 'Notepad++ (64-bit x64)', agentVendor: 'Notepad++ Team', cpeVendor: 'notepad\\+\\+', cpeProduct: 'notepad\\+\\+', platform: 'windows', confidence: 1.0 },
   { agentName: 'notepadpp', cpeVendor: 'notepad\\+\\+', cpeProduct: 'notepad\\+\\+', platform: 'windows', confidence: 0.95 },
 

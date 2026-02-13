@@ -81,12 +81,17 @@ class AssetPatchRecommendationService {
         cveNumbers: { has: vulnerability.cveId },
         approvalStatus: 'Approved',
       },
-      select: { id: true, patchId: true },
+      select: { id: true, patchId: true, supersededBy: true },
     });
+
+    // Filter out superseded patches — only recommend the latest non-superseded patch(es)
+    const nonSupersededPatches = fixingPatches.filter(
+      (patch) => patch.supersededBy.length === 0
+    );
 
     const created: AssetPatchRecommendation[] = [];
 
-    for (const patch of fixingPatches) {
+    for (const patch of nonSupersededPatches) {
       // Check if recommendation already exists
       const existing = await prisma.assetPatchRecommendation.findUnique({
         where: {

@@ -1312,7 +1312,7 @@ async function main() {
     // ASSET-WIN-01: Firefox, 7-Zip, Notepad++, Node.js
     { assetName: 'ASSET-WIN-01', name: 'Mozilla Firefox', version: '115.0', vendor: 'Mozilla', cpeVendor: 'mozilla', cpeProduct: 'firefox' },
     { assetName: 'ASSET-WIN-01', name: '7-Zip', version: '24.05', vendor: 'Igor Pavlov', cpeVendor: '7-zip', cpeProduct: '7-zip' },
-    { assetName: 'ASSET-WIN-01', name: 'Notepad++', version: '8.8.8', vendor: 'Notepad++ Team', cpeVendor: 'notepad\\+\\+', cpeProduct: 'notepad\\+\\+' },
+    { assetName: 'ASSET-WIN-01', name: 'Notepad++', version: '8.5.0', vendor: 'Notepad++ Team', cpeVendor: 'notepad-plus-plus', cpeProduct: 'notepad\\+\\+' },
     { assetName: 'ASSET-WIN-01', name: 'Node.js', version: '16.20.0', vendor: 'Node.js Foundation', cpeVendor: 'nodejs', cpeProduct: 'node.js' },
     // ASSET-WIN-02: 7-Zip, Node.js, OpenSSL
     { assetName: 'ASSET-WIN-02', name: '7-Zip', version: '24.05', vendor: 'Igor Pavlov', cpeVendor: '7-zip', cpeProduct: '7-zip' },
@@ -1367,7 +1367,7 @@ async function main() {
       product: 'firefox',
       severity: 'CRITICAL',
       category: 'Security',
-      cveNumbers: ['CVE-2025-11111', 'CVE-2025-11112'],
+      cveNumbers: ['CVE-2026-0879', 'CVE-2026-0882'],
       approvalStatus: 'Approved',
     },
     {
@@ -1378,8 +1378,9 @@ async function main() {
       product: '7-zip',
       severity: 'HIGH',
       category: 'Security',
-      cveNumbers: ['CVE-2025-11001', 'CVE-2025-11002'],
+      cveNumbers: ['CVE-2025-0411', 'CVE-2024-11477'],
       approvalStatus: 'Approved',
+      supersededBy: ['PATCH-7ZIP-2500'],
     },
     {
       patchId: 'PATCH-7ZIP-2500',
@@ -1389,7 +1390,7 @@ async function main() {
       product: '7-zip',
       severity: 'HIGH',
       category: 'Security',
-      cveNumbers: ['CVE-2025-11001', 'CVE-2025-11002'],
+      cveNumbers: ['CVE-2025-0411', 'CVE-2024-11477'],
       approvalStatus: 'Approved',
       supersedes: ['PATCH-7ZIP-2408'],
     },
@@ -1401,7 +1402,7 @@ async function main() {
       product: 'notepad\\+\\+',
       severity: 'MEDIUM',
       category: 'Security',
-      cveNumbers: ['CVE-2025-15556'],
+      cveNumbers: ['CVE-2023-40031'],
       approvalStatus: 'Approved',
     },
     {
@@ -1412,7 +1413,7 @@ async function main() {
       product: 'openssl',
       severity: 'HIGH',
       category: 'Security',
-      cveNumbers: ['CVE-2025-15467'],
+      cveNumbers: ['CVE-2025-69421'],
       approvalStatus: 'Approved',
     },
     {
@@ -1423,7 +1424,7 @@ async function main() {
       product: 'node.js',
       severity: 'CRITICAL',
       category: 'Security',
-      cveNumbers: ['CVE-2025-59465'],
+      cveNumbers: ['CVE-2023-32002'],
       approvalStatus: 'Approved',
     },
   ];
@@ -1446,6 +1447,7 @@ async function main() {
           testStatus: 'Passed',
           status: 'Active',
           supersedes: patchData.supersedes || [],
+          supersededBy: patchData.supersededBy || [],
         },
       });
     } else {
@@ -1458,6 +1460,7 @@ async function main() {
           testStatus: 'Passed',
           status: 'Active',
           supersedes: patchData.supersedes || [],
+          supersededBy: patchData.supersededBy || [],
         },
       });
     }
@@ -1472,7 +1475,7 @@ async function main() {
   console.log('Admin: admin@patchiq.io / admin123');
   console.log('Demo:  demo@patchiq.io / demo123');
   console.log('\n=== Test Assets Created (for Vulnerability Correlation) ===');
-  console.log('ASSET-WIN-01: Windows workstation (Firefox 115.0, 7-Zip 24.05, Notepad++ 8.8.8, Node.js 16.20.0)');
+  console.log('ASSET-WIN-01: Windows workstation (Firefox 115.0, 7-Zip 24.05, Notepad++ 8.5.0, Node.js 16.20.0)');
   console.log('ASSET-WIN-02: Windows server (7-Zip 24.05, Node.js 16.20.0, OpenSSL 3.0.8)');
   console.log('ASSET-LIN-01: Linux server (Firefox 115.0, OpenSSL 3.0.8, Node.js 16.20.0)');
   console.log('ASSET-LIN-02: Linux workstation (Firefox 115.0, Node.js 16.20.0, OpenSSL 3.0.8)');
