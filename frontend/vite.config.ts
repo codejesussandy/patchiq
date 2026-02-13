@@ -17,7 +17,7 @@ export default defineConfig({
     allowedHosts: ['dev.skenzeriq.com', 'localhost'],
     hmr: {
       host: 'localhost',
-      port: 5173,
+      port: parseInt(process.env.PUBLIC_PORT || '3500'),
       protocol: 'ws',
     },
     strictPort: true,
