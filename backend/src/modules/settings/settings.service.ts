@@ -947,13 +947,13 @@ export class SettingsService {
       throw new NotFoundError('Agent not found');
     }
 
-    if (agent.status !== 'Pending') {
+    if (agent.status !== 'PENDING_APPROVAL') {
       throw new BadRequestError(`Agent is already ${agent.status.toLowerCase()}`);
     }
 
     await prisma.agent.update({
       where: { id },
-      data: { status: 'Connected' },
+      data: { status: 'CONNECTED' },
     });
 
     return {
@@ -971,13 +971,13 @@ export class SettingsService {
       throw new NotFoundError('Agent not found');
     }
 
-    if (agent.status === 'Rejected') {
+    if (agent.status === 'REJECTED') {
       throw new BadRequestError('Agent is already rejected');
     }
 
     await prisma.agent.update({
       where: { id },
-      data: { status: 'Rejected' },
+      data: { status: 'REJECTED' },
     });
 
     return {
@@ -2216,7 +2216,7 @@ export class SettingsService {
     return { message: 'Enrollment secret deleted' };
   }
 
-  async validateEnrollSecret(secretValue: string | undefined): Promise<{ id: string; organizationId: string | null; departmentId: string | null } | null> {
+  async validateEnrollSecret(secretValue: string | undefined): Promise<{ id: string; organizationId: string | null; departmentId: string | null; maxUses: number | null; usedCount: number } | null> {
     const activeCount = await prisma.enrollSecret.count({ where: { isActive: true } });
     console.log(`[DEBUG validateEnrollSecret] activeCount=${activeCount}, secretValue=${secretValue ? 'provided' : 'undefined'}`);
 
@@ -2238,7 +2238,7 @@ export class SettingsService {
     if (secret.expiresAt && secret.expiresAt < new Date()) throw new UnauthorizedError('Enrollment secret has expired');
     if (secret.maxUses !== null && secret.usedCount >= secret.maxUses) throw new UnauthorizedError('Enrollment secret usage limit reached');
     console.log(`[DEBUG validateEnrollSecret] Returning secret id=${secret.id}`);
-    return { id: secret.id, organizationId: secret.organizationId, departmentId: secret.departmentId };
+    return { id: secret.id, organizationId: secret.organizationId, departmentId: secret.departmentId, maxUses: secret.maxUses, usedCount: secret.usedCount };
   }
 
   async incrementEnrollSecretUsage(secretId: string): Promise<void> {
@@ -2261,8 +2261,8 @@ export class SettingsService {
     const merged = { ...current, ...data };
     await prisma.setting.upsert({
       where: { key: 'agent-approval-settings' },
-      update: { value: JSON.parse(JSON.stringify(merged)) },
-      create: { key: 'agent-approval-settings', value: JSON.parse(JSON.stringify(merged)), category: 'agent' },
+      update: { value: merged },
+      create: { key: 'agent-approval-settings', value: merged, category: 'agent' },
     });
     return merged;
   }

@@ -123,25 +123,6 @@ export class AgentsService {
 
     // Create new agent and asset in a transaction
     const [agent, asset] = await withTransaction('registerAgent', async (tx) => {
-      // Increment enrollment secret usage count atomically with agent creation
-      if (enrollResult) {
-        console.log(`[DEBUG registerAgent] Incrementing enrollment secret usage: secretId=${enrollResult.id}`);
-        const updatedSecret = await tx.enrollSecret.update({
-          where: { id: enrollResult.id },
-          data: { usedCount: { increment: 1 } },
-        });
-        console.log(`[DEBUG registerAgent] Updated secret usedCount=${updatedSecret.usedCount}, maxUses=${updatedSecret.maxUses}`);
-
-        // Re-validate usage limit after increment (prevents race conditions)
-        // Use > because if maxUses=1, after first registration usedCount=1, which is allowed
-        // Second registration will increment to 2, which is > 1, so it will fail
-        if (updatedSecret.maxUses !== null && updatedSecret.usedCount > updatedSecret.maxUses) {
-          console.log(`[DEBUG registerAgent] Usage limit exceeded: usedCount=${updatedSecret.usedCount} > maxUses=${updatedSecret.maxUses}`);
-          throw new UnauthorizedError('Enrollment secret usage limit reached');
-        }
-      } else {
-        console.log(`[DEBUG registerAgent] No enrollResult, skipping usage increment`);
-      }
 
       // Create asset first
       const asset = await tx.asset.create({
@@ -187,6 +168,16 @@ export class AgentsService {
       email: agent.machineId,
       role: 'agent',
     });
+
+    // Increment enrollment secret usage count AFTER agent creation succeeds
+    if (enrollResult) {
+      try {
+        await settingsService.incrementEnrollSecretUsage(enrollResult.id);
+      } catch (err) {
+        logger.error({ err, secretId: enrollResult.id }, 'Failed to increment enrollment secret usage');
+        // Don't throw - agent registration succeeded, just log the error
+      }
+    }
 
     // Notify admins about new agent registration
     notificationsService.broadcast({
