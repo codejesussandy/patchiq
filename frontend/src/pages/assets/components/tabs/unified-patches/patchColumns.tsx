@@ -7,6 +7,7 @@ import {
 } from '@ant-design/icons';
 import { Space, Tag, Typography, Badge, Button } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { RiskScoreDisplay } from '../../../../../components/shared/RiskScoreDisplay';
 import type { AssetRelatedPatch, AssetDeployment } from '../../../../../types/asset.types';
 import type { PatchRecommendation } from '../../../../../types/patch-recommendation.types';
 import { getSeverityColor, getStatusIcon, getStatusColor, getStatusBadgeStatus } from './patchHelpers';
@@ -116,7 +117,7 @@ export const createRecommendationColumns = ({
   },
   {
     title: 'Risk Score', dataIndex: 'riskScore', key: 'riskScore', width: 100,
-    render: (score: number | null) => <Text>{score?.toFixed(0) || '\u2014'}</Text>,
+    render: (score: number | null) => <RiskScoreDisplay score={score} size="small" />,
     sorter: (a, b) => (a.riskScore || 0) - (b.riskScore || 0),
     defaultSortOrder: 'descend',
   },

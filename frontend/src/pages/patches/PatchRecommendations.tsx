@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { useMemo, useState } from 'react';
+import { CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined, RocketOutlined, SearchOutlined } from '@ant-design/icons';
 import {
   Row, Col, Card, Typography, Button, Space, Spin, Input, Select, App, Modal, Empty,
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { BulkActionBar } from '../../components/shared/BulkActionBar';
 import { DataTable } from '../../components/shared/DataTable';
 import {
   usePatchRecommendations,
@@ -11,6 +12,9 @@ import {
   useAcceptRecommendation,
   useRejectRecommendation,
   useDeployRecommendation,
+  useBulkAcceptRecommendations,
+  useBulkRejectRecommendations,
+  useBulkDeployRecommendations,
 } from '../../hooks/usePatchRecommendations';
 import type { PatchRecommendation } from '../../types/patch-recommendation.types';
 import { getErrorMessage } from '../../utils/error';
@@ -26,12 +30,15 @@ export const PatchRecommendations = () => {
 
   const { data: stats = null, isLoading: statsLoading, isRefetching: statsRefetching } = usePatchRecommendationDashboardStats();
   const { data: recsData, isLoading: recsLoading, isRefetching: recsRefetching, refetch } = usePatchRecommendations({ limit: 1000 });
-  const recommendations: PatchRecommendation[] = recsData?.data || [];
+  const recommendations: PatchRecommendation[] = useMemo(() => recsData?.data || [], [recsData?.data]);
   const loading = statsLoading || recsLoading;
   const refreshing = statsRefetching || recsRefetching;
   const acceptMutation = useAcceptRecommendation();
   const rejectMutation = useRejectRecommendation();
   const deployMutation = useDeployRecommendation();
+  const bulkAcceptMutation = useBulkAcceptRecommendations();
+  const bulkRejectMutation = useBulkRejectRecommendations();
+  const bulkDeployMutation = useBulkDeployRecommendations();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const [searchText, setSearchText] = useState('');
@@ -40,8 +47,12 @@ export const PatchRecommendations = () => {
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [selectedRecommendation, setSelectedRecommendation] = useState<string | null>(null);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [bulkRejectModalVisible, setBulkRejectModalVisible] = useState(false);
+  const [bulkRejectReason, setBulkRejectReason] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
 
-  const filteredRecommendations = (() => {
+  const filteredRecommendations = useMemo(() => {
     let filtered = [...recommendations];
     if (searchText) {
       const search = searchText.toLowerCase();
@@ -54,7 +65,7 @@ export const PatchRecommendations = () => {
     if (statusFilter) filtered = filtered.filter((rec) => rec.status === statusFilter);
     if (severityFilter.length > 0) filtered = filtered.filter((rec) => severityFilter.includes(rec.severity));
     return filtered;
-  })();
+  }, [recommendations, searchText, statusFilter, severityFilter]);
 
   const handleAccept = async (id: string) => {
     Modal.confirm({
@@ -101,6 +112,75 @@ export const PatchRecommendations = () => {
           });
         } catch (error: unknown) { message.error(getErrorMessage(error, 'Failed to deploy recommendation')); }
         finally { setActionLoading(null); }
+      },
+    });
+  };
+
+  // Bulk action helpers
+  const selectedItems = recommendations.filter((r) => selectedRowKeys.includes(r.id));
+  const selectedRecommended = selectedItems.filter((r) => r.status === 'RECOMMENDED');
+  const selectedAccepted = selectedItems.filter((r) => r.status === 'ACCEPTED');
+
+  const handleBulkAccept = async () => {
+    if (selectedRecommended.length === 0) { message.warning('No recommendations in RECOMMENDED status selected'); return; }
+    Modal.confirm({
+      title: `Accept ${selectedRecommended.length} Recommendation(s)`,
+      content: `Are you sure you want to accept ${selectedRecommended.length} patch recommendation(s)?`,
+      onOk: async () => {
+        setBulkLoading(true);
+        try {
+          const result = await bulkAcceptMutation.mutateAsync({ ids: selectedRecommended.map((r) => r.id) });
+          message.success(`${result.accepted} recommendation(s) accepted${result.skipped ? `, ${result.skipped} skipped` : ''}`);
+          setSelectedRowKeys([]);
+        } catch (error: unknown) { message.error(getErrorMessage(error, 'Failed to bulk accept')); }
+        finally { setBulkLoading(false); }
+      },
+    });
+  };
+
+  const handleBulkReject = () => {
+    if (selectedRecommended.length === 0) { message.warning('No recommendations in RECOMMENDED status selected'); return; }
+    setBulkRejectReason('');
+    setBulkRejectModalVisible(true);
+  };
+
+  const handleBulkRejectConfirm = async () => {
+    if (!bulkRejectReason.trim()) { message.warning('Please provide a reason for rejection'); return; }
+    setBulkLoading(true);
+    try {
+      const result = await bulkRejectMutation.mutateAsync({ ids: selectedRecommended.map((r) => r.id), reason: bulkRejectReason });
+      message.success(`${result.rejected} recommendation(s) rejected${result.skipped ? `, ${result.skipped} skipped` : ''}`);
+      setBulkRejectModalVisible(false);
+      setSelectedRowKeys([]);
+    } catch (error: unknown) { message.error(getErrorMessage(error, 'Failed to bulk reject')); }
+    finally { setBulkLoading(false); }
+  };
+
+  const handleBulkDeploy = async () => {
+    if (selectedAccepted.length === 0) { message.warning('No recommendations in ACCEPTED status selected'); return; }
+    Modal.confirm({
+      title: `Deploy ${selectedAccepted.length} Patch(es)`,
+      content: `This will create deployments for ${selectedAccepted.length} accepted recommendation(s). Continue?`,
+      okText: 'Deploy All',
+      onOk: async () => {
+        setBulkLoading(true);
+        try {
+          const result = await bulkDeployMutation.mutateAsync(selectedAccepted.map((r) => r.id));
+          Modal.success({
+            title: 'Bulk Deployment Created',
+            content: (
+              <div>
+                <p><strong>{result.deployed}</strong> patch(es) deployed across <strong>{result.deployments.length}</strong> deployment(s).</p>
+                {result.skipped > 0 && <p>{result.skipped} recommendation(s) were skipped.</p>}
+                <p>You can track status on the Patch Deployments page.</p>
+              </div>
+            ),
+            okText: 'View Deployments',
+            onOk: () => navigate('/patches/deployed/deployed'),
+          });
+          setSelectedRowKeys([]);
+        } catch (error: unknown) { message.error(getErrorMessage(error, 'Failed to bulk deploy')); }
+        finally { setBulkLoading(false); }
       },
     });
   };
@@ -153,8 +233,29 @@ export const PatchRecommendations = () => {
         </Space>
       </Card>
 
+      <BulkActionBar selectedCount={selectedRowKeys.length} onClear={() => setSelectedRowKeys([])}>
+        {selectedRecommended.length > 0 && (
+          <>
+            <Button size="small" type="primary" icon={<CheckCircleOutlined />} loading={bulkLoading} onClick={handleBulkAccept}>
+              Accept {selectedRecommended.length}
+            </Button>
+            <Button size="small" danger icon={<CloseCircleOutlined />} loading={bulkLoading} onClick={handleBulkReject}>
+              Reject {selectedRecommended.length}
+            </Button>
+          </>
+        )}
+        {selectedAccepted.length > 0 && (
+          <Button size="small" type="primary" icon={<RocketOutlined />} loading={bulkLoading} onClick={handleBulkDeploy}>
+            Deploy {selectedAccepted.length}
+          </Button>
+        )}
+      </BulkActionBar>
+
       <Card title="Recommendations" style={{ borderRadius: 8 }}>
         <DataTable data={filteredRecommendations} columns={columns} rowKey="id"
+          selectable
+          selectedRowKeys={selectedRowKeys}
+          onSelectionChange={(keys) => setSelectedRowKeys(keys)}
           pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'], showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} recommendations` }}
           scroll={{ x: 'max-content' }} />
       </Card>
@@ -164,6 +265,13 @@ export const PatchRecommendations = () => {
         confirmLoading={actionLoading === selectedRecommendation}>
         <p>Please provide a reason for rejecting this recommendation:</p>
         <TextArea rows={4} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Reason for rejection..." />
+      </Modal>
+
+      <Modal title={`Reject ${selectedRecommended.length} Recommendation(s)`} open={bulkRejectModalVisible} onOk={handleBulkRejectConfirm}
+        onCancel={() => setBulkRejectModalVisible(false)}
+        confirmLoading={bulkLoading}>
+        <p>Please provide a reason for rejecting {selectedRecommended.length} recommendation(s):</p>
+        <TextArea rows={4} value={bulkRejectReason} onChange={(e) => setBulkRejectReason(e.target.value)} placeholder="Reason for rejection..." />
       </Modal>
     </div>
   );

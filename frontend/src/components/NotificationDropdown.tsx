@@ -255,6 +255,7 @@ export const NotificationDropdown = () => {
                         icon={<CheckOutlined style={{ fontSize: 12 }} />}
                         onClick={(e) => handleMarkAsRead(item.id, e)}
                         title="Mark as read"
+                        aria-label="Mark as read"
                         style={{ padding: '0 4px', height: 24, width: 24 }}
                       />
                     )}
@@ -264,6 +265,7 @@ export const NotificationDropdown = () => {
                       icon={<DeleteOutlined style={{ fontSize: 12 }} />}
                       onClick={(e) => handleDelete(item.id, e)}
                       title="Delete"
+                      aria-label="Delete notification"
                       style={{ padding: '0 4px', height: 24, width: 24 }}
                     />
                   </div>

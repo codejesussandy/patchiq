@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { ArrowLeftOutlined, EditOutlined, MoreOutlined, EyeOutlined, RocketOutlined, PlusOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, EditOutlined, EyeOutlined, RocketOutlined, PlusOutlined, WarningOutlined } from '@ant-design/icons';
 import { formatEnum } from '@shared/types';
-import type { MenuProps } from 'antd';
 import {
   App, Typography, Button, Tabs, Row, Col, Tag, Badge, Divider, Space,
-  Breadcrumb, Spin, Modal, Form, Steps, Dropdown, Descriptions,
+  Breadcrumb, Spin, Modal, Form, Steps, Descriptions, Alert,
 } from 'antd';
 import dayjs from 'dayjs';
 import { useParams, useNavigate } from 'react-router-dom';
 import { SeverityBadge, EndpointDetailsDrawer, OSIcon } from '../../components/patches';
 import { PatchSearchSelect } from '../../components/PatchSearchSelect';
+import { ActionMenu } from '../../components/shared/ActionMenu';
 import { DataTable } from '../../components/shared/DataTable';
+import { RiskScoreDisplay } from '../../components/shared/RiskScoreDisplay';
 import { useAgents } from '../../hooks/useAgents';
 import { useTags } from '../../hooks/useAssets';
 import {
@@ -158,13 +159,14 @@ export const PatchDetails = () => {
     } finally { setDeployLoading(false); }
   };
 
-  const getActionMenuItems = (): MenuProps['items'] => {
+  const getActionMenuItems = () => {
     if (!patch) return [];
     const isApproved = patch.approvalStatus === 'APPROVED';
     return [
       { key: 'approve', label: isApproved ? 'Revoke Approval' : 'Approve',
         onClick: () => handleStatusChange(isApproved ? 'PENDING' : 'APPROVED', isApproved ? 'approval revoked' : 'approved') },
-      { key: 'decline', label: 'Decline', danger: true, onClick: () => handleStatusChange('REJECTED', 'declined') },
+      { key: 'decline', label: 'Decline', danger: true,
+        onClick: () => handleStatusChange('REJECTED', 'declined') },
     ];
   };
 
@@ -345,16 +347,45 @@ export const PatchDetails = () => {
       <div style={{ marginBottom: 16 }}>
         <Breadcrumb items={[{ title: <a onClick={() => navigate('/patches')}>All Patches</a> }, { title: patch.software }]} />
       </div>
+      {/* Superseded warning banner */}
+      {patch.supersededBy && patch.supersededBy.length > 0 && (
+        <Alert
+          type="warning"
+          showIcon
+          icon={<WarningOutlined />}
+          style={{ marginBottom: 16 }}
+          message="This patch has been superseded"
+          description={`A newer version is available. This patch has been replaced by: ${patch.supersededBy.join(', ')}. Consider deploying the newer patch instead.`}
+        />
+      )}
+
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Space>
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/patches')}>Back</Button>
           <Title level={3} style={{ margin: 0 }}>{patch.software}</Title>
           <SeverityBadge severity={patch.severity} />
+          {patch.supersededBy && patch.supersededBy.length > 0 && (
+            <Tag color="warning" icon={<WarningOutlined />}>Superseded</Tag>
+          )}
         </Space>
         <Space>
-          <Button icon={<RocketOutlined />} type="primary" onClick={() => setDeployModalVisible(true)}>Deploy</Button>
+          <Button icon={<RocketOutlined />} type="primary" onClick={() => {
+            if (patch.supersededBy && patch.supersededBy.length > 0) {
+              Modal.confirm({
+                title: 'Deploy Superseded Patch?',
+                icon: <WarningOutlined style={{ color: '#faad14' }} />,
+                content: `This patch has been superseded by newer versions (${patch.supersededBy.join(', ')}). Deploying an older patch may leave systems vulnerable. Are you sure you want to proceed?`,
+                okText: 'Deploy Anyway',
+                okType: 'danger',
+                cancelText: 'Cancel',
+                onOk: () => setDeployModalVisible(true),
+              });
+            } else {
+              setDeployModalVisible(true);
+            }
+          }}>Deploy</Button>
           <Button icon={<EditOutlined />} onClick={openEditModal}>Edit</Button>
-          <Dropdown menu={{ items: getActionMenuItems() }} trigger={['click']}><Button icon={<MoreOutlined />} /></Dropdown>
+          <ActionMenu items={getActionMenuItems()} />
         </Space>
       </div>
 
@@ -368,18 +399,21 @@ export const PatchDetails = () => {
             { title: 'Status', dataIndex: 'status', key: 'status', render: (status: string) => <Tag color={status === 'Online' ? 'success' : 'error'}>{status}</Tag> },
             { title: 'Last Seen', dataIndex: 'lastSeen', key: 'lastSeen' },
             { title: '', key: 'actions', width: 60, render: (_: unknown, record: Endpoint) => (
-              <Button type="text" icon={<EyeOutlined />} onClick={() => { setSelectedEndpointId(record.id); setEndpointDrawerOpen(true); }} />) },
+              <Button type="text" icon={<EyeOutlined />} aria-label="View endpoint details" onClick={() => { setSelectedEndpointId(record.id); setEndpointDrawerOpen(true); }} />) },
           ]} />) },
         { key: 'recommendations', label: `Recommendations (${recommendations.length})`, children: (
           <DataTable data={recommendations} rowKey="id" columns={[
             { title: 'Asset', dataIndex: ['asset', 'name'], key: 'assetName', render: (name: string, record: PatchRecommendation) => (
               <Button type="link" style={{ padding: 0 }} onClick={() => navigate(`/assets/${record.asset.id}`)}>{name}</Button>) },
             { title: 'OS', dataIndex: ['asset', 'os'], key: 'os' },
-            { title: 'CVE', dataIndex: ['vulnerability', 'cveId'], key: 'cveId', render: (cveId: string) => <Text strong>{cveId}</Text> },
+            { title: 'CVE', dataIndex: ['vulnerability', 'cveId'], key: 'cveId', render: (cveId: string, record: PatchRecommendation) => (
+              <Button type="link" style={{ padding: 0 }} onClick={() => record.vulnerability?.id ? navigate(`/vulnerability/${record.vulnerability.id}`) : undefined}>
+                {cveId}
+              </Button>) },
             { title: 'Severity', dataIndex: 'severity', key: 'severity', render: (severity: string) => {
               const colorMap: Record<string, string> = { CRITICAL: '#ff4d4f', HIGH: '#fa8c16', MEDIUM: '#faad14', LOW: '#52c41a' };
               return <Tag color={colorMap[severity] || '#d9d9d9'}>{severity}</Tag>; }},
-            { title: 'Risk Score', dataIndex: 'riskScore', key: 'riskScore', render: (score: number | null) => <Text>{score?.toFixed(0) || '-'}</Text>,
+            { title: 'Risk Score', dataIndex: 'riskScore', key: 'riskScore', render: (score: number | null) => <RiskScoreDisplay score={score} />,
               sorter: (a: PatchRecommendation, b: PatchRecommendation) => (a.riskScore || 0) - (b.riskScore || 0), defaultSortOrder: 'descend' as const },
             { title: 'Status', dataIndex: 'status', key: 'status', render: (status: string) => {
               const statusMap: Record<string, 'success' | 'processing' | 'error' | 'warning' | 'default'> = {
@@ -396,12 +430,45 @@ export const PatchDetails = () => {
             { title: 'Installed On', dataIndex: 'installedOn', key: 'installedOn', width: 150, align: 'center' as const },
           ]} pagination={{ pageSize: 10, showTotal: (total) => `Total ${total} affected software` }} />) },
         { key: 'vulnerabilities', label: `Vulnerabilities (${vulnerabilities.length})`, children: (
-          <DataTable data={vulnerabilities} rowKey="id" columns={[
-            { title: 'CVE Number', dataIndex: 'cveNumber', key: 'cveNumber' },
-            { title: 'Severity', dataIndex: 'severity', key: 'severity', render: (severity: string) => <Tag color={severity === 'Critical' ? 'red' : 'orange'}>{severity}</Tag> },
-            { title: 'Description', dataIndex: 'description', key: 'description' },
-            { title: 'Published Date', dataIndex: 'publishedDate', key: 'publishedDate', render: (d: string) => formatDate(d) },
-          ]} />) },
+          <div>
+            {vulnerabilities.length > 0 && (() => {
+              const sevCounts = vulnerabilities.reduce<Record<string, number>>((acc, v) => {
+                const s = (v.severity || '').toUpperCase();
+                acc[s] = (acc[s] || 0) + 1;
+                return acc;
+              }, {});
+              return (
+                <div style={{ background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 8, padding: '12px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <Text strong>This patch addresses {vulnerabilities.length} vulnerabilit{vulnerabilities.length === 1 ? 'y' : 'ies'}</Text>
+                  <Space size="small" style={{ marginLeft: 8 }}>
+                    {sevCounts.CRITICAL ? <Tag color="red">Critical: {sevCounts.CRITICAL}</Tag> : null}
+                    {sevCounts.HIGH ? <Tag color="orange">High: {sevCounts.HIGH}</Tag> : null}
+                    {sevCounts.MEDIUM ? <Tag color="gold">Medium: {sevCounts.MEDIUM}</Tag> : null}
+                    {sevCounts.LOW ? <Tag color="green">Low: {sevCounts.LOW}</Tag> : null}
+                  </Space>
+                </div>
+              );
+            })()}
+            <DataTable data={vulnerabilities} rowKey="id" columns={[
+              { title: 'CVE Number', dataIndex: 'cveNumber', key: 'cveNumber',
+                render: (cveNumber: string, record: { id?: string }) => (
+                  <Button type="link" style={{ padding: 0 }} onClick={() => record.id ? navigate(`/vulnerability/${record.id}`) : undefined}>
+                    {cveNumber}
+                  </Button>
+                ) },
+              { title: 'Severity', dataIndex: 'severity', key: 'severity', width: 120,
+                sorter: (a: { severity?: string }, b: { severity?: string }) => {
+                  const order: Record<string, number> = { CRITICAL: 4, Critical: 4, HIGH: 3, High: 3, MEDIUM: 2, Medium: 2, LOW: 1, Low: 1 };
+                  return (order[(a.severity || '')] || 0) - (order[(b.severity || '')] || 0);
+                },
+                defaultSortOrder: 'descend' as const,
+                render: (severity: string) => {
+                  const colorMap: Record<string, string> = { Critical: 'red', CRITICAL: 'red', High: 'orange', HIGH: 'orange', Medium: 'gold', MEDIUM: 'gold', Low: 'green', LOW: 'green' };
+                  return <Tag color={colorMap[severity] || 'default'}>{severity}</Tag>; }},
+              { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true, width: 400 },
+              { title: 'Published Date', dataIndex: 'publishedDate', key: 'publishedDate', width: 140, render: (d: string) => formatDate(d) },
+            ]} pagination={{ pageSize: 10, showTotal: (total) => `Total ${total} vulnerabilities` }} />
+          </div>) },
       ]} />
 
       <EndpointDetailsDrawer open={endpointDrawerOpen} endpointId={selectedEndpointId}

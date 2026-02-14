@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
   SearchOutlined, FilterOutlined, MoreOutlined, DownloadOutlined, PlusOutlined,
-  DeleteOutlined, RocketOutlined, ScanOutlined, AppstoreOutlined,
+  DeleteOutlined, RocketOutlined, ScanOutlined, AppstoreOutlined, WarningOutlined,
 } from '@ant-design/icons';
-import { App, Input, Button, Dropdown, Space, Typography, Modal, Form } from 'antd';
+import { App, Input, Button, Dropdown, Space, Typography, Modal, Form, Tag, Tooltip } from 'antd';
 import type { UploadFile } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -184,7 +184,17 @@ export const AllPatches = () => {
   };
 
   const columns: ColumnsType<Patch> = [
-    { title: 'Software', dataIndex: 'software', key: 'software', width: 350, sorter: (a, b) => a.software.localeCompare(b.software) },
+    { title: 'Software', dataIndex: 'software', key: 'software', width: 350, sorter: (a, b) => a.software.localeCompare(b.software),
+      render: (software: string, record: Patch) => (
+        <Space size="small">
+          <span>{software}</span>
+          {record.supersededBy && record.supersededBy.length > 0 && (
+            <Tooltip title={`Superseded by: ${record.supersededBy.join(', ')}`}>
+              <Tag color="warning" icon={<WarningOutlined />} style={{ fontSize: 11 }}>Superseded</Tag>
+            </Tooltip>
+          )}
+        </Space>
+      ) },
     { title: 'ID', dataIndex: 'patchId', key: 'patchId', width: 150 },
     { title: 'Endpoints', dataIndex: 'endpoints', key: 'endpoints', width: 120, align: 'center', sorter: (a, b) => a.endpoints - b.endpoints },
     { title: 'OS', dataIndex: 'os', key: 'os', width: 150, render: (os: string) => <OSIcon os={os} />,
@@ -253,7 +263,7 @@ export const AllPatches = () => {
               }},
               { key: 'delete', label: 'Delete', icon: <DeleteOutlined />, danger: true, onClick: () => { bulkDeleteModal.onOpen(null); }},
             ]}}>
-              <Button icon={<MoreOutlined />} />
+              <Button icon={<MoreOutlined />} aria-label="More actions" />
             </Dropdown>
           </Space>
         )}

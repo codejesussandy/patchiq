@@ -69,6 +69,36 @@ export function useAssets() {
   });
 }
 
+/** Server-side paginated asset list query */
+export function useAssetsList(params: {
+  page?: number;
+  pageSize?: number;
+  sort?: string;
+  order?: string;
+  search?: string;
+  status?: string;
+  operationalStatus?: string;
+  categoryId?: string;
+  subCategoryId?: string;
+}) {
+  return useQuery({
+    queryKey: [...assetKeys.lists(), params],
+    queryFn: () =>
+      assetService.getAssetsPaginated({
+        page: params.page,
+        limit: params.pageSize,
+        sort: params.sort,
+        order: params.order,
+        search: params.search || undefined,
+        status: params.status || undefined,
+        operationalStatus: params.operationalStatus || undefined,
+        categoryId: params.categoryId || undefined,
+        subCategoryId: params.subCategoryId || undefined,
+      }),
+    placeholderData: (prev) => prev,
+  });
+}
+
 export function useAsset(id: string) {
   return useQuery({
     queryKey: assetKeys.detail(id),

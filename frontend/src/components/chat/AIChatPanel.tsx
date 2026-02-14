@@ -5,6 +5,8 @@ import {
   ColumnWidthOutlined,
 } from '@ant-design/icons';
 import { Button, Tooltip } from 'antd';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import aiService from '@/services/ai.service';
 const suggestedPrompts = [
   'What can PatchIQ AI assist with?',
@@ -157,16 +159,20 @@ export const AIChatPanel = ({ open, onClose }: AIChatPanelProps) => {
   };
 
   const renderMessageText = (text: string) => {
-    return text.split('\n').map((line, i) => {
-      const formatted = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      return (
-        <div
-          key={i}
-          dangerouslySetInnerHTML={{ __html: formatted }}
-          style={{ minHeight: line === '' ? 8 : undefined }}
-        />
-      );
-    });
+    return (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ children, href, ...props }) => (
+            <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+              {children}
+            </a>
+          ),
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    );
   };
 
   return (
@@ -200,6 +206,7 @@ export const AIChatPanel = ({ open, onClose }: AIChatPanelProps) => {
             size="small"
             icon={<CloseOutlined style={{ fontSize: 12, color: '#8c8c8c' }} />}
             onClick={onClose}
+            aria-label="Close AI chat"
           />
         </div>
       </div>

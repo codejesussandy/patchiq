@@ -80,3 +80,35 @@ export function useDeployRecommendation() {
     },
   });
 }
+
+export function useBulkAcceptRecommendations() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, reason }: { ids: string[]; reason?: string }) =>
+      patchRecommendationService.bulkAccept(ids, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: patchRecommendationKeys.all });
+    },
+  });
+}
+
+export function useBulkRejectRecommendations() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, reason }: { ids: string[]; reason: string }) =>
+      patchRecommendationService.bulkReject(ids, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: patchRecommendationKeys.all });
+    },
+  });
+}
+
+export function useBulkDeployRecommendations() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => patchRecommendationService.bulkDeploy(ids),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: patchRecommendationKeys.all });
+    },
+  });
+}

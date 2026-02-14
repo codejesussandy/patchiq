@@ -69,4 +69,22 @@ export const patchRecommendationService = {
     // Non-paginated response, interceptor unwraps envelope
     return response.data;
   },
+
+  // Bulk accept recommendations
+  async bulkAccept(ids: string[], reason?: string): Promise<{ accepted: number; skipped: number }> {
+    const response = await api.post('/patch-recommendations/bulk-accept', { ids, reason });
+    return response.data;
+  },
+
+  // Bulk reject recommendations
+  async bulkReject(ids: string[], reason: string): Promise<{ rejected: number; skipped: number }> {
+    const response = await api.post('/patch-recommendations/bulk-reject', { ids, reason });
+    return response.data;
+  },
+
+  // Bulk deploy recommendations
+  async bulkDeploy(ids: string[]): Promise<{ deployed: number; skipped: number; deployments: string[] }> {
+    const response = await api.post('/patch-recommendations/bulk-deploy', { ids });
+    return response.data;
+  },
 };

@@ -71,6 +71,29 @@ export const assetService = {
     return response.data.data || [];
   },
 
+  async getAssetsPaginated(params?: {
+    page?: number;
+    limit?: number;
+    sort?: string;
+    order?: string;
+    search?: string;
+    status?: string;
+    operationalStatus?: string;
+    categoryId?: string;
+    subCategoryId?: string;
+  }): Promise<{ data: Asset[]; total: number; page: number; limit: number; totalPages: number }> {
+    const response = await api.get(`/assets`, { params });
+    // Interceptor unwraps envelope: { success, data: PaginatedResult } → PaginatedResult
+    const result = response.data;
+    return {
+      data: result.data || [],
+      total: result.total || 0,
+      page: result.page || 1,
+      limit: result.limit || 20,
+      totalPages: result.totalPages || 1,
+    };
+  },
+
   async getAsset(id: string): Promise<Asset> {
     const response = await api.get(`/assets/${id}`);
     return response.data;

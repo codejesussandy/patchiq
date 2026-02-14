@@ -9,7 +9,7 @@ import { Request, Response } from 'express';
 import { BadRequestError } from '@shared/errors';
 import { sendSuccess, sendPaginated } from '@shared/utils';
 import { assetPatchRecommendationService } from './asset-patch-recommendation.service';
-import { validateListRecommendationsQuery, validateRejectRequest } from './asset-patch-recommendation.validator';
+import { validateListRecommendationsQuery, validateRejectRequest, validateBulkAcceptRequest, validateBulkRejectRequest, validateBulkDeployRequest } from './asset-patch-recommendation.validator';
 
 type RecommendationWithRelations = Prisma.AssetPatchRecommendationGetPayload<{
   include: {
@@ -151,6 +151,62 @@ export async function deployRecommendation(req: Request, res: Response) {
   });
 
   sendSuccess(res, { recommendation, deployment });
+}
+
+/**
+ * Bulk accept recommendations
+ * POST /api/patch-recommendations/bulk-accept
+ */
+export async function bulkAcceptRecommendations(req: Request, res: Response) {
+  const validation = validateBulkAcceptRequest(req.body);
+
+  if (!validation.success) {
+    throw new BadRequestError(validation.error.errors[0].message);
+  }
+
+  const result = await assetPatchRecommendationService.bulkAcceptRecommendations(
+    validation.data.ids,
+    validation.data.reason
+  );
+
+  sendSuccess(res, result);
+}
+
+/**
+ * Bulk reject recommendations
+ * POST /api/patch-recommendations/bulk-reject
+ */
+export async function bulkRejectRecommendations(req: Request, res: Response) {
+  const validation = validateBulkRejectRequest(req.body);
+
+  if (!validation.success) {
+    throw new BadRequestError(validation.error.errors[0].message);
+  }
+
+  const result = await assetPatchRecommendationService.bulkRejectRecommendations(
+    validation.data.ids,
+    validation.data.reason
+  );
+
+  sendSuccess(res, result);
+}
+
+/**
+ * Bulk deploy recommendations
+ * POST /api/patch-recommendations/bulk-deploy
+ */
+export async function bulkDeployRecommendations(req: Request, res: Response) {
+  const validation = validateBulkDeployRequest(req.body);
+
+  if (!validation.success) {
+    throw new BadRequestError(validation.error.errors[0].message);
+  }
+
+  const result = await assetPatchRecommendationService.bulkDeployRecommendations(
+    validation.data.ids
+  );
+
+  sendSuccess(res, result);
 }
 
 /**

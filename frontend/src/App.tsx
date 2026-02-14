@@ -1,66 +1,92 @@
+import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { ConfigProvider, App as AntApp } from 'antd';
+import { ConfigProvider, App as AntApp, Spin } from 'antd';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ErrorBoundary, RootErrorBoundary } from './components/ErrorBoundary';
 import { MainLayout } from './components/MainLayout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { AllAssets } from './pages/assets/AllAssets';
-import { AssetDetails } from './pages/assets/components/AssetDetails';
-import { SoftwareInventory } from './pages/assets/SoftwareInventory';
-import { SoftwareLicense } from './pages/assets/SoftwareLicense';
-import { Dashboard } from './pages/Dashboard';
-import { Agents } from './pages/discovery/Agents';
-import { DeviceCredentials } from './pages/discovery/DeviceCredentials';
-import { IPDiscovery } from './pages/discovery/IPDiscovery';
-import { ForgotPassword } from './pages/ForgotPassword';
-import { Hub } from './pages/hub/Hub';
-import { PatchJobs } from './pages/jobs/PatchJobs';
-import { PatchJobsDeployed } from './pages/jobs/PatchJobsDeployed';
-import { VulnerabilityJobs } from './pages/jobs/VulnerabilityJobs';
-import { Login } from './pages/Login';
-import { Notifications } from './pages/Notifications';
-import { AllPatches } from './pages/patches/AllPatches';
-import { PatchDetails } from './pages/patches/PatchDetails';
-import PatchRecommendations from './pages/patches/PatchRecommendations';
-import { PatchTestApprove } from './pages/patches/PatchTestApprove';
-import { ZeroTouchDeployment } from './pages/patches/ZeroTouchDeployment';
-import { Reports } from './pages/Reports';
-import { CreateReport } from './pages/reports/CreateReport';
-import { AgentApprovals } from './pages/settings/AgentApprovals';
-import { AgentApprovalSettings } from './pages/settings/AgentApprovalSettings';
-import { AgentConfiguration } from './pages/settings/AgentConfiguration';
-import { AgentVersions } from './pages/settings/AgentVersions';
-import { Audit } from './pages/settings/Audit';
-import { Branding } from './pages/settings/Branding';
-import { ComputerGroups } from './pages/settings/ComputerGroups';
-import { DeploymentPolicies } from './pages/settings/DeploymentPolicies';
-import { DistributionServer } from './pages/settings/DistributionServer';
-import { EnrollSecret } from './pages/settings/EnrollSecret';
-import { LDAPServerConfiguration } from './pages/settings/LDAPServerConfiguration';
-import { MailServerConfiguration } from './pages/settings/MailServerConfiguration';
-import { MarketPlace } from './pages/settings/MarketPlace';
-import { NotificationPreferences } from './pages/settings/NotificationPreferences';
-import { Organization } from './pages/settings/Organization';
-import { PasswordPolicies } from './pages/settings/PasswordPolicies';
-import { PatchManagement } from './pages/settings/PatchManagement';
-import { PatchPreferences } from './pages/settings/PatchPreferences';
-import { PlatformLicense } from './pages/settings/PlatformLicense';
-import { PolicyManagement } from './pages/settings/PolicyManagement';
-import { ProxyServerConfiguration } from './pages/settings/ProxyServerConfiguration';
-import { RedHatAgentNomination } from './pages/settings/RedHatAgentNomination';
-import { RemoteDesktopSettings } from './pages/settings/RemoteDesktopSettings';
-import { RiskScoreSettings } from './pages/settings/RiskScoreSettings';
-import { RolesAndPrivileges } from './pages/settings/RolesAndPrivileges';
-import { ServerSettings } from './pages/settings/ServerSettings';
-import { UserLocation } from './pages/settings/UserLocation';
-import { UserRoles } from './pages/settings/UserRoles';
-import { Users } from './pages/settings/Users';
-import { VendorLogo } from './pages/settings/VendorLogo';
-import { VulnerabilityPreference } from './pages/settings/VulnerabilityPreference';
-import { UserOnboarding } from './pages/UserOnboarding';
-import { ManageException } from './pages/vulnerability/ManageException';
-import { Vulnerabilities } from './pages/vulnerability/Vulnerabilities';
-import { ZeroDayVulnerabilities } from './pages/vulnerability/ZeroDayVulnerabilities';
+
+// --- Lazy-loaded page components ---
+// Named exports use .then(m => ({ default: m.X })) adapter for React.lazy()
+
+// Core pages
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
+const UserOnboarding = lazy(() => import('./pages/UserOnboarding').then(m => ({ default: m.UserOnboarding })));
+const Notifications = lazy(() => import('./pages/Notifications').then(m => ({ default: m.Notifications })));
+const Reports = lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
+const CreateReport = lazy(() => import('./pages/reports/CreateReport').then(m => ({ default: m.CreateReport })));
+
+// Assets
+const AllAssets = lazy(() => import('./pages/assets/AllAssets').then(m => ({ default: m.AllAssets })));
+const AssetDetails = lazy(() => import('./pages/assets/components/AssetDetails').then(m => ({ default: m.AssetDetails })));
+const SoftwareInventory = lazy(() => import('./pages/assets/SoftwareInventory').then(m => ({ default: m.SoftwareInventory })));
+const SoftwareLicense = lazy(() => import('./pages/assets/SoftwareLicense').then(m => ({ default: m.SoftwareLicense })));
+const Hub = lazy(() => import('./pages/hub/Hub').then(m => ({ default: m.Hub })));
+
+// Patches
+const AllPatches = lazy(() => import('./pages/patches/AllPatches').then(m => ({ default: m.AllPatches })));
+const PatchDetails = lazy(() => import('./pages/patches/PatchDetails').then(m => ({ default: m.PatchDetails })));
+const PatchRecommendations = lazy(() => import('./pages/patches/PatchRecommendations'));
+const PatchTestApprove = lazy(() => import('./pages/patches/PatchTestApprove').then(m => ({ default: m.PatchTestApprove })));
+const ZeroTouchDeployment = lazy(() => import('./pages/patches/ZeroTouchDeployment').then(m => ({ default: m.ZeroTouchDeployment })));
+const PatchJobs = lazy(() => import('./pages/jobs/PatchJobs').then(m => ({ default: m.PatchJobs })));
+const PatchJobsDeployed = lazy(() => import('./pages/jobs/PatchJobsDeployed').then(m => ({ default: m.PatchJobsDeployed })));
+
+// Vulnerability
+const Vulnerabilities = lazy(() => import('./pages/vulnerability/Vulnerabilities').then(m => ({ default: m.Vulnerabilities })));
+const ZeroDayVulnerabilities = lazy(() => import('./pages/vulnerability/ZeroDayVulnerabilities').then(m => ({ default: m.ZeroDayVulnerabilities })));
+const ManageException = lazy(() => import('./pages/vulnerability/ManageException').then(m => ({ default: m.ManageException })));
+const VulnerabilityDetail = lazy(() => import('./pages/vulnerability/VulnerabilityDetail').then(m => ({ default: m.VulnerabilityDetail })));
+const VulnerabilityJobs = lazy(() => import('./pages/jobs/VulnerabilityJobs').then(m => ({ default: m.VulnerabilityJobs })));
+
+// Discovery
+const IPDiscovery = lazy(() => import('./pages/discovery/IPDiscovery').then(m => ({ default: m.IPDiscovery })));
+const DeviceCredentials = lazy(() => import('./pages/discovery/DeviceCredentials').then(m => ({ default: m.DeviceCredentials })));
+const Agents = lazy(() => import('./pages/discovery/Agents').then(m => ({ default: m.Agents })));
+
+// Settings — User Management
+const Organization = lazy(() => import('./pages/settings/Organization').then(m => ({ default: m.Organization })));
+const UserLocation = lazy(() => import('./pages/settings/UserLocation').then(m => ({ default: m.UserLocation })));
+const UserRoles = lazy(() => import('./pages/settings/UserRoles').then(m => ({ default: m.UserRoles })));
+const RolesAndPrivileges = lazy(() => import('./pages/settings/RolesAndPrivileges').then(m => ({ default: m.RolesAndPrivileges })));
+const Users = lazy(() => import('./pages/settings/Users').then(m => ({ default: m.Users })));
+const PasswordPolicies = lazy(() => import('./pages/settings/PasswordPolicies').then(m => ({ default: m.PasswordPolicies })));
+
+// Settings — System
+const Branding = lazy(() => import('./pages/settings/Branding').then(m => ({ default: m.Branding })));
+const VendorLogo = lazy(() => import('./pages/settings/VendorLogo').then(m => ({ default: m.VendorLogo })));
+const MailServerConfiguration = lazy(() => import('./pages/settings/MailServerConfiguration').then(m => ({ default: m.MailServerConfiguration })));
+const ProxyServerConfiguration = lazy(() => import('./pages/settings/ProxyServerConfiguration').then(m => ({ default: m.ProxyServerConfiguration })));
+const LDAPServerConfiguration = lazy(() => import('./pages/settings/LDAPServerConfiguration').then(m => ({ default: m.LDAPServerConfiguration })));
+const RiskScoreSettings = lazy(() => import('./pages/settings/RiskScoreSettings').then(m => ({ default: m.RiskScoreSettings })));
+const RemoteDesktopSettings = lazy(() => import('./pages/settings/RemoteDesktopSettings').then(m => ({ default: m.RemoteDesktopSettings })));
+const ServerSettings = lazy(() => import('./pages/settings/ServerSettings').then(m => ({ default: m.ServerSettings })));
+
+// Settings — Agent Management
+const AgentApprovals = lazy(() => import('./pages/settings/AgentApprovals').then(m => ({ default: m.AgentApprovals })));
+const AgentApprovalSettings = lazy(() => import('./pages/settings/AgentApprovalSettings').then(m => ({ default: m.AgentApprovalSettings })));
+const AgentVersions = lazy(() => import('./pages/settings/AgentVersions').then(m => ({ default: m.AgentVersions })));
+const AgentConfiguration = lazy(() => import('./pages/settings/AgentConfiguration').then(m => ({ default: m.AgentConfiguration })));
+const EnrollSecret = lazy(() => import('./pages/settings/EnrollSecret').then(m => ({ default: m.EnrollSecret })));
+const RedHatAgentNomination = lazy(() => import('./pages/settings/RedHatAgentNomination').then(m => ({ default: m.RedHatAgentNomination })));
+
+// Settings — Patch & Policy
+const DeploymentPolicies = lazy(() => import('./pages/settings/DeploymentPolicies').then(m => ({ default: m.DeploymentPolicies })));
+const ComputerGroups = lazy(() => import('./pages/settings/ComputerGroups').then(m => ({ default: m.ComputerGroups })));
+const PatchPreferences = lazy(() => import('./pages/settings/PatchPreferences').then(m => ({ default: m.PatchPreferences })));
+const DistributionServer = lazy(() => import('./pages/settings/DistributionServer').then(m => ({ default: m.DistributionServer })));
+const PatchManagement = lazy(() => import('./pages/settings/PatchManagement').then(m => ({ default: m.PatchManagement })));
+const PolicyManagement = lazy(() => import('./pages/settings/PolicyManagement').then(m => ({ default: m.PolicyManagement })));
+
+// Settings — Other
+const NotificationPreferences = lazy(() => import('./pages/settings/NotificationPreferences').then(m => ({ default: m.NotificationPreferences })));
+const VulnerabilityPreference = lazy(() => import('./pages/settings/VulnerabilityPreference').then(m => ({ default: m.VulnerabilityPreference })));
+const MarketPlace = lazy(() => import('./pages/settings/MarketPlace').then(m => ({ default: m.MarketPlace })));
+const Audit = lazy(() => import('./pages/settings/Audit').then(m => ({ default: m.Audit })));
+const PlatformLicense = lazy(() => import('./pages/settings/PlatformLicense').then(m => ({ default: m.PlatformLicense })));
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -84,8 +110,15 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" replace />;
 };
 
+const PageLoader = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+    <Spin size="large" />
+  </div>
+);
+
 function AppRoutes() {
   return (
+    <Suspense fallback={<PageLoader />}>
     <Routes>
       <Route
         path="/login"
@@ -304,6 +337,16 @@ function AppRoutes() {
       <Route
         path="/vulnerability"
         element={<Navigate to="/vulnerability/zero-day-vulnerabilities" replace />}
+      />
+      <Route
+        path="/vulnerability/:id"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <VulnerabilityDetail />
+            </MainLayout>
+          </ProtectedRoute>
+        }
       />
 
       {/* Discovery */}
@@ -708,6 +751,7 @@ function AppRoutes() {
       {/* Default route */}
       <Route path="/" element={<Navigate to="/login" replace />} />
     </Routes>
+    </Suspense>
   );
 }
 
@@ -723,25 +767,29 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ConfigProvider
-        theme={{
-          token: {
-            colorPrimary: '#1890ff',
-            borderRadius: 8,
-          },
-        }}
-      >
-        <AntApp>
-          <BrowserRouter>
-            <AuthProvider>
-              <AppRoutes />
-            </AuthProvider>
-          </BrowserRouter>
-        </AntApp>
-      </ConfigProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <RootErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ConfigProvider
+          theme={{
+            token: {
+              colorPrimary: '#1890ff',
+              borderRadius: 8,
+            },
+          }}
+        >
+          <AntApp>
+            <BrowserRouter>
+              <ErrorBoundary>
+                <AuthProvider>
+                  <AppRoutes />
+                </AuthProvider>
+              </ErrorBoundary>
+            </BrowserRouter>
+          </AntApp>
+        </ConfigProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </RootErrorBoundary>
   );
 }
 

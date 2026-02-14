@@ -2,34 +2,29 @@ import { Tag } from 'antd';
 
 type SeverityBadgeProps = {
   severity: string;
+  showIcon?: boolean;
 };
 
-export const SeverityBadge = ({ severity }: SeverityBadgeProps) => {
-  const getColor = () => {
-    switch (severity) {
-      case 'CRITICAL':
-        return '#ff4d4f';
-      case 'High':
-        return '#ff7a45';
-      case 'Medium':
-        return '#ffa940';
-      case 'Low':
-        return '#52c41a';
-      case 'UNSPECIFIED':
-        return '#1890ff';
-      default:
-        return '#d9d9d9';
-    }
-  };
+const severityConfig: Record<string, { color: string; icon: string; label: string }> = {
+  CRITICAL: { color: '#ff4d4f', icon: '●', label: 'Critical severity' },
+  HIGH: { color: '#ff7a45', icon: '▲', label: 'High severity' },
+  MEDIUM: { color: '#ffa940', icon: '■', label: 'Medium severity' },
+  LOW: { color: '#52c41a', icon: '◆', label: 'Low severity' },
+  UNSPECIFIED: { color: '#1890ff', icon: '○', label: 'Unspecified severity' },
+};
+
+export const SeverityBadge = ({ severity, showIcon = true }: SeverityBadgeProps) => {
+  const key = severity.toUpperCase();
+  const config = severityConfig[key] || { color: '#d9d9d9', icon: '○', label: `${severity} severity` };
 
   return (
     <Tag
-      color={getColor()}
-      style={{
-        border: 'none',
-        fontWeight: 500,
-      }}
+      color={config.color}
+      style={{ border: 'none', fontWeight: 500 }}
+      role="status"
+      aria-label={config.label}
     >
+      {showIcon && <span aria-hidden="true" style={{ marginRight: 4 }}>{config.icon}</span>}
       {severity}
     </Tag>
   );

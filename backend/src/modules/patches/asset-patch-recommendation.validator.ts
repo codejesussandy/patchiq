@@ -41,3 +41,38 @@ const rejectRequestSchema = z.object({
 export function validateRejectRequest(body: unknown) {
   return rejectRequestSchema.safeParse(body);
 }
+
+/**
+ * Request body for bulk accept
+ */
+const bulkAcceptRequestSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1, 'At least one recommendation ID is required'),
+  reason: z.string().optional(),
+});
+
+export function validateBulkAcceptRequest(body: unknown) {
+  return bulkAcceptRequestSchema.safeParse(body);
+}
+
+/**
+ * Request body for bulk reject
+ */
+const bulkRejectRequestSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1, 'At least one recommendation ID is required'),
+  reason: z.string().min(1, 'Rejection reason is required'),
+});
+
+export function validateBulkRejectRequest(body: unknown) {
+  return bulkRejectRequestSchema.safeParse(body);
+}
+
+/**
+ * Request body for bulk deploy
+ */
+const bulkDeployRequestSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1, 'At least one recommendation ID is required'),
+});
+
+export function validateBulkDeployRequest(body: unknown) {
+  return bulkDeployRequestSchema.safeParse(body);
+}

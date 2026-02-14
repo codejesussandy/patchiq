@@ -195,7 +195,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             }}
             trigger={['click']}
           >
-            <Button type="text" size="small" icon={<MoreOutlined />} />
+            <Button type="text" size="small" icon={<MoreOutlined />} aria-label="More options" />
           </Dropdown>
         </span>
       </div>
@@ -229,7 +229,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                 }}
                 trigger={['click']}
               >
-                <Button type="text" size="small" icon={<MoreOutlined />} />
+                <Button type="text" size="small" icon={<MoreOutlined />} aria-label="More options" />
               </Dropdown>
             </span>
           </div>

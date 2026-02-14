@@ -521,6 +521,146 @@ class AssetPatchRecommendationService {
   }
 
   /**
+   * Bulk accept recommendations
+   *
+   * Only updates recommendations that are currently in RECOMMENDED status.
+   *
+   * @param ids - Recommendation IDs to accept
+   * @param reason - Optional reason for acceptance
+   * @returns Count of accepted and skipped recommendations
+   */
+  async bulkAcceptRecommendations(
+    ids: string[],
+    reason?: string
+  ): Promise<{ accepted: number; skipped: number }> {
+    const result = await prisma.assetPatchRecommendation.updateMany({
+      where: {
+        id: { in: ids },
+        status: 'RECOMMENDED',
+      },
+      data: {
+        status: 'ACCEPTED',
+        acceptedAt: new Date(),
+        ...(reason ? { reason } : {}),
+      },
+    });
+
+    return { accepted: result.count, skipped: ids.length - result.count };
+  }
+
+  /**
+   * Bulk reject recommendations
+   *
+   * Only updates recommendations that are currently in RECOMMENDED status.
+   *
+   * @param ids - Recommendation IDs to reject
+   * @param reason - Reason for rejection (required)
+   * @returns Count of rejected and skipped recommendations
+   */
+  async bulkRejectRecommendations(
+    ids: string[],
+    reason: string
+  ): Promise<{ rejected: number; skipped: number }> {
+    const result = await prisma.assetPatchRecommendation.updateMany({
+      where: {
+        id: { in: ids },
+        status: 'RECOMMENDED',
+      },
+      data: {
+        status: 'REJECTED',
+        rejectedAt: new Date(),
+        rejectionReason: reason,
+      },
+    });
+
+    return { rejected: result.count, skipped: ids.length - result.count };
+  }
+
+  /**
+   * Bulk deploy recommendations
+   *
+   * Groups recommendations by agent and creates one deployment per agent.
+   * Only processes recommendations in ACCEPTED status with an associated agent.
+   *
+   * @param ids - Recommendation IDs to deploy
+   * @returns Count of deployed/skipped recommendations and deployment IDs
+   */
+  async bulkDeployRecommendations(
+    ids: string[]
+  ): Promise<{ deployed: number; skipped: number; deployments: string[] }> {
+    // Fetch all accepted recommendations with asset→agent and patch relations
+    const recommendations = await prisma.assetPatchRecommendation.findMany({
+      where: {
+        id: { in: ids },
+        status: 'ACCEPTED',
+      },
+      include: {
+        asset: {
+          include: { agent: true },
+        },
+        patch: {
+          select: { id: true, title: true },
+        },
+      },
+    });
+
+    // Filter recommendations that have an agent
+    const deployable = recommendations.filter((r) => r.asset?.agent?.id);
+    const skipped = ids.length - deployable.length;
+
+    if (deployable.length === 0) {
+      return { deployed: 0, skipped: ids.length, deployments: [] };
+    }
+
+    // Group by agentId — one deployment per agent with multiple patches
+    const agentGroups = new Map<string, typeof deployable>();
+    for (const rec of deployable) {
+      const agentId = rec.asset.agent!.id;
+      const group = agentGroups.get(agentId) || [];
+      group.push(rec);
+      agentGroups.set(agentId, group);
+    }
+
+    // Import deployment services dynamically to avoid circular dependencies
+    const { deploymentExecutorService } = await import(
+      '@modules/deployments/deployment-executor.service'
+    );
+
+    const deploymentIds: string[] = [];
+    let deployed = 0;
+
+    for (const [agentId, recs] of agentGroups) {
+      // Deduplicate patches for this agent
+      const uniquePatches = [...new Map(recs.map((r) => [r.patchId, r.patch])).values()];
+      const assetName = recs[0].asset.name;
+
+      const deployment = await deploymentExecutorService.createPatchDeployment({
+        name: `Bulk deploy ${uniquePatches.length} patch(es) to ${assetName}`,
+        patches: uniquePatches.map((p) => ({ id: p.id })),
+        targetAgentIds: [agentId],
+        triggerType: 'manual',
+      });
+
+      if (deployment?.deploymentId) {
+        deploymentIds.push(deployment.deploymentId);
+
+        // Update all recommendations in this group to DEPLOYED
+        await prisma.assetPatchRecommendation.updateMany({
+          where: { id: { in: recs.map((r) => r.id) } },
+          data: {
+            status: 'DEPLOYED',
+            deployedAt: new Date(),
+          },
+        });
+
+        deployed += recs.length;
+      }
+    }
+
+    return { deployed, skipped, deployments: deploymentIds };
+  }
+
+  /**
    * Bulk create recommendations from a list of asset-vulnerability pairs
    *
    * Useful for batch processing during vulnerability scans.

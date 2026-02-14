@@ -15,7 +15,6 @@ import {
   Space,
   Spin,
   Tag,
-  Badge,
   App,
   Modal,
   Empty,
@@ -23,6 +22,8 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
 import { DataTable } from '../../../../components/shared/DataTable';
+import { RiskScoreDisplay } from '../../../../components/shared/RiskScoreDisplay';
+import { StatusBadge } from '../../../../components/shared/StatusBadge';
 import { patchRecommendationService } from '../../../../services/patch-recommendation.service';
 import type { PatchRecommendation } from '../../../../types/patch-recommendation.types';
 import { getErrorMessage } from '../../../../utils/error';
@@ -46,31 +47,8 @@ const getSeverityColor = (severity: string): string => {
   }
 };
 
-// Helper: Status badge color
-const getStatusBadgeStatus = (
-  status: string
-): 'success' | 'processing' | 'error' | 'default' | 'warning' => {
-  switch (status) {
-    case 'VERIFIED':
-      return 'success';
-    case 'DEPLOYED':
-    case 'ACCEPTED':
-      return 'processing';
-    case 'FAILED':
-    case 'REJECTED':
-      return 'error';
-    case 'RECOMMENDED':
-      return 'warning';
-    default:
-      return 'default';
-  }
-};
 
-// Helper: Format risk score
-const formatRiskScore = (score: number | null): string => {
-  if (!score) return '-';
-  return score.toFixed(0);
-};
+
 
 interface PatchRecommendationsTabProps {
   assetId: string;
@@ -216,7 +194,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
       dataIndex: 'riskScore',
       key: 'riskScore',
       width: 100,
-      render: (score: number | null) => <Text>{formatRiskScore(score)}</Text>,
+      render: (score: number | null) => <RiskScoreDisplay score={score} size="small" />,
       sorter: (a, b) => (a.riskScore || 0) - (b.riskScore || 0),
       defaultSortOrder: 'descend' },
     {
@@ -224,12 +202,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
       dataIndex: 'status',
       key: 'status',
       width: 120,
-      render: (status: string) => (
-        <Badge
-          status={getStatusBadgeStatus(status)}
-          text={status.charAt(0).toUpperCase() + status.slice(1)}
-        />
-      ) },
+      render: (status: string) => <StatusBadge status={status} /> },
     {
       title: 'Actions',
       key: 'actions',
@@ -302,8 +275,8 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
   return (
     <div>
       {/* Summary Cards */}
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={6}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} md={6}>
           <Card style={{ textAlign: 'center' }}>
             <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
               Total Recommendations
@@ -313,7 +286,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
             </div>
           </Card>
         </Col>
-        <Col span={4.5}>
+        <Col xs={12} sm={6} md={4}>
           <Card style={{ textAlign: 'center' }}>
             <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
               Critical
@@ -323,7 +296,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
             </div>
           </Card>
         </Col>
-        <Col span={4.5}>
+        <Col xs={12} sm={6} md={4}>
           <Card style={{ textAlign: 'center' }}>
             <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
               High
@@ -331,7 +304,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
             <div style={{ fontSize: 24, fontWeight: 700, color: '#fa8c16' }}>{highCount}</div>
           </Card>
         </Col>
-        <Col span={4.5}>
+        <Col xs={12} sm={6} md={5}>
           <Card style={{ textAlign: 'center' }}>
             <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
               Medium
@@ -341,7 +314,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
             </div>
           </Card>
         </Col>
-        <Col span={4.5}>
+        <Col xs={12} sm={6} md={5}>
           <Card style={{ textAlign: 'center' }}>
             <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
               Low

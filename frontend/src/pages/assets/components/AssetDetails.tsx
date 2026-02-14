@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
   EditOutlined,
-  MoreOutlined,
   CopyOutlined,
   DeleteOutlined,
   ArrowLeftOutlined,
@@ -12,12 +11,11 @@ import {
   Button,
   Space,
   Typography,
-  Dropdown,
   Modal,
   Spin,
 } from 'antd';
-import type { MenuProps } from 'antd';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ActionMenu } from '../../../components/shared/ActionMenu';
 import { useAsset, useDeleteAsset, useAssignTagsToAsset } from '../../../hooks/useAssets';
 import { AddAssetModal } from './AddAssetModal';
 import {
@@ -92,20 +90,19 @@ export const AssetDetails = () => {
     }
   };
 
-  const moreMenuItems: MenuProps['items'] = [
+  const moreMenuItems = [
     {
       key: 'duplicate',
       label: 'Duplicate Asset',
       icon: <CopyOutlined />,
-      onClick: (info) => { info.domEvent.stopPropagation(); message.info('Duplicate asset functionality will be implemented'); },
+      onClick: () => { message.info('Duplicate asset functionality will be implemented'); },
     },
-    { type: 'divider' },
     {
       key: 'delete',
       label: 'Delete Asset',
       icon: <DeleteOutlined />,
       danger: true,
-      onClick: (info) => { info.domEvent.stopPropagation(); handleDeleteAsset(); },
+      onClick: () => { handleDeleteAsset(); },
     },
   ];
 
@@ -183,9 +180,7 @@ export const AssetDetails = () => {
         </Space>
         <Space>
           <Button icon={<EditOutlined />} onClick={() => setEditModalVisible(true)}>Edit Asset</Button>
-          <Dropdown menu={{ items: moreMenuItems }} trigger={['click']}>
-            <Button icon={<MoreOutlined />} onClick={(e) => { e.stopPropagation(); e.preventDefault(); }} />
-          </Dropdown>
+          <ActionMenu items={moreMenuItems} />
         </Space>
       </div>
 

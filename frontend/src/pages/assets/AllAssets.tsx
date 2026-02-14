@@ -32,8 +32,9 @@ import type { ColumnConfig } from '../../components/ColumnSettingsDrawer';
 import { TableSettingsIcon } from '../../components/icons/TableSettingsIcon';
 import { ConfirmModal } from '../../components/shared/ConfirmModal';
 import { DataTable } from '../../components/shared/DataTable';
-import { useAssets, useCategories, useSubCategories, useUpdateAsset, useDeleteAsset } from '../../hooks/useAssets';
+import { useAssetsList, useCategories, useSubCategories, useUpdateAsset, useDeleteAsset } from '../../hooks/useAssets';
 import { useModal } from '../../hooks/useModal';
+import { useTableParams } from '../../hooks/useTableParams';
 import type { Asset } from '../../types/asset.types';
 import { AddAssetModal } from './components/AddAssetModal';
 import { DownloadAgentModal } from './components/allassets/DownloadAgentModal';
@@ -54,12 +55,44 @@ const defaultColumnConfig: ColumnConfig[] = [
 
 const STORAGE_KEY = 'assets_column_config_v3';
 
+interface AssetFilters {
+  status: string;
+  operationalStatus: string;
+  categoryId: string;
+}
+
 export function AllAssets() {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const { data: assetsData, isLoading: loading } = useAssets();
+  // Server-side pagination, search, sort, and filters
+  const table = useTableParams<AssetFilters>({
+    defaultPageSize: 20,
+    defaultSort: { field: 'createdAt', order: 'desc' },
+    defaultFilters: { status: '', operationalStatus: '', categoryId: '' },
+  });
+
+  // URL-driven category/subcategory from sidebar navigation
+  const categoryId = searchParams.get('category') || undefined;
+  const subCategoryId = searchParams.get('subcategory') || undefined;
+
+  // Server-side paginated query
+  const { data: paginatedResult, isLoading: loading } = useAssetsList({
+    page: table.page,
+    pageSize: table.pageSize,
+    sort: table.sort?.field,
+    order: table.sort?.order,
+    search: table.search || undefined,
+    status: table.filters.status || undefined,
+    operationalStatus: table.filters.operationalStatus || undefined,
+    categoryId: categoryId || table.filters.categoryId || undefined,
+    subCategoryId: subCategoryId || undefined,
+  });
+
+  const assets = paginatedResult?.data ?? [];
+  const totalAssets = paginatedResult?.total ?? 0;
+
   const { data: categoriesData } = useCategories();
   const { data: subCategoriesData } = useSubCategories();
   const updateAssetMutation = useUpdateAsset();
@@ -67,11 +100,9 @@ export function AllAssets() {
   const deleteModal = useModal<{ id: string; name?: string }>();
   const bulkDeleteModal = useModal();
 
-  const assets: Asset[] = Array.isArray(assetsData) ? assetsData : [];
   const categories = categoriesData || [];
   const subCategories = subCategoriesData || [];
 
-  const [searchText, setSearchText] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
@@ -82,13 +113,7 @@ export function AllAssets() {
   const [columnConfig, setColumnConfig] = useColumnConfig(defaultColumnConfig, STORAGE_KEY);
   const [uploading, setUploading] = useState(false);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string | null>(null);
-  const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | null>(null);
   const [downloadAgentModalVisible, setDownloadAgentModalVisible] = useState(false);
-
-  const categoryId = searchParams.get('category');
-  const subCategoryId = searchParams.get('subcategory');
 
   const handleCategoryEdit = (asset: Asset) => {
     setSelectedAssetForCategory(asset);
@@ -156,15 +181,15 @@ export function AllAssets() {
     return false;
   };
 
-  const filteredAssets = (assets || []).filter((asset) => {
-    const matchesSearch = asset.name.toLowerCase().includes(searchText.toLowerCase()) || asset.assetId.toLowerCase().includes(searchText.toLowerCase());
-    if (categoryId && asset.categoryId !== categoryId) return false;
-    if (subCategoryId && asset.subCategoryId !== subCategoryId) return false;
-    if (filterCategoryId && asset.categoryId !== filterCategoryId) return false;
-    if (filterStatus && asset.status !== filterStatus) return false;
-    if (filterOperationalStatus && asset.operationalStatus !== filterOperationalStatus) return false;
-    return matchesSearch;
-  });
+  const handleApplyFilters = () => {
+    setFilterModalVisible(false);
+    message.success('Filters applied');
+  };
+
+  const handleClearFilters = () => {
+    table.setFilters({ status: '', operationalStatus: '', categoryId: '' });
+    message.info('Filters cleared');
+  };
 
   const visibleColumns = columnConfig.filter((col) => col.visible).sort((a, b) => {
     if (a.pinned && !b.pinned) return -1;
@@ -242,7 +267,15 @@ export function AllAssets() {
       <Row gutter={[12, 12]} style={{ padding: '4px 12px', flexShrink: 0, marginRight: 0 }} align="middle">
         <Col flex="auto">
           <Space>
-            <Input placeholder="Search" prefix={<SearchOutlined />} style={{ width: 320 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+            <Input
+              placeholder="Search"
+              prefix={<SearchOutlined />}
+              style={{ width: 320 }}
+              value={table.search}
+              onChange={(e) => table.setSearch(e.target.value)}
+              allowClear
+              onClear={() => table.setSearch('')}
+            />
             <Button icon={<FilterOutlined />} onClick={() => setFilterModalVisible(true)}>Filter</Button>
             <Tooltip title="Column Settings"><Button icon={<TableSettingsIcon />} onClick={() => setColumnSettingsOpen(true)} /></Tooltip>
           </Space>
@@ -273,10 +306,21 @@ export function AllAssets() {
         <DataTable
           style={{ width: '100%' }}
           rowSelection={{ selectedRowKeys, onChange: (keys) => setSelectedRowKeys(keys) }}
-          columns={columns} data={filteredAssets} rowKey="id" loading={loading}
+          columns={columns}
+          data={assets as unknown as Record<string, unknown>[]}
+          rowKey="id"
+          loading={loading}
           scroll={{ x: 'max-content' }}
-          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} assets found` }}
-          onRow={(record) => ({ onClick: () => navigate(`/assets/${record.id}`), style: { cursor: 'pointer' } })}
+          pagination={{
+            current: table.page,
+            pageSize: table.pageSize,
+            total: totalAssets,
+            onChange: (page, pageSize) => {
+              table.setPage(page);
+              if (pageSize !== table.pageSize) table.setPageSize(pageSize);
+            },
+          }}
+          onRow={(record) => ({ onClick: () => navigate(`/assets/${(record as unknown as Asset).id}`), style: { cursor: 'pointer' } })}
         />
       </div>
 
@@ -310,24 +354,27 @@ export function AllAssets() {
       </Modal>
 
       {/* Filter Modal */}
-      <Modal title="Filter Assets" open={filterModalVisible} onOk={() => { setFilterModalVisible(false); message.success('Filters applied'); }}
+      <Modal title="Filter Assets" open={filterModalVisible} onOk={handleApplyFilters}
         onCancel={() => setFilterModalVisible(false)} width={500} okText="Apply Filters" cancelText="Close">
         <Form layout="vertical">
           <Form.Item label="Filter by Category">
-            <Select placeholder="Select a category" value={filterCategoryId} onChange={setFilterCategoryId}
+            <Select placeholder="Select a category" value={table.filters.categoryId || null}
+              onChange={(value) => table.setFilters({ categoryId: value || '' })}
               options={categories.map((cat) => ({ label: cat.name, value: cat.id }))} allowClear />
           </Form.Item>
           <Form.Item label="Filter by Status">
-            <Select placeholder="Select status" value={filterStatus} onChange={setFilterStatus}
+            <Select placeholder="Select status" value={table.filters.status || null}
+              onChange={(value) => table.setFilters({ status: value || '' })}
               options={[{ label: 'In Use', value: 'IN_USE' }, { label: 'Available', value: 'AVAILABLE' }, { label: 'Under Maintenance', value: 'UNDER_MAINTENANCE' }, { label: 'Retired', value: 'RETIRED' }]}
               allowClear />
           </Form.Item>
           <Form.Item label="Filter by Operational Status">
-            <Select placeholder="Select operational status" value={filterOperationalStatus} onChange={setFilterOperationalStatus}
+            <Select placeholder="Select operational status" value={table.filters.operationalStatus || null}
+              onChange={(value) => table.setFilters({ operationalStatus: value || '' })}
               options={[{ label: 'Connected', value: 'CONNECTED' }, { label: 'Disconnected', value: 'DISCONNECTED' }]}
               allowClear />
           </Form.Item>
-          <Button type="dashed" onClick={() => { setFilterCategoryId(null); setFilterStatus(null); setFilterOperationalStatus(null); message.info('Filters cleared'); }} style={{ width: '100%' }}>Clear All Filters</Button>
+          <Button type="dashed" onClick={handleClearFilters} style={{ width: '100%' }}>Clear All Filters</Button>
         </Form>
       </Modal>
 

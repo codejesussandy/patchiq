@@ -1,8 +1,10 @@
 import { CheckCircleOutlined, CloseCircleOutlined, RocketOutlined, EyeOutlined } from '@ant-design/icons';
-import { Button, Space, Tag, Badge, Typography } from 'antd';
+import { Button, Space, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { RiskScoreDisplay } from '../../../../components/shared/RiskScoreDisplay';
+import { StatusBadge } from '../../../../components/shared/StatusBadge';
 import type { PatchRecommendation } from '../../../../types/patch-recommendation.types';
-import { getSeverityColor, getStatusBadgeStatus, formatRiskScore } from './recommendationHelpers';
+import { getSeverityColor } from './recommendationHelpers';
 
 const { Text } = Typography;
 
@@ -35,13 +37,13 @@ export function buildRecommendationColumns({ actionLoading, onAccept, onReject, 
     },
     {
       title: 'Risk Score', dataIndex: 'riskScore', key: 'riskScore', width: 100,
-      render: (score: number | null) => <Text>{formatRiskScore(score)}</Text>,
+      render: (score: number | null) => <RiskScoreDisplay score={score} size="small" />,
       sorter: (a, b) => (a.riskScore || 0) - (b.riskScore || 0),
       defaultSortOrder: 'descend',
     },
     {
       title: 'Status', dataIndex: 'status', key: 'status', width: 120,
-      render: (status: string) => <Badge status={getStatusBadgeStatus(status)} text={status.charAt(0).toUpperCase() + status.slice(1)} />,
+      render: (status: string) => <StatusBadge status={status} />,
     },
     {
       title: 'Affected Software', dataIndex: 'affectedSoftware', key: 'affectedSoftware', ellipsis: true,

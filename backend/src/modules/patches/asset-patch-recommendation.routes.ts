@@ -19,6 +19,11 @@ router.get('/dashboard', controller.getDashboardStats);
 // List all recommendations (with optional filters)
 router.get('/', controller.listRecommendations);
 
+// Bulk operations (must be before /:id routes)
+router.post('/bulk-accept', controller.bulkAcceptRecommendations);
+router.post('/bulk-reject', controller.bulkRejectRecommendations);
+router.post('/bulk-deploy', controller.bulkDeployRecommendations);
+
 // Get a single recommendation
 router.get('/:id', controller.getRecommendation);
 
