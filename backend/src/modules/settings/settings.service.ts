@@ -449,8 +449,14 @@ export class SettingsService {
     const result = { ...defaults };
     for (const setting of settings) {
       const key = setting.key.replace('proxy.', '');
-      result[key] = setting.value;
+      // R2A, R3A: Never return password in GET response
+      if (key !== 'password') {
+        result[key] = setting.value;
+      }
     }
+
+    // R2A, R3A: Password masking — always return null
+    result.password = null;
 
     return result;
   }
@@ -490,18 +496,54 @@ export class SettingsService {
   }
 
   async testProxyServer(input: Record<string, unknown>): Promise<SuccessResponse> {
-    const host = input.host as string;
-    const port = Number(input.port);
-    const protocol = (input.protocol as 'HTTP' | 'HTTPS' | 'SOCKS5') || 'HTTP';
+    // R3B: Test endpoint must use SAVED config from DB, not submitted config
+    const settings = await prisma.setting.findMany({
+      where: { category: 'proxy' },
+    });
 
-    logger.info({ host, port, protocol }, 'Testing proxy connection');
+    const proxyData: Record<string, unknown> = {
+      enabled: false,
+      host: null,
+      port: null,
+      protocol: null,
+      enableAuthentication: false,
+      username: null,
+      password: null,
+    };
+
+    for (const setting of settings) {
+      const key = setting.key.replace('proxy.', '');
+      proxyData[key] = setting.value;
+    }
+
+    // R3B: If proxy is disabled, return 400
+    if (!proxyData.enabled) {
+      throw new BadRequestError('Proxy is disabled. Enable it first.');
+    }
+
+    // R3B: Validate that saved config has required fields
+    if (!proxyData.host || !proxyData.port || !proxyData.protocol) {
+      throw new BadRequestError('Proxy configuration incomplete. Please configure host, port, and protocol.');
+    }
+
+    const host = proxyData.host as string;
+    const port = Number(proxyData.port);
+    const protocol = proxyData.protocol as 'HTTP' | 'HTTPS' | 'SOCKS5';
+
+    // Decrypt password if exists
+    let password: string | undefined;
+    if (proxyData.password) {
+      password = decrypt(proxyData.password as string);
+    }
+
+    logger.info({ host, port, protocol }, 'Testing proxy connection with saved config');
 
     const proxyConfig: ProxyConfig = {
       host,
       port,
       protocol,
-      username: input.username as string | undefined,
-      password: input.password as string | undefined,
+      username: proxyData.username as string | undefined,
+      password,
     };
 
     const result = await proxyService.testConnection(proxyConfig);
@@ -902,7 +944,7 @@ export class SettingsService {
 
   async listAgentApprovals(params: { page: number; limit: number; search?: string }): Promise<PaginatedResponse<AgentApprovalResponse>> {
     const where: Record<string, unknown> = {
-      status: 'Pending',
+      status: 'PENDING_APPROVAL',
     };
 
     if (params.search) {
@@ -938,7 +980,7 @@ export class SettingsService {
     return paginate(data, total, paginationParams);
   }
 
-  async approveAgent(id: string): Promise<SuccessResponse> {
+  async approveAgent(id: string) {
     const agent = await prisma.agent.findUnique({
       where: { id },
     });
@@ -951,18 +993,21 @@ export class SettingsService {
       throw new BadRequestError(`Agent is already ${agent.status.toLowerCase()}`);
     }
 
-    await prisma.agent.update({
+    const updated = await prisma.agent.update({
       where: { id },
       data: { status: 'CONNECTED' },
     });
 
     return {
-      success: true,
+      id: updated.id,
+      machineId: updated.machineId,
+      hostname: updated.hostname,
+      status: updated.status,
       message: 'Agent approved successfully',
     };
   }
 
-  async rejectAgent(id: string): Promise<SuccessResponse> {
+  async rejectAgent(id: string) {
     const agent = await prisma.agent.findUnique({
       where: { id },
     });
@@ -975,13 +1020,16 @@ export class SettingsService {
       throw new BadRequestError('Agent is already rejected');
     }
 
-    await prisma.agent.update({
+    const updated = await prisma.agent.update({
       where: { id },
       data: { status: 'REJECTED' },
     });
 
     return {
-      success: true,
+      id: updated.id,
+      machineId: updated.machineId,
+      hostname: updated.hostname,
+      status: updated.status,
       message: 'Agent rejected successfully',
     };
   }
@@ -1536,6 +1584,14 @@ export class SettingsService {
     userId?: string,
     ipAddress?: string
   ) {
+    // Check for duplicate vendor logo name (case-insensitive)
+    const existing = await prisma.vendorLogo.findFirst({
+      where: { name: { equals: data.name, mode: 'insensitive' } },
+    });
+    if (existing) {
+      throw new ConflictError(`Vendor logo with name '${data.name}' already exists`);
+    }
+
     const objectKey = `vendor-logos/${data.type}/${Date.now()}-${logoFile.originalname}`;
 
     await minioStorage.uploadBuffer(objectKey, logoFile.buffer, {
@@ -1784,9 +1840,7 @@ export class SettingsService {
       where: { ldapConfigId_ldapGroupDn: { ldapConfigId, ldapGroupDn: input.ldapGroupDn } },
     });
     if (existing) {
-      const err = new BadRequestError('Group mapping already exists for this LDAP group');
-      (err as unknown as { statusCode: number }).statusCode = 409;
-      throw err;
+      throw new ConflictError('Group mapping already exists for this LDAP group');
     }
 
     const mapping = await prisma.ldapGroupMapping.create({
@@ -1899,7 +1953,7 @@ export class SettingsService {
       logger.error({ err, jobId: job.id }, 'LDAP sync failed');
     });
 
-    return { id: job.id, status: 'RUNNING', triggerType: 'MANUAL' };
+    return { id: job.id, syncJobId: job.id, status: 'RUNNING', triggerType: 'MANUAL' };
   }
 
   private async executeLdapSync(config: { id: string; host: string; port: number; baseDn: string; bindDnEnc: string; bindPasswordEnc: string; userSearchBase: string | null; userFilter: string | null; groupSearchBase: string | null; groupFilter: string | null; groupMemberAttribute: string }, jobId: string) {
@@ -2218,18 +2272,14 @@ export class SettingsService {
 
   async validateEnrollSecret(secretValue: string | undefined): Promise<{ id: string; organizationId: string | null; departmentId: string | null; maxUses: number | null; usedCount: number } | null> {
     const activeCount = await prisma.enrollSecret.count({ where: { isActive: true } });
-    console.log(`[DEBUG validateEnrollSecret] activeCount=${activeCount}, secretValue=${secretValue ? 'provided' : 'undefined'}`);
 
     if (activeCount === 0) {
       if (!secretValue) {
-        console.log('[DEBUG validateEnrollSecret] No secrets configured, returning null (open registration)');
         return null;
       }
-      console.log('[DEBUG validateEnrollSecret] Secret provided but no active secrets, returning null');
       return null;
     }
     if (!secretValue) {
-      console.log('[DEBUG validateEnrollSecret] No secret provided but secrets exist, throwing error');
       throw new UnauthorizedError('Enrollment secret required');
     }
     const secret = await prisma.enrollSecret.findUnique({ where: { secret: secretValue } });
@@ -2237,7 +2287,6 @@ export class SettingsService {
     if (!secret.isActive) throw new UnauthorizedError('Enrollment secret is inactive');
     if (secret.expiresAt && secret.expiresAt < new Date()) throw new UnauthorizedError('Enrollment secret has expired');
     if (secret.maxUses !== null && secret.usedCount >= secret.maxUses) throw new UnauthorizedError('Enrollment secret usage limit reached');
-    console.log(`[DEBUG validateEnrollSecret] Returning secret id=${secret.id}`);
     return { id: secret.id, organizationId: secret.organizationId, departmentId: secret.departmentId, maxUses: secret.maxUses, usedCount: secret.usedCount };
   }
 
@@ -2251,9 +2300,12 @@ export class SettingsService {
 
   async getAgentApprovalSettings() {
     const setting = await prisma.setting.findUnique({ where: { key: 'agent-approval-settings' } });
-    if (!setting) return { approvalType: 'MANUAL', autoApprovalBasedOn: 'ALL', criteria: {} };
+    if (!setting) {
+      return { approvalType: 'MANUAL', autoApprovalBasedOn: 'ALL', criteria: {} };
+    }
     const val = setting.value as Record<string, unknown>;
-    return { approvalType: (val.approvalType as string) || 'MANUAL', autoApprovalBasedOn: (val.autoApprovalBasedOn as string) || 'ALL', criteria: val.criteria || {} };
+    const result = { approvalType: (val.approvalType as string) || 'MANUAL', autoApprovalBasedOn: (val.autoApprovalBasedOn as string) || 'ALL', criteria: val.criteria || {} };
+    return result;
   }
 
   async updateAgentApprovalSettings(data: Record<string, unknown>) {

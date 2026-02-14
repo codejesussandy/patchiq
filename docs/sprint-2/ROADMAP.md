@@ -178,23 +178,29 @@ After 2A completes, these can run IN PARALLEL:
 
 ---
 
-#### Pipeline 2C: Organization & User Management `NEXT` (after 2A + 2B)
+#### Pipeline 2C: Organization & User Management `NOW`
 
+**PRD:** `docs/sprint-2/PRD-ORG-USER-MANAGEMENT.md`
 **Resolves:** A.15 (Branch asset count)
-**Depends on:** 2A (user CRUD needs RBAC), 2B (LDAP-synced users join org hierarchy)
+**Depends on:** 2A (user CRUD needs RBAC — COMPLETED), 2B (LDAP-synced users join org hierarchy — COMPLETED)
 
-| # | Requirement | Scope |
-|---|-------------|-------|
-| R1 | Org → Branch → Dept → Location hierarchy | Fix cascading deletes, proper constraints, real asset counts |
-| R2 | User lifecycle hardening | Invite → onboard → active → suspend → reactivate, audit trail on every transition |
-| R3 | User import (bulk) | CSV/LDAP bulk import with validation, duplicate detection |
-| R4 | Validation script | Full org hierarchy CRUD, user lifecycle flows, edge cases |
+| # | Requirement | Scope | Status |
+|---|-------------|-------|--------|
+| R1 | Fix Branch Asset Count & Aggregate Counts | Replace hardcoded `assets: 0`, add org/dept counts | `TODO` |
+| R2 | Org Hierarchy Tree Endpoint | Single endpoint for full org → branch → dept tree with counts | `TODO` |
+| R3 | Safe Deletion with Impact Preview | Delete impact preview, cascade/reassign modes, better error messages | `TODO` |
+| R4 | User Lifecycle State Machine | Wire suspend/activate routes, onboarding endpoint, enhanced filters | `TODO` |
+| R5 | Bulk User Import via CSV | JSON import endpoint, per-row validation, CSV template download | `TODO` |
+| R6 | Bulk User Status Change | Bulk suspend/activate/delete with self-exclusion | `TODO` |
+| R7 | End-to-End Validation Script | 78 scenarios covering all features via real HTTP requests | `TODO` |
 
 **Exit Criteria:**
 - [ ] Branch asset count reflects real data (not hardcoded 0)
-- [ ] Deleting an org cascades correctly (branches, depts, users reassigned/warned)
-- [ ] User state transitions logged in audit
-- [ ] Validation script passes all org/user scenarios
+- [ ] Org tree endpoint returns full hierarchy with correct counts in a single call
+- [ ] Deleting an org with cascade=true removes children, reassigns users, creates audit trail
+- [ ] User lifecycle (invite → onboard → suspend → activate → delete) fully operational with audit
+- [ ] Bulk import of 100 users completes in <10s with per-row error reporting
+- [ ] Validation script passes 78/78 scenarios with real database
 
 ---
 

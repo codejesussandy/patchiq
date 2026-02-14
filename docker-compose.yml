@@ -119,10 +119,10 @@ services:
     environment:
       MINIO_ROOT_USER: patchiq_admin
       MINIO_ROOT_PASSWORD: patchiq_secret_key
-    # Ports accessed via nginx reverse proxy only
-    expose:
-      - "9000"   # S3 API
-      - "9001"   # Web Console
+    # Ports exposed for validation scripts running on host
+    ports:
+      - "${MINIO_PORT:-9000}:9000"    # S3 API — accessible from host for testing
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"  # Web Console
     volumes:
       - minio_data:/data
     healthcheck:
@@ -185,9 +185,9 @@ services:
       - MOCK_EMAIL=true
       - MOCK_LDAP=true
       - MOCK_PATCHES=true
-    # Port accessed via nginx reverse proxy only
-    expose:
-      - "3000"
+    # Port exposed for validation scripts running on host
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
     depends_on:
       postgres:
         condition: service_healthy

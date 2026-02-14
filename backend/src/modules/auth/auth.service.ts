@@ -71,6 +71,7 @@ function toUserPublic(user: UserWithRelations): UserPublic {
       permissions: (user.role.permissions ?? {}) as RolePermissions,
     },
     isOnboarded: user.isOnboarded,
+    authSource: user.authSource || 'LOCAL',
     organizationId: user.organizationId,
     departmentId: user.departmentId,
     locationId: user.locationId,
@@ -248,6 +249,7 @@ export class AuthService {
           ldapDn: ldapResult.dn,
           ldapConfigId: usedConfig!.id,
           authSource: 'LDAP',
+          isActive: true,
           isOnboarded: true,
         },
         include: { role: true, organization: true, department: true, location: true },
@@ -529,6 +531,100 @@ export class AuthService {
         data: { revokedAt: new Date() },
       });
     });
+  }
+
+  /**
+   * Complete user onboarding with token (for invited users - no auth required)
+   */
+  async onboardWithToken(input: {
+    token: string;
+    password: string;
+    firstName?: string;
+    lastName?: string;
+  }): Promise<LoginResponse> {
+    // Find the token in PasswordResetToken table (reused for invites)
+    const tokenHash = hashString(input.token);
+    const tokenRecord = await prisma.passwordResetToken.findFirst({
+      where: { tokenHash },
+      include: { user: { include: { role: true, organization: true, department: true, location: true } } },
+    });
+
+    if (!tokenRecord || tokenRecord.usedAt) {
+      throw new BadRequestError('Token already used or invalid');
+    }
+
+    // Check expiry
+    if (tokenRecord.expiresAt < new Date()) {
+      throw new BadRequestError('Invite token expired');
+    }
+
+    // Check user not already onboarded
+    if (tokenRecord.user.isOnboarded) {
+      throw new BadRequestError('User already onboarded');
+    }
+
+    // Validate password against policy
+    const violations = await validatePassword(input.password, prisma);
+    if (violations.length > 0) {
+      throw new BadRequestError('Password does not meet security requirements', {
+        code: 'PASSWORD_POLICY_VIOLATION',
+        details: violations,
+      });
+    }
+
+    // Hash password and update user
+    const passwordHash = await hashPassword(input.password);
+    const updatedUser = await prisma.user.update({
+      where: { id: tokenRecord.user.id },
+      data: {
+        passwordHash,
+        isOnboarded: true,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        name: input.firstName && input.lastName ? `${input.firstName} ${input.lastName}` : tokenRecord.user.name,
+      },
+      include: { role: true, organization: true, department: true, location: true },
+    });
+
+    // Mark token as used
+    await prisma.passwordResetToken.update({
+      where: { id: tokenRecord.id },
+      data: { usedAt: new Date() },
+    });
+
+    // Generate and return JWT
+    const payload = {
+      userId: updatedUser.id,
+      email: updatedUser.email,
+      role: updatedUser.role.name,
+      roleId: updatedUser.roleId,
+      organizationId: updatedUser.organizationId ?? undefined,
+    };
+
+    // Use session timeout from server settings if configured
+    const accessExpiresIn = await getSessionTimeoutOverride();
+    const { accessToken, refreshToken } = generateTokenPair(payload, accessExpiresIn);
+
+    // Store refresh token
+    await prisma.refreshToken.create({
+      data: {
+        userId: updatedUser.id,
+        tokenHash: hashString(refreshToken),
+        expiresAt: addDuration(new Date(), '7d'),
+      },
+    });
+
+    // Update last login time
+    await prisma.user.update({
+      where: { id: updatedUser.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      user: toUserPublic(updatedUser),
+    };
   }
 
   /**

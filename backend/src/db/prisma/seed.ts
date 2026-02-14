@@ -157,10 +157,10 @@ async function main() {
 
   // Dev OpenLDAP config
   const ldapConfig = await prisma.ldapConfig.upsert({
-    where: { id: '550e8400-e29b-41d4-a716-446655440001' },
+    where: { id: 'dev-openldap-config' },
     update: {},
     create: {
-      id: '550e8400-e29b-41d4-a716-446655440001',
+      id: 'dev-openldap-config',
       name: 'Dev OpenLDAP',
       host: 'localhost',
       port: 3389,

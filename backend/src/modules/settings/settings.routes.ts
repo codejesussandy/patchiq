@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { authenticate } from '@middleware/auth';
 import { audit, AuditAction, AuditResource } from '@middleware/audit';
@@ -10,7 +10,7 @@ import { settingsController } from './settings.controller';
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB max file size for logos
+    fileSize: 5 * 1024 * 1024, // 5MB max file size for logos
   },
   fileFilter: (req, file, cb) => {
     const allowedMimes = ['image/png', 'image/jpeg', 'image/gif', 'image/svg+xml'];
@@ -78,9 +78,28 @@ import {
   updateIntegrationSchema,
   toggleIntegrationStatusSchema,
   listIntegrationsQuerySchema,
+  bulkImportSchema,
+  bulkUserActionSchema,
 } from './settings.validators';
 
 const router = Router();
+
+// Multer error handler middleware — converts multer errors to 400 responses
+function handleMulterError(err: Error, req: Request, res: Response, next: NextFunction) {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      res.status(413).json({ success: false, error: { code: 'FILE_TOO_LARGE', message: 'File size exceeds 5MB limit' } });
+      return;
+    }
+    res.status(400).json({ success: false, error: { code: 'UPLOAD_ERROR', message: err.message } });
+    return;
+  }
+  if (err.message?.includes('Invalid file type')) {
+    res.status(400).json({ success: false, error: { code: 'INVALID_FILE_TYPE', message: err.message } });
+    return;
+  }
+  next(err);
+}
 
 // All settings routes require authentication
 router.use(authenticate);
@@ -88,102 +107,114 @@ router.use(authenticate);
 // ============================================
 // Organizations
 // ============================================
-router.get('/organizations', validateQuery(listOrganizationsQuerySchema), settingsController.listOrganizations.bind(settingsController));
-router.get('/organizations/:id', validateParams(idParamSchema), settingsController.getOrganization.bind(settingsController));
-router.post('/organizations', validateBody(createOrganizationSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.ORGANIZATION }), settingsController.createOrganization.bind(settingsController));
-router.put('/organizations/:id', validateParams(idParamSchema), validateBody(updateOrganizationSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.ORGANIZATION, getResourceId: (req) => req.params.id }), settingsController.updateOrganization.bind(settingsController));
-router.delete('/organizations/:id', validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.ORGANIZATION, getResourceId: (req) => req.params.id }), settingsController.deleteOrganization.bind(settingsController));
+router.get('/org-tree', checkPermission('settings', 'view'), settingsController.getOrgTree.bind(settingsController));
+router.get('/organizations/:id/delete-impact', checkPermission('settings', 'view'), validateParams(idParamSchema), settingsController.getOrganizationDeleteImpact.bind(settingsController));
+router.get('/organizations', checkPermission('settings', 'view'), validateQuery(listOrganizationsQuerySchema), settingsController.listOrganizations.bind(settingsController));
+router.get('/organizations/:id', checkPermission('settings', 'view'), validateParams(idParamSchema), settingsController.getOrganization.bind(settingsController));
+router.post('/organizations', checkPermission('settings', 'add'), validateBody(createOrganizationSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.ORGANIZATION }), settingsController.createOrganization.bind(settingsController));
+router.put('/organizations/:id', checkPermission('settings', 'edit'), validateParams(idParamSchema), validateBody(updateOrganizationSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.ORGANIZATION, getResourceId: (req) => req.params.id }), settingsController.updateOrganization.bind(settingsController));
+router.delete('/organizations/:id', checkPermission('settings', 'delete'), validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.ORGANIZATION, getResourceId: (req) => req.params.id }), settingsController.deleteOrganization.bind(settingsController));
 
 // ============================================
 // Branches
 // ============================================
-router.get('/branches', validateQuery(listBranchesQuerySchema), settingsController.listBranches.bind(settingsController));
-router.get('/branches/:id', validateParams(idParamSchema), settingsController.getBranch.bind(settingsController));
-router.post('/branches', validateBody(createBranchSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.BRANCH }), settingsController.createBranch.bind(settingsController));
-router.put('/branches/:id', validateParams(idParamSchema), validateBody(updateBranchSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.BRANCH, getResourceId: (req) => req.params.id }), settingsController.updateBranch.bind(settingsController));
-router.delete('/branches/:id', validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.BRANCH, getResourceId: (req) => req.params.id }), settingsController.deleteBranch.bind(settingsController));
+router.get('/branches/:id/delete-impact', checkPermission('settings', 'view'), validateParams(idParamSchema), settingsController.getBranchDeleteImpact.bind(settingsController));
+router.get('/branches', checkPermission('settings', 'view'), validateQuery(listBranchesQuerySchema), settingsController.listBranches.bind(settingsController));
+router.get('/branches/:id', checkPermission('settings', 'view'), validateParams(idParamSchema), settingsController.getBranch.bind(settingsController));
+router.post('/branches', checkPermission('settings', 'add'), validateBody(createBranchSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.BRANCH }), settingsController.createBranch.bind(settingsController));
+router.put('/branches/:id', checkPermission('settings', 'edit'), validateParams(idParamSchema), validateBody(updateBranchSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.BRANCH, getResourceId: (req) => req.params.id }), settingsController.updateBranch.bind(settingsController));
+router.delete('/branches/:id', checkPermission('settings', 'delete'), validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.BRANCH, getResourceId: (req) => req.params.id }), settingsController.deleteBranch.bind(settingsController));
 
 // ============================================
 // Departments
 // ============================================
-router.get('/departments', validateQuery(listDepartmentsQuerySchema), settingsController.listDepartments.bind(settingsController));
-router.get('/departments/:id', validateParams(idParamSchema), settingsController.getDepartment.bind(settingsController));
-router.post('/departments', validateBody(createDepartmentSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.DEPARTMENT }), settingsController.createDepartment.bind(settingsController));
-router.put('/departments/:id', validateParams(idParamSchema), validateBody(updateDepartmentSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.DEPARTMENT, getResourceId: (req) => req.params.id }), settingsController.updateDepartment.bind(settingsController));
-router.delete('/departments/:id', validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.DEPARTMENT, getResourceId: (req) => req.params.id }), settingsController.deleteDepartment.bind(settingsController));
+router.get('/departments/:id/delete-impact', checkPermission('settings', 'view'), validateParams(idParamSchema), settingsController.getDepartmentDeleteImpact.bind(settingsController));
+router.get('/departments', checkPermission('settings', 'view'), validateQuery(listDepartmentsQuerySchema), settingsController.listDepartments.bind(settingsController));
+router.get('/departments/:id', checkPermission('settings', 'view'), validateParams(idParamSchema), settingsController.getDepartment.bind(settingsController));
+router.post('/departments', checkPermission('settings', 'add'), validateBody(createDepartmentSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.DEPARTMENT }), settingsController.createDepartment.bind(settingsController));
+router.put('/departments/:id', checkPermission('settings', 'edit'), validateParams(idParamSchema), validateBody(updateDepartmentSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.DEPARTMENT, getResourceId: (req) => req.params.id }), settingsController.updateDepartment.bind(settingsController));
+router.delete('/departments/:id', checkPermission('settings', 'delete'), validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.DEPARTMENT, getResourceId: (req) => req.params.id }), settingsController.deleteDepartment.bind(settingsController));
 
 // ============================================
 // Locations
 // ============================================
-router.get('/locations', validateQuery(listOrganizationsQuerySchema), settingsController.listLocations.bind(settingsController));
-router.get('/locations/:id', validateParams(idParamSchema), settingsController.getLocation.bind(settingsController));
-router.post('/locations', validateBody(createLocationSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.LOCATION }), settingsController.createLocation.bind(settingsController));
-router.put('/locations/:id', validateParams(idParamSchema), validateBody(updateLocationSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.LOCATION, getResourceId: (req) => req.params.id }), settingsController.updateLocation.bind(settingsController));
-router.delete('/locations/:id', validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.LOCATION, getResourceId: (req) => req.params.id }), settingsController.deleteLocation.bind(settingsController));
+router.get('/locations/:id/delete-impact', checkPermission('settings', 'view'), validateParams(idParamSchema), settingsController.getLocationDeleteImpact.bind(settingsController));
+router.get('/locations', checkPermission('settings', 'view'), validateQuery(listOrganizationsQuerySchema), settingsController.listLocations.bind(settingsController));
+router.get('/locations/:id', checkPermission('settings', 'view'), validateParams(idParamSchema), settingsController.getLocation.bind(settingsController));
+router.post('/locations', checkPermission('settings', 'add'), validateBody(createLocationSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.LOCATION }), settingsController.createLocation.bind(settingsController));
+router.put('/locations/:id', checkPermission('settings', 'edit'), validateParams(idParamSchema), validateBody(updateLocationSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.LOCATION, getResourceId: (req) => req.params.id }), settingsController.updateLocation.bind(settingsController));
+router.delete('/locations/:id', checkPermission('settings', 'delete'), validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.LOCATION, getResourceId: (req) => req.params.id }), settingsController.deleteLocation.bind(settingsController));
 
 // ============================================
 // Users
 // ============================================
-router.get('/users', validateQuery(userListQuerySchema), settingsController.listUsers.bind(settingsController));
-router.get('/users/:id', validateParams(idParamSchema), settingsController.getUser.bind(settingsController));
-router.post('/users', validateBody(createUserSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.USER }), settingsController.createUser.bind(settingsController));
-router.put('/users/:id', validateParams(idParamSchema), validateBody(updateUserSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.USER, getResourceId: (req) => req.params.id }), settingsController.updateUser.bind(settingsController));
-router.delete('/users/:id', validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.USER, getResourceId: (req) => req.params.id }), settingsController.deleteUser.bind(settingsController));
-router.post('/users/invite', validateBody(inviteUserSchema), audit({ action: AuditAction.INVITE, resource: AuditResource.USER }), settingsController.inviteUser.bind(settingsController));
-router.post('/users/:id/suspend', validateParams(idParamSchema), audit({ action: AuditAction.SUSPEND, resource: AuditResource.USER, getResourceId: (req) => req.params.id }), settingsController.suspendUser.bind(settingsController));
-router.post('/users/:id/activate', validateParams(idParamSchema), audit({ action: AuditAction.ACTIVATE, resource: AuditResource.USER, getResourceId: (req) => req.params.id }), settingsController.activateUser.bind(settingsController));
-router.post('/users/:id/reset-password', validateParams(idParamSchema), audit({ action: AuditAction.PASSWORD_RESET_REQUEST, resource: AuditResource.USER, getResourceId: (req) => req.params.id }), settingsController.resetPassword.bind(settingsController));
-router.get('/users/:id/audit-log', validateParams(idParamSchema), settingsController.getUserAuditLog.bind(settingsController));
+router.get('/users', checkPermission('settings', 'view'), validateQuery(userListQuerySchema), settingsController.listUsers.bind(settingsController));
+// R5: Bulk import routes (must come BEFORE /users/:id to avoid :id capturing "import")
+router.post('/users/import', checkPermission('settings', 'add'), validateBody(bulkImportSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.USER }), settingsController.bulkImportUsers.bind(settingsController));
+router.get('/users/import/template', checkPermission('settings', 'view'), settingsController.getImportTemplate.bind(settingsController));
+// R6: Bulk action routes (must come BEFORE /users/:id)
+router.post('/users/bulk-suspend', checkPermission('settings', 'edit'), validateBody(bulkUserActionSchema), audit({ action: AuditAction.SUSPEND, resource: AuditResource.USER }), settingsController.bulkSuspendUsers.bind(settingsController));
+router.post('/users/bulk-activate', checkPermission('settings', 'edit'), validateBody(bulkUserActionSchema), audit({ action: AuditAction.ACTIVATE, resource: AuditResource.USER }), settingsController.bulkActivateUsers.bind(settingsController));
+router.post('/users/bulk-delete', checkPermission('settings', 'delete'), validateBody(bulkUserActionSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.USER }), settingsController.bulkDeleteUsers.bind(settingsController));
+router.get('/users/:id', checkPermission('settings', 'view'), validateParams(idParamSchema), settingsController.getUser.bind(settingsController));
+router.post('/users', checkPermission('settings', 'add'), validateBody(createUserSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.USER }), settingsController.createUser.bind(settingsController));
+router.put('/users/:id', checkPermission('settings', 'edit'), validateParams(idParamSchema), validateBody(updateUserSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.USER, getResourceId: (req) => req.params.id }), settingsController.updateUser.bind(settingsController));
+router.delete('/users/:id', checkPermission('settings', 'delete'), validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.USER, getResourceId: (req) => req.params.id }), settingsController.deleteUser.bind(settingsController));
+router.post('/users/invite', checkPermission('settings', 'add'), validateBody(inviteUserSchema), audit({ action: AuditAction.INVITE, resource: AuditResource.USER }), settingsController.inviteUser.bind(settingsController));
+router.post('/users/:id/suspend', checkPermission('settings', 'edit'), validateParams(idParamSchema), audit({ action: AuditAction.SUSPEND, resource: AuditResource.USER, getResourceId: (req) => req.params.id }), settingsController.suspendUser.bind(settingsController));
+router.post('/users/:id/activate', checkPermission('settings', 'edit'), validateParams(idParamSchema), audit({ action: AuditAction.ACTIVATE, resource: AuditResource.USER, getResourceId: (req) => req.params.id }), settingsController.activateUser.bind(settingsController));
+router.post('/users/:id/reset-password', checkPermission('settings', 'edit'), validateParams(idParamSchema), audit({ action: AuditAction.PASSWORD_RESET_REQUEST, resource: AuditResource.USER, getResourceId: (req) => req.params.id }), settingsController.resetPassword.bind(settingsController));
+router.get('/users/:id/audit-log', checkPermission('settings', 'view'), validateParams(idParamSchema), validateQuery(auditLogQuerySchema), settingsController.getUserAuditLog.bind(settingsController));
 
 // ============================================
 // Roles
 // ============================================
-router.get('/roles', settingsController.listRoles.bind(settingsController));
-router.get('/roles/:id', validateParams(idParamSchema), settingsController.getRole.bind(settingsController));
-router.post('/roles', validateBody(createRoleSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.ROLE }), settingsController.createRole.bind(settingsController));
-router.put('/roles/:id', validateParams(idParamSchema), validateBody(updateRoleSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.ROLE, getResourceId: (req) => req.params.id }), settingsController.updateRole.bind(settingsController));
-router.delete('/roles/:id', validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.ROLE, getResourceId: (req) => req.params.id }), settingsController.deleteRole.bind(settingsController));
+router.get('/roles', checkPermission('settings', 'view'), settingsController.listRoles.bind(settingsController));
+router.get('/roles/:id', checkPermission('settings', 'view'), validateParams(idParamSchema), settingsController.getRole.bind(settingsController));
+router.post('/roles', checkPermission('settings', 'add'), validateBody(createRoleSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.ROLE }), settingsController.createRole.bind(settingsController));
+router.put('/roles/:id', checkPermission('settings', 'edit'), validateParams(idParamSchema), validateBody(updateRoleSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.ROLE, getResourceId: (req) => req.params.id }), settingsController.updateRole.bind(settingsController));
+router.delete('/roles/:id', checkPermission('settings', 'delete'), validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.ROLE, getResourceId: (req) => req.params.id }), settingsController.deleteRole.bind(settingsController));
 
 // ============================================
 // Alert Configurations
 // ============================================
-router.get('/alerts', settingsController.listAlertConfigs.bind(settingsController));
-router.post('/alerts', validateBody(createAlertConfigSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.ALERT_CONFIG }), settingsController.createAlertConfig.bind(settingsController));
-router.get('/alerts/:id', validateParams(idParamSchema), settingsController.getAlertConfig.bind(settingsController));
-router.put('/alerts/:id', validateParams(idParamSchema), validateBody(updateAlertConfigSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.ALERT_CONFIG, getResourceId: (req) => req.params.id }), settingsController.updateAlertConfig.bind(settingsController));
-router.delete('/alerts/:id', validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.ALERT_CONFIG, getResourceId: (req) => req.params.id }), settingsController.deleteAlertConfig.bind(settingsController));
+router.get('/alerts', checkPermission('settings', 'view'), settingsController.listAlertConfigs.bind(settingsController));
+router.post('/alerts', checkPermission('settings', 'add'), validateBody(createAlertConfigSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.ALERT_CONFIG }), settingsController.createAlertConfig.bind(settingsController));
+router.get('/alerts/:id', checkPermission('settings', 'view'), validateParams(idParamSchema), settingsController.getAlertConfig.bind(settingsController));
+router.put('/alerts/:id', checkPermission('settings', 'edit'), validateParams(idParamSchema), validateBody(updateAlertConfigSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.ALERT_CONFIG, getResourceId: (req) => req.params.id }), settingsController.updateAlertConfig.bind(settingsController));
+router.delete('/alerts/:id', checkPermission('settings', 'delete'), validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.ALERT_CONFIG, getResourceId: (req) => req.params.id }), settingsController.deleteAlertConfig.bind(settingsController));
 
 // ============================================
 // LDAP Configurations
 // ============================================
-router.get('/ldap-configs', settingsController.listLdapConfigs.bind(settingsController));
-router.get('/ldap-configs/:id', validateParams(ldapConfigParamSchema), settingsController.getLdapConfig.bind(settingsController));
-router.post('/ldap-configs', validateBody(createLdapConfigSchema), settingsController.createLdapConfig.bind(settingsController));
-router.put('/ldap-configs/:id', validateParams(ldapConfigParamSchema), validateBody(updateLdapConfigSchema), settingsController.updateLdapConfig.bind(settingsController));
-router.delete('/ldap-configs/:id', validateParams(ldapConfigParamSchema), settingsController.deleteLdapConfig.bind(settingsController));
-router.post('/ldap-configs/:id/test', validateParams(ldapConfigParamSchema), settingsController.testLdapConfig.bind(settingsController));
+router.get('/ldap-configs', checkPermission('settings', 'view'), settingsController.listLdapConfigs.bind(settingsController));
+router.get('/ldap-configs/:id', checkPermission('settings', 'view'), validateParams(ldapConfigParamSchema), settingsController.getLdapConfig.bind(settingsController));
+router.post('/ldap-configs', checkPermission('settings', 'add'), validateBody(createLdapConfigSchema), settingsController.createLdapConfig.bind(settingsController));
+router.put('/ldap-configs/:id', checkPermission('settings', 'edit'), validateParams(ldapConfigParamSchema), validateBody(updateLdapConfigSchema), settingsController.updateLdapConfig.bind(settingsController));
+router.delete('/ldap-configs/:id', checkPermission('settings', 'delete'), validateParams(ldapConfigParamSchema), settingsController.deleteLdapConfig.bind(settingsController));
+router.post('/ldap-configs/:id/test', checkPermission('settings', 'edit'), validateParams(ldapConfigParamSchema), settingsController.testLdapConfig.bind(settingsController));
 
 // ============================================
 // LDAP Group Mappings
 // ============================================
-router.get('/ldap-configs/:id/group-mappings', validateParams(ldapConfigParamSchema), settingsController.listGroupMappings.bind(settingsController));
-router.post('/ldap-configs/:id/group-mappings', validateParams(ldapConfigParamSchema), validateBody(createGroupMappingSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.GROUP_MAPPING, getResourceId: (req) => req.params.id }), settingsController.createGroupMapping.bind(settingsController));
-router.put('/ldap-configs/:id/group-mappings/:mapId', audit({ action: AuditAction.UPDATE, resource: AuditResource.GROUP_MAPPING, getResourceId: (req) => req.params.mapId }), settingsController.updateGroupMapping.bind(settingsController));
-router.delete('/ldap-configs/:id/group-mappings/:mapId', audit({ action: AuditAction.DELETE, resource: AuditResource.GROUP_MAPPING, getResourceId: (req) => req.params.mapId }), settingsController.deleteGroupMapping.bind(settingsController));
-router.post('/ldap-configs/:id/discover-groups', validateParams(ldapConfigParamSchema), settingsController.discoverGroups.bind(settingsController));
+router.get('/ldap-configs/:id/group-mappings', checkPermission('settings', 'view'), validateParams(ldapConfigParamSchema), settingsController.listGroupMappings.bind(settingsController));
+router.post('/ldap-configs/:id/group-mappings', checkPermission('settings', 'add'), validateParams(ldapConfigParamSchema), validateBody(createGroupMappingSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.GROUP_MAPPING, getResourceId: (req) => req.params.id }), settingsController.createGroupMapping.bind(settingsController));
+router.put('/ldap-configs/:id/group-mappings/:mapId', checkPermission('settings', 'edit'), audit({ action: AuditAction.UPDATE, resource: AuditResource.GROUP_MAPPING, getResourceId: (req) => req.params.mapId }), settingsController.updateGroupMapping.bind(settingsController));
+router.delete('/ldap-configs/:id/group-mappings/:mapId', checkPermission('settings', 'delete'), audit({ action: AuditAction.DELETE, resource: AuditResource.GROUP_MAPPING, getResourceId: (req) => req.params.mapId }), settingsController.deleteGroupMapping.bind(settingsController));
+router.post('/ldap-configs/:id/discover-groups', checkPermission('settings', 'view'), validateParams(ldapConfigParamSchema), settingsController.discoverGroups.bind(settingsController));
 
 // ============================================
 // LDAP Sync
 // ============================================
-router.post('/ldap-configs/:id/sync', validateParams(ldapConfigParamSchema), settingsController.triggerSync.bind(settingsController));
-router.get('/ldap-configs/:id/sync-jobs', validateParams(ldapConfigParamSchema), settingsController.listSyncJobs.bind(settingsController));
-router.get('/ldap-configs/:id/sync-jobs/:jobId', settingsController.getSyncJob.bind(settingsController));
+router.post('/ldap-configs/:id/sync', checkPermission('settings', 'edit'), validateParams(ldapConfigParamSchema), settingsController.triggerSync.bind(settingsController));
+router.get('/ldap-configs/:id/sync-jobs', checkPermission('settings', 'view'), validateParams(ldapConfigParamSchema), settingsController.listSyncJobs.bind(settingsController));
+router.get('/ldap-configs/:id/sync-jobs/:jobId', checkPermission('settings', 'view'), settingsController.getSyncJob.bind(settingsController));
 
 // ============================================
 // Password Policy
 // ============================================
-router.get('/password-policy', settingsController.getPasswordPolicy.bind(settingsController));
-router.put('/password-policy', audit({ action: AuditAction.UPDATE, resource: AuditResource.PASSWORD_POLICY }), settingsController.updatePasswordPolicy.bind(settingsController));
+router.get('/password-policy', checkPermission('settings', 'view'), settingsController.getPasswordPolicy.bind(settingsController));
+router.put('/password-policy', checkPermission('settings', 'edit'), audit({ action: AuditAction.UPDATE, resource: AuditResource.PASSWORD_POLICY }), settingsController.updatePasswordPolicy.bind(settingsController));
 
 // ============================================
 // Server Settings (singleton)
@@ -246,21 +277,21 @@ router.post('/mail-server/test', checkPermission('settings', 'edit'), validateBo
 // ============================================
 // Audit Logs
 // ============================================
-router.get('/audit', validateQuery(auditLogQuerySchema), settingsController.listAuditLogs.bind(settingsController));
-router.get('/audit/filter-options', settingsController.getAuditLogFilters.bind(settingsController));
+router.get('/audit', checkPermission('settings', 'view'), validateQuery(auditLogQuerySchema), settingsController.listAuditLogs.bind(settingsController));
+router.get('/audit/filter-options', checkPermission('settings', 'view'), settingsController.getAuditLogFilters.bind(settingsController));
 
 // ============================================
 // Vulnerability Preference (singleton)
 // ============================================
-router.get('/vulnerability-preference', settingsController.getVulnerabilityPreference.bind(settingsController));
-router.put('/vulnerability-preference', validateBody(updateVulnerabilityPreferenceSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.VULNERABILITY_PREFERENCE }), settingsController.updateVulnerabilityPreference.bind(settingsController));
-router.post('/vulnerability-preference/sync', audit({ action: AuditAction.SYNC, resource: AuditResource.VULNERABILITY_PREFERENCE }), settingsController.syncVulnerabilityDatabase.bind(settingsController));
+router.get('/vulnerability-preference', checkPermission('settings', 'view'), settingsController.getVulnerabilityPreference.bind(settingsController));
+router.put('/vulnerability-preference', checkPermission('settings', 'edit'), validateBody(updateVulnerabilityPreferenceSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.VULNERABILITY_PREFERENCE }), settingsController.updateVulnerabilityPreference.bind(settingsController));
+router.post('/vulnerability-preference/sync', checkPermission('settings', 'edit'), audit({ action: AuditAction.SYNC, resource: AuditResource.VULNERABILITY_PREFERENCE }), settingsController.syncVulnerabilityDatabase.bind(settingsController));
 
 // ============================================
 // Platform License (singleton)
 // ============================================
-router.get('/platform-license', settingsController.getPlatformLicense.bind(settingsController));
-router.put('/platform-license', validateBody(updateLicenseSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.PLATFORM_LICENSE }), settingsController.updatePlatformLicense.bind(settingsController));
+router.get('/platform-license', checkPermission('settings', 'view'), settingsController.getPlatformLicense.bind(settingsController));
+router.put('/platform-license', checkPermission('settings', 'edit'), validateBody(updateLicenseSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.PLATFORM_LICENSE }), settingsController.updatePlatformLicense.bind(settingsController));
 
 // ============================================
 // Computer Groups (R1 — hardened)
@@ -284,8 +315,8 @@ router.delete('/deployment-policies/:id', checkPermission('settings', 'delete'),
 // ============================================
 // Distribution Servers
 // ============================================
-router.get('/distribution-servers', validateQuery(queryDistributionServersSchema), settingsController.listDistributionServers.bind(settingsController));
-router.get('/distribution-servers/:id', validateParams(idParamSchema), settingsController.getDistributionServer.bind(settingsController));
+router.get('/distribution-servers', checkPermission('settings', 'view'), validateQuery(queryDistributionServersSchema), settingsController.listDistributionServers.bind(settingsController));
+router.get('/distribution-servers/:id', checkPermission('settings', 'view'), validateParams(idParamSchema), settingsController.getDistributionServer.bind(settingsController));
 router.post('/distribution-servers', checkPermission('settings', 'add'), validateBody(createDistributionServerSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.DISTRIBUTION_SERVER }), settingsController.createDistributionServer.bind(settingsController));
 router.put('/distribution-servers/:id', checkPermission('settings', 'edit'), validateParams(idParamSchema), validateBody(updateDistributionServerSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.DISTRIBUTION_SERVER, getResourceId: (req) => req.params.id }), settingsController.updateDistributionServer.bind(settingsController));
 router.delete('/distribution-servers/:id', checkPermission('settings', 'delete'), validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.DISTRIBUTION_SERVER, getResourceId: (req) => req.params.id }), settingsController.deleteDistributionServer.bind(settingsController));
@@ -294,7 +325,7 @@ router.delete('/distribution-servers/:id', checkPermission('settings', 'delete')
 // Branding
 // ============================================
 router.get('/branding', checkPermission('settings', 'view'), settingsController.getBranding.bind(settingsController));
-router.post('/branding', checkPermission('settings', 'edit'), upload.single('logo'), audit({ action: AuditAction.UPDATE, resource: AuditResource.BRANDING }), settingsController.updateBranding.bind(settingsController));
+router.post('/branding', checkPermission('settings', 'edit'), upload.single('logo'), handleMulterError, audit({ action: AuditAction.UPDATE, resource: AuditResource.BRANDING }), settingsController.updateBranding.bind(settingsController));
 router.get('/branding/logo', settingsController.getBrandingLogo.bind(settingsController));
 
 // ============================================
@@ -302,8 +333,8 @@ router.get('/branding/logo', settingsController.getBrandingLogo.bind(settingsCon
 // ============================================
 router.get('/vendor-logos', checkPermission('settings', 'view'), settingsController.listVendorLogos.bind(settingsController));
 router.get('/vendor-logos/:id', checkPermission('settings', 'view'), validateParams(idParamSchema), settingsController.getVendorLogo.bind(settingsController));
-router.post('/vendor-logos', checkPermission('settings', 'add'), upload.single('logo'), audit({ action: AuditAction.CREATE, resource: AuditResource.VENDOR_LOGO }), settingsController.createVendorLogo.bind(settingsController));
-router.put('/vendor-logos/:id', checkPermission('settings', 'edit'), validateParams(idParamSchema), upload.single('logo'), audit({ action: AuditAction.UPDATE, resource: AuditResource.VENDOR_LOGO, getResourceId: (req) => req.params.id }), settingsController.updateVendorLogo.bind(settingsController));
+router.post('/vendor-logos', checkPermission('settings', 'add'), upload.single('logo'), handleMulterError, audit({ action: AuditAction.CREATE, resource: AuditResource.VENDOR_LOGO }), settingsController.createVendorLogo.bind(settingsController));
+router.put('/vendor-logos/:id', checkPermission('settings', 'edit'), validateParams(idParamSchema), upload.single('logo'), handleMulterError, audit({ action: AuditAction.UPDATE, resource: AuditResource.VENDOR_LOGO, getResourceId: (req) => req.params.id }), settingsController.updateVendorLogo.bind(settingsController));
 router.delete('/vendor-logos/:id', checkPermission('settings', 'delete'), validateParams(idParamSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.VENDOR_LOGO, getResourceId: (req) => req.params.id }), settingsController.deleteVendorLogo.bind(settingsController));
 
 // ============================================
@@ -322,8 +353,8 @@ router.post('/remote-desktop/reset', checkPermission('settings', 'edit'), audit(
 // ============================================
 // Patch Management Settings (singleton)
 // ============================================
-router.get('/patch-management', settingsController.getPatchManagementSettings.bind(settingsController));
-router.put('/patch-management', audit({ action: AuditAction.UPDATE, resource: AuditResource.PATCH_MANAGEMENT }), settingsController.updatePatchManagementSettings.bind(settingsController));
+router.get('/patch-management', checkPermission('settings', 'view'), settingsController.getPatchManagementSettings.bind(settingsController));
+router.put('/patch-management', checkPermission('settings', 'edit'), audit({ action: AuditAction.UPDATE, resource: AuditResource.PATCH_MANAGEMENT }), settingsController.updatePatchManagementSettings.bind(settingsController));
 
 // ============================================
 // Patch Preferences (R3 — singleton)

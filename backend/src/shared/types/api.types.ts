@@ -186,6 +186,7 @@ export interface UserPublic {
   role: string;
   roleInfo: UserRoleInfo;
   isOnboarded: boolean;
+  authSource?: string;
   organizationId?: string | null;
   departmentId?: string | null;
   locationId?: string | null;
@@ -1628,6 +1629,9 @@ export interface OrganizationResponse {
   name: string;
   description: string | null;
   isDefault: boolean;
+  branchCount?: number;
+  userCount?: number;
+  assetCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -1661,6 +1665,7 @@ export interface DepartmentResponse {
   branchId: string;
   branchName?: string;
   organizationName?: string;
+  userCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -1674,6 +1679,50 @@ export interface LocationResponse {
   timezone: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface OrgTreeNode {
+  id: string;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
+  branchCount: number;
+  userCount: number;
+  assetCount: number;
+  branches: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    isDefault: boolean;
+    userCount: number;
+    assetCount: number;
+    departments: Array<{
+      id: string;
+      name: string;
+      description: string | null;
+      userCount: number;
+    }>;
+  }>;
+}
+
+export interface OrgTreeResponse {
+  organizations: OrgTreeNode[];
+  locations: Array<{
+    id: string;
+    name: string;
+    city: string | null;
+    country: string | null;
+    userCount: number;
+    assetCount: number;
+  }>;
+  summary: {
+    totalOrganizations: number;
+    totalBranches: number;
+    totalDepartments: number;
+    totalLocations: number;
+    totalUsers: number;
+    totalAssets: number;
+  };
 }
 
 export interface UserListItem {
@@ -1979,6 +2028,51 @@ export interface VendorLogoResponse {
   type: 'integration' | 'vendor' | 'os';
   logoUrl: string;
   createdAt: string;
+}
+
+export interface DeleteImpactResponse {
+  canDelete: boolean;
+  blockedReason?: string;
+  impact: {
+    branches?: number;
+    departments?: number;
+    users: number;
+    assets: number;
+    enrollSecrets?: number;
+  };
+  affectedItems: {
+    branches?: Array<{ id: string; name: string }>;
+    departments?: Array<{ id: string; name: string }>;
+    users?: Array<{ id: string; email: string; name: string | null }>;
+  };
+}
+
+// R5: Bulk User Import
+export interface BulkImportResponse {
+  totalRows: number;
+  successful: number;
+  failed: number;
+  results: Array<{
+    row: number;
+    email: string;
+    status: 'created' | 'invited' | 'failed';
+    error?: string;
+    userId?: string;
+  }>;
+}
+
+// R6: Bulk User Status Change
+export interface BulkActionResponse {
+  total: number;
+  successful: number;
+  failed: number;
+  skipped: number;
+  results: Array<{
+    userId: string;
+    email: string;
+    status: 'success' | 'failed' | 'skipped';
+    error?: string;
+  }>;
 }
 
 // ============================================

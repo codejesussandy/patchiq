@@ -169,9 +169,14 @@ export const inviteUserSchema = z.object({
 });
 
 export const userListQuerySchema = paginationSchema.extend({
-  status: z.enum(['Active', 'Suspended', 'Invite Sent']).optional(),
+  status: z.enum(['Active', 'Suspended', 'Invite Sent', 'Deleted']).optional(),
   role: z.string().optional(),
   organizationId: z.string().uuid().optional(),
+  departmentId: z.string().uuid().optional(),
+  locationId: z.string().uuid().optional(),
+  authSource: z.enum(['LOCAL', 'LDAP']).optional(),
+  sortBy: z.enum(['name', 'email', 'role', 'status', 'lastLoginAt', 'createdAt']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
@@ -184,11 +189,11 @@ export type UserListQuery = z.infer<typeof userListQuerySchema>;
 // ============================================
 
 const modulePermissionsSchema = z.object({
-  view: z.boolean().default(false),
-  add: z.boolean().default(false),
-  edit: z.boolean().default(false),
-  delete: z.boolean().default(false),
-});
+  view: z.boolean(),
+  add: z.boolean(),
+  edit: z.boolean(),
+  delete: z.boolean(),
+}).strict();
 
 export const createRoleSchema = z.object({
   name: z.string().min(1).max(100),
@@ -203,7 +208,7 @@ export const createRoleSchema = z.object({
     reports: modulePermissionsSchema.optional(),
     dashboard: modulePermissionsSchema.optional(),
     settings: modulePermissionsSchema.optional(),
-  }).optional().default({}),
+  }).strict().optional().default({}),
 });
 
 export const updateRoleSchema = z.object({
@@ -219,7 +224,7 @@ export const updateRoleSchema = z.object({
     reports: modulePermissionsSchema.optional(),
     dashboard: modulePermissionsSchema.optional(),
     settings: modulePermissionsSchema.optional(),
-  }).optional(),
+  }).strict().optional(),
 });
 
 export type CreateRoleInput = z.infer<typeof createRoleSchema>;
@@ -398,15 +403,35 @@ export const updateProxyServerSchema = z.object({
   enableAuthentication: z.boolean().optional(),
   username: z.string().max(100).optional().nullable(),
   password: z.string().max(255).optional().nullable(),
-});
+}).refine(
+  (data) => {
+    // R3A: If proxy is enabled, host and port are required
+    if (data.enabled === true) {
+      return data.host && data.port;
+    }
+    return true;
+  },
+  {
+    message: 'Host and port are required when proxy is enabled',
+    path: ['host'],
+  }
+).refine(
+  (data) => {
+    // R3A: If authentication is enabled, username is required
+    if (data.enableAuthentication === true) {
+      return data.username;
+    }
+    return true;
+  },
+  {
+    message: 'Username is required when authentication is enabled',
+    path: ['username'],
+  }
+);
 
 export const testProxyServerSchema = z.object({
-  host: z.string().min(1).max(255),
-  port: z.number().int().min(1).max(65535),
-  protocol: z.enum(['HTTP', 'HTTPS', 'SOCKS5']),
-  enableAuthentication: z.boolean().optional(),
-  username: z.string().max(100).optional(),
-  password: z.string().max(255).optional(),
+  // Test endpoint should use saved config, not require all fields
+  testUrl: z.string().url().optional(),
 });
 
 export type UpdateProxyServerInput = z.infer<typeof updateProxyServerSchema>;
@@ -609,6 +634,9 @@ export type UpdatePatchPreferenceInput = z.infer<typeof updatePatchPreferenceSch
 export const updateAgentApprovalSettingsSchema = z.object({
   approvalType: z.enum(['AUTO', 'MANUAL']).optional(),
   autoApprovalBasedOn: z.enum(['ALL', 'CRITERIA']).optional(),
+  criteria: z.object({
+    osPatterns: z.array(z.string()).optional(),
+  }).optional(),
 });
 
 export type UpdateAgentApprovalSettingsInput = z.infer<typeof updateAgentApprovalSettingsSchema>;
@@ -752,3 +780,32 @@ export const updateGroupMappingSchema = z.object({
 
 export type CreateGroupMappingInput = z.infer<typeof createGroupMappingSchema>;
 export type UpdateGroupMappingInput = z.infer<typeof updateGroupMappingSchema>;
+
+// ============================================
+// Bulk User Import Validators (R5)
+// ============================================
+
+export const bulkImportSchema = z.object({
+  users: z.array(z.object({
+    email: z.string().email(),
+    name: z.string().min(1).max(100),
+    role: z.string().default('user'),
+    organizationId: z.string().uuid().optional(),
+    departmentId: z.string().uuid().optional(),
+    locationId: z.string().uuid().optional(),
+    contactNumber: z.string().max(50).optional(),
+    sendInvite: z.boolean().default(false),
+  })).min(1, 'At least 1 user required').max(500, 'Maximum 500 users per import'),
+});
+
+export type BulkImportInput = z.infer<typeof bulkImportSchema>;
+
+// ============================================
+// Bulk User Action Validators (R6)
+// ============================================
+
+export const bulkUserActionSchema = z.object({
+  userIds: z.array(z.string().uuid()).min(1, 'At least 1 user required').max(100, 'Maximum 100 users per request'),
+});
+
+export type BulkUserActionInput = z.infer<typeof bulkUserActionSchema>;

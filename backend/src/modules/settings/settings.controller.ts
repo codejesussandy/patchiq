@@ -39,6 +39,8 @@ import type {
   UpdateLicenseInput,
   UpdateVulnerabilityPreferenceInput,
   ListIntegrationsQuery,
+  BulkImportInput,
+  BulkUserActionInput,
 } from './settings.validators';
 import { usersService } from './users.service';
 
@@ -92,8 +94,28 @@ export class SettingsController {
 
   async deleteOrganization(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await organizationsService.deleteOrganization(req.params.id);
+      const cascade = req.query.cascade === 'true';
+      const reassignTo = req.query.reassignTo as string | undefined;
+      await organizationsService.deleteOrganization(req.params.id, { cascade, reassignTo });
       res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getOrganizationDeleteImpact(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await organizationsService.getOrganizationDeleteImpact(req.params.id);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getOrgTree(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await organizationsService.getOrgTree();
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -149,8 +171,18 @@ export class SettingsController {
 
   async deleteBranch(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await organizationsService.deleteBranch(req.params.id);
+      const cascade = req.query.cascade === 'true';
+      await organizationsService.deleteBranch(req.params.id, { cascade });
       res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getBranchDeleteImpact(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await organizationsService.getBranchDeleteImpact(req.params.id);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -206,8 +238,18 @@ export class SettingsController {
 
   async deleteDepartment(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await organizationsService.deleteDepartment(req.params.id);
+      const cascade = req.query.cascade === 'true';
+      await organizationsService.deleteDepartment(req.params.id, { cascade });
       res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDepartmentDeleteImpact(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await organizationsService.getDepartmentDeleteImpact(req.params.id);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -264,6 +306,15 @@ export class SettingsController {
     try {
       await organizationsService.deleteLocation(req.params.id);
       res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getLocationDeleteImpact(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await organizationsService.getLocationDeleteImpact(req.params.id);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -372,6 +423,53 @@ export class SettingsController {
         page: query.page,
         limit: query.limit,
       });
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bulkImportUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await usersService.bulkImportUsers(req.body as BulkImportInput, req.user?.id);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getImportTemplate(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const template = usersService.getImportTemplate();
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=user-import-template.csv');
+      res.send(template);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bulkSuspendUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await usersService.bulkSuspendUsers(req.body as BulkUserActionInput, req.user?.id);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bulkActivateUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await usersService.bulkActivateUsers(req.body as BulkUserActionInput);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bulkDeleteUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await usersService.bulkDeleteUsers(req.body as BulkUserActionInput, req.user?.id);
       sendSuccess(res, result);
     } catch (error) {
       next(error);
@@ -576,7 +674,7 @@ export class SettingsController {
   async deleteGroupMapping(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       await settingsService.deleteGroupMapping(req.params.mapId);
-      res.status(204).send();
+      sendSuccess(res, { message: 'Group mapping deleted' });
     } catch (error) {
       next(error);
     }
@@ -950,6 +1048,12 @@ export class SettingsController {
 
   async updateBranding(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      // XSS validation: reject HTML tags in companyName
+      if (req.body.companyName && /<[^>]*>/.test(req.body.companyName)) {
+        sendError(res, 400, 'VALIDATION_ERROR', 'Company name must not contain HTML tags');
+        return;
+      }
+
       const logoFile = req.file
         ? {
             buffer: req.file.buffer,
