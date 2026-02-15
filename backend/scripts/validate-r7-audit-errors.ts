@@ -106,11 +106,19 @@ async function createUserWithRole(
   const testEmail = `test-user-${timestamp}@patchiq.io`;
   const testPassword = 'TestPassword123!';
 
+  // API expects 'role' (name string), not 'roleId' (UUID)
+  // First, fetch the role to get its name
+  const roleRes = await request('GET', `/settings/roles/${roleId}`, adminToken);
+  const roleName = roleRes.data?.data?.name;
+  if (!roleName) {
+    throw new Error(`Failed to fetch role name for ID ${roleId}: ${JSON.stringify(roleRes.data)}`);
+  }
+
   const { status, data } = await request('POST', '/settings/users', adminToken, {
     email: testEmail,
     name: `Test User ${timestamp}`,
     password: testPassword,
-    roleId,
+    role: roleName,
   });
 
   if (status !== 200 && status !== 201) {
@@ -134,23 +142,31 @@ async function deleteCustomRole(adminToken: string, roleId: string): Promise<voi
   await request('DELETE', `/settings/roles/${roleId}`, adminToken);
 }
 
-// Get recent audit logs
-async function getRecentAuditLogs(
+// Get audit log count and items for a resource
+async function getAuditLogInfo(
   adminToken: string,
   resource?: string
-): Promise<any[]> {
-  const queryParam = resource ? `?resource=${resource}` : '';
+): Promise<{ total: number; items: any[] }> {
+  const params = new URLSearchParams();
+  if (resource) params.set('resource', resource);
+  params.set('pageSize', '5');
+  params.set('page', '1');
+  const queryStr = params.toString() ? `?${params.toString()}` : '';
   const { status, data } = await request(
     'GET',
-    `/settings/audit${queryParam}`,
+    `/settings/audit${queryStr}`,
     adminToken
   );
 
   if (status === 200) {
-    return data.data?.items || data.data || [];
+    // Handle double-wrapped response: { success, data: { success, data: [...], total } }
+    const inner = data.data || {};
+    const items = inner.data || inner.items || [];
+    const total = inner.total || items.length;
+    return { total, items };
   }
 
-  return [];
+  return { total: 0, items: [] };
 }
 
 // Test runner
@@ -189,8 +205,8 @@ async function runTests() {
 
     // V59: PUT /server creates audit entry
     try {
-      // Get audit log count before
-      const logsBefore = await getRecentAuditLogs(adminToken, 'SERVER_SETTINGS');
+      // Get audit log total count before
+      const infoBefore = await getAuditLogInfo(adminToken, 'server_settings');
 
       // Make a server settings change
       await request('PUT', '/settings/server', adminToken, {
@@ -198,18 +214,18 @@ async function runTests() {
       });
 
       // Wait a bit for async audit log creation
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Get audit logs after
-      const logsAfter = await getRecentAuditLogs(adminToken, 'SERVER_SETTINGS');
+      // Get audit log total count after
+      const infoAfter = await getAuditLogInfo(adminToken, 'server_settings');
 
-      const newLogCreated = logsAfter.length > logsBefore.length;
+      const newLogCreated = infoAfter.total > infoBefore.total;
 
       if (newLogCreated) {
         addResult('V59', 'PUT /server creates audit entry', true);
       } else {
         addResult('V59', 'PUT /server creates audit entry', false,
-          `No new audit log found. Before: ${logsBefore.length}, After: ${logsAfter.length}`);
+          `No new audit log found. Before total: ${infoBefore.total}, After total: ${infoAfter.total}`);
       }
     } catch (error) {
       addResult('V59', 'PUT /server creates audit entry', false, String(error));
@@ -217,8 +233,8 @@ async function runTests() {
 
     // V60: PUT /mail-server logs "Password updated" (not actual password)
     try {
-      // Get audit logs before
-      const logsBefore = await getRecentAuditLogs(adminToken, 'MAIL_SERVER');
+      // Get audit log total count before
+      const infoBefore = await getAuditLogInfo(adminToken, 'mail_server');
 
       // Update mail server with password
       await request('PUT', '/settings/mail-server', adminToken, {
@@ -231,14 +247,14 @@ async function runTests() {
         password: 'supersecretpassword123',
       });
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Get audit logs after
-      const logsAfter = await getRecentAuditLogs(adminToken, 'MAIL_SERVER');
+      // Get audit log total count after
+      const infoAfter = await getAuditLogInfo(adminToken, 'mail_server');
 
-      if (logsAfter.length > logsBefore.length) {
-        const latestLog = logsAfter[logsAfter.length - 1];
-        const details = JSON.stringify(latestLog.details || latestLog);
+      if (infoAfter.total > infoBefore.total) {
+        const latestLog = infoAfter.items[0]; // Logs ordered desc, newest first
+        const details = JSON.stringify(latestLog?.details || latestLog || {});
 
         // Check that password is not in the log
         const passwordNotInLog = !details.includes('supersecretpassword123');
@@ -251,7 +267,7 @@ async function runTests() {
         }
       } else {
         addResult('V60', 'PUT /mail-server masks password in audit log', false,
-          'No audit log created');
+          `No audit log created. Before total: ${infoBefore.total}, After total: ${infoAfter.total}`);
       }
     } catch (error) {
       addResult('V60', 'PUT /mail-server masks password in audit log', false, String(error));

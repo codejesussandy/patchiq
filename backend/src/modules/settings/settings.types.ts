@@ -4,6 +4,8 @@ export type {
   BranchResponse,
   DepartmentResponse,
   LocationResponse,
+  OrgTreeNode,
+  OrgTreeResponse,
   UserListItem,
   UserDetailResponse,
   UserAuditLogEntry,
@@ -30,8 +32,11 @@ export type {
   DistributionServerResponse,
   RedHatNominationResponse,
   VendorLogoResponse,
+  DeleteImpactResponse,
   PaginatedResponse,
   MessageResponse,
+  BulkImportResponse,
+  BulkActionResponse,
 } from '@shared/types';
 
 // Re-export with local alias

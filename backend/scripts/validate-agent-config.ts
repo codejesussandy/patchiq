@@ -1064,6 +1064,19 @@ async function main(): Promise<void> {
     }
   }
 
+  // Remove leftover test agents
+  {
+    const res = await api('GET', '/v1/agents', { token: adminToken });
+    const d = res.data?.data || res.data;
+    const list = Array.isArray(d) ? d : (d?.items || []);
+    for (const a of list) {
+      if (a.machineId && a.machineId.startsWith(PREFIX)) {
+        await api('DELETE', `/v1/agents/${a.id}`, { token: adminToken });
+        console.log(`  Deleted leftover agent: ${a.machineId}`);
+      }
+    }
+  }
+
   // Reset agent config and approval settings
   try {
     await api('POST', '/v1/settings/agent-configuration/reset', { token: adminToken });

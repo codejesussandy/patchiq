@@ -30,3 +30,13 @@ export const completeOnboardingSchema = z
   });
 
 export type CompleteOnboardingInput = z.infer<typeof completeOnboardingSchema>;
+
+// Onboard with token schema for invited users (no auth required - uses token from email)
+export const onboardSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+  password: passwordSchema,
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+});
+
+export type OnboardInput = z.infer<typeof onboardSchema>;

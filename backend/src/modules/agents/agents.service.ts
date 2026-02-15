@@ -40,9 +40,7 @@ export class AgentsService {
    */
   async registerAgent(input: RegisterAgentInput): Promise<RegisterAgentResponse> {
     // Step 1: Validate enrollment secret
-    console.log(`[DEBUG registerAgent] machineId=${input.machineId}, enrollSecret=${input.enrollSecret ? 'provided' : 'undefined'}`);
     const enrollResult = await settingsService.validateEnrollSecret(input.enrollSecret);
-    console.log(`[DEBUG registerAgent] enrollResult=${enrollResult ? JSON.stringify(enrollResult) : 'null'}`);
 
     // Check if agent already exists
     const existingAgent = await prisma.agent.findUnique({
@@ -116,12 +114,30 @@ export class AgentsService {
       const approvalSettings = await settingsService.getAgentApprovalSettings();
       if (approvalSettings.approvalType === 'MANUAL') {
         initialStatus = 'PENDING_APPROVAL';
+      } else if (approvalSettings.approvalType === 'AUTO') {
+        if (approvalSettings.autoApprovalBasedOn === 'CRITERIA') {
+          const criteria = approvalSettings.criteria as { osPatterns?: string[] };
+          const osPatterns = criteria?.osPatterns || [];
+          if (osPatterns.length > 0) {
+            const agentOs = (input.os || '').toLowerCase();
+            const agentOsVersion = (input.osVersion || '').toLowerCase();
+            const matchesCriteria = osPatterns.some(pattern => {
+              const p = pattern.toLowerCase();
+              return agentOs.includes(p) || agentOsVersion.includes(p);
+            });
+            if (!matchesCriteria) {
+              initialStatus = 'PENDING_APPROVAL';
+            }
+          }
+        }
+        // If autoApprovalBasedOn === 'ALL', keep CONNECTED (auto-approve all)
       }
-    } catch {
+    } catch (err) {
       // Default to auto-approve if settings not found
     }
 
     // Create new agent and asset in a transaction
+    // IMPORTANT: Increment enrollment secret usage INSIDE the transaction to ensure atomicity
     const [agent, asset] = await withTransaction('registerAgent', async (tx) => {
 
       // Create asset first
@@ -159,6 +175,15 @@ export class AgentsService {
         },
       });
 
+      // Increment enrollment secret usage count INSIDE transaction for atomicity
+      // This ensures the secret validation and increment happen atomically
+      if (enrollResult) {
+        await tx.enrollSecret.update({
+          where: { id: enrollResult.id },
+          data: { usedCount: { increment: 1 } },
+        });
+      }
+
       return [agent, asset];
     });
 
@@ -168,16 +193,6 @@ export class AgentsService {
       email: agent.machineId,
       role: 'agent',
     });
-
-    // Increment enrollment secret usage count AFTER agent creation succeeds
-    if (enrollResult) {
-      try {
-        await settingsService.incrementEnrollSecretUsage(enrollResult.id);
-      } catch (err) {
-        logger.error({ err, secretId: enrollResult.id }, 'Failed to increment enrollment secret usage');
-        // Don't throw - agent registration succeeded, just log the error
-      }
-    }
 
     // Notify admins about new agent registration
     notificationsService.broadcast({

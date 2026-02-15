@@ -19,6 +19,8 @@ import type {
   RolePermissions,
   PaginatedResponse,
   MessageResponse,
+  BulkImportResponse,
+  BulkActionResponse,
 } from './settings.types';
 import type {
   CreateUserInput,
@@ -26,6 +28,8 @@ import type {
   InviteUserInput,
   CreateRoleInput,
   UpdateRoleInput,
+  BulkImportInput,
+  BulkUserActionInput,
 } from './settings.validators';
 
 export class UsersService {
@@ -40,25 +44,38 @@ export class UsersService {
     status?: string;
     role?: string;
     organizationId?: string;
+    departmentId?: string;
+    locationId?: string;
+    authSource?: string;
+    sortBy?: string;
+    sortOrder?: string;
   }): Promise<PaginatedResponse<UserListItem>> {
-    const where: Record<string, unknown> = {
-      deletedAt: null,
-    };
+    const where: any = {};
 
+    // Status filtering
     if (params.status) {
       switch (params.status) {
         case 'Active':
           where.isActive = true;
           where.isOnboarded = true;
+          where.deletedAt = null;
           break;
         case 'Suspended':
           where.isActive = false;
+          where.deletedAt = null;
           break;
         case 'Invite Sent':
           where.isOnboarded = false;
           where.isActive = true;
+          where.deletedAt = null;
+          break;
+        case 'Deleted':
+          where.deletedAt = { not: null };
           break;
       }
+    } else {
+      // Default: exclude deleted users unless status=Deleted
+      where.deletedAt = null;
     }
 
     if (params.role) {
@@ -69,11 +86,50 @@ export class UsersService {
       where.organizationId = params.organizationId;
     }
 
+    if (params.departmentId) {
+      where.departmentId = params.departmentId;
+    }
+
+    if (params.locationId) {
+      where.locationId = params.locationId;
+    }
+
+    if (params.authSource) {
+      where.authSource = params.authSource;
+    }
+
     if (params.search) {
       where.OR = [
         { email: { contains: params.search, mode: 'insensitive' } },
         { name: { contains: params.search, mode: 'insensitive' } },
       ];
+    }
+
+    // Sorting
+    let orderBy: any = { createdAt: 'desc' };
+    if (params.sortBy) {
+      const sortOrder = params.sortOrder || 'desc';
+      switch (params.sortBy) {
+        case 'name':
+          orderBy = { name: sortOrder };
+          break;
+        case 'email':
+          orderBy = { email: sortOrder };
+          break;
+        case 'role':
+          orderBy = { role: { name: sortOrder } };
+          break;
+        case 'lastLoginAt':
+          orderBy = { lastLoginAt: sortOrder };
+          break;
+        case 'createdAt':
+          orderBy = { createdAt: sortOrder };
+          break;
+        case 'status':
+          // Status is a computed field, sort by isActive then isOnboarded
+          orderBy = [{ isActive: sortOrder }, { isOnboarded: sortOrder }];
+          break;
+      }
     }
 
     const [users, total] = await Promise.all([
@@ -85,7 +141,7 @@ export class UsersService {
           department: { select: { name: true } },
           location: { select: { name: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         ...getPaginationParams(params),
       }),
       prisma.user.count({ where }),
@@ -251,6 +307,11 @@ export class UsersService {
       throw new NotFoundError('User not found');
     }
 
+    // Self-protection: prevent deleting your own account
+    if (deletedById && id === deletedById) {
+      throw new BadRequestError('Cannot delete your own account');
+    }
+
     // Soft delete
     await prisma.user.update({
       where: { id },
@@ -357,6 +418,11 @@ export class UsersService {
 
     if (!user || user.deletedAt) {
       throw new NotFoundError('User not found');
+    }
+
+    // Self-protection: prevent suspending your own account
+    if (suspendedById && id === suspendedById) {
+      throw new BadRequestError('Cannot suspend your own account');
     }
 
     if (!user.isActive) {
@@ -737,6 +803,231 @@ export class UsersService {
       users: userCount,
       createdAt: role.createdAt.toISOString(),
       updatedAt: role.updatedAt.toISOString(),
+    };
+  }
+
+  // ============================================
+  // R5: Bulk User Import
+  // ============================================
+
+  async bulkImportUsers(input: BulkImportInput, importedById?: string): Promise<BulkImportResponse> {
+    const results: BulkImportResponse['results'] = [];
+    const seenEmails = new Set<string>();
+
+    // Pre-fetch existing emails for dedup
+    const inputEmails = input.users.map(u => u.email.toLowerCase());
+    const existingUsers = await prisma.user.findMany({
+      where: { email: { in: inputEmails } },
+      select: { email: true },
+    });
+    const existingEmailSet = new Set(existingUsers.map(u => u.email.toLowerCase()));
+
+    // Pre-fetch valid roles
+    const roles = await prisma.role.findMany({ select: { id: true, name: true } });
+    const roleMap = new Map(roles.map(r => [r.name.toLowerCase(), r.id]));
+
+    // Validate and create each user
+    for (let i = 0; i < input.users.length; i++) {
+      const row = input.users[i];
+      const email = row.email.toLowerCase();
+
+      // Check duplicate within CSV
+      if (seenEmails.has(email)) {
+        results.push({ row: i + 1, email, status: 'failed', error: 'Duplicate email in import' });
+        continue;
+      }
+      seenEmails.add(email);
+
+      // Check existing
+      if (existingEmailSet.has(email)) {
+        results.push({ row: i + 1, email, status: 'failed', error: 'Email already exists' });
+        continue;
+      }
+
+      // Validate role
+      const roleId = roleMap.get(row.role.toLowerCase());
+      if (!roleId) {
+        results.push({ row: i + 1, email, status: 'failed', error: `Role '${row.role}' not found` });
+        continue;
+      }
+
+      // Validate orgId if provided
+      if (row.organizationId) {
+        const org = await prisma.organization.findUnique({ where: { id: row.organizationId }, select: { id: true } });
+        if (!org) {
+          results.push({ row: i + 1, email, status: 'failed', error: 'Organization not found' });
+          continue;
+        }
+      }
+
+      // Validate deptId if provided
+      if (row.departmentId) {
+        const dept = await prisma.department.findUnique({ where: { id: row.departmentId }, select: { id: true } });
+        if (!dept) {
+          results.push({ row: i + 1, email, status: 'failed', error: 'Department not found' });
+          continue;
+        }
+      }
+
+      // Validate locationId if provided
+      if (row.locationId) {
+        const loc = await prisma.location.findUnique({ where: { id: row.locationId }, select: { id: true } });
+        if (!loc) {
+          results.push({ row: i + 1, email, status: 'failed', error: 'Location not found' });
+          continue;
+        }
+      }
+
+      try {
+        // Create user with a random temporary password hash
+        const tempPasswordHash = await hashPassword(generateToken(32));
+
+        const user = await prisma.user.create({
+          data: {
+            email: row.email,
+            name: row.name,
+            passwordHash: tempPasswordHash,
+            roleId,
+            organizationId: row.organizationId,
+            departmentId: row.departmentId,
+            locationId: row.locationId,
+            contactNumber: row.contactNumber,
+            isOnboarded: false,
+            isActive: true,
+          },
+        });
+
+        existingEmailSet.add(email); // Prevent duplicates in remaining rows
+
+        results.push({
+          row: i + 1,
+          email,
+          status: row.sendInvite ? 'invited' : 'created',
+          userId: user.id,
+        });
+      } catch (error) {
+        results.push({ row: i + 1, email, status: 'failed', error: 'Failed to create user' });
+      }
+    }
+
+    return {
+      totalRows: input.users.length,
+      successful: results.filter(r => r.status !== 'failed').length,
+      failed: results.filter(r => r.status === 'failed').length,
+      results,
+    };
+  }
+
+  getImportTemplate(): string {
+    return 'email,name,role,organizationId,departmentId,locationId,contactNumber,sendInvite\njohn@example.com,John Doe,user,,,,+1234567890,false';
+  }
+
+  // ============================================
+  // R6: Bulk User Status Change
+  // ============================================
+
+  async bulkSuspendUsers(input: BulkUserActionInput, callerUserId?: string): Promise<BulkActionResponse> {
+    const users = await prisma.user.findMany({
+      where: { id: { in: input.userIds }, deletedAt: null },
+      select: { id: true, email: true, isActive: true },
+    });
+
+    const userMap = new Map(users.map(u => [u.id, u]));
+    const results: BulkActionResponse['results'] = [];
+
+    for (const userId of input.userIds) {
+      const user = userMap.get(userId);
+      if (!user) {
+        results.push({ userId, email: 'unknown', status: 'skipped', error: 'User not found' });
+        continue;
+      }
+      if (userId === callerUserId) {
+        results.push({ userId, email: user.email, status: 'skipped', error: 'Cannot suspend your own account' });
+        continue;
+      }
+      if (!user.isActive) {
+        results.push({ userId, email: user.email, status: 'skipped', error: 'User already suspended' });
+        continue;
+      }
+
+      await prisma.user.update({ where: { id: userId }, data: { isActive: false } });
+      await prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+      results.push({ userId, email: user.email, status: 'success' });
+    }
+
+    return {
+      total: input.userIds.length,
+      successful: results.filter(r => r.status === 'success').length,
+      failed: results.filter(r => r.status === 'failed').length,
+      skipped: results.filter(r => r.status === 'skipped').length,
+      results,
+    };
+  }
+
+  async bulkActivateUsers(input: BulkUserActionInput): Promise<BulkActionResponse> {
+    const users = await prisma.user.findMany({
+      where: { id: { in: input.userIds }, deletedAt: null },
+      select: { id: true, email: true, isActive: true },
+    });
+
+    const userMap = new Map(users.map(u => [u.id, u]));
+    const results: BulkActionResponse['results'] = [];
+
+    for (const userId of input.userIds) {
+      const user = userMap.get(userId);
+      if (!user) {
+        results.push({ userId, email: 'unknown', status: 'skipped', error: 'User not found' });
+        continue;
+      }
+      if (user.isActive) {
+        results.push({ userId, email: user.email, status: 'skipped', error: 'User already active' });
+        continue;
+      }
+
+      await prisma.user.update({ where: { id: userId }, data: { isActive: true } });
+      results.push({ userId, email: user.email, status: 'success' });
+    }
+
+    return {
+      total: input.userIds.length,
+      successful: results.filter(r => r.status === 'success').length,
+      failed: results.filter(r => r.status === 'failed').length,
+      skipped: results.filter(r => r.status === 'skipped').length,
+      results,
+    };
+  }
+
+  async bulkDeleteUsers(input: BulkUserActionInput, callerUserId?: string): Promise<BulkActionResponse> {
+    const users = await prisma.user.findMany({
+      where: { id: { in: input.userIds }, deletedAt: null },
+      select: { id: true, email: true },
+    });
+
+    const userMap = new Map(users.map(u => [u.id, u]));
+    const results: BulkActionResponse['results'] = [];
+
+    for (const userId of input.userIds) {
+      const user = userMap.get(userId);
+      if (!user) {
+        results.push({ userId, email: 'unknown', status: 'skipped', error: 'User not found' });
+        continue;
+      }
+      if (userId === callerUserId) {
+        results.push({ userId, email: user.email, status: 'skipped', error: 'Cannot delete your own account' });
+        continue;
+      }
+
+      await prisma.user.update({ where: { id: userId }, data: { deletedAt: new Date(), isActive: false } });
+      await prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+      results.push({ userId, email: user.email, status: 'success' });
+    }
+
+    return {
+      total: input.userIds.length,
+      successful: results.filter(r => r.status === 'success').length,
+      failed: results.filter(r => r.status === 'failed').length,
+      skipped: results.filter(r => r.status === 'skipped').length,
+      results,
     };
   }
 }

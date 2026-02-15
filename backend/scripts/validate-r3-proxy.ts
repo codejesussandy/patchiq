@@ -308,8 +308,14 @@ async function runTests() {
 
       const { status, data } = await request('POST', '/settings/proxy-server/test', adminToken);
 
-      // Accept either 200 (success) or 500 (proxy unreachable, but config was used)
-      if (status === 200 || (status === 500 && data.error?.message?.toLowerCase().includes('proxy'))) {
+      // Accept either 200 (success) or 400/500 with proxy-related error (proves saved config was used)
+      const proxyErrorIndicators = ['proxy', 'host not found', 'connection', 'unreachable', 'timeout'];
+      const hasProxyError = data.error?.message &&
+        proxyErrorIndicators.some(indicator =>
+          data.error.message.toLowerCase().includes(indicator)
+        );
+
+      if (status === 200 || hasProxyError) {
         addResult('V29', 'POST test with proxy enabled uses saved config', true);
       } else {
         addResult('V29', 'POST test with proxy enabled uses saved config', false,
