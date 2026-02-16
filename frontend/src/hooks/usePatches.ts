@@ -19,7 +19,7 @@ export const patchKeys = {
   assetWithPatches: (assetId: string) => ['assets', 'with-patches', assetId] as const,
   deployments: () => ['deployments'] as const,
   deployment: (id: string) => ['deployments', 'detail', id] as const,
-  patchDeployments: () => ['patch-deployments'] as const,
+  patchDeployments: (params?: Record<string, unknown>) => ['patch-deployments', params] as const,
   patchDeploymentStatus: (id: string) => ['patch-deployments', 'status', id] as const,
   deploymentTasks: (id: string) => ['deployments', 'tasks', id] as const,
   deploymentPreview: (id: string) => ['deployments', 'preview', id] as const,
@@ -107,10 +107,17 @@ export function useDeployment(id: string) {
   });
 }
 
-export function usePatchDeployments() {
+export function usePatchDeployments(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+}) {
   return useQuery({
-    queryKey: patchKeys.patchDeployments(),
-    queryFn: () => patchService.listPatchDeployments(),
+    queryKey: patchKeys.patchDeployments(params as Record<string, unknown>),
+    queryFn: () => patchService.listPatchDeployments(params),
+    // Keep previous data while fetching new page for better UX
+    placeholderData: (previousData) => previousData,
   });
 }
 

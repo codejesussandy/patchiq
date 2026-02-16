@@ -28,10 +28,12 @@ export const vulnerabilityKeys = {
 // Queries
 // ============================================
 
-export function useVulnerabilities(params?: { severity?: string; search?: string; affectsAssets?: boolean }) {
+export function useVulnerabilities(params?: { severity?: string; search?: string; affectsAssets?: boolean; page?: number; limit?: number }) {
   return useQuery({
     queryKey: vulnerabilityKeys.list(params as Record<string, unknown>),
     queryFn: () => vulnerabilityService.getVulnerabilities(params),
+    // Keep previous data while fetching new page for better UX
+    placeholderData: (previousData) => previousData,
   });
 }
 

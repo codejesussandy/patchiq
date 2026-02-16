@@ -606,6 +606,11 @@ model Vulnerability {
   @@index([isZeroDay])
   @@index([publishedDate])
   @@index([riskScore])
+  @@index([patchAvailable])
+  @@index([exploitable])
+  @@index([epss])
+  @@index([exploitable, patchAvailable, severity])
+  @@index([severity, publishedDate(sort: Desc)])
   @@map("vulnerabilities")
 }
 
@@ -654,6 +659,7 @@ model AssetVulnerability {
 
   @@unique([assetId, vulnerabilityId])
   @@index([status])
+  @@index([vulnerabilityId, status])
   @@map("asset_vulnerabilities")
 }
 

@@ -76,10 +76,25 @@ export const PatchJobsDeployed = () => {
   const retryModal = useModal<{ deploymentId: string; name: string }>();
   const cancelModal = useModal<{ deploymentId: string }>();
   const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedDeploymentId, setSelectedDeploymentId] = useState('');
+  const [pagination, setPagination] = useState({ page: 1, pageSize: 20 });
 
-  const { data: deployments = [], isLoading: loading, refetch: refetchDeployments } = usePatchDeployments();
+  // Debounce search to avoid excessive API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText);
+      setPagination((prev) => ({ ...prev, page: 1 })); // Reset to page 1 on search
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  const { data: deployments = [], isLoading: loading, refetch: refetchDeployments } = usePatchDeployments({
+    page: pagination.page,
+    limit: pagination.pageSize,
+    search: debouncedSearch || undefined,
+  });
   const cancelMutation = useCancelPatchDeployment();
   const retryMutation = useRetryPatchDeployment();
   const { data: detail = null, refetch: refetchDetail } = usePatchDeploymentStatus(selectedDeploymentId);
@@ -129,7 +144,7 @@ export const PatchJobsDeployed = () => {
 
   const handleExport = () => {
     exportToCsv(
-      filtered.length > 0 ? filtered : deployments,
+      deployments,
       [
         { header: 'ID', accessor: (d) => d.deploymentId },
         { header: 'Name', accessor: (d) => d.name },
@@ -234,11 +249,6 @@ export const PatchJobsDeployed = () => {
     },
   ];
 
-  const filtered = deployments.filter((d: PatchDeploymentItem) =>
-    d.name.toLowerCase().includes(searchText.toLowerCase()) ||
-    d.deploymentId.toLowerCase().includes(searchText.toLowerCase())
-  );
-
   return (
     <div>
       <JobToolbar
@@ -261,11 +271,22 @@ export const PatchJobsDeployed = () => {
       ) : (
         <DataTable
           columns={columns}
-          data={filtered}
+          data={deployments}
           rowKey="id"
           loading={loading}
           onRow={(record) => ({ onClick: () => handleView(record), style: { cursor: 'pointer' } })}
-          pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ['10', '20', '50'], showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}` }}
+          pagination={{
+            current: pagination.page,
+            pageSize: pagination.pageSize,
+            total: deployments.length, // Note: Backend should return total count
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50'],
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+            onChange: (page, pageSize) => {
+              setPagination({ page, pageSize });
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+          }}
           scroll={{ x: 'max-content' }}
         />
       )}

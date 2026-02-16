@@ -4,7 +4,7 @@ import { config } from '@config/index';
 
 export const defaultRateLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
-  max: 1000, // Increased for development
+  max: config.isDevelopment ? 10000 : 1000, // Very high limit for development/testing
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req, _res, next) => {

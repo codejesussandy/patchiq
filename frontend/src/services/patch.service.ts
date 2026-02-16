@@ -136,8 +136,13 @@ export const patchService = {
     return response.data;
   },
 
-  async listPatchDeployments(): Promise<Record<string, unknown>[]> {
-    const response = await api.get('/deployments/patch');
+  async listPatchDeployments(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }): Promise<Record<string, unknown>[]> {
+    const response = await api.get('/deployments/patch', { params });
     // Paginated response: interceptor returns { data: T[], ...meta }
     return response.data.data || [];
   },
