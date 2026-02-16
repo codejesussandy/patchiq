@@ -13,18 +13,18 @@ type Peripherals struct {
 
 // Monitor represents a connected display
 type Monitor struct {
-	Name           string `json:"name"`
-	Manufacturer   string `json:"manufacturer,omitempty"`
-	Model          string `json:"model,omitempty"`
-	SerialNumber   string `json:"serialNumber,omitempty"`
-	Resolution     string `json:"resolution"` // e.g., "2560x1440"
-	RefreshRate    int    `json:"refreshRate,omitempty"`
-	WidthPx        int    `json:"widthPx"`
-	HeightPx       int    `json:"heightPx"`
+	Name           string  `json:"name"`
+	Manufacturer   string  `json:"manufacturer,omitempty"`
+	Model          string  `json:"model,omitempty"`
+	SerialNumber   string  `json:"serialNumber,omitempty"`
+	Resolution     string  `json:"resolution"` // e.g., "2560x1440"
+	RefreshRate    int     `json:"refreshRate,omitempty"`
+	WidthPx        int     `json:"widthPx"`
+	HeightPx       int     `json:"heightPx"`
 	ScaleFactor    float64 `json:"scaleFactor,omitempty"`
-	ConnectionType string `json:"connectionType,omitempty"` // HDMI, DisplayPort, USB-C, Thunderbolt
-	IsPrimary      bool   `json:"isPrimary"`
-	IsBuiltIn      bool   `json:"isBuiltIn"`
+	ConnectionType string  `json:"connectionType,omitempty"` // HDMI, DisplayPort, USB-C, Thunderbolt
+	IsPrimary      bool    `json:"isPrimary"`
+	IsBuiltIn      bool    `json:"isBuiltIn"`
 }
 
 // USBDevice represents a connected USB device
@@ -47,7 +47,7 @@ type Printer struct {
 	Driver         string   `json:"driver,omitempty"`
 	PortName       string   `json:"portName,omitempty"`
 	ConnectionType string   `json:"connectionType"` // USB, Network, WiFi, Bluetooth
-	Status         string   `json:"status"` // Ready, Offline, Error
+	Status         string   `json:"status"`         // Ready, Offline, Error
 	IsDefault      bool     `json:"isDefault"`
 	IsShared       bool     `json:"isShared,omitempty"`
 	Capabilities   []string `json:"capabilities,omitempty"` // Color, Duplex, etc.
@@ -66,21 +66,21 @@ type AudioDevice struct {
 
 // BluetoothDevice represents a connected Bluetooth device
 type BluetoothDevice struct {
-	Name          string `json:"name"`
-	Address       string `json:"address,omitempty"`
-	Type          string `json:"type,omitempty"` // Keyboard, Mouse, Headphones, etc.
-	Connected     bool   `json:"connected"`
-	Paired        bool   `json:"paired"`
-	BatteryLevel  int    `json:"batteryLevel,omitempty"` // 0-100
+	Name         string `json:"name"`
+	Address      string `json:"address,omitempty"`
+	Type         string `json:"type,omitempty"` // Keyboard, Mouse, Headphones, etc.
+	Connected    bool   `json:"connected"`
+	Paired       bool   `json:"paired"`
+	BatteryLevel int    `json:"batteryLevel,omitempty"` // 0-100
 }
 
 // DockingStation represents a connected docking station
 type DockingStation struct {
-	Name              string   `json:"name"`
-	Manufacturer      string   `json:"manufacturer,omitempty"`
-	Model             string   `json:"model,omitempty"`
-	FirmwareVersion   string   `json:"firmwareVersion,omitempty"`
-	SerialNumber      string   `json:"serialNumber,omitempty"`
-	PowerDeliveryWatts int     `json:"powerDeliveryWatts,omitempty"`
-	AvailablePorts    []string `json:"availablePorts,omitempty"` // USB-A, USB-C, HDMI, etc.
+	Name               string   `json:"name"`
+	Manufacturer       string   `json:"manufacturer,omitempty"`
+	Model              string   `json:"model,omitempty"`
+	FirmwareVersion    string   `json:"firmwareVersion,omitempty"`
+	SerialNumber       string   `json:"serialNumber,omitempty"`
+	PowerDeliveryWatts int      `json:"powerDeliveryWatts,omitempty"`
+	AvailablePorts     []string `json:"availablePorts,omitempty"` // USB-A, USB-C, HDMI, etc.
 }

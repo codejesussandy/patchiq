@@ -27,13 +27,13 @@ type SystemUptime struct {
 
 // ThermalTelemetry represents temperature readings from various sensors
 type ThermalTelemetry struct {
-	CPUTemperature  float64         `json:"cpuTemperature,omitempty"`  // Celsius
-	GPUTemperature  float64         `json:"gpuTemperature,omitempty"`  // Celsius
-	BatteryTemp     float64         `json:"batteryTemp,omitempty"`     // Celsius
-	AmbientTemp     float64         `json:"ambientTemp,omitempty"`     // Celsius
-	Sensors         []ThermalSensor `json:"sensors,omitempty"`
-	Throttled       bool            `json:"throttled"`
-	ThrottleReason  string          `json:"throttleReason,omitempty"` // Thermal, Power, VRM
+	CPUTemperature float64         `json:"cpuTemperature,omitempty"` // Celsius
+	GPUTemperature float64         `json:"gpuTemperature,omitempty"` // Celsius
+	BatteryTemp    float64         `json:"batteryTemp,omitempty"`    // Celsius
+	AmbientTemp    float64         `json:"ambientTemp,omitempty"`    // Celsius
+	Sensors        []ThermalSensor `json:"sensors,omitempty"`
+	Throttled      bool            `json:"throttled"`
+	ThrottleReason string          `json:"throttleReason,omitempty"` // Thermal, Power, VRM
 }
 
 // ThermalSensor represents a single temperature sensor
@@ -48,18 +48,18 @@ type ThermalSensor struct {
 
 // PowerTelemetry represents power and battery metrics
 type PowerTelemetry struct {
-	ACConnected      bool             `json:"acConnected"`
-	BatteryPresent   bool             `json:"batteryPresent"`
-	BatteryCharging  bool             `json:"batteryCharging,omitempty"`
-	BatteryPercent   float64          `json:"batteryPercent,omitempty"`
-	BatteryHealth    float64          `json:"batteryHealth,omitempty"`    // Percent of design capacity
-	TimeRemaining    int              `json:"timeRemaining,omitempty"`    // Minutes
-	TimeToFull       int              `json:"timeToFull,omitempty"`       // Minutes if charging
-	PowerDrawWatts   float64          `json:"powerDrawWatts,omitempty"`   // Current system power draw
-	CPUPowerWatts    float64          `json:"cpuPowerWatts,omitempty"`
-	GPUPowerWatts    float64          `json:"gpuPowerWatts,omitempty"`
-	VoltageReadings  []VoltageReading `json:"voltageReadings,omitempty"`
-	PowerSource      string           `json:"powerSource,omitempty"` // AC, Battery, UPS
+	ACConnected     bool             `json:"acConnected"`
+	BatteryPresent  bool             `json:"batteryPresent"`
+	BatteryCharging bool             `json:"batteryCharging,omitempty"`
+	BatteryPercent  float64          `json:"batteryPercent,omitempty"`
+	BatteryHealth   float64          `json:"batteryHealth,omitempty"`  // Percent of design capacity
+	TimeRemaining   int              `json:"timeRemaining,omitempty"`  // Minutes
+	TimeToFull      int              `json:"timeToFull,omitempty"`     // Minutes if charging
+	PowerDrawWatts  float64          `json:"powerDrawWatts,omitempty"` // Current system power draw
+	CPUPowerWatts   float64          `json:"cpuPowerWatts,omitempty"`
+	GPUPowerWatts   float64          `json:"gpuPowerWatts,omitempty"`
+	VoltageReadings []VoltageReading `json:"voltageReadings,omitempty"`
+	PowerSource     string           `json:"powerSource,omitempty"` // AC, Battery, UPS
 }
 
 // VoltageReading represents a voltage sensor reading
@@ -73,55 +73,55 @@ type VoltageReading struct {
 
 // AgentUtilization represents the agent's own resource consumption
 type AgentUtilization struct {
-	PID               int     `json:"pid"`
-	CPUPercent        float64 `json:"cpuPercent"`
-	MemoryBytes       int64   `json:"memoryBytes"`
-	MemoryPercent     float64 `json:"memoryPercent"`
-	MemoryHuman       string  `json:"memoryHuman,omitempty"`
-	DiskUsageBytes    int64   `json:"diskUsageBytes,omitempty"`    // Agent data directory size
-	DiskUsageHuman    string  `json:"diskUsageHuman,omitempty"`
-	OpenFileHandles   int     `json:"openFileHandles,omitempty"`
-	Goroutines        int     `json:"goroutines"`
-	ThreadCount       int     `json:"threadCount,omitempty"`
-	UptimeSeconds     int64   `json:"uptimeSeconds"`
-	UptimeHuman       string  `json:"uptimeHuman,omitempty"`
-	LastCollectionMs  int64   `json:"lastCollectionMs,omitempty"`  // Duration of last full collection
-	CollectionErrors  int     `json:"collectionErrors24h,omitempty"`
-	NetworkBytesSent  int64   `json:"networkBytesSent,omitempty"`  // Cumulative bytes sent
-	NetworkBytesRecv  int64   `json:"networkBytesRecv,omitempty"`  // Cumulative bytes received
-	Version           string  `json:"version"`
+	PID              int     `json:"pid"`
+	CPUPercent       float64 `json:"cpuPercent"`
+	MemoryBytes      int64   `json:"memoryBytes"`
+	MemoryPercent    float64 `json:"memoryPercent"`
+	MemoryHuman      string  `json:"memoryHuman,omitempty"`
+	DiskUsageBytes   int64   `json:"diskUsageBytes,omitempty"` // Agent data directory size
+	DiskUsageHuman   string  `json:"diskUsageHuman,omitempty"`
+	OpenFileHandles  int     `json:"openFileHandles,omitempty"`
+	Goroutines       int     `json:"goroutines"`
+	ThreadCount      int     `json:"threadCount,omitempty"`
+	UptimeSeconds    int64   `json:"uptimeSeconds"`
+	UptimeHuman      string  `json:"uptimeHuman,omitempty"`
+	LastCollectionMs int64   `json:"lastCollectionMs,omitempty"` // Duration of last full collection
+	CollectionErrors int     `json:"collectionErrors24h,omitempty"`
+	NetworkBytesSent int64   `json:"networkBytesSent,omitempty"` // Cumulative bytes sent
+	NetworkBytesRecv int64   `json:"networkBytesRecv,omitempty"` // Cumulative bytes received
+	Version          string  `json:"version"`
 }
 
 // CPUTelemetry represents CPU usage metrics
 type CPUTelemetry struct {
-	UsagePercent float64   `json:"usagePercent"`
-	UserPercent  float64   `json:"userPercent,omitempty"`
-	SystemPercent float64  `json:"systemPercent,omitempty"`
-	IdlePercent  float64   `json:"idlePercent,omitempty"`
-	PerCoreUsage []float64 `json:"perCoreUsage,omitempty"`
-	LoadAverage  []float64 `json:"loadAverage,omitempty"` // 1, 5, 15 min
-	Temperature  float64   `json:"temperature,omitempty"` // Celsius
-	Throttled    bool      `json:"throttled,omitempty"`
+	UsagePercent  float64   `json:"usagePercent"`
+	UserPercent   float64   `json:"userPercent,omitempty"`
+	SystemPercent float64   `json:"systemPercent,omitempty"`
+	IdlePercent   float64   `json:"idlePercent,omitempty"`
+	PerCoreUsage  []float64 `json:"perCoreUsage,omitempty"`
+	LoadAverage   []float64 `json:"loadAverage,omitempty"` // 1, 5, 15 min
+	Temperature   float64   `json:"temperature,omitempty"` // Celsius
+	Throttled     bool      `json:"throttled,omitempty"`
 }
 
 // MemoryTelemetry represents memory usage metrics
 // Note: UsedBytes = TotalBytes - FreeBytes (what Proxmox/system monitors show - includes buffers/cache)
 // ApplicationUsedBytes = TotalBytes - AvailableBytes (memory not readily available for new apps)
 type MemoryTelemetry struct {
-	UsagePercent        float64 `json:"usagePercent"`
-	UsedBytes           int64   `json:"usedBytes"`           // Total - Free (matches Proxmox/system monitors)
-	AvailableBytes      int64   `json:"availableBytes"`      // MemAvailable - memory available for apps
-	TotalBytes          int64   `json:"totalBytes"`
-	FreeBytes           int64   `json:"freeBytes,omitempty"` // MemFree - completely unused memory
-	BuffersBytes        int64   `json:"buffersBytes,omitempty"`
-	CachedBytes         int64   `json:"cachedBytes,omitempty"`
-	ApplicationUsedBytes int64  `json:"applicationUsedBytes,omitempty"` // Total - Available (app memory)
-	UsedHuman           string  `json:"usedHuman,omitempty"`
-	AvailableHuman      string  `json:"availableHuman,omitempty"`
-	SwapUsagePercent    float64 `json:"swapUsagePercent,omitempty"`
-	SwapUsedBytes       int64   `json:"swapUsedBytes,omitempty"`
-	SwapTotalBytes      int64   `json:"swapTotalBytes,omitempty"`
-	PageFaultsPerSec    int64   `json:"pageFaultsPerSec,omitempty"`
+	UsagePercent         float64 `json:"usagePercent"`
+	UsedBytes            int64   `json:"usedBytes"`      // Total - Free (matches Proxmox/system monitors)
+	AvailableBytes       int64   `json:"availableBytes"` // MemAvailable - memory available for apps
+	TotalBytes           int64   `json:"totalBytes"`
+	FreeBytes            int64   `json:"freeBytes,omitempty"` // MemFree - completely unused memory
+	BuffersBytes         int64   `json:"buffersBytes,omitempty"`
+	CachedBytes          int64   `json:"cachedBytes,omitempty"`
+	ApplicationUsedBytes int64   `json:"applicationUsedBytes,omitempty"` // Total - Available (app memory)
+	UsedHuman            string  `json:"usedHuman,omitempty"`
+	AvailableHuman       string  `json:"availableHuman,omitempty"`
+	SwapUsagePercent     float64 `json:"swapUsagePercent,omitempty"`
+	SwapUsedBytes        int64   `json:"swapUsedBytes,omitempty"`
+	SwapTotalBytes       int64   `json:"swapTotalBytes,omitempty"`
+	PageFaultsPerSec     int64   `json:"pageFaultsPerSec,omitempty"`
 }
 
 // DiskTelemetry represents disk I/O metrics
@@ -148,14 +148,14 @@ type DriveTelemetry struct {
 
 // NetworkTelemetry represents network I/O metrics
 type NetworkTelemetry struct {
-	BytesSentPerSec     int64   `json:"bytesSentPerSec"`
-	BytesReceivedPerSec int64   `json:"bytesReceivedPerSec"`
-	PacketsSentPerSec   int64   `json:"packetsSentPerSec,omitempty"`
-	PacketsReceivedPerSec int64 `json:"packetsReceivedPerSec,omitempty"`
-	ErrorsIn            int64   `json:"errorsIn,omitempty"`
-	ErrorsOut           int64   `json:"errorsOut,omitempty"`
-	LatencyMs           float64 `json:"latencyMs,omitempty"`
-	Adapters            []AdapterTelemetry `json:"adapters,omitempty"`
+	BytesSentPerSec       int64              `json:"bytesSentPerSec"`
+	BytesReceivedPerSec   int64              `json:"bytesReceivedPerSec"`
+	PacketsSentPerSec     int64              `json:"packetsSentPerSec,omitempty"`
+	PacketsReceivedPerSec int64              `json:"packetsReceivedPerSec,omitempty"`
+	ErrorsIn              int64              `json:"errorsIn,omitempty"`
+	ErrorsOut             int64              `json:"errorsOut,omitempty"`
+	LatencyMs             float64            `json:"latencyMs,omitempty"`
+	Adapters              []AdapterTelemetry `json:"adapters,omitempty"`
 }
 
 // AdapterTelemetry represents metrics for a single network adapter
@@ -169,11 +169,11 @@ type AdapterTelemetry struct {
 
 // ProcessStats represents process statistics
 type ProcessStats struct {
-	TotalCount   int           `json:"totalCount"`
-	RunningCount int           `json:"runningCount"`
-	SleepingCount int          `json:"sleepingCount,omitempty"`
-	TopByCPU     []ProcessInfo `json:"topByCPU,omitempty"`
-	TopByMemory  []ProcessInfo `json:"topByMemory,omitempty"`
+	TotalCount    int           `json:"totalCount"`
+	RunningCount  int           `json:"runningCount"`
+	SleepingCount int           `json:"sleepingCount,omitempty"`
+	TopByCPU      []ProcessInfo `json:"topByCPU,omitempty"`
+	TopByMemory   []ProcessInfo `json:"topByMemory,omitempty"`
 }
 
 // ProcessInfo represents a single process
@@ -189,10 +189,10 @@ type ProcessInfo struct {
 
 // SystemErrors represents system error metrics
 type SystemErrors struct {
-	ApplicationCrashCount24h int          `json:"applicationCrashCount24h"`
-	BSODCount30d             int          `json:"bsodCount30d,omitempty"` // Windows
-	KernelPanicCount30d      int          `json:"kernelPanicCount30d,omitempty"` // macOS/Linux
-	LastCrash                *CrashInfo   `json:"lastCrash,omitempty"`
+	ApplicationCrashCount24h int        `json:"applicationCrashCount24h"`
+	BSODCount30d             int        `json:"bsodCount30d,omitempty"`        // Windows
+	KernelPanicCount30d      int        `json:"kernelPanicCount30d,omitempty"` // macOS/Linux
+	LastCrash                *CrashInfo `json:"lastCrash,omitempty"`
 }
 
 // CrashInfo represents information about a crash

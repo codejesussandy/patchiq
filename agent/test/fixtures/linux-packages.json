@@ -1,0 +1,547 @@
+{
+  "description": "Linux test packages for deployment testing",
+  "platforms": ["Ubuntu 20.04/22.04/24.04", "Debian 11/12", "RHEL 8/9", "Fedora 39/40", "Rocky 8/9"],
+  "lastUpdated": "2026-02-14",
+  "packages": {
+    "debian-based": [
+      {
+        "name": "curl",
+        "packageManager": "apt",
+        "packageId": "curl",
+        "version": "latest",
+        "size": "500 KB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "utility",
+        "notes": "Common CLI tool"
+      },
+      {
+        "name": "git",
+        "packageManager": "apt",
+        "packageId": "git",
+        "version": "latest",
+        "size": "10 MB",
+        "estimatedInstallTime": "1 minute",
+        "rollbackSupported": true,
+        "category": "development",
+        "notes": "Version control"
+      },
+      {
+        "name": "vim",
+        "packageManager": "apt",
+        "packageId": "vim",
+        "version": "latest",
+        "size": "8 MB",
+        "estimatedInstallTime": "1 minute",
+        "rollbackSupported": true,
+        "category": "editor",
+        "notes": "Text editor"
+      },
+      {
+        "name": "htop",
+        "packageManager": "apt",
+        "packageId": "htop",
+        "version": "latest",
+        "size": "200 KB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "utility",
+        "notes": "Process monitor"
+      },
+      {
+        "name": "nginx",
+        "packageManager": "apt",
+        "packageId": "nginx",
+        "version": "latest",
+        "size": "5 MB",
+        "estimatedInstallTime": "1 minute",
+        "rollbackSupported": true,
+        "category": "server",
+        "notes": "Web server"
+      },
+      {
+        "name": "postgresql",
+        "packageManager": "apt",
+        "packageId": "postgresql",
+        "version": "14+",
+        "size": "30 MB",
+        "estimatedInstallTime": "2 minutes",
+        "rollbackSupported": true,
+        "category": "database",
+        "notes": "Database server"
+      },
+      {
+        "name": "docker.io",
+        "packageManager": "apt",
+        "packageId": "docker.io",
+        "version": "latest",
+        "size": "70 MB",
+        "estimatedInstallTime": "3 minutes",
+        "rollbackSupported": true,
+        "category": "container",
+        "notes": "Container runtime"
+      },
+      {
+        "name": "python3-pip",
+        "packageManager": "apt",
+        "packageId": "python3-pip",
+        "version": "latest",
+        "size": "10 MB",
+        "estimatedInstallTime": "1 minute",
+        "rollbackSupported": true,
+        "category": "development",
+        "notes": "Python package manager"
+      },
+      {
+        "name": "build-essential",
+        "packageManager": "apt",
+        "packageId": "build-essential",
+        "version": "latest",
+        "size": "20 MB",
+        "estimatedInstallTime": "2 minutes",
+        "rollbackSupported": true,
+        "category": "development",
+        "notes": "Compiler tools (gcc, make, etc.)"
+      },
+      {
+        "name": "net-tools",
+        "packageManager": "apt",
+        "packageId": "net-tools",
+        "version": "latest",
+        "size": "1 MB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "network",
+        "notes": "Network utilities (ifconfig, netstat)"
+      },
+      {
+        "name": "jq",
+        "packageManager": "apt",
+        "packageId": "jq",
+        "version": "latest",
+        "size": "500 KB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "utility",
+        "notes": "JSON processor"
+      },
+      {
+        "name": "tree",
+        "packageManager": "apt",
+        "packageId": "tree",
+        "version": "latest",
+        "size": "100 KB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "utility",
+        "notes": "Directory listing"
+      },
+      {
+        "name": "tmux",
+        "packageManager": "apt",
+        "packageId": "tmux",
+        "version": "latest",
+        "size": "1 MB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "utility",
+        "notes": "Terminal multiplexer"
+      },
+      {
+        "name": "unzip",
+        "packageManager": "apt",
+        "packageId": "unzip",
+        "version": "latest",
+        "size": "500 KB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "utility",
+        "notes": "Archive tool"
+      },
+      {
+        "name": "openssh-server",
+        "packageManager": "apt",
+        "packageId": "openssh-server",
+        "version": "latest",
+        "size": "2 MB",
+        "estimatedInstallTime": "1 minute",
+        "rollbackSupported": true,
+        "category": "network",
+        "notes": "SSH server"
+      },
+      {
+        "name": "Visual Studio Code",
+        "packageManager": "deb",
+        "packageUrl": "https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-x64",
+        "version": "latest",
+        "size": "80 MB",
+        "estimatedInstallTime": "2 minutes",
+        "rollbackSupported": false,
+        "category": "development",
+        "notes": "Test DEB file installation"
+      },
+      {
+        "name": "Google Chrome",
+        "packageManager": "deb",
+        "packageUrl": "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb",
+        "version": "latest",
+        "size": "90 MB",
+        "estimatedInstallTime": "2 minutes",
+        "rollbackSupported": false,
+        "category": "browser",
+        "notes": "Test DEB file installation"
+      },
+      {
+        "name": "Slack",
+        "packageManager": "snap",
+        "packageId": "slack",
+        "version": "latest",
+        "size": "150 MB",
+        "estimatedInstallTime": "3 minutes",
+        "rollbackSupported": true,
+        "category": "communication",
+        "notes": "Test Snap installation"
+      }
+    ],
+    "rhel-based": [
+      {
+        "name": "curl",
+        "packageManager": "dnf",
+        "packageId": "curl",
+        "version": "latest",
+        "size": "500 KB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "utility",
+        "notes": "Common CLI tool"
+      },
+      {
+        "name": "git",
+        "packageManager": "dnf",
+        "packageId": "git",
+        "version": "latest",
+        "size": "10 MB",
+        "estimatedInstallTime": "1 minute",
+        "rollbackSupported": true,
+        "category": "development",
+        "notes": "Version control"
+      },
+      {
+        "name": "vim-enhanced",
+        "packageManager": "dnf",
+        "packageId": "vim-enhanced",
+        "version": "latest",
+        "size": "8 MB",
+        "estimatedInstallTime": "1 minute",
+        "rollbackSupported": true,
+        "category": "editor",
+        "notes": "Text editor"
+      },
+      {
+        "name": "htop",
+        "packageManager": "dnf",
+        "packageId": "htop",
+        "version": "latest",
+        "size": "200 KB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "utility",
+        "notes": "Process monitor",
+        "requiresEPEL": true
+      },
+      {
+        "name": "nginx",
+        "packageManager": "dnf",
+        "packageId": "nginx",
+        "version": "latest",
+        "size": "5 MB",
+        "estimatedInstallTime": "1 minute",
+        "rollbackSupported": true,
+        "category": "server",
+        "notes": "Web server",
+        "requiresEPEL": true
+      },
+      {
+        "name": "postgresql-server",
+        "packageManager": "dnf",
+        "packageId": "postgresql-server",
+        "version": "latest",
+        "size": "30 MB",
+        "estimatedInstallTime": "2 minutes",
+        "rollbackSupported": true,
+        "category": "database",
+        "notes": "Database server"
+      },
+      {
+        "name": "docker",
+        "packageManager": "dnf",
+        "packageId": "docker",
+        "version": "latest",
+        "size": "70 MB",
+        "estimatedInstallTime": "3 minutes",
+        "rollbackSupported": true,
+        "category": "container",
+        "notes": "Container runtime",
+        "requiresDockerRepo": true
+      },
+      {
+        "name": "python3-pip",
+        "packageManager": "dnf",
+        "packageId": "python3-pip",
+        "version": "latest",
+        "size": "10 MB",
+        "estimatedInstallTime": "1 minute",
+        "rollbackSupported": true,
+        "category": "development",
+        "notes": "Python package manager"
+      },
+      {
+        "name": "gcc",
+        "packageManager": "dnf",
+        "packageId": "gcc",
+        "version": "latest",
+        "size": "30 MB",
+        "estimatedInstallTime": "2 minutes",
+        "rollbackSupported": true,
+        "category": "development",
+        "notes": "C compiler"
+      },
+      {
+        "name": "make",
+        "packageManager": "dnf",
+        "packageId": "make",
+        "version": "latest",
+        "size": "1 MB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "development",
+        "notes": "Build tool"
+      },
+      {
+        "name": "net-tools",
+        "packageManager": "dnf",
+        "packageId": "net-tools",
+        "version": "latest",
+        "size": "1 MB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "network",
+        "notes": "Network utilities"
+      },
+      {
+        "name": "jq",
+        "packageManager": "dnf",
+        "packageId": "jq",
+        "version": "latest",
+        "size": "500 KB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "utility",
+        "notes": "JSON processor",
+        "requiresEPEL": true
+      },
+      {
+        "name": "tree",
+        "packageManager": "dnf",
+        "packageId": "tree",
+        "version": "latest",
+        "size": "100 KB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "utility",
+        "notes": "Directory listing"
+      },
+      {
+        "name": "tmux",
+        "packageManager": "dnf",
+        "packageId": "tmux",
+        "version": "latest",
+        "size": "1 MB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "utility",
+        "notes": "Terminal multiplexer"
+      },
+      {
+        "name": "unzip",
+        "packageManager": "dnf",
+        "packageId": "unzip",
+        "version": "latest",
+        "size": "500 KB",
+        "estimatedInstallTime": "30 seconds",
+        "rollbackSupported": true,
+        "category": "utility",
+        "notes": "Archive tool"
+      },
+      {
+        "name": "openssh-server",
+        "packageManager": "dnf",
+        "packageId": "openssh-server",
+        "version": "latest",
+        "size": "2 MB",
+        "estimatedInstallTime": "1 minute",
+        "rollbackSupported": true,
+        "category": "network",
+        "notes": "SSH server"
+      },
+      {
+        "name": "Visual Studio Code",
+        "packageManager": "rpm",
+        "packageUrl": "https://code.visualstudio.com/sha/download?build=stable&os=linux-rpm-x64",
+        "version": "latest",
+        "size": "80 MB",
+        "estimatedInstallTime": "2 minutes",
+        "rollbackSupported": false,
+        "category": "development",
+        "notes": "Test RPM file installation"
+      },
+      {
+        "name": "Google Chrome",
+        "packageManager": "rpm",
+        "packageUrl": "https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm",
+        "version": "latest",
+        "size": "90 MB",
+        "estimatedInstallTime": "2 minutes",
+        "rollbackSupported": false,
+        "category": "browser",
+        "notes": "Test RPM file installation"
+      }
+    ]
+  },
+  "patchTestCases": {
+    "debian-based": [
+      {
+        "name": "Security Updates Only",
+        "command": "apt-get upgrade --security-only",
+        "category": "Security",
+        "estimatedInstallTime": "5-15 minutes",
+        "requiresReboot": "sometimes",
+        "notes": "Install only security patches"
+      },
+      {
+        "name": "All Updates",
+        "command": "apt-get upgrade -y",
+        "category": "All",
+        "estimatedInstallTime": "10-30 minutes",
+        "requiresReboot": "sometimes",
+        "notes": "Update all packages"
+      },
+      {
+        "name": "Distribution Upgrade",
+        "command": "apt-get dist-upgrade -y",
+        "category": "Distribution",
+        "estimatedInstallTime": "30-60 minutes",
+        "requiresReboot": true,
+        "notes": "Major version upgrade (use with caution)"
+      },
+      {
+        "name": "Kernel Update",
+        "command": "apt-get install linux-image-generic",
+        "category": "Kernel",
+        "estimatedInstallTime": "5-10 minutes",
+        "requiresReboot": true,
+        "notes": "Update kernel"
+      }
+    ],
+    "rhel-based": [
+      {
+        "name": "Security Updates Only",
+        "command": "dnf upgrade --security -y",
+        "category": "Security",
+        "estimatedInstallTime": "5-15 minutes",
+        "requiresReboot": "sometimes",
+        "notes": "Install only security patches"
+      },
+      {
+        "name": "All Updates",
+        "command": "dnf upgrade -y",
+        "category": "All",
+        "estimatedInstallTime": "10-30 minutes",
+        "requiresReboot": "sometimes",
+        "notes": "Update all packages"
+      },
+      {
+        "name": "Kernel Update",
+        "command": "dnf upgrade kernel -y",
+        "category": "Kernel",
+        "estimatedInstallTime": "5-10 minutes",
+        "requiresReboot": true,
+        "notes": "Update kernel"
+      }
+    ]
+  },
+  "bundleTestCases": [
+    {
+      "name": "Custom Internal Tool",
+      "type": "Tarball with scripts",
+      "scripts": ["install.sh", "update.sh", "rollback.sh", "uninstall.sh"],
+      "estimatedInstallTime": "2 minutes",
+      "notes": "Test hub-centric model with shell scripts"
+    },
+    {
+      "name": "Custom DEB/RPM",
+      "type": "DEB or RPM with pre/post scripts",
+      "scripts": ["preinst", "postinst", "prerm", "postrm"],
+      "estimatedInstallTime": "2 minutes",
+      "notes": "Test package with maintainer scripts"
+    },
+    {
+      "name": "Binary with systemd service",
+      "type": "Binary + service file",
+      "scripts": ["install.sh"],
+      "estimatedInstallTime": "1 minute",
+      "notes": "Install binary to /usr/local/bin, service to /etc/systemd/system"
+    }
+  ],
+  "failureTestCases": [
+    {
+      "name": "Non-existent package",
+      "packageId": "nonexistent-package",
+      "expectedError": "Package not found",
+      "notes": "Test package manager error handling"
+    },
+    {
+      "name": "Broken dependencies",
+      "method": "Package with missing dependencies",
+      "expectedError": "Dependency resolution failed",
+      "notes": "Test dependency handling"
+    },
+    {
+      "name": "Insufficient disk space",
+      "method": "Fill /var or /tmp before deployment",
+      "expectedError": "No space left on device",
+      "notes": "Test disk space handling"
+    },
+    {
+      "name": "Repository unavailable",
+      "method": "Disable all repos",
+      "expectedError": "Failed to download metadata",
+      "notes": "Test repo connectivity handling"
+    },
+    {
+      "name": "Signature verification failure",
+      "method": "Corrupted package signature",
+      "expectedError": "GPG signature verification failed",
+      "notes": "Test signature validation"
+    }
+  ],
+  "notes": {
+    "aptRequirements": {
+      "updateCache": "Run 'apt-get update' before 'apt-get install'",
+      "nonInteractive": "Set DEBIAN_FRONTEND=noninteractive",
+      "autoconfirm": "Use -y flag for non-interactive"
+    },
+    "dnfRequirements": {
+      "autoconfirm": "Use -y flag for non-interactive",
+      "epel": "Some packages require EPEL repository",
+      "rhelSubscription": "RHEL requires active subscription"
+    },
+    "snapRequirements": {
+      "snapd": "snapd must be installed and running",
+      "classic": "Some snaps require --classic flag"
+    },
+    "adminRequired": "All package installations require root/sudo",
+    "selinux": "SELinux may block some operations on RHEL/Fedora",
+    "firewall": "Firewalld may block some services on RHEL/Fedora"
+  }
+}

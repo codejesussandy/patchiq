@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"context"
 	"github.com/patchify/agent/internal/models"
 )
 
@@ -31,40 +32,41 @@ func NewLinuxSoftwareExecutor() *LinuxSoftwareExecutor {
 }
 
 // runElevated runs a command with root privileges (sudo if needed)
-func (e *LinuxSoftwareExecutor) runElevated(name string, args ...string) *exec.Cmd {
+// Respects context cancellation and timeout
+func (e *LinuxSoftwareExecutor) runElevated(ctx context.Context, name string, args ...string) *exec.Cmd {
 	if e.isRoot {
 		// Already running as root, execute directly
-		return exec.Command(name, args...)
+		return exec.CommandContext(ctx, name, args...)
 	}
 	// Need to use sudo
 	allArgs := append([]string{name}, args...)
-	return exec.Command("sudo", allArgs...)
+	return exec.CommandContext(ctx, "sudo", allArgs...)
 }
 
 // InstallSoftware installs software on Linux
-func (e *LinuxSoftwareExecutor) InstallSoftware(pkg models.SoftwarePackage) models.ExecutionResult {
+func (e *LinuxSoftwareExecutor) InstallSoftware(ctx context.Context, pkg models.SoftwarePackage) models.ExecutionResult {
 	startTime := time.Now()
 
 	switch strings.ToLower(pkg.Source) {
 	case "apt", "apt-get":
-		return e.installWithApt(pkg, startTime)
+		return e.installWithApt(ctx, pkg, startTime)
 	case "dnf":
-		return e.installWithDnf(pkg, startTime)
+		return e.installWithDnf(ctx, pkg, startTime)
 	case "yum":
-		return e.installWithYum(pkg, startTime)
+		return e.installWithYum(ctx, pkg, startTime)
 	case "snap":
-		return e.installWithSnap(pkg, startTime)
+		return e.installWithSnap(ctx, pkg, startTime)
 	case "flatpak":
-		return e.installWithFlatpak(pkg, startTime)
+		return e.installWithFlatpak(ctx, pkg, startTime)
 	case "deb":
-		return e.installDeb(pkg, startTime)
+		return e.installDeb(ctx, pkg, startTime)
 	case "rpm":
-		return e.installRpm(pkg, startTime)
+		return e.installRpm(ctx, pkg, startTime)
 	case "url":
-		return e.installFromURL(pkg, startTime)
+		return e.installFromURL(ctx, pkg, startTime)
 	case "auto", "":
 		// Use system default package manager
-		return e.installWithSystemPackageManager(pkg, startTime)
+		return e.installWithSystemPackageManager(ctx, pkg, startTime)
 	default:
 		return models.ExecutionResult{
 			Success:      false,
@@ -76,11 +78,11 @@ func (e *LinuxSoftwareExecutor) InstallSoftware(pkg models.SoftwarePackage) mode
 }
 
 // installWithApt installs using apt
-func (e *LinuxSoftwareExecutor) installWithApt(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *LinuxSoftwareExecutor) installWithApt(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
 	// Update package list (with elevation if needed)
-	e.runElevated("apt-get", "update", "-qq").Run()
+	e.runElevated(ctx, "apt-get", "update", "-qq").Run()
 
 	// Build install command
 	args := []string{"install", "-y"}
@@ -90,7 +92,7 @@ func (e *LinuxSoftwareExecutor) installWithApt(pkg models.SoftwarePackage, start
 		args = append(args, pkg.Name)
 	}
 
-	cmd := e.runElevated("apt-get", args...)
+	cmd := e.runElevated(ctx, "apt-get", args...)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
@@ -100,7 +102,14 @@ func (e *LinuxSoftwareExecutor) installWithApt(pkg models.SoftwarePackage, start
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		// Check for context timeout
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+		} else {
+			classifyLinuxSoftwareError(&result, err, string(output))
+		}
 		result.Message = fmt.Sprintf("Failed to install %s via apt", pkg.Name)
 		return result
 	}
@@ -112,7 +121,7 @@ func (e *LinuxSoftwareExecutor) installWithApt(pkg models.SoftwarePackage, start
 }
 
 // installWithDnf installs using dnf
-func (e *LinuxSoftwareExecutor) installWithDnf(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *LinuxSoftwareExecutor) installWithDnf(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
 	args := []string{"install", "-y"}
@@ -122,7 +131,7 @@ func (e *LinuxSoftwareExecutor) installWithDnf(pkg models.SoftwarePackage, start
 		args = append(args, pkg.Name)
 	}
 
-	cmd := e.runElevated("dnf", args...)
+	cmd := e.runElevated(ctx, "dnf", args...)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
@@ -132,7 +141,13 @@ func (e *LinuxSoftwareExecutor) installWithDnf(pkg models.SoftwarePackage, start
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+		} else {
+			classifyLinuxSoftwareError(&result, err, string(output))
+		}
 		result.Message = fmt.Sprintf("Failed to install %s via dnf", pkg.Name)
 		return result
 	}
@@ -144,7 +159,7 @@ func (e *LinuxSoftwareExecutor) installWithDnf(pkg models.SoftwarePackage, start
 }
 
 // installWithYum installs using yum
-func (e *LinuxSoftwareExecutor) installWithYum(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *LinuxSoftwareExecutor) installWithYum(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
 	args := []string{"install", "-y"}
@@ -154,7 +169,7 @@ func (e *LinuxSoftwareExecutor) installWithYum(pkg models.SoftwarePackage, start
 		args = append(args, pkg.Name)
 	}
 
-	cmd := e.runElevated("yum", args...)
+	cmd := e.runElevated(ctx, "yum", args...)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
@@ -164,7 +179,13 @@ func (e *LinuxSoftwareExecutor) installWithYum(pkg models.SoftwarePackage, start
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+		} else {
+			classifyLinuxSoftwareError(&result, err, string(output))
+		}
 		result.Message = fmt.Sprintf("Failed to install %s via yum", pkg.Name)
 		return result
 	}
@@ -176,7 +197,7 @@ func (e *LinuxSoftwareExecutor) installWithYum(pkg models.SoftwarePackage, start
 }
 
 // installWithSnap installs using snap
-func (e *LinuxSoftwareExecutor) installWithSnap(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *LinuxSoftwareExecutor) installWithSnap(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
 	snapPath, err := exec.LookPath("snap")
@@ -192,7 +213,7 @@ func (e *LinuxSoftwareExecutor) installWithSnap(pkg models.SoftwarePackage, star
 		args = append(args, strings.Fields(pkg.Arguments)...)
 	}
 
-	cmd := e.runElevated(snapPath, args...)
+	cmd := e.runElevated(ctx, snapPath, args...)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
@@ -202,7 +223,13 @@ func (e *LinuxSoftwareExecutor) installWithSnap(pkg models.SoftwarePackage, star
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+		} else {
+			classifyLinuxSoftwareError(&result, err, string(output))
+		}
 		result.Message = fmt.Sprintf("Failed to install %s via snap", pkg.Name)
 		return result
 	}
@@ -214,7 +241,7 @@ func (e *LinuxSoftwareExecutor) installWithSnap(pkg models.SoftwarePackage, star
 }
 
 // installWithFlatpak installs using flatpak
-func (e *LinuxSoftwareExecutor) installWithFlatpak(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *LinuxSoftwareExecutor) installWithFlatpak(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
 	flatpakPath, err := exec.LookPath("flatpak")
@@ -225,7 +252,7 @@ func (e *LinuxSoftwareExecutor) installWithFlatpak(pkg models.SoftwarePackage, s
 		return result
 	}
 
-	cmd := e.runElevated(flatpakPath, "install", "-y", pkg.Name)
+	cmd := e.runElevated(ctx, flatpakPath, "install", "-y", pkg.Name)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
@@ -235,7 +262,13 @@ func (e *LinuxSoftwareExecutor) installWithFlatpak(pkg models.SoftwarePackage, s
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+		} else {
+			classifyLinuxSoftwareError(&result, err, string(output))
+		}
 		result.Message = fmt.Sprintf("Failed to install %s via flatpak", pkg.Name)
 		return result
 	}
@@ -247,7 +280,7 @@ func (e *LinuxSoftwareExecutor) installWithFlatpak(pkg models.SoftwarePackage, s
 }
 
 // installDeb installs a .deb package
-func (e *LinuxSoftwareExecutor) installDeb(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *LinuxSoftwareExecutor) installDeb(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
 	debPath := pkg.PackageURL
@@ -268,19 +301,19 @@ func (e *LinuxSoftwareExecutor) installDeb(pkg models.SoftwarePackage, startTime
 	}
 
 	// Install using dpkg (with elevation if needed)
-	cmd := e.runElevated("dpkg", "-i", debPath)
+	cmd := e.runElevated(ctx, "dpkg", "-i", debPath)
 	output, err := cmd.CombinedOutput()
 
 	// Try to fix dependencies if dpkg fails (common with .deb packages)
 	if err != nil {
-		fixCmd := e.runElevated("apt-get", "install", "-f", "-y")
+		fixCmd := e.runElevated(ctx, "apt-get", "install", "-f", "-y")
 		fixOutput, fixErr := fixCmd.CombinedOutput()
 		output = append(output, fixOutput...)
 
 		// After fixing dependencies, verify the package is actually installed
 		if fixErr == nil {
 			// Check if package is now installed using dpkg-query
-			checkCmd := exec.Command("dpkg-query", "-W", "-f=${Status}", pkg.Name)
+			checkCmd := exec.CommandContext(ctx, "dpkg-query", "-W", "-f=${Status}", pkg.Name)
 			checkOutput, checkErr := checkCmd.Output()
 			if checkErr == nil && strings.Contains(string(checkOutput), "install ok installed") {
 				// Package is installed, consider it a success
@@ -296,7 +329,13 @@ func (e *LinuxSoftwareExecutor) installDeb(pkg models.SoftwarePackage, startTime
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+		} else {
+			classifyLinuxSoftwareError(&result, err, string(output))
+		}
 		result.Message = fmt.Sprintf("Failed to install deb: %s", pkg.Name)
 		return result
 	}
@@ -308,7 +347,7 @@ func (e *LinuxSoftwareExecutor) installDeb(pkg models.SoftwarePackage, startTime
 }
 
 // installRpm installs an .rpm package
-func (e *LinuxSoftwareExecutor) installRpm(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *LinuxSoftwareExecutor) installRpm(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
 	rpmPath := pkg.PackageURL
@@ -331,11 +370,11 @@ func (e *LinuxSoftwareExecutor) installRpm(pkg models.SoftwarePackage, startTime
 	// Try dnf/yum first, then rpm (with elevation if needed)
 	var cmd *exec.Cmd
 	if _, err := exec.LookPath("dnf"); err == nil {
-		cmd = e.runElevated("dnf", "install", "-y", rpmPath)
+		cmd = e.runElevated(ctx, "dnf", "install", "-y", rpmPath)
 	} else if _, err := exec.LookPath("yum"); err == nil {
-		cmd = e.runElevated("yum", "install", "-y", rpmPath)
+		cmd = e.runElevated(ctx, "yum", "install", "-y", rpmPath)
 	} else {
-		cmd = e.runElevated("rpm", "-i", rpmPath)
+		cmd = e.runElevated(ctx, "rpm", "-i", rpmPath)
 	}
 
 	output, err := cmd.CombinedOutput()
@@ -347,7 +386,13 @@ func (e *LinuxSoftwareExecutor) installRpm(pkg models.SoftwarePackage, startTime
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+		} else {
+			classifyLinuxSoftwareError(&result, err, string(output))
+		}
 		result.Message = fmt.Sprintf("Failed to install rpm: %s", pkg.Name)
 		return result
 	}
@@ -359,7 +404,7 @@ func (e *LinuxSoftwareExecutor) installRpm(pkg models.SoftwarePackage, startTime
 }
 
 // installFromURL downloads and installs based on file extension
-func (e *LinuxSoftwareExecutor) installFromURL(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *LinuxSoftwareExecutor) installFromURL(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	url := pkg.PackageURL
 	if url == "" {
 		return models.ExecutionResult{
@@ -374,10 +419,10 @@ func (e *LinuxSoftwareExecutor) installFromURL(pkg models.SoftwarePackage, start
 	switch {
 	case strings.HasSuffix(lowerURL, ".deb"):
 		pkg.Source = "deb"
-		return e.installDeb(pkg, startTime)
+		return e.installDeb(ctx, pkg, startTime)
 	case strings.HasSuffix(lowerURL, ".rpm"):
 		pkg.Source = "rpm"
-		return e.installRpm(pkg, startTime)
+		return e.installRpm(ctx, pkg, startTime)
 	default:
 		return models.ExecutionResult{
 			Success:      false,
@@ -389,14 +434,14 @@ func (e *LinuxSoftwareExecutor) installFromURL(pkg models.SoftwarePackage, start
 }
 
 // installWithSystemPackageManager uses the detected system package manager
-func (e *LinuxSoftwareExecutor) installWithSystemPackageManager(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *LinuxSoftwareExecutor) installWithSystemPackageManager(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	switch e.packageManager {
 	case "apt-get":
-		return e.installWithApt(pkg, startTime)
+		return e.installWithApt(ctx, pkg, startTime)
 	case "dnf":
-		return e.installWithDnf(pkg, startTime)
+		return e.installWithDnf(ctx, pkg, startTime)
 	case "yum":
-		return e.installWithYum(pkg, startTime)
+		return e.installWithYum(ctx, pkg, startTime)
 	default:
 		return models.ExecutionResult{
 			Success:      false,
@@ -408,7 +453,7 @@ func (e *LinuxSoftwareExecutor) installWithSystemPackageManager(pkg models.Softw
 }
 
 // UninstallSoftware removes software on Linux
-func (e *LinuxSoftwareExecutor) UninstallSoftware(name string) models.ExecutionResult {
+func (e *LinuxSoftwareExecutor) UninstallSoftware(ctx context.Context, name string) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 
@@ -416,11 +461,11 @@ func (e *LinuxSoftwareExecutor) UninstallSoftware(name string) models.ExecutionR
 
 	switch e.packageManager {
 	case "apt-get":
-		cmd = e.runElevated("apt-get", "remove", "-y", name)
+		cmd = e.runElevated(ctx, "apt-get", "remove", "-y", name)
 	case "dnf":
-		cmd = e.runElevated("dnf", "remove", "-y", name)
+		cmd = e.runElevated(ctx, "dnf", "remove", "-y", name)
 	case "yum":
-		cmd = e.runElevated("yum", "remove", "-y", name)
+		cmd = e.runElevated(ctx, "yum", "remove", "-y", name)
 	default:
 		result.ErrorMessage = "No supported package manager"
 		result.Message = "Cannot uninstall - package manager not found"
@@ -436,7 +481,7 @@ func (e *LinuxSoftwareExecutor) UninstallSoftware(name string) models.ExecutionR
 	if err != nil {
 		// Try snap
 		if snapPath, _ := exec.LookPath("snap"); snapPath != "" {
-			snapCmd := e.runElevated(snapPath, "remove", name)
+			snapCmd := e.runElevated(ctx, snapPath, "remove", name)
 			snapOutput, snapErr := snapCmd.CombinedOutput()
 			if snapErr == nil {
 				result.Success = true
@@ -448,7 +493,7 @@ func (e *LinuxSoftwareExecutor) UninstallSoftware(name string) models.ExecutionR
 
 		// Try flatpak
 		if flatpakPath, _ := exec.LookPath("flatpak"); flatpakPath != "" {
-			flatpakCmd := e.runElevated(flatpakPath, "uninstall", "-y", name)
+			flatpakCmd := e.runElevated(ctx, flatpakPath, "uninstall", "-y", name)
 			flatpakOutput, flatpakErr := flatpakCmd.CombinedOutput()
 			if flatpakErr == nil {
 				result.Success = true
@@ -461,7 +506,13 @@ func (e *LinuxSoftwareExecutor) UninstallSoftware(name string) models.ExecutionR
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+		} else {
+			result.ErrorMessage = err.Error()
+		}
 		result.Message = fmt.Sprintf("Failed to uninstall %s", name)
 		return result
 	}
@@ -473,17 +524,17 @@ func (e *LinuxSoftwareExecutor) UninstallSoftware(name string) models.ExecutionR
 }
 
 // GetInstalledVersion returns the installed version of software
-func (e *LinuxSoftwareExecutor) GetInstalledVersion(name string) (string, error) {
+func (e *LinuxSoftwareExecutor) GetInstalledVersion(ctx context.Context, name string) (string, error) {
 	var cmd *exec.Cmd
 	var parseVersion func(string) string
 
 	switch e.packageManager {
 	case "apt-get":
-		cmd = exec.Command("dpkg-query", "-W", "-f=${Version}", name)
+		cmd = exec.CommandContext(ctx, "dpkg-query", "-W", "-f=${Version}", name)
 		parseVersion = func(s string) string { return strings.TrimSpace(s) }
 
 	case "dnf", "yum":
-		cmd = exec.Command("rpm", "-q", "--queryformat", "%{VERSION}", name)
+		cmd = exec.CommandContext(ctx, "rpm", "-q", "--queryformat", "%{VERSION}", name)
 		parseVersion = func(s string) string { return strings.TrimSpace(s) }
 
 	default:
@@ -497,7 +548,7 @@ func (e *LinuxSoftwareExecutor) GetInstalledVersion(name string) (string, error)
 
 	// Try snap
 	if snapPath, _ := exec.LookPath("snap"); snapPath != "" {
-		snapCmd := exec.Command(snapPath, "info", name)
+		snapCmd := exec.CommandContext(ctx, snapPath, "info", name)
 		snapOutput, err := snapCmd.Output()
 		if err == nil {
 			lines := strings.Split(string(snapOutput), "\n")
@@ -554,3 +605,98 @@ func downloadFile(url string, expectedChecksum string) (string, error) {
 
 	return tmpFile.Name(), nil
 }
+
+// classifyLinuxSoftwareError determines the appropriate error code for software installation failures
+func classifyLinuxSoftwareError(result *models.ExecutionResult, err error, output string) {
+	if err == nil {
+		return
+	}
+
+	errStr := err.Error()
+	errLower := strings.ToLower(errStr)
+	outputLower := strings.ToLower(output)
+
+	// Check output for specific error patterns
+	combined := errLower + " " + outputLower
+
+	// Network errors
+	if strings.Contains(combined, "failed to fetch") ||
+	   strings.Contains(combined, "could not download") ||
+	   strings.Contains(combined, "temporary failure resolving") ||
+	   strings.Contains(combined, "connection") ||
+	   strings.Contains(combined, "network") ||
+	   strings.Contains(combined, "unreachable") ||
+	   strings.Contains(combined, "timeout") {
+		result.ErrorCode = models.ErrNetworkFailure
+		result.ErrorMessage = fmt.Sprintf("Network error during download: %s", errStr)
+		result.Retryable = true
+		return
+	}
+
+	// Permission errors
+	if strings.Contains(combined, "permission denied") ||
+	   strings.Contains(combined, "are you root") ||
+	   strings.Contains(combined, "operation not permitted") ||
+	   strings.Contains(combined, "insufficient") {
+		result.ErrorCode = models.ErrPermissionDenied
+		result.ErrorMessage = "Insufficient permissions. Root/sudo access required."
+		result.Retryable = false
+		return
+	}
+
+	// Package not found
+	if strings.Contains(combined, "unable to locate package") ||
+	   strings.Contains(combined, "no package") ||
+	   strings.Contains(combined, "not found") ||
+	   strings.Contains(combined, "package not available") {
+		result.ErrorCode = models.ErrPackageNotFound
+		result.ErrorMessage = fmt.Sprintf("Package not found: %s", errStr)
+		result.Retryable = false
+		return
+	}
+
+	// Disk space errors
+	if strings.Contains(combined, "no space left") ||
+	   strings.Contains(combined, "disk full") ||
+	   strings.Contains(combined, "insufficient disk space") {
+		result.ErrorCode = models.ErrDiskFull
+		result.ErrorMessage = "Insufficient disk space for installation"
+		result.Retryable = false
+		return
+	}
+
+	// Dependency errors
+	if strings.Contains(combined, "depends") ||
+	   strings.Contains(combined, "dependency") ||
+	   strings.Contains(combined, "unmet dependencies") {
+		result.ErrorCode = models.ErrDependencyMissing
+		result.ErrorMessage = fmt.Sprintf("Unmet dependencies: %s", errStr)
+		result.Retryable = false
+		return
+	}
+
+	// Already installed
+	if strings.Contains(combined, "already installed") ||
+	   strings.Contains(combined, "already the newest") {
+		result.ErrorCode = models.ErrAlreadyInstalled
+		result.ErrorMessage = "Package is already installed"
+		result.Retryable = false
+		return
+	}
+
+	// Checksum errors
+	if strings.Contains(combined, "checksum") ||
+	   strings.Contains(combined, "hash mismatch") ||
+	   strings.Contains(combined, "signature") {
+		result.ErrorCode = models.ErrChecksumMismatch
+		result.ErrorMessage = fmt.Sprintf("Package integrity check failed: %s", errStr)
+		result.Retryable = false
+		return
+	}
+
+	// Default unknown error
+	result.ErrorCode = models.ErrUnknown
+	result.ErrorMessage = errStr
+	result.Retryable = false
+}
+

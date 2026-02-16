@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"context"
 	"github.com/patchify/agent/internal/models"
 )
 
@@ -22,7 +23,7 @@ func NewLinuxRemoteAccessExecutor() *LinuxRemoteAccessExecutor {
 }
 
 // Enable enables VNC remote access on Linux
-func (e *LinuxRemoteAccessExecutor) Enable(config models.RemoteAccessConfig) models.ExecutionResult {
+func (e *LinuxRemoteAccessExecutor) Enable(ctx context.Context, config models.RemoteAccessConfig) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 
@@ -212,7 +213,7 @@ func (e *LinuxRemoteAccessExecutor) installVNCServer() models.ExecutionResult {
 }
 
 // Disable disables VNC on Linux
-func (e *LinuxRemoteAccessExecutor) Disable() models.ExecutionResult {
+func (e *LinuxRemoteAccessExecutor) Disable(ctx context.Context) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 
@@ -263,7 +264,7 @@ func (e *LinuxRemoteAccessExecutor) Disable() models.ExecutionResult {
 }
 
 // GetStatus returns the current status of VNC
-func (e *LinuxRemoteAccessExecutor) GetStatus() models.RemoteAccessStatus {
+func (e *LinuxRemoteAccessExecutor) GetStatus(ctx context.Context) models.RemoteAccessStatus {
 	status := models.RemoteAccessStatus{
 		Protocol: "VNC",
 		Port:     5900,
@@ -296,7 +297,7 @@ func (e *LinuxRemoteAccessExecutor) GetStatus() models.RemoteAccessStatus {
 }
 
 // SetPassword sets the VNC password
-func (e *LinuxRemoteAccessExecutor) SetPassword(password string) models.ExecutionResult {
+func (e *LinuxRemoteAccessExecutor) SetPassword(ctx context.Context, password string) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 

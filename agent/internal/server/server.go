@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -18,6 +19,8 @@ import (
 	"github.com/patchify/agent/internal/collectors"
 	"github.com/patchify/agent/internal/config"
 	"github.com/patchify/agent/internal/models"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/crypto/bcrypt"
 )
 
 //go:embed templates/*
@@ -76,22 +79,35 @@ type ExecutionResult struct {
 	ErrorMessage string `json:"errorMessage,omitempty"`
 }
 
+// DownloadProgress tracks the progress of an active download
+type DownloadProgress struct {
+	ID              string    `json:"id"`
+	FileName        string    `json:"fileName"`
+	TotalBytes      int64     `json:"totalBytes"`
+	DownloadedBytes int64     `json:"downloadedBytes"`
+	Percentage      float64   `json:"percentage"`
+	Speed           int64     `json:"speed"` // bytes per second
+	StartTime       time.Time `json:"startTime"`
+	EstimatedTime   int64     `json:"estimatedTime"` // seconds remaining
+}
+
 // BackendStatus interface for accessing backend manager status
 type BackendStatus interface {
 	IsRegistered() bool
 	GetAgentID() string
-	GetStatus() *BackendStatusInfo
+	GetStatus(ctx context.Context) *BackendStatusInfo
 	GetJobsStatus() *JobsStatus
-	GetRollbacks() ([]RollbackInfo, error)
-	ExecuteRollback(rollbackID string, force bool) ExecutionResult
+	GetRollbacks(ctx context.Context) ([]RollbackInfo, error)
+	ExecuteRollback(ctx context.Context, rollbackID string, force bool) ExecutionResult
+	GetDownloadProgress() map[string]*DownloadProgress
 }
 
 // Server represents the agent web server
 type Server struct {
-	config        *config.Config
-	collectors    *collectors.CollectorManager
-	templates     *template.Template
-	backendMgr    BackendStatus
+	config     *config.Config
+	collectors *collectors.CollectorManager
+	templates  *template.Template
+	backendMgr BackendStatus
 
 	// Cached data
 	mu            sync.RWMutex
@@ -135,37 +151,83 @@ func New(cfg *config.Config) (*Server, error) {
 	return s, nil
 }
 
+// basicAuthMiddleware implements HTTP Basic Authentication for WebUI
+func (s *Server) basicAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip auth if disabled
+		if !s.config.EnableWebUIAuth {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Get credentials from request
+		username, password, ok := r.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="PatchIQ Agent"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Check username
+		if username != s.config.WebUIUsername {
+			w.Header().Set("WWW-Authenticate", `Basic realm="PatchIQ Agent"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Check password hash
+		if err := bcrypt.CompareHashAndPassword([]byte(s.config.WebUIPasswordHash), []byte(password)); err != nil {
+			w.Header().Set("WWW-Authenticate", `Basic realm="PatchIQ Agent"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Authentication successful
+		next.ServeHTTP(w, r)
+	})
+}
+
 // Start starts the HTTP server
 func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
-	// Web UI routes
-	mux.HandleFunc("/", s.handleDashboard)
-	mux.HandleFunc("/hardware", s.handleHardware)
-	mux.HandleFunc("/software", s.handleSoftware)
-	mux.HandleFunc("/network", s.handleNetwork)
-	mux.HandleFunc("/security", s.handleSecurity)
-	mux.HandleFunc("/peripherals", s.handlePeripherals)
-	mux.HandleFunc("/telemetry", s.handleTelemetryPage)
-	mux.HandleFunc("/jobs", s.handleJobs)
-	mux.HandleFunc("/settings", s.handleSettings)
+	// Web UI routes (protected by auth middleware)
+	mux.Handle("/", s.basicAuthMiddleware(http.HandlerFunc(s.handleDashboard)))
+	mux.Handle("/hardware", s.basicAuthMiddleware(http.HandlerFunc(s.handleHardware)))
+	mux.Handle("/software", s.basicAuthMiddleware(http.HandlerFunc(s.handleSoftware)))
+	mux.Handle("/network", s.basicAuthMiddleware(http.HandlerFunc(s.handleNetwork)))
+	mux.Handle("/security", s.basicAuthMiddleware(http.HandlerFunc(s.handleSecurity)))
+	mux.Handle("/peripherals", s.basicAuthMiddleware(http.HandlerFunc(s.handlePeripherals)))
+	mux.Handle("/telemetry", s.basicAuthMiddleware(http.HandlerFunc(s.handleTelemetryPage)))
+	mux.Handle("/jobs", s.basicAuthMiddleware(http.HandlerFunc(s.handleJobs)))
+	mux.Handle("/settings", s.basicAuthMiddleware(http.HandlerFunc(s.handleSettings)))
 
-	// API routes
-	mux.HandleFunc("/api/collect", s.handleCollect)
-	mux.HandleFunc("/api/collect/hardware", s.handleCollectHardware)
-	mux.HandleFunc("/api/collect/software", s.handleCollectSoftware)
-	mux.HandleFunc("/api/collect/network", s.handleCollectNetwork)
-	mux.HandleFunc("/api/collect/security", s.handleCollectSecurity)
-	mux.HandleFunc("/api/collect/peripherals", s.handleCollectPeripherals)
-	mux.HandleFunc("/api/collect/telemetry", s.handleCollectTelemetry)
-	mux.HandleFunc("/api/inventory", s.handleGetInventory)
-	mux.HandleFunc("/api/telemetry", s.handleGetTelemetry)
-	mux.HandleFunc("/api/agent", s.handleGetAgent)
-	mux.HandleFunc("/api/config", s.handleGetConfig)
-	mux.HandleFunc("/api/status", s.handleGetStatus)
-	mux.HandleFunc("/api/jobs", s.handleGetJobs)
-	mux.HandleFunc("/api/rollbacks", s.handleGetRollbacks)
-	mux.HandleFunc("/api/rollbacks/execute", s.handleExecuteRollback)
+	// API routes (protected by auth middleware)
+	mux.Handle("/api/collect", s.basicAuthMiddleware(http.HandlerFunc(s.handleCollect)))
+	mux.Handle("/api/collect/hardware", s.basicAuthMiddleware(http.HandlerFunc(s.handleCollectHardware)))
+	mux.Handle("/api/collect/software", s.basicAuthMiddleware(http.HandlerFunc(s.handleCollectSoftware)))
+	mux.Handle("/api/collect/network", s.basicAuthMiddleware(http.HandlerFunc(s.handleCollectNetwork)))
+	mux.Handle("/api/collect/security", s.basicAuthMiddleware(http.HandlerFunc(s.handleCollectSecurity)))
+	mux.Handle("/api/collect/peripherals", s.basicAuthMiddleware(http.HandlerFunc(s.handleCollectPeripherals)))
+	mux.Handle("/api/collect/telemetry", s.basicAuthMiddleware(http.HandlerFunc(s.handleCollectTelemetry)))
+	mux.Handle("/api/inventory", s.basicAuthMiddleware(http.HandlerFunc(s.handleGetInventory)))
+	mux.Handle("/api/telemetry", s.basicAuthMiddleware(http.HandlerFunc(s.handleGetTelemetry)))
+	mux.Handle("/api/agent", s.basicAuthMiddleware(http.HandlerFunc(s.handleGetAgent)))
+	mux.Handle("/api/config", s.basicAuthMiddleware(http.HandlerFunc(s.handleGetConfig)))
+	mux.Handle("/api/status", s.basicAuthMiddleware(http.HandlerFunc(s.handleGetStatus)))
+	mux.Handle("/api/jobs", s.basicAuthMiddleware(http.HandlerFunc(s.handleGetJobs)))
+	mux.Handle("/api/rollbacks", s.basicAuthMiddleware(http.HandlerFunc(s.handleGetRollbacks)))
+	mux.Handle("/api/rollbacks/execute", s.basicAuthMiddleware(http.HandlerFunc(s.handleExecuteRollback)))
+	mux.Handle("/api/downloads", s.basicAuthMiddleware(http.HandlerFunc(s.handleGetDownloads)))
+
+	// Telemetry SSE stream (protected by auth)
+	mux.Handle("/api/telemetry/stream", s.basicAuthMiddleware(http.HandlerFunc(s.handleTelemetryStream)))
+
+	// Public endpoints (no auth required)
+	// Metrics endpoint for Prometheus
+	mux.Handle("/metrics", promhttp.Handler())
+	// Health endpoint (enhanced for update verification)
+	mux.HandleFunc("/health", s.handleHealth)
 
 	// Try configured port, then fallback to next ports if busy
 	port := s.config.WebUIPort
@@ -298,7 +360,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	// Build server connection info
 	var serverInfo *ServerConnectionInfo
 	if s.backendMgr != nil {
-		status := s.backendMgr.GetStatus()
+		status := s.backendMgr.GetStatus(r.Context())
 		if status != nil {
 			serverInfo = &ServerConnectionInfo{
 				URL:               s.config.ServerURL,
@@ -602,6 +664,65 @@ func (s *Server) handleGetTelemetry(w http.ResponseWriter, r *http.Request) {
 	s.jsonResponse(w, telemetry)
 }
 
+// handleTelemetryStream streams telemetry data via Server-Sent Events
+func (s *Server) handleTelemetryStream(w http.ResponseWriter, r *http.Request) {
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// Check if response writer supports flushing
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "SSE not supported", http.StatusInternalServerError)
+		return
+	}
+
+	// Create ticker for periodic updates (every 5 seconds)
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	// Send initial telemetry data immediately
+	s.mu.RLock()
+	telemetry := s.lastTelemetry
+	s.mu.RUnlock()
+
+	if telemetry != nil {
+		data, _ := json.Marshal(telemetry)
+		fmt.Fprintf(w, "data: %s\n\n", data)
+		flusher.Flush()
+	}
+
+	// Stream updates
+	for {
+		select {
+		case <-ticker.C:
+			// Get current telemetry
+			s.mu.RLock()
+			telemetry := s.lastTelemetry
+			s.mu.RUnlock()
+
+			if telemetry != nil {
+				data, err := json.Marshal(telemetry)
+				if err != nil {
+					log.Printf("Failed to marshal telemetry for SSE: %v", err)
+					continue
+				}
+
+				// Send as SSE event
+				fmt.Fprintf(w, "data: %s\n\n", data)
+				flusher.Flush()
+			}
+
+		case <-r.Context().Done():
+			// Client disconnected
+			log.Println("Telemetry SSE client disconnected")
+			return
+		}
+	}
+}
+
 func (s *Server) handleGetAgent(w http.ResponseWriter, r *http.Request) {
 	s.jsonResponse(w, s.agentInfo)
 }
@@ -612,7 +733,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	// Build server connection info
 	var serverInfo *ServerConnectionInfo
 	if s.backendMgr != nil {
-		status := s.backendMgr.GetStatus()
+		status := s.backendMgr.GetStatus(r.Context())
 		if status != nil {
 			serverInfo = &ServerConnectionInfo{
 				URL:               s.config.ServerURL,
@@ -671,7 +792,7 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	// Get rollback data
 	var rollbacks []RollbackInfo
 	if s.backendMgr != nil {
-		if rb, err := s.backendMgr.GetRollbacks(); err == nil {
+		if rb, err := s.backendMgr.GetRollbacks(r.Context()); err == nil {
 			rollbacks = rb
 		}
 	}
@@ -679,7 +800,7 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	// Build server connection info for header
 	var serverInfo *ServerConnectionInfo
 	if s.backendMgr != nil {
-		status := s.backendMgr.GetStatus()
+		status := s.backendMgr.GetStatus(r.Context())
 		if status != nil {
 			serverInfo = &ServerConnectionInfo{
 				URL:               s.config.ServerURL,
@@ -756,7 +877,7 @@ func (s *Server) handleGetRollbacks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rollbacks, err := s.backendMgr.GetRollbacks()
+	rollbacks, err := s.backendMgr.GetRollbacks(r.Context())
 	if err != nil {
 		s.jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -794,8 +915,21 @@ func (s *Server) handleExecuteRollback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := s.backendMgr.ExecuteRollback(req.RollbackID, req.Force)
+	result := s.backendMgr.ExecuteRollback(r.Context(), req.RollbackID, req.Force)
 	s.jsonResponse(w, result)
+}
+
+func (s *Server) handleGetDownloads(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.backendMgr == nil {
+		s.jsonResponse(w, map[string]*DownloadProgress{})
+		return
+	}
+
+	downloads := s.backendMgr.GetDownloadProgress()
+	s.jsonResponse(w, downloads)
 }
 
 func (s *Server) handleGetStatus(w http.ResponseWriter, r *http.Request) {
@@ -803,10 +937,10 @@ func (s *Server) handleGetStatus(w http.ResponseWriter, r *http.Request) {
 	defer s.mu.RUnlock()
 
 	status := struct {
-		Agent     *models.AgentInfo        `json:"agent"`
-		Config    *config.Config           `json:"config"`
-		Server    *ServerConnectionInfo    `json:"server,omitempty"`
-		Uptime    string                   `json:"uptime"`
+		Agent  *models.AgentInfo     `json:"agent"`
+		Config *config.Config        `json:"config"`
+		Server *ServerConnectionInfo `json:"server,omitempty"`
+		Uptime string                `json:"uptime"`
 	}{
 		Agent:  s.agentInfo,
 		Config: s.config,
@@ -814,7 +948,7 @@ func (s *Server) handleGetStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.backendMgr != nil {
-		backendStatus := s.backendMgr.GetStatus()
+		backendStatus := s.backendMgr.GetStatus(r.Context())
 		if backendStatus != nil {
 			status.Server = &ServerConnectionInfo{
 				URL:               s.config.ServerURL,
@@ -898,4 +1032,48 @@ func formatUptime(d time.Duration) string {
 		return fmt.Sprintf("%dm %ds", minutes, seconds)
 	}
 	return fmt.Sprintf("%ds", seconds)
+}
+
+// handleHealth provides enhanced health check for update verification
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// Build health response
+	health := map[string]interface{}{
+		"healthy": true,
+		"status":  "healthy",
+		"version": s.agentInfo.Version,
+		"uptime":  time.Since(s.startTime).Seconds(),
+	}
+
+	// Add backend connectivity status
+	if s.backendMgr != nil {
+		status := s.backendMgr.GetStatus(r.Context())
+		if status != nil {
+			backendHealthy := status.Registered && status.ConsecutiveErrors == 0
+			health["backend"] = map[string]interface{}{
+				"connected":   backendHealthy,
+				"registered":  status.Registered,
+				"agentId":     status.AgentID,
+				"serverUrl":   status.ServerURL,
+				"lastError":   status.LastError,
+			}
+		} else {
+			health["backend"] = map[string]interface{}{
+				"connected": false,
+			}
+		}
+	}
+
+	// Add system metrics
+	if s.lastTelemetry != nil {
+		health["system"] = map[string]interface{}{
+			"cpuPercent":    s.lastTelemetry.CPUPercent,
+			"memoryPercent": s.lastTelemetry.MemoryPercent,
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(health)
 }

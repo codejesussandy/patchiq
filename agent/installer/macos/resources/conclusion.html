@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #333;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 300;
+            margin-bottom: 20px;
+            color: #007AFF;
+        }
+        p {
+            margin: 10px 0;
+        }
+        .success {
+            background-color: #E8F5E9;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .next-steps {
+            background-color: #E3F2FD;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        code {
+            background-color: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: Monaco, Menlo, monospace;
+            font-size: 12px;
+        }
+        .command {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Monaco, Menlo, monospace;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Installation Complete!</h1>
+
+    <div class="success">
+        <p><strong>✓ PatchIQ Agent has been successfully installed</strong></p>
+        <p>The agent is now running in the background and will start automatically on system boot.</p>
+    </div>
+
+    <div class="next-steps">
+        <p><strong>Next Steps:</strong></p>
+        <ol>
+            <li>Configure the agent to connect to your PatchIQ Hub</li>
+            <li>Register this system with your organization</li>
+            <li>Monitor patch status from the PatchIQ dashboard</li>
+        </ol>
+    </div>
+
+    <p><strong>Useful Commands:</strong></p>
+
+    <p>Check agent status:</p>
+    <div class="command">launchctl list | grep patchiq</div>
+
+    <p>View logs:</p>
+    <div class="command">tail -f /var/log/patchiq/agent.log</div>
+
+    <p>Stop the agent:</p>
+    <div class="command">launchctl stop io.patchiq.agent</div>
+
+    <p>Start the agent:</p>
+    <div class="command">launchctl start io.patchiq.agent</div>
+
+    <p><strong>Uninstall:</strong></p>
+    <p>To remove PatchIQ Agent, run:</p>
+    <div class="command">sudo /usr/local/bin/patchiq-agent-uninstall.sh</div>
+
+    <p><strong>Documentation:</strong></p>
+    <p>For more information, visit: <a href="https://docs.patchiq.io">docs.patchiq.io</a></p>
+
+    <p><strong>Support:</strong></p>
+    <p>Need help? Contact support@patchiq.io</p>
+</body>
+</html>

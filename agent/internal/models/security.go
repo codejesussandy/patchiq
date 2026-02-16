@@ -2,13 +2,13 @@ package models
 
 // Security represents all security compliance data
 type Security struct {
-	CollectedAt string            `json:"collectedAt"`
-	Encryption  EncryptionStatus  `json:"encryption"`
-	Firewall    FirewallStatus    `json:"firewall"`
-	Antivirus   AntivirusStatus   `json:"antivirus"`
-	LocalUsers  []LocalUser       `json:"localUsers,omitempty"`
-	Compliance  ComplianceStatus  `json:"compliance"`
-	PatchStatus PatchStatus       `json:"patchStatus,omitempty"`
+	CollectedAt string           `json:"collectedAt"`
+	Encryption  EncryptionStatus `json:"encryption"`
+	Firewall    FirewallStatus   `json:"firewall"`
+	Antivirus   AntivirusStatus  `json:"antivirus"`
+	LocalUsers  []LocalUser      `json:"localUsers,omitempty"`
+	Compliance  ComplianceStatus `json:"compliance"`
+	PatchStatus PatchStatus      `json:"patchStatus,omitempty"`
 }
 
 // EncryptionStatus represents disk encryption status
@@ -77,28 +77,28 @@ type LocalUser struct {
 
 // ComplianceStatus represents security compliance settings
 type ComplianceStatus struct {
-	SecureBootEnabled   bool `json:"secureBootEnabled"`
-	UACEnabled          bool `json:"uacEnabled,omitempty"`          // Windows
-	BitLockerEnabled    bool `json:"bitLockerEnabled,omitempty"`    // Windows
-	SmartScreenEnabled  bool `json:"smartScreenEnabled,omitempty"`  // Windows
-	SIPEnabled          bool `json:"sipEnabled,omitempty"`          // macOS System Integrity Protection
-	GatekeeperEnabled   bool `json:"gatekeeperEnabled,omitempty"`   // macOS
-	FileVaultEnabled    bool `json:"fileVaultEnabled,omitempty"`    // macOS
-	ScreenLockEnabled   bool `json:"screenLockEnabled"`
-	ScreenLockTimeout   int  `json:"screenLockTimeout,omitempty"` // seconds
-	AutoLoginDisabled   bool `json:"autoLoginDisabled"`
-	RemoteLoginEnabled  bool `json:"remoteLoginEnabled,omitempty"`
+	SecureBootEnabled  bool `json:"secureBootEnabled"`
+	UACEnabled         bool `json:"uacEnabled,omitempty"`         // Windows
+	BitLockerEnabled   bool `json:"bitLockerEnabled,omitempty"`   // Windows
+	SmartScreenEnabled bool `json:"smartScreenEnabled,omitempty"` // Windows
+	SIPEnabled         bool `json:"sipEnabled,omitempty"`         // macOS System Integrity Protection
+	GatekeeperEnabled  bool `json:"gatekeeperEnabled,omitempty"`  // macOS
+	FileVaultEnabled   bool `json:"fileVaultEnabled,omitempty"`   // macOS
+	ScreenLockEnabled  bool `json:"screenLockEnabled"`
+	ScreenLockTimeout  int  `json:"screenLockTimeout,omitempty"` // seconds
+	AutoLoginDisabled  bool `json:"autoLoginDisabled"`
+	RemoteLoginEnabled bool `json:"remoteLoginEnabled,omitempty"`
 }
 
 // PatchStatus represents patch compliance status
 type PatchStatus struct {
-	LastScanDate    string         `json:"lastScanDate,omitempty"`
-	TotalUpdates    int            `json:"totalUpdates"`
-	InstalledUpdates int           `json:"installedUpdates"`
-	PendingUpdates  int            `json:"pendingUpdates"`
-	CriticalMissing int            `json:"criticalMissing"`
-	SecurityMissing int            `json:"securityMissing"`
-	MissingPatches  []MissingPatch `json:"missingPatches,omitempty"`
+	LastScanDate     string         `json:"lastScanDate,omitempty"`
+	TotalUpdates     int            `json:"totalUpdates"`
+	InstalledUpdates int            `json:"installedUpdates"`
+	PendingUpdates   int            `json:"pendingUpdates"`
+	CriticalMissing  int            `json:"criticalMissing"`
+	SecurityMissing  int            `json:"securityMissing"`
+	MissingPatches   []MissingPatch `json:"missingPatches,omitempty"`
 }
 
 // MissingPatch represents a missing system update

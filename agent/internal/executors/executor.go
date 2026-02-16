@@ -1,68 +1,69 @@
 package executors
 
 import (
+	"context"
 	"github.com/patchify/agent/internal/models"
 )
 
 // PatchExecutor handles OS patch operations
 type PatchExecutor interface {
 	// InstallPatch installs a specific patch by ID
-	InstallPatch(patchID string, options models.PatchOptions) models.ExecutionResult
+	InstallPatch(ctx context.Context, patchID string, options models.PatchOptions) models.ExecutionResult
 	// UninstallPatch removes a specific patch by ID
-	UninstallPatch(patchID string) models.ExecutionResult
+	UninstallPatch(ctx context.Context, patchID string) models.ExecutionResult
 	// InstallAllPatches installs all available patches
-	InstallAllPatches(options models.PatchOptions) models.ExecutionResult
+	InstallAllPatches(ctx context.Context, options models.PatchOptions) models.ExecutionResult
 	// ListAvailablePatches returns available patches
-	ListAvailablePatches() ([]models.PatchInfo, error)
+	ListAvailablePatches(ctx context.Context) ([]models.PatchInfo, error)
 	// CheckRebootRequired checks if a reboot is pending
-	CheckRebootRequired() bool
+	CheckRebootRequired(ctx context.Context) bool
 }
 
 // SoftwareExecutor handles software installation operations
 type SoftwareExecutor interface {
 	// InstallSoftware installs a software package
-	InstallSoftware(pkg models.SoftwarePackage) models.ExecutionResult
+	InstallSoftware(ctx context.Context, pkg models.SoftwarePackage) models.ExecutionResult
 	// UninstallSoftware removes installed software
-	UninstallSoftware(name string) models.ExecutionResult
+	UninstallSoftware(ctx context.Context, name string) models.ExecutionResult
 	// GetInstalledVersion returns the installed version of software
-	GetInstalledVersion(name string) (string, error)
+	GetInstalledVersion(ctx context.Context, name string) (string, error)
 }
 
 // RemoteAccessExecutor handles remote access configuration
 type RemoteAccessExecutor interface {
 	// Enable enables remote access service
-	Enable(config models.RemoteAccessConfig) models.ExecutionResult
+	Enable(ctx context.Context, config models.RemoteAccessConfig) models.ExecutionResult
 	// Disable disables remote access service
-	Disable() models.ExecutionResult
+	Disable(ctx context.Context) models.ExecutionResult
 	// GetStatus returns current remote access status
-	GetStatus() models.RemoteAccessStatus
+	GetStatus(ctx context.Context) models.RemoteAccessStatus
 	// SetPassword sets the VNC/RDP password
-	SetPassword(password string) models.ExecutionResult
+	SetPassword(ctx context.Context, password string) models.ExecutionResult
 }
 
 // RollbackExecutor handles rollback operations
 type RollbackExecutor interface {
 	// SaveRollbackInfo stores rollback information for a software installation
-	SaveRollbackInfo(info models.RollbackInfo) error
+	SaveRollbackInfo(ctx context.Context, info models.RollbackInfo) error
 	// GetRollbackInfo retrieves rollback information by ID
-	GetRollbackInfo(rollbackID string) (*models.RollbackInfo, error)
+	GetRollbackInfo(ctx context.Context, rollbackID string) (*models.RollbackInfo, error)
 	// ListRollbackInfo returns all available rollbacks
-	ListRollbackInfo() ([]models.RollbackInfo, error)
+	ListRollbackInfo(ctx context.Context) ([]models.RollbackInfo, error)
 	// ExecuteRollback performs a rollback to previous state
-	ExecuteRollback(rollbackID string, force bool) models.ExecutionResult
+	ExecuteRollback(ctx context.Context, rollbackID string, force bool) models.ExecutionResult
 	// DeleteRollbackInfo removes a rollback entry
-	DeleteRollbackInfo(rollbackID string) error
+	DeleteRollbackInfo(ctx context.Context, rollbackID string) error
 	// CreateRollbackInfoForInstall creates and saves rollback info before installation
-	CreateRollbackInfoForInstall(packageName, source, commandID string, software SoftwareExecutor) (*models.RollbackInfo, error)
+	CreateRollbackInfoForInstall(ctx context.Context, packageName, source, commandID string, software SoftwareExecutor) (*models.RollbackInfo, error)
 }
 
 // ScriptExecutor handles script-based package installation (Hub-centric approach)
 // This executor downloads bundles from the Hub and executes the appropriate script
 type ScriptExecutor interface {
 	// ExecuteBundle downloads a bundle, extracts it, and runs the specified script
-	ExecuteBundle(request models.ScriptBundleRequest) models.ExecutionResult
+	ExecuteBundle(ctx context.Context, request models.ScriptBundleRequest) models.ExecutionResult
 	// ExecuteInlineScript runs a script directly (without bundle download)
-	ExecuteInlineScript(script string, operationType string, requiresRoot bool, env map[string]string) models.ExecutionResult
+	ExecuteInlineScript(ctx context.Context, script string, operationType string, requiresRoot bool, env map[string]string) models.ExecutionResult
 }
 
 // ExecutorManager provides access to all executors

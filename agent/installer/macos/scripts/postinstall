@@ -1,0 +1,50 @@
+#!/bin/bash
+#
+# PatchIQ Agent - Post-Install Script
+#
+# Runs after installation to start agent service
+#
+
+set -e
+
+# Create log directory if it doesn't exist
+mkdir -p /var/log/patchiq
+chmod 755 /var/log/patchiq
+
+# Set proper permissions
+chmod +x /usr/local/bin/patchiq-agent
+chmod 644 ~/Library/LaunchAgents/io.patchiq.agent.plist
+
+# Load LaunchAgent for current user
+USER_ID=$(id -u)
+USER_NAME=$(id -un)
+
+if [ "$USER_ID" != "0" ]; then
+    # Running as user - load for current user
+    echo "Loading PatchIQ Agent for user $USER_NAME..."
+    launchctl bootstrap gui/$USER_ID ~/Library/LaunchAgents/io.patchiq.agent.plist
+    launchctl enable gui/$USER_ID/io.patchiq.agent
+    launchctl kickstart -k gui/$USER_ID/io.patchiq.agent
+else
+    # Running as root - load for console user
+    CONSOLE_USER=$(stat -f%Su /dev/console)
+    CONSOLE_UID=$(id -u "$CONSOLE_USER")
+
+    echo "Loading PatchIQ Agent for console user $CONSOLE_USER..."
+    sudo -u "$CONSOLE_USER" launchctl bootstrap gui/$CONSOLE_UID /Users/$CONSOLE_USER/Library/LaunchAgents/io.patchiq.agent.plist
+    sudo -u "$CONSOLE_USER" launchctl enable gui/$CONSOLE_UID/io.patchiq.agent
+    sudo -u "$CONSOLE_USER" launchctl kickstart -k gui/$CONSOLE_UID/io.patchiq.agent
+fi
+
+echo ""
+echo "PatchIQ Agent installed successfully!"
+echo ""
+echo "The agent is now running in the background."
+echo "Logs: /var/log/patchiq/agent.log"
+echo ""
+echo "To check status: launchctl list | grep patchiq"
+echo "To stop:         launchctl stop io.patchiq.agent"
+echo "To start:        launchctl start io.patchiq.agent"
+echo ""
+
+exit 0

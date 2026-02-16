@@ -3,6 +3,7 @@
 package executors
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -20,7 +21,7 @@ func NewWindowsPatchExecutor() *WindowsPatchExecutor {
 }
 
 // InstallPatch installs a specific Windows update by KB number
-func (e *WindowsPatchExecutor) InstallPatch(patchID string, options models.PatchOptions) models.ExecutionResult {
+func (e *WindowsPatchExecutor) InstallPatch(ctx context.Context, patchID string, options models.PatchOptions) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{
 		Success: false,
@@ -70,17 +71,27 @@ func (e *WindowsPatchExecutor) InstallPatch(patchID string, options models.Patch
 		}
 	`, patchID, patchID, patchID, patchID)
 
-	cmd := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript)
+	cmd := exec.CommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
 	result.Output = string(output)
 
+	// Check for timeout
+	if ctx.Err() == context.DeadlineExceeded {
+		result.ErrorCode = models.ErrTimeout
+		result.ErrorMessage = "Update installation timed out"
+		result.Retryable = true
+		result.Message = "Command execution timed out"
+		result.ExitCode = -1
+		return result
+	}
+
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		classifyWindowsPatchError(&result, err, string(output))
 		result.Message = fmt.Sprintf("Failed to install update: %s", patchID)
 		return result
 	}
@@ -92,7 +103,7 @@ func (e *WindowsPatchExecutor) InstallPatch(patchID string, options models.Patch
 }
 
 // UninstallPatch removes a Windows update by KB number
-func (e *WindowsPatchExecutor) UninstallPatch(patchID string) models.ExecutionResult {
+func (e *WindowsPatchExecutor) UninstallPatch(ctx context.Context, patchID string) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{
 		Success: false,
@@ -100,17 +111,27 @@ func (e *WindowsPatchExecutor) UninstallPatch(patchID string) models.ExecutionRe
 
 	// Use WUSA to uninstall
 	kbNumber := strings.TrimPrefix(strings.ToUpper(patchID), "KB")
-	cmd := exec.Command("wusa", "/uninstall", "/kb:"+kbNumber, "/quiet", "/norestart")
+	cmd := exec.CommandContext(ctx, "wusa", "/uninstall", "/kb:"+kbNumber, "/quiet", "/norestart")
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
 	result.Output = string(output)
 
+	// Check for timeout
+	if ctx.Err() == context.DeadlineExceeded {
+		result.ErrorCode = models.ErrTimeout
+		result.ErrorMessage = "Update uninstallation timed out"
+		result.Retryable = true
+		result.Message = "Command execution timed out"
+		result.ExitCode = -1
+		return result
+	}
+
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		classifyWindowsPatchError(&result, err, string(output))
 		result.Message = fmt.Sprintf("Failed to uninstall update: KB%s", kbNumber)
 		return result
 	}
@@ -122,7 +143,7 @@ func (e *WindowsPatchExecutor) UninstallPatch(patchID string) models.ExecutionRe
 }
 
 // InstallAllPatches installs all available Windows updates
-func (e *WindowsPatchExecutor) InstallAllPatches(options models.PatchOptions) models.ExecutionResult {
+func (e *WindowsPatchExecutor) InstallAllPatches(ctx context.Context, options models.PatchOptions) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{
 		Success: false,
@@ -166,17 +187,27 @@ func (e *WindowsPatchExecutor) InstallAllPatches(options models.PatchOptions) mo
 		}
 	`, rebootFlag)
 
-	cmd := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript)
+	cmd := exec.CommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
 	result.Output = string(output)
 
+	// Check for timeout
+	if ctx.Err() == context.DeadlineExceeded {
+		result.ErrorCode = models.ErrTimeout
+		result.ErrorMessage = "Bulk update installation timed out"
+		result.Retryable = true
+		result.Message = "Command execution timed out"
+		result.ExitCode = -1
+		return result
+	}
+
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		classifyWindowsPatchError(&result, err, string(output))
 		result.Message = "Failed to install all updates"
 		return result
 	}
@@ -188,7 +219,7 @@ func (e *WindowsPatchExecutor) InstallAllPatches(options models.PatchOptions) mo
 }
 
 // ListAvailablePatches lists available Windows updates
-func (e *WindowsPatchExecutor) ListAvailablePatches() ([]models.PatchInfo, error) {
+func (e *WindowsPatchExecutor) ListAvailablePatches(ctx context.Context) ([]models.PatchInfo, error) {
 	psScript := `
 		$ErrorActionPreference = 'Stop'
 		$Session = New-Object -ComObject Microsoft.Update.Session
@@ -213,8 +244,14 @@ func (e *WindowsPatchExecutor) ListAvailablePatches() ([]models.PatchInfo, error
 		}
 	`
 
-	cmd := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript)
+	cmd := exec.CommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript)
 	output, err := cmd.Output()
+
+	// Check for timeout
+	if ctx.Err() == context.DeadlineExceeded {
+		return nil, fmt.Errorf("command timed out")
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to list updates: %v", err)
 	}
@@ -223,7 +260,7 @@ func (e *WindowsPatchExecutor) ListAvailablePatches() ([]models.PatchInfo, error
 }
 
 // CheckRebootRequired checks if Windows needs a reboot
-func (e *WindowsPatchExecutor) CheckRebootRequired() bool {
+func (e *WindowsPatchExecutor) CheckRebootRequired(ctx context.Context) bool {
 	// Check multiple registry keys for pending reboot
 	psScript := `
 		$rebootRequired = $false
@@ -247,8 +284,14 @@ func (e *WindowsPatchExecutor) CheckRebootRequired() bool {
 		Write-Output $rebootRequired
 	`
 
-	cmd := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript)
-	output, _ := cmd.Output()
+	cmd := exec.CommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript)
+	output, err := cmd.Output()
+
+	// If timeout or error, assume no reboot required (safer default)
+	if err != nil || ctx.Err() == context.DeadlineExceeded {
+		return false
+	}
+
 	return strings.TrimSpace(string(output)) == "True"
 }
 
@@ -279,4 +322,86 @@ func parseWindowsUpdateList(output string) []models.PatchInfo {
 	}
 
 	return patches
+}
+
+// classifyWindowsPatchError determines the appropriate error code for Windows Update failures
+func classifyWindowsPatchError(result *models.ExecutionResult, err error, output string) {
+	if err == nil {
+		return
+	}
+
+	errStr := err.Error()
+	errLower := strings.ToLower(errStr)
+	outputLower := strings.ToLower(output)
+
+	// Check output for specific error patterns
+	combined := errLower + " " + outputLower
+
+	// Network errors
+	if strings.Contains(combined, "network") ||
+	   strings.Contains(combined, "connection") ||
+	   strings.Contains(combined, "download") ||
+	   strings.Contains(combined, "unreachable") ||
+	   strings.Contains(combined, "0x80072ee7") || // WININET_E_NAME_NOT_RESOLVED
+	   strings.Contains(combined, "0x80072efd") {  // ERROR_INTERNET_CANNOT_CONNECT
+		result.ErrorCode = models.ErrNetworkFailure
+		result.ErrorMessage = fmt.Sprintf("Network error during update: %s", errStr)
+		result.Retryable = true
+		return
+	}
+
+	// Permission errors
+	if strings.Contains(combined, "access denied") ||
+	   strings.Contains(combined, "permission denied") ||
+	   strings.Contains(combined, "privilege") ||
+	   strings.Contains(combined, "administrator") ||
+	   strings.Contains(combined, "0x80070005") { // ERROR_ACCESS_DENIED
+		result.ErrorCode = models.ErrPermissionDenied
+		result.ErrorMessage = "Insufficient permissions. Run as Administrator."
+		result.Retryable = false
+		return
+	}
+
+	// Disk space errors
+	if strings.Contains(combined, "disk") ||
+	   strings.Contains(combined, "space") ||
+	   strings.Contains(combined, "0x80070070") { // ERROR_DISK_FULL
+		result.ErrorCode = models.ErrDiskFull
+		result.ErrorMessage = "Insufficient disk space for update"
+		result.Retryable = false
+		return
+	}
+
+	// Update not found
+	if strings.Contains(combined, "not found") ||
+	   strings.Contains(combined, "0x80240017") { // WU_E_NOT_APPLICABLE
+		result.ErrorCode = models.ErrPackageNotFound
+		result.ErrorMessage = fmt.Sprintf("Update not found or not applicable: %s", errStr)
+		result.Retryable = false
+		return
+	}
+
+	// Update already installed
+	if strings.Contains(combined, "already installed") ||
+	   strings.Contains(combined, "0x80240006") { // WU_E_NOOP
+		result.ErrorCode = models.ErrAlreadyInstalled
+		result.ErrorMessage = "Update is already installed"
+		result.Retryable = false
+		return
+	}
+
+	// Service unavailable
+	if strings.Contains(combined, "service") ||
+	   strings.Contains(combined, "0x80240438") || // WU_E_PT_HTTP_STATUS_SERVICE_UNAVAIL
+	   strings.Contains(combined, "0x8024402f") {  // WU_E_PT_ECP_SUCCEEDED_WITH_ERRORS
+		result.ErrorCode = models.ErrServiceUnavailable
+		result.ErrorMessage = fmt.Sprintf("Windows Update service unavailable: %s", errStr)
+		result.Retryable = true
+		return
+	}
+
+	// Default unknown error
+	result.ErrorCode = models.ErrUnknown
+	result.ErrorMessage = errStr
+	result.Retryable = false
 }

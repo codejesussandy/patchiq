@@ -1,0 +1,155 @@
+name: Publish Agent Update Manifest
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write  # For AWS OIDC
+
+jobs:
+  publish-manifest:
+    name: Generate and Publish Update Manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq bc
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            # Remove 'v' prefix if present
+            VERSION="${VERSION#v}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-binaries
+          path: agent/dist/
+
+      - name: Verify binaries
+        run: |
+          ls -lh agent/dist/
+          # Check all required binaries exist
+          for binary in \
+            patchiq-agent-windows-amd64.exe \
+            patchiq-agent-windows-arm64.exe \
+            patchiq-agent-darwin-amd64 \
+            patchiq-agent-darwin-arm64 \
+            patchiq-agent-linux-amd64 \
+            patchiq-agent-linux-arm64; do
+            if [ ! -f "agent/dist/$binary" ]; then
+              echo "Error: Missing binary: $binary"
+              exit 1
+            fi
+          done
+
+      - name: Generate manifest
+        id: generate
+        env:
+          UPDATE_MANIFEST_PRIVATE_KEY: ${{ secrets.UPDATE_MANIFEST_PRIVATE_KEY }}
+          CDN_BASE_URL: https://cdn.patchiq.io/agent/${{ steps.version.outputs.version }}
+        run: |
+          cd agent/scripts
+          ./generate-manifest.sh ${{ steps.version.outputs.version }}
+          MANIFEST_FILE="agent-manifest-${{ steps.version.outputs.version }}.json"
+          echo "manifest=$MANIFEST_FILE" >> $GITHUB_OUTPUT
+
+      - name: Verify manifest
+        run: |
+          MANIFEST_FILE="agent/scripts/agent-manifest-${{ steps.version.outputs.version }}.json"
+          echo "Manifest contents:"
+          cat "$MANIFEST_FILE" | jq '.'
+
+          # Verify signature exists
+          if ! jq -e '.signature' "$MANIFEST_FILE" > /dev/null; then
+            echo "Warning: Manifest is not signed!"
+          else
+            echo "✓ Manifest is signed"
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Upload to S3
+        env:
+          S3_BUCKET: ${{ secrets.S3_BUCKET || 'patchiq-cdn' }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          MANIFEST_FILE="agent/scripts/agent-manifest-$VERSION.json"
+
+          # Upload versioned manifest
+          aws s3 cp "$MANIFEST_FILE" \
+            "s3://$S3_BUCKET/agent/manifest-$VERSION.json" \
+            --content-type application/json \
+            --acl public-read \
+            --cache-control "max-age=3600"
+
+          # Update latest manifest
+          aws s3 cp "$MANIFEST_FILE" \
+            "s3://$S3_BUCKET/agent/manifest-latest.json" \
+            --content-type application/json \
+            --acl public-read \
+            --cache-control "max-age=300"
+
+          echo "✓ Manifest published to S3"
+          echo "  Versioned: https://cdn.patchiq.io/agent/manifest-$VERSION.json"
+          echo "  Latest:    https://cdn.patchiq.io/agent/manifest-latest.json"
+
+      - name: Keep rollback manifests
+        env:
+          S3_BUCKET: ${{ secrets.S3_BUCKET || 'patchiq-cdn' }}
+        run: |
+          # List all manifests, keep last 3 versions (excluding latest)
+          aws s3 ls "s3://$S3_BUCKET/agent/" | \
+            grep 'manifest-[0-9]' | \
+            sort -r | \
+            tail -n +4 | \
+            awk '{print $4}' | \
+            while read manifest; do
+              echo "Deleting old manifest: $manifest"
+              aws s3 rm "s3://$S3_BUCKET/agent/$manifest"
+            done || true
+
+      - name: Create deployment record
+        run: |
+          echo "Manifest published successfully"
+          echo "Version: ${{ steps.version.outputs.version }}"
+          echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "Manifest URL: https://cdn.patchiq.io/agent/manifest-${{ steps.version.outputs.version }}.json"
+
+      - name: Upload manifest as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-manifest-${{ steps.version.outputs.version }}
+          path: agent/scripts/agent-manifest-${{ steps.version.outputs.version }}.json
+          retention-days: 90

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"context"
 	"github.com/patchify/agent/internal/models"
 )
 
@@ -21,7 +22,7 @@ func NewDarwinRemoteAccessExecutor() *DarwinRemoteAccessExecutor {
 }
 
 // Enable enables macOS Screen Sharing
-func (e *DarwinRemoteAccessExecutor) Enable(config models.RemoteAccessConfig) models.ExecutionResult {
+func (e *DarwinRemoteAccessExecutor) Enable(ctx context.Context, config models.RemoteAccessConfig) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 
@@ -68,7 +69,7 @@ func (e *DarwinRemoteAccessExecutor) Enable(config models.RemoteAccessConfig) mo
 
 	// Set VNC password if provided
 	if config.Password != "" {
-		passResult := e.SetPassword(config.Password)
+		passResult := e.SetPassword(ctx, config.Password)
 		if !passResult.Success {
 			result.Output = string(output) + "\nPassword setting failed: " + passResult.ErrorMessage
 		}
@@ -83,7 +84,7 @@ func (e *DarwinRemoteAccessExecutor) Enable(config models.RemoteAccessConfig) mo
 }
 
 // Disable disables macOS Screen Sharing
-func (e *DarwinRemoteAccessExecutor) Disable() models.ExecutionResult {
+func (e *DarwinRemoteAccessExecutor) Disable(ctx context.Context) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 
@@ -116,7 +117,7 @@ func (e *DarwinRemoteAccessExecutor) Disable() models.ExecutionResult {
 }
 
 // GetStatus returns the current status of Screen Sharing
-func (e *DarwinRemoteAccessExecutor) GetStatus() models.RemoteAccessStatus {
+func (e *DarwinRemoteAccessExecutor) GetStatus(ctx context.Context) models.RemoteAccessStatus {
 	status := models.RemoteAccessStatus{
 		Protocol:    "VNC",
 		Port:        5900,
@@ -155,7 +156,7 @@ func (e *DarwinRemoteAccessExecutor) GetStatus() models.RemoteAccessStatus {
 }
 
 // SetPassword sets the VNC password for Screen Sharing
-func (e *DarwinRemoteAccessExecutor) SetPassword(password string) models.ExecutionResult {
+func (e *DarwinRemoteAccessExecutor) SetPassword(ctx context.Context, password string) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 

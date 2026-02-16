@@ -528,7 +528,7 @@ async function main() {
   // To make downloads work: run `make agent-release` to build binaries, then upload to MinIO
   const agentVersions = [
     {
-      platform: 'WINDOWS',
+      platform: 'Windows',
       architecture: 'amd64',
       version: '1.0.0',
       filePath: 'agents/patchiq-agent-windows-amd64-1.0.0.exe',
@@ -536,7 +536,7 @@ async function main() {
       checksum: 'sha256:a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6', // Placeholder
     },
     {
-      platform: 'LINUX',
+      platform: 'Linux',
       architecture: 'amd64',
       version: '1.0.0',
       filePath: 'agents/patchiq-agent-linux-amd64-1.0.0',
@@ -544,7 +544,7 @@ async function main() {
       checksum: 'sha256:b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1', // Placeholder
     },
     {
-      platform: 'LINUX',
+      platform: 'Linux',
       architecture: 'arm64',
       version: '1.0.0',
       filePath: 'agents/patchiq-agent-linux-arm64-1.0.0',
@@ -552,7 +552,7 @@ async function main() {
       checksum: 'sha256:c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2', // Placeholder
     },
     {
-      platform: 'MACOS',
+      platform: 'Mac',
       architecture: 'amd64',
       version: '1.0.0',
       filePath: 'agents/patchiq-agent-darwin-amd64-1.0.0',
@@ -560,7 +560,7 @@ async function main() {
       checksum: 'sha256:d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2c3', // Placeholder
     },
     {
-      platform: 'MACOS',
+      platform: 'Mac',
       architecture: 'arm64',
       version: '1.0.0',
       filePath: 'agents/patchiq-agent-darwin-arm64-1.0.0',
@@ -1456,7 +1456,7 @@ async function main() {
     },
   ];
 
-  const createdAssets: Record<string, string> = {};
+  const testAssetMap: Record<string, string> = {};
   for (const assetData of testAssets) {
     // Check if asset already exists by name
     let asset = await prisma.asset.findFirst({
@@ -1472,7 +1472,7 @@ async function main() {
         },
       });
     }
-    createdAssets[assetData.name] = asset.id;
+    testAssetMap[assetData.name] = asset.id;
   }
   console.log('Created/Updated', testAssets.length, 'test assets');
 
@@ -1503,7 +1503,7 @@ async function main() {
 
   let softwareCreated = 0;
   for (const sw of softwareRecords) {
-    const assetId = createdAssets[sw.assetName];
+    const assetId = testAssetMap[sw.assetName];
     const existing = await prisma.assetSoftware.findFirst({
       where: { assetId, name: sw.name, version: sw.version },
     });

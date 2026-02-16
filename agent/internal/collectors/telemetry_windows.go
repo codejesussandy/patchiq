@@ -3,8 +3,8 @@
 package collectors
 
 import (
-	"os"
 	"log"
+	"os"
 	"os/exec"
 	"regexp"
 	"runtime"

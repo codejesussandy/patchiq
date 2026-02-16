@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/md5"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -12,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/patchify/agent/internal/download"
@@ -33,8 +36,9 @@ type ProxyConfig struct {
 	Username             string
 	Password             string
 	NoProxy              string
-	MaxDownloadSpeedMBps int  // Max download speed in MB/s (0 = unlimited)
-	EnableDownloadResume bool // Support HTTP Range-based resume
+	MaxDownloadSpeedMBps int    // Max download speed in MB/s (0 = unlimited)
+	EnableDownloadResume bool   // Support HTTP Range-based resume
+	CACertFile           string // Path to custom CA certificate file (PEM format)
 }
 
 // Client handles communication with the PatchIQ backend
@@ -50,8 +54,17 @@ type Client struct {
 
 // New creates a new backend client. If proxyConfig is non-nil and has a ProxyURL,
 // all HTTP requests will be routed through that proxy.
-func New(baseURL string, agentVersion string, proxyConfig *ProxyConfig) *Client {
-	transport := buildTransport(proxyConfig)
+// TLS is always enforced - the ServerURL must use HTTPS.
+func New(baseURL string, agentVersion string, proxyConfig *ProxyConfig) (*Client, error) {
+	// Enforce HTTPS for all connections
+	if !strings.HasPrefix(baseURL, "https://") {
+		return nil, fmt.Errorf("server URL must use HTTPS (got: %s)", baseURL)
+	}
+
+	transport, err := buildTransport(proxyConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build transport: %w", err)
+	}
 
 	return &Client{
 		baseURL:      baseURL,
@@ -61,30 +74,56 @@ func New(baseURL string, agentVersion string, proxyConfig *ProxyConfig) *Client 
 			Timeout:   30 * time.Second,
 			Transport: transport,
 		},
-	}
+	}, nil
 }
 
-// buildTransport creates an http.Transport with proxy settings if configured.
-func buildTransport(pc *ProxyConfig) *http.Transport {
+// buildTransport creates an http.Transport with proxy and TLS settings.
+// TLS is always enabled with minimum version TLS 1.2.
+// Custom CA certificates can be loaded via ProxyConfig.CACertFile.
+func buildTransport(pc *ProxyConfig) (*http.Transport, error) {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 
-	if pc == nil || pc.ProxyURL == "" {
-		return transport
+	// Configure TLS with secure defaults
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		// InsecureSkipVerify is NEVER enabled - TLS validation is mandatory
 	}
 
-	proxyURL, err := url.Parse(pc.ProxyURL)
-	if err != nil {
-		// If the proxy URL is invalid, fall back to no proxy
-		return transport
+	// Load custom CA certificate if provided
+	if pc != nil && pc.CACertFile != "" {
+		caCert, err := os.ReadFile(pc.CACertFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read CA certificate file %s: %w", pc.CACertFile, err)
+		}
+
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("failed to parse CA certificate from %s", pc.CACertFile)
+		}
+
+		tlsConfig.RootCAs = caCertPool
+		log.Printf("[Client] Loaded custom CA certificate from: %s", pc.CACertFile)
 	}
 
-	// Embed credentials into the proxy URL if provided
-	if pc.Username != "" {
-		proxyURL.User = url.UserPassword(pc.Username, pc.Password)
+	transport.TLSClientConfig = tlsConfig
+
+	// Configure proxy if provided
+	if pc != nil && pc.ProxyURL != "" {
+		proxyURL, err := url.Parse(pc.ProxyURL)
+		if err != nil {
+			return nil, fmt.Errorf("invalid proxy URL %s: %w", pc.ProxyURL, err)
+		}
+
+		// Embed credentials into the proxy URL if provided
+		if pc.Username != "" {
+			proxyURL.User = url.UserPassword(pc.Username, pc.Password)
+		}
+
+		transport.Proxy = http.ProxyURL(proxyURL)
+		log.Printf("[Client] Using proxy: %s", pc.ProxyURL)
 	}
 
-	transport.Proxy = http.ProxyURL(proxyURL)
-	return transport
+	return transport, nil
 }
 
 // agentAPIURL constructs the URL for agent API endpoints
@@ -512,9 +551,14 @@ func (c *Client) DownloadPatchFile(info PatchDownloadInfo, destDir string) (stri
 	}
 	destPath := destDir + "/" + info.FileName
 
+	transport, err := buildTransport(c.proxyConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to build transport: %w", err)
+	}
+
 	downloadClient := &http.Client{
 		Timeout:   30 * time.Minute,
-		Transport: buildTransport(c.proxyConfig),
+		Transport: transport,
 	}
 
 	httpReq, err := http.NewRequest("GET", info.DownloadURL, nil)

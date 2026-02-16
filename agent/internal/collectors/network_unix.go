@@ -7,9 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
-	"runtime"
 	"time"
 
 	"github.com/patchify/agent/internal/models"

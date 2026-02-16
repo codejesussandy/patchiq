@@ -2,13 +2,13 @@ package models
 
 // Hardware represents all hardware inventory data
 type Hardware struct {
-	CollectedAt      string           `json:"collectedAt"`
-	SystemIdentity   SystemIdentity   `json:"systemIdentity"`
-	BIOS             BIOS             `json:"bios"`
-	Processor        Processor        `json:"processor"`
-	Memory           Memory           `json:"memory"`
-	StorageDrives    []StorageDrive   `json:"storageDrives"`
-	Battery          *Battery         `json:"battery,omitempty"`
+	CollectedAt      string            `json:"collectedAt"`
+	SystemIdentity   SystemIdentity    `json:"systemIdentity"`
+	BIOS             BIOS              `json:"bios"`
+	Processor        Processor         `json:"processor"`
+	Memory           Memory            `json:"memory"`
+	StorageDrives    []StorageDrive    `json:"storageDrives"`
+	Battery          *Battery          `json:"battery,omitempty"`
 	GraphicsAdapters []GraphicsAdapter `json:"graphicsAdapters"`
 }
 
@@ -34,15 +34,15 @@ type BIOS struct {
 
 // Processor represents CPU information
 type Processor struct {
-	Name          string  `json:"name"`
-	Manufacturer  string  `json:"manufacturer"`
-	Architecture  string  `json:"architecture"` // x64, arm64, etc.
-	CoreCount     int     `json:"coreCount"`
-	ThreadCount   int     `json:"threadCount"`
-	ClockSpeedMHz int     `json:"clockSpeedMHz"`
-	MaxSpeedMHz   int     `json:"maxSpeedMHz,omitempty"`
-	L2CacheKB     int     `json:"l2CacheKB,omitempty"`
-	L3CacheKB     int     `json:"l3CacheKB,omitempty"`
+	Name          string `json:"name"`
+	Manufacturer  string `json:"manufacturer"`
+	Architecture  string `json:"architecture"` // x64, arm64, etc.
+	CoreCount     int    `json:"coreCount"`
+	ThreadCount   int    `json:"threadCount"`
+	ClockSpeedMHz int    `json:"clockSpeedMHz"`
+	MaxSpeedMHz   int    `json:"maxSpeedMHz,omitempty"`
+	L2CacheKB     int    `json:"l2CacheKB,omitempty"`
+	L3CacheKB     int    `json:"l3CacheKB,omitempty"`
 }
 
 // Memory represents RAM information
@@ -81,7 +81,7 @@ type StorageDrive struct {
 
 // SmartStatus represents SMART health status
 type SmartStatus struct {
-	Healthy           bool `json:"healthy"`
+	Healthy           bool   `json:"healthy"`
 	Status            string `json:"status"` // OK, Warning, Critical
 	Temperature       int    `json:"temperature,omitempty"`
 	PowerOnHours      int    `json:"powerOnHours,omitempty"`
@@ -90,20 +90,20 @@ type SmartStatus struct {
 
 // Battery represents battery information (laptops)
 type Battery struct {
-	Present        bool    `json:"present"`
-	HealthPercent  float64 `json:"healthPercent"`
-	CycleCount     int     `json:"cycleCount"`
-	ChargeLevel    float64 `json:"chargeLevel"`
-	ChargingStatus string  `json:"chargingStatus"` // Charging, Discharging, Full, NotCharging
-	DesignCapacity int     `json:"designCapacity,omitempty"`
-	CurrentCapacity int    `json:"currentCapacity,omitempty"`
+	Present         bool    `json:"present"`
+	HealthPercent   float64 `json:"healthPercent"`
+	CycleCount      int     `json:"cycleCount"`
+	ChargeLevel     float64 `json:"chargeLevel"`
+	ChargingStatus  string  `json:"chargingStatus"` // Charging, Discharging, Full, NotCharging
+	DesignCapacity  int     `json:"designCapacity,omitempty"`
+	CurrentCapacity int     `json:"currentCapacity,omitempty"`
 }
 
 // GraphicsAdapter represents GPU information
 type GraphicsAdapter struct {
-	Name         string `json:"name"`
-	Manufacturer string `json:"manufacturer"`
+	Name          string `json:"name"`
+	Manufacturer  string `json:"manufacturer"`
 	DriverVersion string `json:"driverVersion,omitempty"`
-	MemoryMB     int    `json:"memoryMB,omitempty"`
-	Resolution   string `json:"resolution,omitempty"`
+	MemoryMB      int    `json:"memoryMB,omitempty"`
+	Resolution    string `json:"resolution,omitempty"`
 }

@@ -5,7 +5,7 @@
 # Configuration: Set PUBLIC_HOST, PUBLIC_PORT, PUBLIC_SCHEME in .env
 # See .env.example for details.
 
-.PHONY: help dev dev-fresh dev-services dev-backend dev-frontend dev-agent stop clean logs logs-backend logs-frontend db-migrate db-seed db-studio db-reset agent-build agent-run agent-install-air test test-backend test-frontend check check-types check-lint check-build check-health check-all install status minio-console api-docs api-endpoints dev-all clean-all preflight generate-types
+.PHONY: help dev dev-fresh dev-services dev-backend dev-frontend dev-agent stop clean logs logs-backend logs-frontend db-migrate db-seed db-studio db-reset agent-build agent-run agent-install-air build-windows build-windows-amd64 build-windows-arm64 test test-backend test-frontend check check-types check-lint check-build check-health check-all install status minio-console api-docs api-endpoints dev-all clean-all preflight generate-types
 
 # Colors for output
 GREEN := \033[0;32m
@@ -68,6 +68,7 @@ help:
 	@echo "$(GREEN)Agent:$(NC)"
 	@echo "  make agent-build      - Build agent binary (with embedded server URL)"
 	@echo "  make agent-release    - Build for all platforms"
+	@echo "  make build-windows    - Build Windows binaries (amd64 + arm64) with version info"
 	@echo "  make agent-msi        - Build Windows MSI installer (requires Docker)"
 	@echo "  make agent-run        - Run agent (no hot reload)"
 	@echo "  make agent-install-air - Install Air for Go hot reload"
@@ -257,6 +258,46 @@ agent-run:
 	@echo "$(CYAN)Running agent (connecting to $(PUBLIC_URL)/api)...$(NC)"
 	cd agent && go run ./cmd/agent --server $(PUBLIC_URL)/api
 
+build-windows: build-windows-amd64 build-windows-arm64
+	@echo "$(GREEN)Windows binaries built successfully!$(NC)"
+	@ls -lh agent/dist/patchiq-agent-windows-*.exe
+
+build-windows-amd64:
+	@echo "$(CYAN)Building Windows amd64 binary with embedded resources...$(NC)"
+	@mkdir -p agent/dist
+	@# Generate version info resource file (creates resource.syso)
+	@GOVERSIONINFO=$$(command -v goversioninfo 2>/dev/null || echo "$$HOME/go/bin/goversioninfo"); \
+	if [ -x "$$GOVERSIONINFO" ]; then \
+		cd agent && "$$GOVERSIONINFO" -64 -o=resource_amd64.syso assets/versioninfo.json; \
+		echo "$(GREEN)Version info embedded$(NC)"; \
+	else \
+		echo "$(YELLOW)Warning: goversioninfo not found, building without version info$(NC)"; \
+		echo "$(YELLOW)Install with: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest$(NC)"; \
+	fi
+	@# Build Windows amd64 binary
+	@cd agent && GOOS=windows GOARCH=amd64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL) -X main.version=1.1.0 -X main.buildDate=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/patchiq-agent-windows-amd64.exe ./cmd/agent
+	@# Clean up resource file
+	@rm -f agent/resource_amd64.syso
+	@echo "$(GREEN)Built: agent/dist/patchiq-agent-windows-amd64.exe$(NC)"
+
+build-windows-arm64:
+	@echo "$(CYAN)Building Windows arm64 binary with embedded resources...$(NC)"
+	@mkdir -p agent/dist
+	@# Generate version info resource file (creates resource.syso)
+	@GOVERSIONINFO=$$(command -v goversioninfo 2>/dev/null || echo "$$HOME/go/bin/goversioninfo"); \
+	if [ -x "$$GOVERSIONINFO" ]; then \
+		cd agent && "$$GOVERSIONINFO" -arm -o=resource_arm64.syso assets/versioninfo.json; \
+		echo "$(GREEN)Version info embedded$(NC)"; \
+	else \
+		echo "$(YELLOW)Warning: goversioninfo not found, building without version info$(NC)"; \
+		echo "$(YELLOW)Install with: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest$(NC)"; \
+	fi
+	@# Build Windows arm64 binary
+	@cd agent && GOOS=windows GOARCH=arm64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL) -X main.version=1.1.0 -X main.buildDate=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/patchiq-agent-windows-arm64.exe ./cmd/agent
+	@# Clean up resource file
+	@rm -f agent/resource_arm64.syso
+	@echo "$(GREEN)Built: agent/dist/patchiq-agent-windows-arm64.exe$(NC)"
+
 agent-release:
 	@echo "$(CYAN)Building agent binaries for all platforms (server: $(PATCHIQ_SERVER_URL))...$(NC)"
 	@mkdir -p agent/dist
@@ -264,9 +305,14 @@ agent-release:
 	@cd agent && GOOS=linux GOARCH=arm64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL)" -o dist/patchiq-agent-linux-arm64 ./cmd/agent
 	@cd agent && GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL)" -o dist/patchiq-agent-darwin-amd64 ./cmd/agent
 	@cd agent && GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL)" -o dist/patchiq-agent-darwin-arm64 ./cmd/agent
-	@cd agent && GOOS=windows GOARCH=amd64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL)" -o dist/patchiq-agent-windows-amd64.exe ./cmd/agent
+	@# Build Windows binaries with version info
+	@$(MAKE) build-windows
 	@echo "$(GREEN)Binaries built:$(NC)"
 	@ls -lh agent/dist/
+	@echo ""
+	@echo "$(CYAN)Generating checksums...$(NC)"
+	@chmod +x scripts/generate-checksums.sh
+	@./scripts/generate-checksums.sh agent/dist
 	@echo ""
 	@echo "$(CYAN)Uploading via backend API...$(NC)"
 	@TOKEN=$$(curl -sf $(PUBLIC_URL)/v1/auth/login \

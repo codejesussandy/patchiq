@@ -12,8 +12,8 @@ type PowerManagement struct {
 
 // PowerPlan represents the active power plan/profile
 type PowerPlan struct {
-	Name        string `json:"name"`                  // Balanced, High Performance, Power Saver, Custom
-	GUID        string `json:"guid,omitempty"`        // Windows power plan GUID
+	Name        string `json:"name"`           // Balanced, High Performance, Power Saver, Custom
+	GUID        string `json:"guid,omitempty"` // Windows power plan GUID
 	Description string `json:"description,omitempty"`
 	IsActive    bool   `json:"isActive"`
 	Source      string `json:"source,omitempty"` // System, GPO, User
@@ -53,21 +53,21 @@ type WakeSettings struct {
 
 // BatteryPolicies represents battery-specific power policies
 type BatteryPolicies struct {
-	LowBatteryLevel     int    `json:"lowBatteryLevel"`           // Percent
-	LowBatteryAction    string `json:"lowBatteryAction"`          // Nothing, Sleep, Hibernate, Shutdown
-	CriticalLevel       int    `json:"criticalLevel"`             // Percent
-	CriticalAction      string `json:"criticalAction"`            // Nothing, Sleep, Hibernate, Shutdown
-	ReserveLevel        int    `json:"reserveLevel,omitempty"`    // Windows reserve level
-	OptimizedCharging   bool   `json:"optimizedCharging"`         // macOS/modern laptops
-	ChargingLimit       int    `json:"chargingLimit,omitempty"`   // Max charge percent (if supported)
-	BatterySaver        bool   `json:"batterySaver"`              // Battery saver mode active
-	BatterySaverLevel   int    `json:"batterySaverLevel,omitempty"` // Threshold to enable battery saver
+	LowBatteryLevel   int    `json:"lowBatteryLevel"`             // Percent
+	LowBatteryAction  string `json:"lowBatteryAction"`            // Nothing, Sleep, Hibernate, Shutdown
+	CriticalLevel     int    `json:"criticalLevel"`               // Percent
+	CriticalAction    string `json:"criticalAction"`              // Nothing, Sleep, Hibernate, Shutdown
+	ReserveLevel      int    `json:"reserveLevel,omitempty"`      // Windows reserve level
+	OptimizedCharging bool   `json:"optimizedCharging"`           // macOS/modern laptops
+	ChargingLimit     int    `json:"chargingLimit,omitempty"`     // Max charge percent (if supported)
+	BatterySaver      bool   `json:"batterySaver"`                // Battery saver mode active
+	BatterySaverLevel int    `json:"batterySaverLevel,omitempty"` // Threshold to enable battery saver
 }
 
 // PowerEvent represents a power-related event
 type PowerEvent struct {
 	Timestamp string `json:"timestamp"`
-	Type      string `json:"type"`             // Sleep, Wake, Hibernate, Shutdown, Reboot, LidClose, LidOpen
-	Source    string `json:"source,omitempty"` // UserInitiated, Idle, LowBattery, Scheduled, LidClose, Button
+	Type      string `json:"type"`               // Sleep, Wake, Hibernate, Shutdown, Reboot, LidClose, LidOpen
+	Source    string `json:"source,omitempty"`   // UserInitiated, Idle, LowBattery, Scheduled, LidClose, Button
 	Duration  int    `json:"duration,omitempty"` // Duration in seconds (for sleep events)
 }

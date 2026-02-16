@@ -1,0 +1,358 @@
+{
+  "description": "Test packages for PatchIQ agent deployment validation",
+  "version": "1.0.0",
+  "updated": "2026-02-14",
+  "platforms": {
+    "windows": {
+      "software": [
+        {
+          "id": "windows-notepadpp",
+          "name": "Notepad++",
+          "version": "8.6.0",
+          "size": "4.2 MB",
+          "executor": "winget",
+          "install_command": "winget install -e --id Notepad++.Notepad++",
+          "test_verification": "Test.Path \"C:\\Program Files\\Notepad++\\notepad++.exe\""
+        },
+        {
+          "id": "windows-7zip",
+          "name": "7-Zip",
+          "version": "23.01",
+          "size": "1.5 MB",
+          "executor": "winget",
+          "install_command": "winget install -e --id 7zip.7zip",
+          "test_verification": "Test.Path \"C:\\Program Files\\7-Zip\\7z.exe\""
+        },
+        {
+          "id": "windows-vlc",
+          "name": "VLC Media Player",
+          "version": "3.0.20",
+          "size": "42 MB",
+          "executor": "choco",
+          "install_command": "choco install vlc -y",
+          "test_verification": "Test.Path \"C:\\Program Files\\VideoLAN\\VLC\\vlc.exe\""
+        },
+        {
+          "id": "windows-git",
+          "name": "Git",
+          "version": "2.43.0",
+          "size": "51 MB",
+          "executor": "winget",
+          "install_command": "winget install -e --id Git.Git",
+          "test_verification": "Get-Command git"
+        },
+        {
+          "id": "windows-firefox",
+          "name": "Mozilla Firefox",
+          "version": "121.0",
+          "size": "58 MB",
+          "executor": "winget",
+          "install_command": "winget install -e --id Mozilla.Firefox",
+          "test_verification": "Test.Path \"C:\\Program Files\\Mozilla Firefox\\firefox.exe\""
+        }
+      ],
+      "patches": [
+        {
+          "id": "windows-kb5034763",
+          "name": "Windows 11 Cumulative Update",
+          "kb": "KB5034763",
+          "size": "450 MB",
+          "executor": "windows-update",
+          "requires_reboot": true
+        }
+      ]
+    },
+    "macos": {
+      "software": [
+        {
+          "id": "macos-wget",
+          "name": "wget",
+          "version": "1.21.4",
+          "size": "3.8 MB",
+          "executor": "brew",
+          "install_command": "brew install wget",
+          "test_verification": "which wget"
+        },
+        {
+          "id": "macos-htop",
+          "name": "htop",
+          "version": "3.2.2",
+          "size": "600 KB",
+          "executor": "brew",
+          "install_command": "brew install htop",
+          "test_verification": "which htop"
+        },
+        {
+          "id": "macos-jq",
+          "name": "jq",
+          "version": "1.7",
+          "size": "1 MB",
+          "executor": "brew",
+          "install_command": "brew install jq",
+          "test_verification": "which jq"
+        },
+        {
+          "id": "macos-tree",
+          "name": "tree",
+          "version": "2.1.1",
+          "size": "150 KB",
+          "executor": "brew",
+          "install_command": "brew install tree",
+          "test_verification": "which tree"
+        },
+        {
+          "id": "macos-vlc",
+          "name": "VLC",
+          "version": "3.0.20",
+          "size": "60 MB",
+          "executor": "brew",
+          "install_command": "brew install --cask vlc",
+          "test_verification": "test -d /Applications/VLC.app"
+        }
+      ],
+      "patches": [
+        {
+          "id": "macos-security-update",
+          "name": "macOS Security Update",
+          "version": "14.3",
+          "size": "3.2 GB",
+          "executor": "softwareupdate",
+          "requires_reboot": true
+        }
+      ]
+    },
+    "ubuntu": {
+      "software": [
+        {
+          "id": "ubuntu-curl",
+          "name": "curl",
+          "version": "latest",
+          "size": "400 KB",
+          "executor": "apt",
+          "install_command": "apt-get install -y curl",
+          "test_verification": "which curl"
+        },
+        {
+          "id": "ubuntu-vim",
+          "name": "vim",
+          "version": "latest",
+          "size": "8 MB",
+          "executor": "apt",
+          "install_command": "apt-get install -y vim",
+          "test_verification": "which vim"
+        },
+        {
+          "id": "ubuntu-git",
+          "name": "git",
+          "version": "latest",
+          "size": "7.5 MB",
+          "executor": "apt",
+          "install_command": "apt-get install -y git",
+          "test_verification": "which git"
+        },
+        {
+          "id": "ubuntu-htop",
+          "name": "htop",
+          "version": "latest",
+          "size": "240 KB",
+          "executor": "apt",
+          "install_command": "apt-get install -y htop",
+          "test_verification": "which htop"
+        },
+        {
+          "id": "ubuntu-jq",
+          "name": "jq",
+          "version": "latest",
+          "size": "1 MB",
+          "executor": "apt",
+          "install_command": "apt-get install -y jq",
+          "test_verification": "which jq"
+        }
+      ],
+      "patches": [
+        {
+          "id": "ubuntu-security-updates",
+          "name": "Ubuntu Security Updates",
+          "executor": "apt",
+          "install_command": "apt-get upgrade -y",
+          "requires_reboot": false
+        }
+      ]
+    },
+    "debian": {
+      "software": [
+        {
+          "id": "debian-wget",
+          "name": "wget",
+          "version": "latest",
+          "size": "800 KB",
+          "executor": "apt",
+          "install_command": "apt-get install -y wget",
+          "test_verification": "which wget"
+        },
+        {
+          "id": "debian-nano",
+          "name": "nano",
+          "version": "latest",
+          "size": "700 KB",
+          "executor": "apt",
+          "install_command": "apt-get install -y nano",
+          "test_verification": "which nano"
+        },
+        {
+          "id": "debian-tree",
+          "name": "tree",
+          "version": "latest",
+          "size": "80 KB",
+          "executor": "apt",
+          "install_command": "apt-get install -y tree",
+          "test_verification": "which tree"
+        },
+        {
+          "id": "debian-htop",
+          "name": "htop",
+          "version": "latest",
+          "size": "240 KB",
+          "executor": "apt",
+          "install_command": "apt-get install -y htop",
+          "test_verification": "which htop"
+        },
+        {
+          "id": "debian-tmux",
+          "name": "tmux",
+          "version": "latest",
+          "size": "500 KB",
+          "executor": "apt",
+          "install_command": "apt-get install -y tmux",
+          "test_verification": "which tmux"
+        }
+      ]
+    },
+    "rhel": {
+      "software": [
+        {
+          "id": "rhel-vim",
+          "name": "vim",
+          "version": "latest",
+          "size": "10 MB",
+          "executor": "yum",
+          "install_command": "yum install -y vim",
+          "test_verification": "which vim"
+        },
+        {
+          "id": "rhel-wget",
+          "name": "wget",
+          "version": "latest",
+          "size": "1 MB",
+          "executor": "yum",
+          "install_command": "yum install -y wget",
+          "test_verification": "which wget"
+        },
+        {
+          "id": "rhel-htop",
+          "name": "htop",
+          "version": "latest",
+          "size": "300 KB",
+          "executor": "yum",
+          "install_command": "yum install -y htop",
+          "test_verification": "which htop"
+        },
+        {
+          "id": "rhel-git",
+          "name": "git",
+          "version": "latest",
+          "size": "9 MB",
+          "executor": "yum",
+          "install_command": "yum install -y git",
+          "test_verification": "which git"
+        },
+        {
+          "id": "rhel-tree",
+          "name": "tree",
+          "version": "latest",
+          "size": "90 KB",
+          "executor": "yum",
+          "install_command": "yum install -y tree",
+          "test_verification": "which tree"
+        }
+      ]
+    },
+    "fedora": {
+      "software": [
+        {
+          "id": "fedora-vim",
+          "name": "vim",
+          "version": "latest",
+          "size": "10 MB",
+          "executor": "dnf",
+          "install_command": "dnf install -y vim",
+          "test_verification": "which vim"
+        },
+        {
+          "id": "fedora-wget",
+          "name": "wget",
+          "version": "latest",
+          "size": "1 MB",
+          "executor": "dnf",
+          "install_command": "dnf install -y wget",
+          "test_verification": "which wget"
+        },
+        {
+          "id": "fedora-htop",
+          "name": "htop",
+          "version": "latest",
+          "size": "300 KB",
+          "executor": "dnf",
+          "install_command": "dnf install -y htop",
+          "test_verification": "which htop"
+        },
+        {
+          "id": "fedora-git",
+          "name": "git",
+          "version": "latest",
+          "size": "12 MB",
+          "executor": "dnf",
+          "install_command": "dnf install -y git",
+          "test_verification": "which git"
+        },
+        {
+          "id": "fedora-jq",
+          "name": "jq",
+          "version": "latest",
+          "size": "1.2 MB",
+          "executor": "dnf",
+          "install_command": "dnf install -y jq",
+          "test_verification": "which jq"
+        }
+      ]
+    }
+  },
+  "script_bundles": [
+    {
+      "id": "test-bundle-1",
+      "name": "System Info Collection",
+      "description": "Collects system information for testing",
+      "platform": "all",
+      "scripts": {
+        "install.sh": "#!/bin/bash\necho 'System Info:'\nuname -a\n",
+        "uninstall.sh": "#!/bin/bash\necho 'Cleanup complete'\n"
+      }
+    },
+    {
+      "id": "test-bundle-2",
+      "name": "Log Test",
+      "description": "Tests logging functionality",
+      "platform": "all",
+      "scripts": {
+        "install.sh": "#!/bin/bash\necho 'Log test started' >> /tmp/patchiq-test.log\n",
+        "uninstall.sh": "#!/bin/bash\nrm -f /tmp/patchiq-test.log\n"
+      }
+    }
+  ],
+  "notes": {
+    "usage": "This file defines test packages for validating agent deployment functionality across all platforms.",
+    "verification": "Each package includes a test_verification command to confirm successful installation.",
+    "size_estimates": "Sizes are approximate and may vary by version.",
+    "executors": "Packages are grouped by their executor (winget, choco, brew, apt, yum, dnf)."
+  }
+}

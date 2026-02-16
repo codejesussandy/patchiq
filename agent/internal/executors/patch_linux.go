@@ -3,6 +3,7 @@
 package executors
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -36,10 +37,22 @@ func detectPackageManager() string {
 }
 
 // InstallPatch installs a specific package update
-func (e *LinuxPatchExecutor) InstallPatch(patchID string, options models.PatchOptions) models.ExecutionResult {
+func (e *LinuxPatchExecutor) InstallPatch(ctx context.Context, patchID string, options models.PatchOptions) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{
 		Success: false,
+	}
+
+	// Check for timeout before starting
+	select {
+	case <-ctx.Done():
+		result.ErrorCode = models.ErrTimeout
+		result.ErrorMessage = "Operation timed out"
+		result.Retryable = true
+		result.Message = "Command timed out before execution"
+		result.Duration = time.Since(startTime).Milliseconds()
+		return result
+	default:
 	}
 
 	var cmd *exec.Cmd
@@ -47,20 +60,21 @@ func (e *LinuxPatchExecutor) InstallPatch(patchID string, options models.PatchOp
 	switch e.packageManager {
 	case "apt-get":
 		// Update package list first
-		exec.Command("apt-get", "update", "-qq").Run()
-		cmd = exec.Command("apt-get", "install", "-y", "--only-upgrade", patchID)
+		updateCmd := exec.CommandContext(ctx, "apt-get", "update", "-qq")
+		updateCmd.Run()
+		cmd = exec.CommandContext(ctx, "apt-get", "install", "-y", "--only-upgrade", patchID)
 
 	case "dnf":
-		cmd = exec.Command("dnf", "update", "-y", patchID)
+		cmd = exec.CommandContext(ctx, "dnf", "update", "-y", patchID)
 
 	case "yum":
-		cmd = exec.Command("yum", "update", "-y", patchID)
+		cmd = exec.CommandContext(ctx, "yum", "update", "-y", patchID)
 
 	case "zypper":
-		cmd = exec.Command("zypper", "--non-interactive", "update", patchID)
+		cmd = exec.CommandContext(ctx, "zypper", "--non-interactive", "update", patchID)
 
 	case "pacman":
-		cmd = exec.Command("pacman", "-Syu", "--noconfirm", patchID)
+		cmd = exec.CommandContext(ctx, "pacman", "-Syu", "--noconfirm", patchID)
 
 	default:
 		result.ErrorMessage = fmt.Sprintf("Unsupported package manager: %s", e.packageManager)
@@ -75,10 +89,21 @@ func (e *LinuxPatchExecutor) InstallPatch(patchID string, options models.PatchOp
 	result.Output = string(output)
 
 	if err != nil {
+		// Check if context was cancelled (timeout)
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+		result.ErrorMessage = "Operation timed out"
+		result.Retryable = true
+			result.Message = "Command execution timed out"
+			result.ExitCode = -1
+			return result
+		}
+
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		// Classify the error and set appropriate error code
+		setPatchErrorResult(&result, err, string(output), time.Since(startTime).Milliseconds())
 		result.Message = fmt.Sprintf("Failed to update package: %s", patchID)
 		return result
 	}
@@ -90,7 +115,7 @@ func (e *LinuxPatchExecutor) InstallPatch(patchID string, options models.PatchOp
 }
 
 // UninstallPatch removes a package (downgrade not typically supported)
-func (e *LinuxPatchExecutor) UninstallPatch(patchID string) models.ExecutionResult {
+func (e *LinuxPatchExecutor) UninstallPatch(ctx context.Context, patchID string) models.ExecutionResult {
 	return models.ExecutionResult{
 		Success:      false,
 		Message:      "Patch uninstallation not supported on Linux",
@@ -100,10 +125,22 @@ func (e *LinuxPatchExecutor) UninstallPatch(patchID string) models.ExecutionResu
 }
 
 // InstallAllPatches installs all available updates
-func (e *LinuxPatchExecutor) InstallAllPatches(options models.PatchOptions) models.ExecutionResult {
+func (e *LinuxPatchExecutor) InstallAllPatches(ctx context.Context, options models.PatchOptions) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{
 		Success: false,
+	}
+
+	// Check for timeout before starting
+	select {
+	case <-ctx.Done():
+		result.ErrorCode = models.ErrTimeout
+		result.ErrorMessage = "Operation timed out"
+		result.Retryable = true
+		result.Message = "Command timed out before execution"
+		result.Duration = time.Since(startTime).Milliseconds()
+		return result
+	default:
 	}
 
 	var cmd *exec.Cmd
@@ -111,24 +148,25 @@ func (e *LinuxPatchExecutor) InstallAllPatches(options models.PatchOptions) mode
 	switch e.packageManager {
 	case "apt-get":
 		// Update and upgrade
-		exec.Command("apt-get", "update", "-qq").Run()
+		updateCmd := exec.CommandContext(ctx, "apt-get", "update", "-qq")
+		updateCmd.Run()
 		if options.AllowReboot {
-			cmd = exec.Command("apt-get", "dist-upgrade", "-y")
+			cmd = exec.CommandContext(ctx, "apt-get", "dist-upgrade", "-y")
 		} else {
-			cmd = exec.Command("apt-get", "upgrade", "-y")
+			cmd = exec.CommandContext(ctx, "apt-get", "upgrade", "-y")
 		}
 
 	case "dnf":
-		cmd = exec.Command("dnf", "upgrade", "-y")
+		cmd = exec.CommandContext(ctx, "dnf", "upgrade", "-y")
 
 	case "yum":
-		cmd = exec.Command("yum", "update", "-y")
+		cmd = exec.CommandContext(ctx, "yum", "update", "-y")
 
 	case "zypper":
-		cmd = exec.Command("zypper", "--non-interactive", "update")
+		cmd = exec.CommandContext(ctx, "zypper", "--non-interactive", "update")
 
 	case "pacman":
-		cmd = exec.Command("pacman", "-Syu", "--noconfirm")
+		cmd = exec.CommandContext(ctx, "pacman", "-Syu", "--noconfirm")
 
 	default:
 		result.ErrorMessage = fmt.Sprintf("Unsupported package manager: %s", e.packageManager)
@@ -143,6 +181,16 @@ func (e *LinuxPatchExecutor) InstallAllPatches(options models.PatchOptions) mode
 	result.Output = string(output)
 
 	if err != nil {
+		// Check if context was cancelled (timeout)
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+		result.ErrorMessage = "Operation timed out"
+		result.Retryable = true
+			result.Message = "Command execution timed out"
+			result.ExitCode = -1
+			return result
+		}
+
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
@@ -158,43 +206,59 @@ func (e *LinuxPatchExecutor) InstallAllPatches(options models.PatchOptions) mode
 }
 
 // ListAvailablePatches lists available package updates
-func (e *LinuxPatchExecutor) ListAvailablePatches() ([]models.PatchInfo, error) {
+func (e *LinuxPatchExecutor) ListAvailablePatches(ctx context.Context) ([]models.PatchInfo, error) {
 	var patches []models.PatchInfo
 
 	switch e.packageManager {
 	case "apt-get":
 		// Update package list
-		exec.Command("apt-get", "update", "-qq").Run()
+		updateCmd := exec.CommandContext(ctx, "apt-get", "update", "-qq")
+		updateCmd.Run()
 
 		// List upgradable packages
-		cmd := exec.Command("apt", "list", "--upgradable")
+		cmd := exec.CommandContext(ctx, "apt", "list", "--upgradable")
 		output, err := cmd.Output()
 		if err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				return nil, fmt.Errorf("command timed out")
+			}
 			return nil, fmt.Errorf("failed to list updates: %v", err)
 		}
 		patches = parseAptList(string(output))
 
 	case "dnf":
-		cmd := exec.Command("dnf", "check-update", "--quiet")
+		cmd := exec.CommandContext(ctx, "dnf", "check-update", "--quiet")
 		output, _ := cmd.Output() // dnf returns exit code 100 when updates are available
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("command timed out")
+		}
 		patches = parseDnfList(string(output))
 
 	case "yum":
-		cmd := exec.Command("yum", "check-update", "--quiet")
+		cmd := exec.CommandContext(ctx, "yum", "check-update", "--quiet")
 		output, _ := cmd.Output()
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("command timed out")
+		}
 		patches = parseYumList(string(output))
 
 	case "zypper":
-		cmd := exec.Command("zypper", "--non-interactive", "list-updates")
+		cmd := exec.CommandContext(ctx, "zypper", "--non-interactive", "list-updates")
 		output, err := cmd.Output()
 		if err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				return nil, fmt.Errorf("command timed out")
+			}
 			return nil, fmt.Errorf("failed to list updates: %v", err)
 		}
 		patches = parseZypperList(string(output))
 
 	case "pacman":
-		cmd := exec.Command("pacman", "-Qu")
+		cmd := exec.CommandContext(ctx, "pacman", "-Qu")
 		output, _ := cmd.Output()
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("command timed out")
+		}
 		patches = parsePacmanList(string(output))
 	}
 
@@ -202,7 +266,7 @@ func (e *LinuxPatchExecutor) ListAvailablePatches() ([]models.PatchInfo, error) 
 }
 
 // CheckRebootRequired checks if a reboot is required
-func (e *LinuxPatchExecutor) CheckRebootRequired() bool {
+func (e *LinuxPatchExecutor) CheckRebootRequired(ctx context.Context) bool {
 	// Check for reboot-required file (Debian/Ubuntu)
 	if _, err := os.Stat("/var/run/reboot-required"); err == nil {
 		return true
@@ -210,7 +274,7 @@ func (e *LinuxPatchExecutor) CheckRebootRequired() bool {
 
 	// Check needs-restarting (RHEL/CentOS/Fedora)
 	if cmd, err := exec.LookPath("needs-restarting"); err == nil {
-		if exec.Command(cmd, "-r").Run() != nil {
+		if exec.CommandContext(ctx, cmd, "-r").Run() != nil {
 			return true
 		}
 	}
@@ -318,3 +382,82 @@ func parsePacmanList(output string) []models.PatchInfo {
 	}
 	return patches
 }
+
+// classifyPatchError determines the appropriate error code for patch installation errors
+func classifyPatchError(err error, output string) (string, string) {
+	if err == nil {
+		return "", ""
+	}
+	
+	errStr := err.Error()
+	errLower := strings.ToLower(errStr)
+	outputLower := strings.ToLower(output)
+	
+	// Check output for specific error patterns
+	combined := errLower + " " + outputLower
+	
+	// Permission errors
+	if strings.Contains(combined, "permission denied") || 
+	   strings.Contains(combined, "are you root") ||
+	   strings.Contains(combined, "operation not permitted") {
+		return models.ErrPermissionDenied, "Insufficient permissions to install patch. Root/sudo access required."
+	}
+	
+	// Package not found
+	if strings.Contains(combined, "unable to locate package") ||
+	   strings.Contains(combined, "no package") ||
+	   strings.Contains(combined, "not found") ||
+	   strings.Contains(combined, "package not available") {
+		return models.ErrPackageNotFound, fmt.Sprintf("Package not found: %s", errStr)
+	}
+	
+	// Disk space errors
+	if strings.Contains(combined, "no space left") ||
+	   strings.Contains(combined, "disk full") ||
+	   strings.Contains(combined, "insufficient disk space") {
+		return models.ErrDiskFull, "Insufficient disk space for installation"
+	}
+	
+	// Network errors
+	if strings.Contains(combined, "failed to fetch") ||
+	   strings.Contains(combined, "could not download") ||
+	   strings.Contains(combined, "temporary failure resolving") ||
+	   strings.Contains(combined, "connection") ||
+	   strings.Contains(combined, "network") ||
+	   strings.Contains(combined, "unreachable") {
+		return models.ErrNetworkFailure, fmt.Sprintf("Network error during package download: %s", errStr)
+	}
+	
+	// Dependency errors
+	if strings.Contains(combined, "depends") ||
+	   strings.Contains(combined, "dependency") ||
+	   strings.Contains(combined, "unmet dependencies") {
+		return models.ErrDependencyMissing, fmt.Sprintf("Unmet dependencies: %s", errStr)
+	}
+	
+	// Already installed
+	if strings.Contains(combined, "already installed") ||
+	   strings.Contains(combined, "already the newest") {
+		return models.ErrAlreadyInstalled, "Package is already installed"
+	}
+	
+	// Timeout
+	if strings.Contains(combined, "timeout") ||
+	   strings.Contains(combined, "deadline exceeded") {
+		return models.ErrTimeout, "Installation timed out"
+	}
+	
+	return models.ErrUnknown, errStr
+}
+
+// setPatchErrorResult sets an error result with proper error code classification
+func setPatchErrorResult(result *models.ExecutionResult, err error, output string, duration int64) {
+	errorCode, errorMsg := classifyPatchError(err, output)
+	result.Success = false
+	result.ErrorCode = errorCode
+	result.ErrorMessage = errorMsg
+	result.Retryable = models.IsRetryableError(errorCode)
+	result.Duration = duration
+	result.Output = output
+}
+

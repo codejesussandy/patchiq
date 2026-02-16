@@ -58,7 +58,7 @@ func NewBaseScriptExecutor(dataDir string, dlCfg *DownloadConfig) *BaseScriptExe
 }
 
 // ExecuteBundle downloads a bundle, extracts it, and runs the specified script
-func (e *BaseScriptExecutor) ExecuteBundle(request models.ScriptBundleRequest) models.ExecutionResult {
+func (e *BaseScriptExecutor) ExecuteBundle(ctx context.Context, request models.ScriptBundleRequest) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 
@@ -76,9 +76,7 @@ func (e *BaseScriptExecutor) ExecuteBundle(request models.ScriptBundleRequest) m
 	if request.Script != "" && request.BundleURL != "" {
 		downloadPath, err := e.downloadInstaller(request.BundleURL, request.BundleChecksum)
 		if err != nil {
-			result.ErrorMessage = err.Error()
-			result.Message = "Failed to download installer for inline script"
-			result.Duration = time.Since(startTime).Milliseconds()
+			setErrorResult(&result, err, "Failed to download installer for inline script", time.Since(startTime).Milliseconds())
 			return result
 		}
 		defer os.Remove(downloadPath)
@@ -88,14 +86,14 @@ func (e *BaseScriptExecutor) ExecuteBundle(request models.ScriptBundleRequest) m
 		}
 		request.Environment["PATCHIQ_DOWNLOAD_PATH"] = downloadPath
 
-		execResult := e.ExecuteInlineScript(request.Script, request.OperationType, request.RequiresRoot, request.Environment)
+		execResult := e.ExecuteInlineScript(ctx, request.Script, request.OperationType, request.RequiresRoot, request.Environment)
 		execResult.Duration = time.Since(startTime).Milliseconds()
 		return execResult
 	}
 
 	// If inline script is provided (no bundle), use it directly
 	if request.Script != "" {
-		return e.ExecuteInlineScript(request.Script, request.OperationType, request.RequiresRoot, request.Environment)
+		return e.ExecuteInlineScript(ctx, request.Script, request.OperationType, request.RequiresRoot, request.Environment)
 	}
 
 	// Download and execute bundle
@@ -109,9 +107,7 @@ func (e *BaseScriptExecutor) executeFromBundle(request models.ScriptBundleReques
 	// 1. Download bundle
 	bundlePath, err := e.downloadBundle(request.BundleURL, request.BundleChecksum)
 	if err != nil {
-		result.ErrorMessage = err.Error()
-		result.Message = "Failed to download bundle"
-		result.Duration = time.Since(startTime).Milliseconds()
+		setErrorResult(&result, err, "Failed to download bundle", time.Since(startTime).Milliseconds())
 		return result
 	}
 	defer os.Remove(bundlePath)
@@ -181,7 +177,7 @@ func (e *BaseScriptExecutor) executeFromBundle(request models.ScriptBundleReques
 }
 
 // ExecuteInlineScript runs a script directly without bundle download
-func (e *BaseScriptExecutor) ExecuteInlineScript(script string, operationType string, requiresRoot bool, env map[string]string) models.ExecutionResult {
+func (e *BaseScriptExecutor) ExecuteInlineScript(ctx context.Context, script string, operationType string, requiresRoot bool, env map[string]string) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 
@@ -421,8 +417,98 @@ func (e *BaseScriptExecutor) downloadBundle(bundleURL string, expectedChecksum s
 	return tempPath, nil
 }
 
+// validateBundleStructure performs security validation on a bundle before extraction.
+// It checks for:
+// - Malicious path traversal attempts (e.g., ../../../etc/passwd)
+// - Required scripts (install.sh, uninstall.sh, rollback.sh)
+// - Size limits (max 500MB)
+// Returns an error if any validation fails.
+func (e *BaseScriptExecutor) validateBundleStructure(bundlePath string) error {
+	file, err := os.Open(bundlePath)
+	if err != nil {
+		return fmt.Errorf("failed to open bundle for validation: %w", err)
+	}
+	defer file.Close()
+
+	// Check file size (500MB limit)
+	stat, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat bundle: %w", err)
+	}
+
+	const maxBundleSize = 500 * 1024 * 1024 // 500MB
+	if stat.Size() > maxBundleSize {
+		return fmt.Errorf("bundle exceeds size limit: %d bytes (max %d bytes)", stat.Size(), maxBundleSize)
+	}
+
+	// Open gzip reader
+	gzr, err := gzip.NewReader(file)
+	if err != nil {
+		return fmt.Errorf("invalid gzip format: %w", err)
+	}
+	defer gzr.Close()
+
+	// Open tar reader
+	tr := tar.NewReader(gzr)
+
+	// Track found scripts
+	foundScripts := make(map[string]bool)
+	requiredScripts := []string{"install.sh", "uninstall.sh", "rollback.sh"}
+
+	// Scan all entries
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("invalid tar format: %w", err)
+		}
+
+		// Detect path traversal attacks
+		cleanPath := filepath.Clean(header.Name)
+
+		// Check for absolute paths
+		if filepath.IsAbs(header.Name) {
+			return fmt.Errorf("malicious absolute path detected: %s", header.Name)
+		}
+
+		// Check for parent directory references
+		if strings.HasPrefix(cleanPath, "..") || strings.Contains(cleanPath, "../") {
+			return fmt.Errorf("malicious path traversal detected: %s", header.Name)
+		}
+
+		// Check for paths that would escape the extraction directory
+		if strings.Contains(header.Name, ".."+string(os.PathSeparator)) {
+			return fmt.Errorf("malicious path detected: %s", header.Name)
+		}
+
+		// Track required scripts (check both with and without directory prefix)
+		baseName := filepath.Base(header.Name)
+		for _, script := range requiredScripts {
+			if baseName == script {
+				foundScripts[script] = true
+			}
+		}
+	}
+
+	// Verify all required scripts are present
+	for _, script := range requiredScripts {
+		if !foundScripts[script] {
+			return fmt.Errorf("missing required script: %s", script)
+		}
+	}
+
+	return nil
+}
+
 // extractTarGz extracts a tar.gz archive
 func (e *BaseScriptExecutor) extractTarGz(tarGzPath string, destDir string) error {
+	// Validate bundle structure before extraction
+	if err := e.validateBundleStructure(tarGzPath); err != nil {
+		return fmt.Errorf("bundle validation failed: %w", err)
+	}
+
 	file, err := os.Open(tarGzPath)
 	if err != nil {
 		return fmt.Errorf("failed to open archive: %w", err)
@@ -715,3 +801,75 @@ func (e *BaseScriptExecutor) runScript(scriptPath string, workDir string, requir
 	result.ExitCode = 0
 	return result
 }
+
+// isNetworkError checks if an error is network-related
+func isNetworkError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := strings.ToLower(err.Error())
+	return strings.Contains(errStr, "network") ||
+		strings.Contains(errStr, "connection") ||
+		strings.Contains(errStr, "timeout") ||
+		strings.Contains(errStr, "dial tcp") ||
+		strings.Contains(errStr, "unreachable") ||
+		strings.Contains(errStr, "no route to host") ||
+		strings.Contains(errStr, "host is down") ||
+		strings.Contains(errStr, "tls handshake") ||
+		strings.Contains(errStr, "EOF")
+}
+
+// classifyDownloadError determines the appropriate error code for download failures
+func classifyDownloadError(err error) (string, string) {
+	if err == nil {
+		return "", ""
+	}
+	
+	errStr := err.Error()
+	errLower := strings.ToLower(errStr)
+	
+	if isNetworkError(err) {
+		return models.ErrNetworkFailure, fmt.Sprintf("Network error during download: %v", err)
+	}
+	
+	if strings.Contains(errLower, "timeout") || strings.Contains(errLower, "deadline exceeded") {
+		return models.ErrTimeout, fmt.Sprintf("Download timed out: %v", err)
+	}
+	
+	if strings.Contains(errLower, "checksum") || strings.Contains(errLower, "hash") {
+		return models.ErrChecksumMismatch, errStr
+	}
+	
+	if strings.Contains(errLower, "404") || strings.Contains(errLower, "not found") {
+		return models.ErrPackageNotFound, fmt.Sprintf("Package not found: %v", err)
+	}
+	
+	if strings.Contains(errLower, "403") || strings.Contains(errLower, "unauthorized") || 
+	   strings.Contains(errLower, "permission denied") {
+		return models.ErrPermissionDenied, fmt.Sprintf("Access denied: %v", err)
+	}
+	
+	if strings.Contains(errLower, "503") || strings.Contains(errLower, "service unavailable") {
+		return models.ErrServiceUnavailable, fmt.Sprintf("Service unavailable: %v", err)
+	}
+	
+	if strings.Contains(errLower, "disk") || strings.Contains(errLower, "no space") {
+		return models.ErrDiskFull, errStr
+	}
+	
+	return models.ErrUnknown, errStr
+}
+
+// setErrorResult sets an error result with proper error code classification
+func setErrorResult(result *models.ExecutionResult, err error, defaultMsg string, duration int64) {
+	errorCode, errorMsg := classifyDownloadError(err)
+	result.Success = false
+	result.ErrorCode = errorCode
+	result.ErrorMessage = errorMsg
+	if errorMsg == "" {
+		result.ErrorMessage = defaultMsg
+	}
+	result.Retryable = models.IsRetryableError(errorCode)
+	result.Duration = duration
+}
+

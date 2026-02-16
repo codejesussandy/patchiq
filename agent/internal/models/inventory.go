@@ -2,16 +2,16 @@ package models
 
 // FullInventory represents complete inventory data
 type FullInventory struct {
-	CollectedAt          string           `json:"collectedAt"`
-	AgentID              string           `json:"agentId"`
-	AgentVersion         string           `json:"agentVersion"`
-	CollectionDurationMs int64            `json:"collectionDurationMs"`
-	Hardware             *Hardware        `json:"hardware,omitempty"`
-	Software             *Software        `json:"software,omitempty"`
-	Network              *Network         `json:"network,omitempty"`
-	Security             *Security        `json:"security,omitempty"`
-	Peripherals          *Peripherals     `json:"peripherals,omitempty"`
-	PowerManagement      *PowerManagement `json:"powerManagement,omitempty"`
+	CollectedAt          string            `json:"collectedAt"`
+	AgentID              string            `json:"agentId"`
+	AgentVersion         string            `json:"agentVersion"`
+	CollectionDurationMs int64             `json:"collectionDurationMs"`
+	Hardware             *Hardware         `json:"hardware,omitempty"`
+	Software             *Software         `json:"software,omitempty"`
+	Network              *Network          `json:"network,omitempty"`
+	Security             *Security         `json:"security,omitempty"`
+	Peripherals          *Peripherals      `json:"peripherals,omitempty"`
+	PowerManagement      *PowerManagement  `json:"powerManagement,omitempty"`
 	Errors               []CollectionError `json:"errors,omitempty"`
 }
 
@@ -40,22 +40,22 @@ type AgentInfo struct {
 
 // CollectionStatus represents the status of data collection
 type CollectionStatus struct {
-	Category     string `json:"category"`
+	Category      string `json:"category"`
 	LastCollected string `json:"lastCollected,omitempty"`
-	Status       string `json:"status"` // idle, collecting, completed, error
-	Duration     int64  `json:"durationMs,omitempty"`
-	Error        string `json:"error,omitempty"`
+	Status        string `json:"status"` // idle, collecting, completed, error
+	Duration      int64  `json:"durationMs,omitempty"`
+	Error         string `json:"error,omitempty"`
 }
 
 // DashboardData represents data for the agent dashboard UI
 type DashboardData struct {
-	Agent        AgentInfo          `json:"agent"`
-	Collections  []CollectionStatus `json:"collections"`
-	Hardware     *Hardware          `json:"hardware,omitempty"`
-	Software     *Software          `json:"software,omitempty"`
-	Network      *Network           `json:"network,omitempty"`
-	Security     *Security          `json:"security,omitempty"`
-	Peripherals  *Peripherals       `json:"peripherals,omitempty"`
-	Telemetry    *Telemetry         `json:"telemetry,omitempty"`
-	LastUpdated  string             `json:"lastUpdated"`
+	Agent       AgentInfo          `json:"agent"`
+	Collections []CollectionStatus `json:"collections"`
+	Hardware    *Hardware          `json:"hardware,omitempty"`
+	Software    *Software          `json:"software,omitempty"`
+	Network     *Network           `json:"network,omitempty"`
+	Security    *Security          `json:"security,omitempty"`
+	Peripherals *Peripherals       `json:"peripherals,omitempty"`
+	Telemetry   *Telemetry         `json:"telemetry,omitempty"`
+	LastUpdated string             `json:"lastUpdated"`
 }

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="1">
+    <title>PatchIQ Agent</title>
+    <organization>io.patchiq</organization>
+    <domains enable_localSystem="true"/>
+    <options customize="never" require-scripts="true" rootVolumeOnly="true"/>
+
+    <!-- Define documents displayed at various steps -->
+    <welcome file="welcome.html" mime-type="text/html"/>
+    <license file="license.html" mime-type="text/html"/>
+    <conclusion file="conclusion.html" mime-type="text/html"/>
+
+    <!-- Define installation destinations -->
+    <allowed-os-versions>
+        <os-version min="10.13"/>
+    </allowed-os-versions>
+
+    <!-- List all component packages -->
+    <pkg-ref id="io.patchiq.agent">
+        <bundle-version>
+            <bundle id="io.patchiq.agent" CFBundleShortVersionString="1.0.0-test"/>
+        </bundle-version>
+    </pkg-ref>
+
+    <!-- Define the order of installation -->
+    <choices-outline>
+        <line choice="default">
+            <line choice="io.patchiq.agent"/>
+        </line>
+    </choices-outline>
+
+    <choice id="default"/>
+    <choice id="io.patchiq.agent" visible="false">
+        <pkg-ref id="io.patchiq.agent"/>
+    </choice>
+
+    <pkg-ref id="io.patchiq.agent" version="1.0.0-test" onConclusion="none">component.pkg</pkg-ref>
+</installer-gui-script>

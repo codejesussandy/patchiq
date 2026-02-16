@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"context"
 	"github.com/patchify/agent/internal/models"
 )
 
@@ -26,20 +27,20 @@ func NewDarwinSoftwareExecutor() *DarwinSoftwareExecutor {
 }
 
 // InstallSoftware installs software on macOS
-func (e *DarwinSoftwareExecutor) InstallSoftware(pkg models.SoftwarePackage) models.ExecutionResult {
+func (e *DarwinSoftwareExecutor) InstallSoftware(ctx context.Context, pkg models.SoftwarePackage) models.ExecutionResult {
 	startTime := time.Now()
 
 	switch strings.ToLower(pkg.Source) {
 	case "brew", "homebrew":
-		return e.installWithBrew(pkg, startTime)
+		return e.installWithBrew(ctx, pkg, startTime)
 	case "pkg":
-		return e.installPKG(pkg, startTime)
+		return e.installPKG(ctx, pkg, startTime)
 	case "dmg":
-		return e.installDMG(pkg, startTime)
+		return e.installDMG(ctx, pkg, startTime)
 	case "mas", "appstore":
-		return e.installFromAppStore(pkg, startTime)
+		return e.installFromAppStore(ctx, pkg, startTime)
 	case "url":
-		return e.installFromURL(pkg, startTime)
+		return e.installFromURL(ctx, pkg, startTime)
 	default:
 		return models.ExecutionResult{
 			Success:      false,
@@ -51,7 +52,7 @@ func (e *DarwinSoftwareExecutor) InstallSoftware(pkg models.SoftwarePackage) mod
 }
 
 // installWithBrew installs software using Homebrew
-func (e *DarwinSoftwareExecutor) installWithBrew(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *DarwinSoftwareExecutor) installWithBrew(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
 	// Check if Homebrew is installed
@@ -71,7 +72,7 @@ func (e *DarwinSoftwareExecutor) installWithBrew(pkg models.SoftwarePackage, sta
 		args = append(args, pkg.Name)
 	}
 
-	cmd := exec.Command(brewPath, args...)
+	cmd := exec.CommandContext(ctx, brewPath, args...)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
@@ -81,7 +82,13 @@ func (e *DarwinSoftwareExecutor) installWithBrew(pkg models.SoftwarePackage, sta
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+		} else {
+			classifyDarwinSoftwareError(&result, err, string(output))
+		}
 		result.Message = fmt.Sprintf("Failed to install %s via Homebrew", pkg.Name)
 		return result
 	}
@@ -93,7 +100,7 @@ func (e *DarwinSoftwareExecutor) installWithBrew(pkg models.SoftwarePackage, sta
 }
 
 // installPKG installs a .pkg file
-func (e *DarwinSoftwareExecutor) installPKG(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *DarwinSoftwareExecutor) installPKG(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
 	pkgPath := pkg.PackageURL
@@ -127,7 +134,7 @@ func (e *DarwinSoftwareExecutor) installPKG(pkg models.SoftwarePackage, startTim
 		args = append(args, strings.Fields(pkg.Arguments)...)
 	}
 
-	cmd := exec.Command("installer", args...)
+	cmd := exec.CommandContext(ctx, "installer", args...)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
@@ -137,7 +144,13 @@ func (e *DarwinSoftwareExecutor) installPKG(pkg models.SoftwarePackage, startTim
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+		} else {
+			classifyDarwinSoftwareError(&result, err, string(output))
+		}
 		result.Message = fmt.Sprintf("Failed to install PKG: %s", pkg.Name)
 		return result
 	}
@@ -149,7 +162,7 @@ func (e *DarwinSoftwareExecutor) installPKG(pkg models.SoftwarePackage, startTim
 }
 
 // installDMG installs an application from a .dmg file
-func (e *DarwinSoftwareExecutor) installDMG(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *DarwinSoftwareExecutor) installDMG(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
 	dmgPath := pkg.PackageURL
@@ -180,10 +193,17 @@ func (e *DarwinSoftwareExecutor) installDMG(pkg models.SoftwarePackage, startTim
 	defer os.RemoveAll(mountPoint)
 
 	// Mount DMG
-	mountCmd := exec.Command("hdiutil", "attach", dmgPath, "-mountpoint", mountPoint, "-nobrowse", "-quiet")
+	mountCmd := exec.CommandContext(ctx, "hdiutil", "attach", dmgPath, "-mountpoint", mountPoint, "-nobrowse", "-quiet")
 	if output, err := mountCmd.CombinedOutput(); err != nil {
-		result.ErrorMessage = fmt.Sprintf("Failed to mount DMG: %v - %s", err, string(output))
-		result.Message = "Failed to mount DMG"
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+			result.Message = "Failed to mount DMG (timeout)"
+		} else {
+			result.ErrorMessage = fmt.Sprintf("Failed to mount DMG: %v - %s", err, string(output))
+			result.Message = "Failed to mount DMG"
+		}
 		result.Duration = time.Since(startTime).Milliseconds()
 		return result
 	}
@@ -221,10 +241,17 @@ func (e *DarwinSoftwareExecutor) installDMG(pkg models.SoftwarePackage, startTim
 	// Remove existing if present
 	os.RemoveAll(destPath)
 
-	copyCmd := exec.Command("cp", "-R", appPath, "/Applications/")
+	copyCmd := exec.CommandContext(ctx, "cp", "-R", appPath, "/Applications/")
 	if output, err := copyCmd.CombinedOutput(); err != nil {
-		result.ErrorMessage = fmt.Sprintf("Failed to copy app: %v - %s", err, string(output))
-		result.Message = "Failed to install application"
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+			result.Message = "Failed to install application (timeout)"
+		} else {
+			result.ErrorMessage = fmt.Sprintf("Failed to copy app: %v - %s", err, string(output))
+			result.Message = "Failed to install application"
+		}
 		result.Duration = time.Since(startTime).Milliseconds()
 		return result
 	}
@@ -237,7 +264,7 @@ func (e *DarwinSoftwareExecutor) installDMG(pkg models.SoftwarePackage, startTim
 }
 
 // installFromAppStore installs from Mac App Store using mas-cli
-func (e *DarwinSoftwareExecutor) installFromAppStore(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *DarwinSoftwareExecutor) installFromAppStore(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
 	// Check if mas is installed
@@ -250,7 +277,7 @@ func (e *DarwinSoftwareExecutor) installFromAppStore(pkg models.SoftwarePackage,
 	}
 
 	// Install using mas
-	cmd := exec.Command(masPath, "install", pkg.Name) // pkg.Name should be app ID
+	cmd := exec.CommandContext(ctx, masPath, "install", pkg.Name) // pkg.Name should be app ID
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
@@ -260,7 +287,13 @@ func (e *DarwinSoftwareExecutor) installFromAppStore(pkg models.SoftwarePackage,
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+		} else {
+			classifyDarwinSoftwareError(&result, err, string(output))
+		}
 		result.Message = fmt.Sprintf("Failed to install %s from App Store", pkg.Name)
 		return result
 	}
@@ -272,7 +305,7 @@ func (e *DarwinSoftwareExecutor) installFromAppStore(pkg models.SoftwarePackage,
 }
 
 // installFromURL downloads and installs based on file extension
-func (e *DarwinSoftwareExecutor) installFromURL(pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+func (e *DarwinSoftwareExecutor) installFromURL(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	url := pkg.PackageURL
 	if url == "" {
 		return models.ExecutionResult{
@@ -288,10 +321,10 @@ func (e *DarwinSoftwareExecutor) installFromURL(pkg models.SoftwarePackage, star
 	switch {
 	case strings.HasSuffix(lowerURL, ".pkg"):
 		pkg.Source = "pkg"
-		return e.installPKG(pkg, startTime)
+		return e.installPKG(ctx, pkg, startTime)
 	case strings.HasSuffix(lowerURL, ".dmg"):
 		pkg.Source = "dmg"
-		return e.installDMG(pkg, startTime)
+		return e.installDMG(ctx, pkg, startTime)
 	default:
 		return models.ExecutionResult{
 			Success:      false,
@@ -303,14 +336,14 @@ func (e *DarwinSoftwareExecutor) installFromURL(pkg models.SoftwarePackage, star
 }
 
 // UninstallSoftware removes software on macOS
-func (e *DarwinSoftwareExecutor) UninstallSoftware(name string) models.ExecutionResult {
+func (e *DarwinSoftwareExecutor) UninstallSoftware(ctx context.Context, name string) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 
 	// Try Homebrew first
 	brewPath, err := exec.LookPath("brew")
 	if err == nil {
-		cmd := exec.Command(brewPath, "uninstall", name)
+		cmd := exec.CommandContext(ctx, brewPath, "uninstall", name)
 		output, err := cmd.CombinedOutput()
 		if err == nil {
 			result.Success = true
@@ -328,10 +361,16 @@ func (e *DarwinSoftwareExecutor) UninstallSoftware(name string) models.Execution
 	}
 
 	if _, err := os.Stat(appPath); err == nil {
-		cmd := exec.Command("rm", "-rf", appPath)
+		cmd := exec.CommandContext(ctx, "rm", "-rf", appPath)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			result.ErrorMessage = err.Error()
+			if ctx.Err() == context.DeadlineExceeded {
+				result.ErrorCode = models.ErrTimeout
+				result.Retryable = true
+				result.ErrorMessage = "Command timeout exceeded"
+			} else {
+				result.ErrorMessage = err.Error()
+			}
 			result.Message = fmt.Sprintf("Failed to remove %s", appPath)
 			result.Output = string(output)
 			result.Duration = time.Since(startTime).Milliseconds()
@@ -350,11 +389,11 @@ func (e *DarwinSoftwareExecutor) UninstallSoftware(name string) models.Execution
 }
 
 // GetInstalledVersion returns the installed version of software
-func (e *DarwinSoftwareExecutor) GetInstalledVersion(name string) (string, error) {
+func (e *DarwinSoftwareExecutor) GetInstalledVersion(ctx context.Context, name string) (string, error) {
 	// Try Homebrew
 	brewPath, err := exec.LookPath("brew")
 	if err == nil {
-		cmd := exec.Command(brewPath, "list", "--versions", name)
+		cmd := exec.CommandContext(ctx, brewPath, "list", "--versions", name)
 		output, err := cmd.Output()
 		if err == nil {
 			parts := strings.Fields(string(output))
@@ -372,7 +411,7 @@ func (e *DarwinSoftwareExecutor) GetInstalledVersion(name string) (string, error
 
 	plistPath := filepath.Join(appPath, "Contents", "Info.plist")
 	if _, err := os.Stat(plistPath); err == nil {
-		cmd := exec.Command("defaults", "read", plistPath, "CFBundleShortVersionString")
+		cmd := exec.CommandContext(ctx, "defaults", "read", plistPath, "CFBundleShortVersionString")
 		output, err := cmd.Output()
 		if err == nil {
 			return strings.TrimSpace(string(output)), nil
@@ -421,3 +460,98 @@ func downloadFile(url string, expectedChecksum string) (string, error) {
 
 	return tmpFile.Name(), nil
 }
+
+// classifyDarwinSoftwareError determines the appropriate error code for software installation failures
+func classifyDarwinSoftwareError(result *models.ExecutionResult, err error, output string) {
+	if err == nil {
+		return
+	}
+
+	errStr := err.Error()
+	errLower := strings.ToLower(errStr)
+	outputLower := strings.ToLower(output)
+
+	// Check output for specific error patterns
+	combined := errLower + " " + outputLower
+
+	// Network errors
+	if strings.Contains(combined, "download") ||
+	   strings.Contains(combined, "network") ||
+	   strings.Contains(combined, "connection") ||
+	   strings.Contains(combined, "unreachable") ||
+	   strings.Contains(combined, "failed to fetch") ||
+	   strings.Contains(combined, "timeout") {
+		result.ErrorCode = models.ErrNetworkFailure
+		result.ErrorMessage = fmt.Sprintf("Network error during download: %s", errStr)
+		result.Retryable = true
+		return
+	}
+
+	// Permission errors
+	if strings.Contains(combined, "permission denied") ||
+	   strings.Contains(combined, "not authorized") ||
+	   strings.Contains(combined, "requires admin") ||
+	   strings.Contains(combined, "root") ||
+	   strings.Contains(combined, "operation not permitted") {
+		result.ErrorCode = models.ErrPermissionDenied
+		result.ErrorMessage = "Insufficient permissions. Run as root/sudo."
+		result.Retryable = false
+		return
+	}
+
+	// Disk space errors
+	if strings.Contains(combined, "disk") ||
+	   strings.Contains(combined, "space") ||
+	   strings.Contains(combined, "no space left") {
+		result.ErrorCode = models.ErrDiskFull
+		result.ErrorMessage = "Insufficient disk space for installation"
+		result.Retryable = false
+		return
+	}
+
+	// Package not found
+	if strings.Contains(combined, "not found") ||
+	   strings.Contains(combined, "no formula") ||
+	   strings.Contains(combined, "no cask") ||
+	   strings.Contains(combined, "no available formula") {
+		result.ErrorCode = models.ErrPackageNotFound
+		result.ErrorMessage = fmt.Sprintf("Package not found: %s", errStr)
+		result.Retryable = false
+		return
+	}
+
+	// Already installed
+	if strings.Contains(combined, "already installed") ||
+	   strings.Contains(combined, "already exists") {
+		result.ErrorCode = models.ErrAlreadyInstalled
+		result.ErrorMessage = "Package is already installed"
+		result.Retryable = false
+		return
+	}
+
+	// Checksum mismatch
+	if strings.Contains(combined, "checksum") ||
+	   strings.Contains(combined, "hash") ||
+	   strings.Contains(combined, "sha256") {
+		result.ErrorCode = models.ErrChecksumMismatch
+		result.ErrorMessage = fmt.Sprintf("Package integrity check failed: %s", errStr)
+		result.Retryable = false
+		return
+	}
+
+	// Dependency errors
+	if strings.Contains(combined, "dependency") ||
+	   strings.Contains(combined, "depends") ||
+	   strings.Contains(combined, "unsatisfied requirements") {
+		result.ErrorCode = models.ErrDependencyMissing
+		result.ErrorMessage = fmt.Sprintf("Missing dependencies: %s", errStr)
+		result.Retryable = false
+		return
+	}
+
+	// Default unknown error
+	result.ErrorCode = models.ErrUnknown
+	result.ErrorMessage = errStr
+	result.Retryable = false
+}
+

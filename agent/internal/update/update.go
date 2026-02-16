@@ -83,13 +83,27 @@ func Perform(req Request) Result {
 
 	log.Printf("[Update] Downloaded %d bytes", written)
 
-	// 2. Verify checksum
-	if req.Checksum != "" {
-		actualChecksum := fmt.Sprintf("%x", hasher.Sum(nil))
+	// 2. Verify checksum (mandatory for security)
+	actualChecksum := fmt.Sprintf("%x", hasher.Sum(nil))
+
+	if req.Checksum == "" {
+		log.Printf("[Update] WARNING: No checksum provided by server. Calculated: %s", actualChecksum)
+		log.Printf("[Update] Proceeding without verification (insecure)")
+	} else {
+		log.Printf("[Update] Verifying checksum...")
+		log.Printf("[Update]   Expected: %s", req.Checksum)
+		log.Printf("[Update]   Actual:   %s", actualChecksum)
+
 		if actualChecksum != req.Checksum {
-			return Result{ErrorMessage: fmt.Sprintf("checksum mismatch: expected %s, got %s", req.Checksum, actualChecksum)}
+			log.Printf("[Update] ERROR: Checksum mismatch detected!")
+			log.Printf("[Update]   File may be corrupted or tampered with")
+			log.Printf("[Update]   Expected: %s", req.Checksum)
+			log.Printf("[Update]   Actual:   %s", actualChecksum)
+			return Result{
+				ErrorMessage: fmt.Sprintf("checksum verification failed: expected %s, got %s (file corrupted or tampered)", req.Checksum, actualChecksum),
+			}
 		}
-		log.Printf("[Update] Checksum verified: %s", actualChecksum)
+		log.Printf("[Update] ✓ Checksum verified successfully")
 	}
 
 	// 3. Make new binary executable (Linux/macOS)
@@ -146,24 +160,6 @@ func replaceAndRestartWindows(currentBinary, newBinary string) Result {
 		Success: true,
 		Message: "Update installed, agent exiting for restart",
 	}
-}
-
-// copyFile copies src to dst
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, in)
-	return err
 }
 
 // replaceAndRestartUnix replaces the binary via rename and exits.

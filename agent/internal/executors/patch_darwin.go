@@ -3,6 +3,7 @@
 package executors
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -22,7 +23,7 @@ func NewDarwinPatchExecutor() *DarwinPatchExecutor {
 }
 
 // InstallPatch installs a specific macOS software update
-func (e *DarwinPatchExecutor) InstallPatch(patchID string, options models.PatchOptions) models.ExecutionResult {
+func (e *DarwinPatchExecutor) InstallPatch(ctx context.Context, patchID string, options models.PatchOptions) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{
 		Success: false,
@@ -34,17 +35,27 @@ func (e *DarwinPatchExecutor) InstallPatch(patchID string, options models.PatchO
 		args = append(args, "--restart")
 	}
 
-	cmd := exec.Command("softwareupdate", args...)
+	cmd := exec.CommandContext(ctx, "softwareupdate", args...)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
 	result.Output = string(output)
 
+	// Check for timeout
+	if ctx.Err() == context.DeadlineExceeded {
+		result.ErrorCode = models.ErrTimeout
+		result.ErrorMessage = "Patch installation timed out"
+		result.Retryable = true
+		result.Message = "Command execution timed out"
+		result.ExitCode = -1
+		return result
+	}
+
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		classifyDarwinPatchError(&result, err, string(output))
 		result.Message = fmt.Sprintf("Failed to install patch: %s", patchID)
 		return result
 	}
@@ -56,7 +67,7 @@ func (e *DarwinPatchExecutor) InstallPatch(patchID string, options models.PatchO
 }
 
 // UninstallPatch is not supported on macOS
-func (e *DarwinPatchExecutor) UninstallPatch(patchID string) models.ExecutionResult {
+func (e *DarwinPatchExecutor) UninstallPatch(ctx context.Context, patchID string) models.ExecutionResult {
 	return models.ExecutionResult{
 		Success:      false,
 		Message:      "Patch uninstallation is not supported on macOS",
@@ -66,7 +77,7 @@ func (e *DarwinPatchExecutor) UninstallPatch(patchID string) models.ExecutionRes
 }
 
 // InstallAllPatches installs all available macOS updates
-func (e *DarwinPatchExecutor) InstallAllPatches(options models.PatchOptions) models.ExecutionResult {
+func (e *DarwinPatchExecutor) InstallAllPatches(ctx context.Context, options models.PatchOptions) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{
 		Success: false,
@@ -78,17 +89,27 @@ func (e *DarwinPatchExecutor) InstallAllPatches(options models.PatchOptions) mod
 		args = append(args, "--restart")
 	}
 
-	cmd := exec.Command("softwareupdate", args...)
+	cmd := exec.CommandContext(ctx, "softwareupdate", args...)
 	output, err := cmd.CombinedOutput()
 
 	result.Duration = time.Since(startTime).Milliseconds()
 	result.Output = string(output)
 
+	// Check for timeout
+	if ctx.Err() == context.DeadlineExceeded {
+		result.ErrorCode = models.ErrTimeout
+		result.ErrorMessage = "Bulk patch installation timed out"
+		result.Retryable = true
+		result.Message = "Command execution timed out"
+		result.ExitCode = -1
+		return result
+	}
+
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
-		result.ErrorMessage = err.Error()
+		classifyDarwinPatchError(&result, err, string(output))
 		result.Message = "Failed to install all patches"
 		return result
 	}
@@ -100,9 +121,15 @@ func (e *DarwinPatchExecutor) InstallAllPatches(options models.PatchOptions) mod
 }
 
 // ListAvailablePatches lists available macOS software updates
-func (e *DarwinPatchExecutor) ListAvailablePatches() ([]models.PatchInfo, error) {
-	cmd := exec.Command("softwareupdate", "--list")
+func (e *DarwinPatchExecutor) ListAvailablePatches(ctx context.Context) ([]models.PatchInfo, error) {
+	cmd := exec.CommandContext(ctx, "softwareupdate", "--list")
 	output, err := cmd.CombinedOutput()
+
+	// Check for timeout
+	if ctx.Err() == context.DeadlineExceeded {
+		return nil, fmt.Errorf("command timed out")
+	}
+
 	if err != nil {
 		// If no updates available, softwareupdate may return non-zero
 		if strings.Contains(string(output), "No new software available") {
@@ -115,15 +142,21 @@ func (e *DarwinPatchExecutor) ListAvailablePatches() ([]models.PatchInfo, error)
 }
 
 // CheckRebootRequired checks if a reboot is required on macOS
-func (e *DarwinPatchExecutor) CheckRebootRequired() bool {
+func (e *DarwinPatchExecutor) CheckRebootRequired(ctx context.Context) bool {
 	// Check for pending restart file
 	if _, err := os.Stat("/var/db/.AppleUpgrade"); err == nil {
 		return true
 	}
 
 	// Check softwareupdate restart required
-	cmd := exec.Command("softwareupdate", "--list")
-	output, _ := cmd.CombinedOutput()
+	cmd := exec.CommandContext(ctx, "softwareupdate", "--list")
+	output, err := cmd.CombinedOutput()
+
+	// If timeout or error, assume no reboot required (safer default)
+	if err != nil || ctx.Err() == context.DeadlineExceeded {
+		return false
+	}
+
 	return strings.Contains(string(output), "[restart]")
 }
 
@@ -183,3 +216,85 @@ func parseSoftwareUpdateList(output string) []models.PatchInfo {
 
 	return patches
 }
+
+// classifyDarwinPatchError determines the appropriate error code for macOS update failures
+func classifyDarwinPatchError(result *models.ExecutionResult, err error, output string) {
+	if err == nil {
+		return
+	}
+
+	errStr := err.Error()
+	errLower := strings.ToLower(errStr)
+	outputLower := strings.ToLower(output)
+
+	// Check output for specific error patterns
+	combined := errLower + " " + outputLower
+
+	// Network errors
+	if strings.Contains(combined, "network") ||
+	   strings.Contains(combined, "connection") ||
+	   strings.Contains(combined, "download") ||
+	   strings.Contains(combined, "unreachable") ||
+	   strings.Contains(combined, "failed to contact") {
+		result.ErrorCode = models.ErrNetworkFailure
+		result.ErrorMessage = fmt.Sprintf("Network error during update: %s", errStr)
+		result.Retryable = true
+		return
+	}
+
+	// Permission errors
+	if strings.Contains(combined, "permission denied") ||
+	   strings.Contains(combined, "not authorized") ||
+	   strings.Contains(combined, "requires admin") ||
+	   strings.Contains(combined, "root") {
+		result.ErrorCode = models.ErrPermissionDenied
+		result.ErrorMessage = "Insufficient permissions. Run as root/sudo."
+		result.Retryable = false
+		return
+	}
+
+	// Disk space errors
+	if strings.Contains(combined, "disk") ||
+	   strings.Contains(combined, "space") ||
+	   strings.Contains(combined, "no space left") {
+		result.ErrorCode = models.ErrDiskFull
+		result.ErrorMessage = "Insufficient disk space for update"
+		result.Retryable = false
+		return
+	}
+
+	// Update not found
+	if strings.Contains(combined, "not found") ||
+	   strings.Contains(combined, "no updates") ||
+	   strings.Contains(combined, "no such update") {
+		result.ErrorCode = models.ErrPackageNotFound
+		result.ErrorMessage = fmt.Sprintf("Update not found: %s", errStr)
+		result.Retryable = false
+		return
+	}
+
+	// Already installed
+	if strings.Contains(combined, "already installed") ||
+	   strings.Contains(combined, "up to date") {
+		result.ErrorCode = models.ErrAlreadyInstalled
+		result.ErrorMessage = "Update is already installed"
+		result.Retryable = false
+		return
+	}
+
+	// Service unavailable
+	if strings.Contains(combined, "service") ||
+	   strings.Contains(combined, "unavailable") ||
+	   strings.Contains(combined, "server") {
+		result.ErrorCode = models.ErrServiceUnavailable
+		result.ErrorMessage = fmt.Sprintf("Software Update service unavailable: %s", errStr)
+		result.Retryable = true
+		return
+	}
+
+	// Default unknown error
+	result.ErrorCode = models.ErrUnknown
+	result.ErrorMessage = errStr
+	result.Retryable = false
+}
+

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
-	"net/url"
+	urlpkg "net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -15,16 +17,48 @@ import (
 
 	"github.com/patchify/agent/internal/backend"
 	"github.com/patchify/agent/internal/collectors"
-	agentsvc "github.com/patchify/agent/internal/service"
 	"github.com/patchify/agent/internal/config"
 	"github.com/patchify/agent/internal/executors"
+	"github.com/patchify/agent/internal/logger"
+	"github.com/patchify/agent/internal/metrics"
 	"github.com/patchify/agent/internal/server"
+	agentsvc "github.com/patchify/agent/internal/service"
 )
 
 var (
 	version   = "1.1.0"
 	buildDate = "unknown"
 )
+
+
+// convertResultToString converts storage result map to string
+func convertResultToString(result map[string]interface{}) string {
+	if result == nil {
+		return ""
+	}
+	if msg, ok := result["message"].(string); ok {
+		return msg
+	}
+	// Fallback to JSON encoding
+	if b, err := json.Marshal(result); err == nil {
+		return string(b)
+	}
+	return ""
+}
+
+// formatDuration formats a duration as a human-readable string
+func formatDuration(d time.Duration) string {
+	if d < time.Second {
+		return fmt.Sprintf("%dms", d.Milliseconds())
+	}
+	if d < time.Minute {
+		return fmt.Sprintf("%.1fs", d.Seconds())
+	}
+	if d < time.Hour {
+		return fmt.Sprintf("%.1fm", d.Minutes())
+	}
+	return fmt.Sprintf("%.1fh", d.Hours())
+}
 
 func main() {
 	// Detect if running as Windows Service (before flag parsing)
@@ -57,6 +91,10 @@ func main() {
 	uninstallService := flag.Bool("uninstall-service", false, "Uninstall Windows Service (requires admin)")
 	startService := flag.Bool("start-service", false, "Start Windows Service")
 	stopService := flag.Bool("stop-service", false, "Stop Windows Service")
+	rollback := flag.Bool("rollback", false, "Rollback agent to previous version")
+	rollbackVersion := flag.String("rollback-version", "", "Specific version to rollback to (optional)")
+	forceRollback := flag.Bool("force", false, "Force rollback without confirmation")
+	listRollbacks := flag.Bool("list-rollbacks", false, "List available rollback versions")
 	flag.Parse()
 
 	if *showVersion {
@@ -110,6 +148,18 @@ func main() {
 	// Handle status command
 	if *showStatus {
 		showAgentStatus()
+		os.Exit(0)
+	}
+
+	// Handle list-rollbacks command
+	if *listRollbacks {
+		listAvailableRollbacks()
+		os.Exit(0)
+	}
+
+	// Handle rollback command
+	if *rollback {
+		runRollback(*rollbackVersion, *forceRollback)
 		os.Exit(0)
 	}
 
@@ -200,6 +250,11 @@ func main() {
 		cfg.NoProxy = *noProxy
 	}
 
+	// Initialize structured logger
+	if err := logger.Init(cfg.LogLevel, cfg.LogFormat, cfg.LogFile); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+
 	// Ensure data directory exists
 	if err := os.MkdirAll(cfg.DataDir, 0755); err != nil {
 		log.Printf("Warning: Could not create data directory: %v", err)
@@ -227,6 +282,9 @@ func main() {
 	// Start background collection for local web UI
 	srv.StartBackgroundCollection()
 
+	// Set Prometheus agent_up metric
+	metrics.AgentUp.Set(1)
+
 	// Create and start backend manager (unless disabled)
 	var backendMgr *backend.Manager
 	if !*noBackend && cfg.ServerURL != "" {
@@ -247,11 +305,19 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		<-sigChan
-		log.Println("\nShutting down agent...")
+		sig := <-sigChan
+		log.Printf("\nReceived shutdown signal: %s", sig.String())
+		log.Println("Shutting down agent...")
+
+		// Stop backend manager with timeout
 		if backendMgr != nil {
-			backendMgr.Stop()
+			if err := backendMgr.Stop(); err != nil {
+				log.Printf("Warning: Shutdown error: %v (forcing exit)", err)
+			}
 		}
+
+		// Exit cleanly
+		log.Println("Agent stopped")
 		os.Exit(0)
 	}()
 
@@ -290,99 +356,6 @@ func getBackendStatus(mgr *backend.Manager, cfg *config.Config) string {
 		return fmt.Sprintf("%s (registered)", cfg.ServerURL)
 	}
 	return fmt.Sprintf("%s (connecting...)", cfg.ServerURL)
-}
-
-func runSetupWizard() {
-	fmt.Println(`
-╔═══════════════════════════════════════════════════╗
-║         Patchify Agent Setup Wizard               ║
-╚═══════════════════════════════════════════════════╝
-`)
-
-	homeDir, _ := os.UserHomeDir()
-	configPath := filepath.Join(homeDir, ".patchify-agent", "config.json")
-
-	// Load existing config or create default
-	cfg := config.DefaultConfig()
-	if existingCfg, err := config.Load(configPath); err == nil && existingCfg != nil {
-		cfg = existingCfg
-		fmt.Printf("Found existing configuration at %s\n\n", configPath)
-	}
-
-	// Prompt for server URL
-	fmt.Printf("Enter PatchIQ Server URL [%s]: ", cfg.ServerURL)
-	var serverURL string
-	fmt.Scanln(&serverURL)
-	if serverURL != "" {
-		cfg.ServerURL = serverURL
-	}
-
-	// Prompt for Web UI port
-	fmt.Printf("Enter Web UI Port [%d]: ", cfg.WebUIPort)
-	var portStr string
-	fmt.Scanln(&portStr)
-	if portStr != "" {
-		if port, err := parseInt(portStr); err == nil && port > 0 && port < 65536 {
-			cfg.WebUIPort = port
-		}
-	}
-
-	// Prompt for proxy settings
-	defaultProxy := cfg.ProxyURL
-	if defaultProxy == "" {
-		defaultProxy = "none"
-	}
-	fmt.Printf("\nHTTP Proxy URL [%s]: ", defaultProxy)
-	var proxyInput string
-	fmt.Scanln(&proxyInput)
-	if proxyInput != "" && proxyInput != "none" {
-		cfg.ProxyURL = proxyInput
-		// Ask for proxy auth
-		fmt.Printf("Proxy Username (leave blank for none) [%s]: ", cfg.ProxyUser)
-		var proxyUserInput string
-		fmt.Scanln(&proxyUserInput)
-		if proxyUserInput != "" {
-			cfg.ProxyUser = proxyUserInput
-			fmt.Print("Proxy Password: ")
-			var proxyPassInput string
-			fmt.Scanln(&proxyPassInput)
-			if proxyPassInput != "" {
-				cfg.ProxyPassword = proxyPassInput
-			}
-		}
-	} else if proxyInput == "none" {
-		cfg.ProxyURL = ""
-		cfg.ProxyUser = ""
-		cfg.ProxyPassword = ""
-	}
-
-	// Show summary
-	fmt.Println("\n─────────────────────────────────────────────────────")
-	fmt.Println("Configuration Summary:")
-	fmt.Printf("  Server URL:  %s\n", cfg.ServerURL)
-	fmt.Printf("  Web UI Port: %d\n", cfg.WebUIPort)
-	if cfg.ProxyURL != "" {
-		fmt.Printf("  Proxy:       %s\n", cfg.ProxyURL)
-		if cfg.ProxyUser != "" {
-			fmt.Printf("  Proxy Auth:  %s:****\n", cfg.ProxyUser)
-		}
-	} else {
-		fmt.Printf("  Proxy:       none\n")
-	}
-	fmt.Printf("  Config File: %s\n", configPath)
-	fmt.Println("─────────────────────────────────────────────────────")
-
-	// Save config
-	if err := cfg.Save(configPath); err != nil {
-		fmt.Printf("\n❌ Failed to save configuration: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Println("\n✓ Configuration saved successfully!")
-	fmt.Println("\nTo start the agent, run:")
-	fmt.Println("  ./patchify-agent")
-	fmt.Println("\nOr to start with a different server:")
-	fmt.Println("  ./patchify-agent --server http://your-server:5001/api")
 }
 
 func parseInt(s string) (int, error) {
@@ -471,6 +444,11 @@ func runAsWindowsService() {
 		log.Println("Service: using default configuration")
 	}
 
+	// Initialize logger for Windows service
+	if err := logger.Init(cfg.LogLevel, cfg.LogFormat, cfg.LogFile); err != nil {
+		log.Printf("Warning: Failed to initialize logger: %v", err)
+	}
+
 	if err := os.MkdirAll(cfg.DataDir, 0755); err != nil {
 		log.Printf("Warning: could not create data directory: %v", err)
 	}
@@ -494,7 +472,9 @@ func runAsWindowsService() {
 		},
 		func() {
 			if backendMgr != nil {
-				backendMgr.Stop()
+				if err := backendMgr.Stop(); err != nil {
+					log.Printf("Warning: Shutdown error: %v", err)
+				}
 			}
 		},
 	)
@@ -532,13 +512,13 @@ func runTestProxy(proxyURLStr, proxyUser, proxyPassword string) {
 		fmt.Printf("  Proxy Auth: %s:****\n", proxyUser)
 	}
 
-	proxyURL, err := url.Parse(proxyURLStr)
+	proxyURL, err := urlpkg.Parse(proxyURLStr)
 	if err != nil {
 		fmt.Printf("\n  FAIL: Invalid proxy URL: %v\n", err)
 		os.Exit(1)
 	}
 	if proxyUser != "" {
-		proxyURL.User = url.UserPassword(proxyUser, proxyPassword)
+		proxyURL.User = urlpkg.UserPassword(proxyUser, proxyPassword)
 	}
 
 	transport := &http.Transport{
@@ -582,6 +562,186 @@ func runTestProxy(proxyURLStr, proxyUser, proxyPassword string) {
 	fmt.Println("\n  Proxy test completed.")
 }
 
+// listAvailableRollbacks lists all available agent version rollbacks
+func listAvailableRollbacks() {
+	fmt.Println(`
+╔═══════════════════════════════════════════════════╗
+║      Available Agent Rollback Versions            ║
+╚═══════════════════════════════════════════════════╝
+`)
+
+	// Get current binary directory
+	currentBinary, err := os.Executable()
+	if err != nil {
+		fmt.Printf("  Error: Cannot determine binary location: %v\n", err)
+		return
+	}
+	currentBinary, _ = filepath.EvalSymlinks(currentBinary)
+	dir := filepath.Dir(currentBinary)
+
+	// List backup versions
+	pattern := filepath.Join(dir, "*.bak*")
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		fmt.Printf("  Error: Cannot list backup versions: %v\n", err)
+		return
+	}
+
+	if len(matches) == 0 {
+		fmt.Println("  No backup versions found.")
+		fmt.Println("  Backup versions are created automatically during agent updates.")
+		return
+	}
+
+	fmt.Printf("  Found %d backup version(s):\n\n", len(matches))
+
+	for i, backupPath := range matches {
+		info, err := os.Stat(backupPath)
+		if err != nil {
+			continue
+		}
+
+		// Try to get version from backup
+		version := "unknown"
+		// Version detection would require executing the binary with --version
+		// For now, just show the file info
+
+		fmt.Printf("  %d. %s\n", i+1, filepath.Base(backupPath))
+		fmt.Printf("     Size: %d bytes\n", info.Size())
+		fmt.Printf("     Modified: %s\n", info.ModTime().Format("2006-01-02 15:04:05"))
+		fmt.Println()
+	}
+
+	fmt.Println("  To rollback, run: patchiq-agent --rollback")
+}
+
+// runRollback performs agent version rollback
+func runRollback(targetVersion string, force bool) {
+	fmt.Println(`
+╔═══════════════════════════════════════════════════╗
+║         Agent Version Rollback                    ║
+╚═══════════════════════════════════════════════════╝
+`)
+
+	// Load rollback state if available
+	homeDir, _ := os.UserHomeDir()
+	stateDir := filepath.Join(homeDir, ".patchify-agent", "update")
+	stateFile := filepath.Join(stateDir, "agent-update-rollback.json")
+
+	var rollbackState struct {
+		CurrentVersion     string `json:"currentVersion"`
+		PreviousVersion    string `json:"previousVersion"`
+		PreviousBinaryPath string `json:"previousBinaryPath"`
+	}
+
+	// Try to load rollback state
+	if data, err := os.ReadFile(stateFile); err == nil {
+		if err := json.Unmarshal(data, &rollbackState); err == nil {
+			fmt.Printf("  Current Version: %s\n", rollbackState.CurrentVersion)
+			fmt.Printf("  Previous Version: %s\n", rollbackState.PreviousVersion)
+			fmt.Println()
+		}
+	}
+
+	// Get current binary path
+	currentBinary, err := os.Executable()
+	if err != nil {
+		fmt.Printf("  Error: Cannot determine binary location: %v\n", err)
+		os.Exit(1)
+	}
+	currentBinary, _ = filepath.EvalSymlinks(currentBinary)
+
+	// Determine rollback source
+	var rollbackSource string
+	if targetVersion != "" {
+		// Specific version requested
+		rollbackSource = currentBinary + ".v" + targetVersion
+		if _, err := os.Stat(rollbackSource); os.IsNotExist(err) {
+			// Try .bak suffix
+			rollbackSource = currentBinary + ".bak"
+		}
+	} else if rollbackState.PreviousBinaryPath != "" {
+		// Use rollback state
+		rollbackSource = rollbackState.PreviousBinaryPath
+	} else {
+		// Default to .bak file
+		rollbackSource = currentBinary + ".bak"
+	}
+
+	// Verify rollback source exists
+	if _, err := os.Stat(rollbackSource); os.IsNotExist(err) {
+		fmt.Printf("  Error: Rollback source not found: %s\n", rollbackSource)
+		fmt.Println("\n  Run 'patchiq-agent --list-rollbacks' to see available versions.")
+		os.Exit(1)
+	}
+
+	fmt.Printf("  Rolling back from: %s\n", currentBinary)
+	fmt.Printf("  Rolling back to:   %s\n", rollbackSource)
+	fmt.Println()
+
+	// Confirmation prompt (unless force flag)
+	if !force {
+		fmt.Print("  Are you sure you want to rollback? (yes/no): ")
+		var response string
+		fmt.Scanln(&response)
+		if response != "yes" && response != "y" {
+			fmt.Println("\n  Rollback cancelled.")
+			os.Exit(0)
+		}
+		fmt.Println()
+	}
+
+	// Perform rollback
+	fmt.Println("  Performing rollback...")
+
+	// Backup current binary (in case rollback fails)
+	failedBackup := currentBinary + ".failed"
+	if err := copyFileSimple(currentBinary, failedBackup); err != nil {
+		fmt.Printf("  Warning: Could not backup current binary: %v\n", err)
+	}
+
+	// Copy rollback source to current binary
+	if err := copyFileSimple(rollbackSource, currentBinary); err != nil {
+		fmt.Printf("  Error: Rollback failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Make executable (Unix)
+	if err := os.Chmod(currentBinary, 0755); err != nil {
+		fmt.Printf("  Warning: Could not set executable permissions: %v\n", err)
+	}
+
+	// Clear rollback state
+	os.Remove(stateFile)
+
+	fmt.Println("  ✓ Rollback completed successfully!")
+	fmt.Println()
+	fmt.Println("  The agent has been rolled back to the previous version.")
+	fmt.Println("  Restart the agent service to use the rolled back version.")
+	fmt.Println()
+}
+
+// copyFileSimple copies a file from src to dst
+func copyFileSimple(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		return err
+	}
+
+	return destFile.Sync()
+}
+
 // BackendAdapter adapts backend.Manager to server.BackendStatus interface
 type BackendAdapter struct {
 	mgr *backend.Manager
@@ -595,8 +755,8 @@ func (a *BackendAdapter) GetAgentID() string {
 	return a.mgr.GetAgentID()
 }
 
-func (a *BackendAdapter) GetStatus() *server.BackendStatusInfo {
-	status := a.mgr.GetStatus()
+func (a *BackendAdapter) GetStatus(ctx context.Context) *server.BackendStatusInfo {
+	status := a.mgr.GetStatus(ctx)
 	if status == nil {
 		return nil
 	}
@@ -621,31 +781,45 @@ func (a *BackendAdapter) GetJobsStatus() *server.JobsStatus {
 	// Convert backend.JobHistoryEntry to server.JobHistoryEntry
 	activeJobs := make([]server.JobHistoryEntry, len(jobsStatus.ActiveJobs))
 	for i, job := range jobsStatus.ActiveJobs {
+		var completedAt time.Time
+		var duration string
+		if job.CompletedAt != nil {
+			completedAt = *job.CompletedAt
+			duration = formatDuration(completedAt.Sub(job.StartedAt))
+		}
+		
 		activeJobs[i] = server.JobHistoryEntry{
 			ID:           job.ID,
 			Type:         job.Type,
 			Payload:      job.Payload,
 			Status:       job.Status,
-			Result:       job.Result,
+			Result:       convertResultToString(job.Result),
 			ErrorMessage: job.ErrorMessage,
 			StartedAt:    job.StartedAt,
-			CompletedAt:  job.CompletedAt,
-			Duration:     job.Duration,
+			CompletedAt:  completedAt,
+			Duration:     duration,
 		}
 	}
 
 	jobHistory := make([]server.JobHistoryEntry, len(jobsStatus.JobHistory))
 	for i, job := range jobsStatus.JobHistory {
+		var completedAt time.Time
+		var duration string
+		if job.CompletedAt != nil {
+			completedAt = *job.CompletedAt
+			duration = formatDuration(completedAt.Sub(job.StartedAt))
+		}
+		
 		jobHistory[i] = server.JobHistoryEntry{
 			ID:           job.ID,
 			Type:         job.Type,
 			Payload:      job.Payload,
 			Status:       job.Status,
-			Result:       job.Result,
+			Result:       convertResultToString(job.Result),
 			ErrorMessage: job.ErrorMessage,
 			StartedAt:    job.StartedAt,
-			CompletedAt:  job.CompletedAt,
-			Duration:     job.Duration,
+			CompletedAt:  completedAt,
+			Duration:     duration,
 		}
 	}
 
@@ -657,8 +831,8 @@ func (a *BackendAdapter) GetJobsStatus() *server.JobsStatus {
 	}
 }
 
-func (a *BackendAdapter) GetRollbacks() ([]server.RollbackInfo, error) {
-	rollbacks, err := a.mgr.GetRollbacks()
+func (a *BackendAdapter) GetRollbacks(ctx context.Context) ([]server.RollbackInfo, error) {
+	rollbacks, err := a.mgr.GetRollbacks(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -681,12 +855,30 @@ func (a *BackendAdapter) GetRollbacks() ([]server.RollbackInfo, error) {
 
 	return result, nil
 }
-
-func (a *BackendAdapter) ExecuteRollback(rollbackID string, force bool) server.ExecutionResult {
-	result := a.mgr.ExecuteRollback(rollbackID, force)
+func (a *BackendAdapter) ExecuteRollback(ctx context.Context, rollbackID string, force bool) server.ExecutionResult {
+	result := a.mgr.ExecuteRollback(ctx, rollbackID, force)
 	return server.ExecutionResult{
 		Success:      result.Success,
 		Message:      result.Message,
 		ErrorMessage: result.ErrorMessage,
 	}
+}
+
+func (a *BackendAdapter) GetDownloadProgress() map[string]*server.DownloadProgress {
+	progress := a.mgr.GetDownloadProgress()
+	// Convert backend.DownloadProgress to server.DownloadProgress
+	result := make(map[string]*server.DownloadProgress, len(progress))
+	for k, v := range progress {
+		result[k] = &server.DownloadProgress{
+			ID:              v.ID,
+			FileName:        v.FileName,
+			TotalBytes:      v.TotalBytes,
+			DownloadedBytes: v.DownloadedBytes,
+			Percentage:      v.Percentage,
+			Speed:           v.Speed,
+			StartTime:       v.StartTime,
+			EstimatedTime:   v.EstimatedTime,
+		}
+	}
+	return result
 }

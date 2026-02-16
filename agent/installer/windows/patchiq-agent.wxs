@@ -1,119 +1,260 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  PatchIQ Agent Windows Installer (WiX Manifest)
+  PatchIQ Agent Windows Installer (WiX 3.x)
 
-  Builds an MSI that:
-  - Installs agent binary to Program Files\PatchIQ\Agent
-  - Creates a Windows Service that runs automatically
-  - Supports clean uninstall
+  Creates a professional MSI installer that:
+  - Installs agent binary to C:\Program Files\PatchIQ\Agent\
+  - Creates Windows Service (PatchIQAgent) with auto-start
+  - Creates Start Menu shortcuts
+  - Configures registry entries for agent configuration
+  - Supports clean upgrade and uninstall
+  - Provides silent install capability
 
   Build with:
-    candle -arch x64 patchiq-agent.wxs -o build/
-    light -ext WixUIExtension -ext WixUtilExtension build/patchiq-agent.wixobj -o build/patchiq-agent.msi
+    candle -arch x64 patchiq-agent.wxs -dVersion=1.0.0 -dBuildDir=build -ext WixUtilExtension -o build/
+    light -ext WixUIExtension -ext WixUtilExtension build/patchiq-agent.wixobj -o dist/PatchIQAgent-1.0.0-amd64.msi
+
+  Or use the build-msi.ps1 script:
+    .\build-msi.ps1 -Version "1.0.0"
 -->
-<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+
+  <?define ProductName = "PatchIQ Agent" ?>
+  <?define ProductVersion = "$(var.Version)" ?>
+  <?define ProductManufacturer = "PatchIQ" ?>
+  <?define UpgradeCode = "8B2F5C4A-9E1D-4F3A-B6C7-D8E9F0A1B2C3" ?>
+
   <Product Id="*"
-           Name="PatchIQ Agent"
+           Name="$(var.ProductName)"
            Language="1033"
-           Version="1.0.0.0"
-           Manufacturer="PatchIQ"
-           UpgradeCode="8B5E8E9A-1234-5678-9ABC-DEF012345678">
+           Version="$(var.ProductVersion)"
+           Manufacturer="$(var.ProductManufacturer)"
+           UpgradeCode="$(var.UpgradeCode)">
 
     <Package InstallerVersion="500"
              Compressed="yes"
              InstallScope="perMachine"
-             Description="PatchIQ Agent - Endpoint Management"
-             Comments="Installs the PatchIQ Agent as a Windows Service"
-             Manufacturer="PatchIQ"/>
+             Description="PatchIQ Agent - Endpoint Management and Patch Deployment"
+             Manufacturer="$(var.ProductManufacturer)"
+             Comments="Installs PatchIQ Agent as a Windows Service for background operation"
+             Platform="x64" />
 
-    <!-- Allow upgrades and prevent downgrades -->
-    <MajorUpgrade DowngradeErrorMessage="A newer version of PatchIQ Agent is already installed." />
+    <!-- Require Windows 10 or later (VersionNT >= 603 = Windows 10) -->
+    <Condition Message="This application requires Windows 10 or later.">
+      <![CDATA[Installed OR VersionNT >= 603]]>
+    </Condition>
 
-    <!-- Embed all files in the MSI -->
-    <Media Id="1" Cabinet="patchiq.cab" EmbedCab="yes" />
+    <!-- Require 64-bit Windows -->
+    <Condition Message="This application requires a 64-bit version of Windows.">
+      <![CDATA[VersionNT64]]>
+    </Condition>
 
-    <!-- Installation directory structure -->
+    <!-- Upgrade handling: allow same version upgrades, detect and prevent downgrades -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed. Please uninstall it before installing this version."
+                  AllowSameVersionUpgrades="yes"
+                  Schedule="afterInstallInitialize" />
+
+    <!-- Embed CAB in MSI for single-file distribution -->
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- Public properties for silent install customization -->
+    <Property Id="SERVERURL" Value="http://localhost:3000/api" Secure="yes" />
+    <Property Id="WEBUI_PORT" Value="4504" Secure="yes" />
+    <Property Id="LOGLEVEL" Value="info" Secure="yes" />
+    <Property Id="HEARTBEAT_INTERVAL" Value="60" Secure="yes" />
+
+    <!-- Feature definition -->
+    <Feature Id="ProductFeature" Title="PatchIQ Agent" Level="1" Description="Core agent components">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentGroupRef Id="ServiceComponents" />
+      <ComponentGroupRef Id="ConfigComponents" />
+      <ComponentGroupRef Id="RegistryComponents" />
+      <ComponentGroupRef Id="StartMenuComponents" />
+      <ComponentGroupRef Id="CleanupComponents" />
+    </Feature>
+
+    <!-- Directory structure -->
     <Directory Id="TARGETDIR" Name="SourceDir">
+      <!-- Program Files: C:\Program Files\PatchIQ\Agent\ -->
       <Directory Id="ProgramFiles64Folder">
-        <Directory Id="INSTALLFOLDER" Name="PatchIQ">
-          <Directory Id="AGENTFOLDER" Name="Agent">
-            <Directory Id="LOGSFOLDER" Name="logs"/>
-            <Directory Id="DATAFOLDER" Name="data"/>
+        <Directory Id="CompanyFolder" Name="PatchIQ">
+          <Directory Id="INSTALLFOLDER" Name="Agent">
+            <Directory Id="LOGSFOLDER" Name="logs" />
+            <Directory Id="DATAFOLDER" Name="data" />
           </Directory>
         </Directory>
       </Directory>
+
+      <!-- Start Menu: PatchIQ Agent folder -->
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="PatchIQ Agent" />
+      </Directory>
     </Directory>
 
-    <!-- Agent executable and Windows Service -->
-    <ComponentGroup Id="AgentComponents" Directory="AGENTFOLDER">
-      <!-- Main executable -->
-      <Component Id="AgentExecutable" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890" Win64="yes">
-        <File Id="AgentExe"
-              Source="patchiq-agent.exe"
+    <!-- UI Configuration: Minimal wizard with license agreement -->
+    <UIRef Id="WixUI_Minimal" />
+    <UIRef Id="WixUI_ErrorProgressText" />
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
+    <!-- Icon for Add/Remove Programs -->
+    <Icon Id="PatchIQ.ico" SourceFile="patchiq.ico" />
+    <Property Id="ARPPRODUCTICON" Value="PatchIQ.ico" />
+    <Property Id="ARPHELPLINK" Value="https://patchiq.io/support" />
+    <Property Id="ARPURLINFOABOUT" Value="https://patchiq.io" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+  </Product>
+
+  <!-- Component Groups -->
+  <Fragment>
+    <!-- Main Executable Component -->
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Component Id="MainExecutable" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890" Win64="yes">
+        <File Id="PatchIQAgentExe"
+              Name="patchiq-agent.exe"
+              Source="$(var.BuildDir)\patchiq-agent.exe"
               KeyPath="yes"
-              Checksum="yes"/>
-
-        <!-- Windows Service Configuration -->
-        <ServiceInstall Id="AgentService"
-                        Name="PatchIQAgent"
-                        DisplayName="PatchIQ Agent"
-                        Description="PatchIQ endpoint management agent - collects inventory and deploys patches"
-                        Start="auto"
-                        Type="ownProcess"
-                        ErrorControl="normal"
-                        Account="LocalSystem"
-                        Arguments="--service"/>
-
-        <!-- Service control during install/uninstall -->
-        <ServiceControl Id="StartService"
-                        Name="PatchIQAgent"
-                        Start="install"
-                        Stop="both"
-                        Remove="uninstall"
-                        Wait="yes"/>
+              Checksum="yes" />
       </Component>
 
-      <!-- Create logs directory -->
-      <Component Id="LogsFolder" Guid="B2C3D4E5-F6A7-8901-BCDE-F23456789012" Win64="yes">
+      <!-- Logs Directory -->
+      <Component Id="LogsDirectory" Guid="B2C3D4E5-F6A7-8901-BCDE-F23456789012" Win64="yes">
         <CreateFolder Directory="LOGSFOLDER">
           <Permission User="SYSTEM" GenericAll="yes"/>
           <Permission User="Administrators" GenericAll="yes"/>
+          <Permission User="Users" GenericRead="yes" GenericWrite="yes"/>
         </CreateFolder>
         <RemoveFolder Id="RemoveLogsFolder" Directory="LOGSFOLDER" On="uninstall"/>
+        <RegistryValue Root="HKLM" Key="SOFTWARE\PatchIQ\Agent\Folders" Name="LogsDir" Type="string" Value="[LOGSFOLDER]" KeyPath="yes" />
       </Component>
 
-      <!-- Create data directory -->
-      <Component Id="DataFolder" Guid="C3D4E5F6-A7B8-9012-CDEF-345678901234" Win64="yes">
+      <!-- Data Directory -->
+      <Component Id="DataDirectory" Guid="C3D4E5F6-A7B8-9012-CDEF-345678901234" Win64="yes">
         <CreateFolder Directory="DATAFOLDER">
           <Permission User="SYSTEM" GenericAll="yes"/>
           <Permission User="Administrators" GenericAll="yes"/>
+          <Permission User="Users" GenericRead="yes" GenericWrite="yes"/>
         </CreateFolder>
         <RemoveFolder Id="RemoveDataFolder" Directory="DATAFOLDER" On="uninstall"/>
+        <RegistryValue Root="HKLM" Key="SOFTWARE\PatchIQ\Agent\Folders" Name="DataDir" Type="string" Value="[DATAFOLDER]" KeyPath="yes" />
       </Component>
     </ComponentGroup>
 
-    <!-- Remove parent folders on uninstall -->
+    <!-- Windows Service Component -->
+    <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
+      <Component Id="ServiceComponent" Guid="D4E5F6A7-B8C9-0123-DEF0-456789012345" Win64="yes">
+        <!-- Service Install Configuration -->
+        <ServiceInstall Id="PatchIQService"
+                        Type="ownProcess"
+                        Name="PatchIQAgent"
+                        DisplayName="PatchIQ Agent"
+                        Description="PatchIQ Agent - Manages patch deployment, software inventory, and system monitoring"
+                        Start="auto"
+                        Account="LocalSystem"
+                        ErrorControl="normal"
+                        Interactive="no">
+          <!-- Service Recovery: Restart on failure -->
+          <util:ServiceConfig FirstFailureActionType="restart"
+                              SecondFailureActionType="restart"
+                              ThirdFailureActionType="restart"
+                              ResetPeriodInDays="1"
+                              RestartServiceDelayInSeconds="60" />
+        </ServiceInstall>
+
+        <!-- Service Control: Start on install, stop on uninstall -->
+        <ServiceControl Id="StartPatchIQService"
+                        Start="install"
+                        Stop="both"
+                        Remove="uninstall"
+                        Name="PatchIQAgent"
+                        Wait="yes" />
+
+        <RegistryValue Root="HKLM" Key="SOFTWARE\PatchIQ\Agent" Name="ServiceInstalled" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Configuration Components -->
+    <ComponentGroup Id="ConfigComponents" Directory="DATAFOLDER">
+      <!-- Default configuration file (if needed as fallback) -->
+      <Component Id="DefaultConfig" Guid="E5F6A7B8-C9D0-1234-EF01-567890123456" Win64="yes">
+        <File Id="ConfigJson"
+              Name="config.json"
+              Source="default-config.json"
+              KeyPath="yes"
+              NeverOverwrite="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Registry Configuration -->
+    <ComponentGroup Id="RegistryComponents" Directory="INSTALLFOLDER">
+      <!-- Main registry configuration at HKLM\SOFTWARE\PatchIQ\Agent -->
+      <Component Id="RegistryConfig" Guid="F6A7B8C9-D0E1-2345-F012-678901234567" Win64="yes">
+        <RegistryKey Root="HKLM" Key="SOFTWARE\PatchIQ\Agent" ForceCreateOnInstall="yes">
+          <!-- Core configuration values -->
+          <RegistryValue Name="ServerURL" Type="string" Value="[SERVERURL]" />
+          <RegistryValue Name="DataDir" Type="string" Value="[DATAFOLDER]" />
+          <RegistryValue Name="LogLevel" Type="string" Value="[LOGLEVEL]" />
+          <RegistryValue Name="HeartbeatInterval" Type="integer" Value="[HEARTBEAT_INTERVAL]" />
+          <RegistryValue Name="InstallDir" Type="string" Value="[INSTALLFOLDER]" />
+          <RegistryValue Name="Version" Type="string" Value="$(var.ProductVersion)" KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+
+      <!-- Environment variables for agent runtime -->
+      <Component Id="EnvVars" Guid="A7B8C9D0-E1F2-3456-0123-789012345678" Win64="yes">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\PatchIQ\Agent\Environment" Name="Configured" Type="integer" Value="1" KeyPath="yes" />
+
+        <Environment Id="PATCHIQ_DATA_DIR"
+                     Action="set"
+                     Name="PATCHIQ_DATA_DIR"
+                     Part="all"
+                     Permanent="no"
+                     System="yes"
+                     Value="[DATAFOLDER]" />
+
+        <Environment Id="PATCHIQ_SERVER_URL"
+                     Action="set"
+                     Name="PATCHIQ_SERVER_URL"
+                     Part="all"
+                     Permanent="no"
+                     System="yes"
+                     Value="[SERVERURL]" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Start Menu Shortcuts -->
+    <ComponentGroup Id="StartMenuComponents" Directory="ApplicationProgramsFolder">
+      <Component Id="StartMenuShortcuts" Guid="B8C9D0E1-F2A3-4567-1234-890123456789" Win64="yes">
+        <!-- Shortcut to Agent Web UI (opens in default browser) -->
+        <Shortcut Id="AgentWebUIShortcut"
+                  Name="Agent Web UI"
+                  Description="Open PatchIQ Agent Web Interface"
+                  Target="http://localhost:[WEBUI_PORT]"
+                  Icon="PatchIQ.ico" />
+
+        <!-- Shortcut to uninstall -->
+        <Shortcut Id="UninstallShortcut"
+                  Name="Uninstall PatchIQ Agent"
+                  Description="Uninstall PatchIQ Agent"
+                  Target="[SystemFolder]msiexec.exe"
+                  Arguments="/x [ProductCode]" />
+
+        <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+
+        <!-- Registry key to anchor the shortcuts component -->
+        <RegistryValue Root="HKCU" Key="Software\PatchIQ\Agent" Name="StartMenuShortcuts" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Cleanup on uninstall -->
     <ComponentGroup Id="CleanupComponents" Directory="INSTALLFOLDER">
-      <Component Id="RemoveFolders" Guid="D4E5F6A7-B8C9-0123-DEF0-456789012345" Win64="yes">
-        <RemoveFolder Id="RemoveAgentFolder" Directory="AGENTFOLDER" On="uninstall"/>
-        <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall"/>
+      <Component Id="RemoveFolders" Guid="C9D0E1F2-A3B4-5678-2345-901234567890" Win64="yes">
+        <RemoveFolder Id="RemoveAgentFolder" Directory="INSTALLFOLDER" On="uninstall"/>
+        <RemoveFolder Id="RemoveCompanyFolder" Directory="CompanyFolder" On="uninstall"/>
         <RegistryValue Root="HKLM" Key="SOFTWARE\PatchIQ\Agent" Name="Installed" Type="integer" Value="1" KeyPath="yes"/>
       </Component>
     </ComponentGroup>
+  </Fragment>
 
-    <!-- Feature definition -->
-    <Feature Id="Complete" Title="PatchIQ Agent" Level="1" Description="PatchIQ Agent for endpoint management">
-      <ComponentGroupRef Id="AgentComponents"/>
-      <ComponentGroupRef Id="CleanupComponents"/>
-    </Feature>
-
-    <!-- Basic UI for installation -->
-    <UIRef Id="WixUI_Minimal"/>
-    <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
-
-    <!-- Set custom banner/dialog if desired -->
-    <!-- <WixVariable Id="WixUIBannerBmp" Value="banner.bmp"/> -->
-    <!-- <WixVariable Id="WixUIDialogBmp" Value="dialog.bmp"/> -->
-
-  </Product>
 </Wix>

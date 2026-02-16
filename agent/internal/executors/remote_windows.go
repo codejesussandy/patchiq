@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"context"
 	"github.com/patchify/agent/internal/models"
 )
 
@@ -20,7 +21,7 @@ func NewWindowsRemoteAccessExecutor() *WindowsRemoteAccessExecutor {
 }
 
 // Enable enables Windows Remote Desktop
-func (e *WindowsRemoteAccessExecutor) Enable(config models.RemoteAccessConfig) models.ExecutionResult {
+func (e *WindowsRemoteAccessExecutor) Enable(ctx context.Context, config models.RemoteAccessConfig) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 
@@ -81,7 +82,7 @@ func (e *WindowsRemoteAccessExecutor) Enable(config models.RemoteAccessConfig) m
 }
 
 // Disable disables Windows Remote Desktop
-func (e *WindowsRemoteAccessExecutor) Disable() models.ExecutionResult {
+func (e *WindowsRemoteAccessExecutor) Disable(ctx context.Context) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 
@@ -126,7 +127,7 @@ func (e *WindowsRemoteAccessExecutor) Disable() models.ExecutionResult {
 }
 
 // GetStatus returns the current status of Remote Desktop
-func (e *WindowsRemoteAccessExecutor) GetStatus() models.RemoteAccessStatus {
+func (e *WindowsRemoteAccessExecutor) GetStatus(ctx context.Context) models.RemoteAccessStatus {
 	status := models.RemoteAccessStatus{
 		Protocol:    "RDP",
 		Port:        3389,
@@ -165,7 +166,7 @@ func (e *WindowsRemoteAccessExecutor) GetStatus() models.RemoteAccessStatus {
 }
 
 // SetPassword is not applicable for RDP (uses Windows user credentials)
-func (e *WindowsRemoteAccessExecutor) SetPassword(password string) models.ExecutionResult {
+func (e *WindowsRemoteAccessExecutor) SetPassword(ctx context.Context, password string) models.ExecutionResult {
 	return models.ExecutionResult{
 		Success:      false,
 		Message:      "RDP uses Windows user credentials",
