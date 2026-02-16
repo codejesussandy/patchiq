@@ -10,6 +10,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   completeOnboardingSchema,
+  onboardSchema,
 } from './auth.validators';
 
 const router = Router();
@@ -64,6 +65,18 @@ router.post(
   validateBody(resetPasswordSchema),
   audit({ action: AuditAction.PASSWORD_RESET_COMPLETE, resource: AuditResource.USER }),
   controller.resetPassword
+);
+
+/**
+ * POST /v1/auth/onboard
+ * Complete onboarding with token (for invited users - no auth required)
+ */
+router.post(
+  '/onboard',
+  authRateLimiter,
+  validateBody(onboardSchema),
+  audit({ action: 'onboard_with_token', resource: AuditResource.USER }),
+  controller.onboardWithToken
 );
 
 // ============================================

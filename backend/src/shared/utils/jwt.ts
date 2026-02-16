@@ -11,9 +11,9 @@ function generateJti(): string {
   return crypto.randomUUID();
 }
 
-export function signAccessToken(payload: Omit<TokenPayload, 'type'>): string {
+export function signAccessToken(payload: Omit<TokenPayload, 'type'>, expiresInOverride?: string | number): string {
   const options: SignOptions = {
-    expiresIn: config.jwt.accessExpiry as jwt.SignOptions['expiresIn'],
+    expiresIn: (expiresInOverride ?? config.jwt.accessExpiry) as jwt.SignOptions['expiresIn'],
     jwtid: generateJti(), // Add unique identifier to prevent token collision
   };
   return jwt.sign({ ...payload, type: 'access' }, config.jwt.secret, options);
@@ -27,9 +27,9 @@ export function signRefreshToken(payload: Omit<TokenPayload, 'type'>): string {
   return jwt.sign({ ...payload, type: 'refresh' }, config.jwt.secret, options);
 }
 
-export function generateTokenPair(payload: Omit<TokenPayload, 'type'>): TokenPair {
+export function generateTokenPair(payload: Omit<TokenPayload, 'type'>, accessExpiresInOverride?: string | number): TokenPair {
   return {
-    accessToken: signAccessToken(payload),
+    accessToken: signAccessToken(payload, accessExpiresInOverride),
     refreshToken: signRefreshToken(payload),
   };
 }

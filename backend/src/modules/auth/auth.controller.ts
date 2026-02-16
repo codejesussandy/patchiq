@@ -7,6 +7,7 @@ import type {
   ForgotPasswordInput,
   ResetPasswordInput,
   CompleteOnboardingInput,
+  OnboardInput,
 } from './auth.validators';
 
 export class AuthController {
@@ -19,7 +20,7 @@ export class AuthController {
   login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const input: LoginInput = req.body;
-      const result = await this.authService.login(input.email, input.password);
+      const result = await this.authService.login(input.email, input.password, input.authType);
 
       sendSuccess(res, result);
     } catch (error) {
@@ -83,6 +84,21 @@ export class AuthController {
       await this.authService.resetPassword(input.token, input.password);
 
       sendSuccess(res, { message: 'Password reset successfully' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /v1/auth/onboard
+   * Complete onboarding with token (for invited users - no auth required)
+   */
+  onboardWithToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const input: OnboardInput = req.body;
+      const result = await this.authService.onboardWithToken(input);
+
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }

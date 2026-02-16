@@ -5,6 +5,8 @@
 
 import { Router } from 'express';
 import { authenticate } from '@middleware/auth';
+import { audit, AuditAction, AuditResource } from '@middleware/audit';
+import { checkPermission } from '@middleware/rbac';
 import { validateBody, validateQuery, validateParams } from '@middleware/validation';
 import { deploymentController } from './deployment.controller';
 import * as patchesController from '@modules/patches/patches.controller';
@@ -25,6 +27,7 @@ const router = Router();
 router.get(
   '/software',
   authenticate,
+  checkPermission('deployments', 'view'),
   deploymentController.listSoftwareDeployments.bind(deploymentController)
 );
 
@@ -32,6 +35,8 @@ router.get(
 router.post(
   '/software',
   authenticate,
+  checkPermission('deployments', 'add'),
+  audit({ action: AuditAction.DEPLOY, resource: AuditResource.DEPLOYMENT }),
   deploymentController.createSoftwareDeployment.bind(deploymentController)
 );
 
@@ -39,6 +44,7 @@ router.post(
 router.get(
   '/software/:deploymentId',
   authenticate,
+  checkPermission('deployments', 'view'),
   deploymentController.getSoftwareDeploymentStatus.bind(deploymentController)
 );
 
@@ -46,6 +52,8 @@ router.get(
 router.post(
   '/software/:deploymentId/cancel',
   authenticate,
+  checkPermission('deployments', 'edit'),
+  audit({ action: AuditAction.CANCEL, resource: AuditResource.DEPLOYMENT, getResourceId: (req) => req.params.deploymentId }),
   deploymentController.cancelSoftwareDeployment.bind(deploymentController)
 );
 
@@ -53,6 +61,8 @@ router.post(
 router.post(
   '/software/:deploymentId/tasks/:taskId/rollback',
   authenticate,
+  checkPermission('deployments', 'edit'),
+  audit({ action: AuditAction.ROLLBACK, resource: AuditResource.DEPLOYMENT, getResourceId: (req) => req.params.deploymentId }),
   deploymentController.triggerRollback.bind(deploymentController)
 );
 
@@ -64,7 +74,9 @@ router.post(
 router.post(
   '/patch',
   authenticate,
+  checkPermission('deployments', 'add'),
   validateBody(createPatchDeploymentFromUISchema),
+  audit({ action: AuditAction.DEPLOY, resource: AuditResource.DEPLOYMENT }),
   patchesController.createPatchDeploymentFromUI
 );
 
@@ -72,6 +84,7 @@ router.post(
 router.get(
   '/patch',
   authenticate,
+  checkPermission('deployments', 'view'),
   deploymentController.listPatchDeployments.bind(deploymentController)
 );
 
@@ -79,6 +92,7 @@ router.get(
 router.get(
   '/patch/:deploymentId',
   authenticate,
+  checkPermission('deployments', 'view'),
   deploymentController.getPatchDeploymentStatus.bind(deploymentController)
 );
 
@@ -86,6 +100,8 @@ router.get(
 router.post(
   '/patch/:deploymentId/cancel',
   authenticate,
+  checkPermission('deployments', 'edit'),
+  audit({ action: AuditAction.CANCEL, resource: AuditResource.DEPLOYMENT, getResourceId: (req) => req.params.deploymentId }),
   deploymentController.cancelPatchDeployment.bind(deploymentController)
 );
 
@@ -93,6 +109,8 @@ router.post(
 router.post(
   '/patch/:deploymentId/retry',
   authenticate,
+  checkPermission('deployments', 'edit'),
+  audit({ action: AuditAction.RETRY, resource: AuditResource.DEPLOYMENT, getResourceId: (req) => req.params.deploymentId }),
   deploymentController.retryPatchDeployment.bind(deploymentController)
 );
 
@@ -100,6 +118,8 @@ router.post(
 router.post(
   '/config',
   authenticate,
+  checkPermission('deployments', 'add'),
+  audit({ action: AuditAction.DEPLOY, resource: AuditResource.DEPLOYMENT }),
   deploymentController.createConfigDeployment.bind(deploymentController)
 );
 
@@ -107,6 +127,7 @@ router.post(
 router.get(
   '/config/:deploymentId',
   authenticate,
+  checkPermission('deployments', 'view'),
   deploymentController.getConfigDeploymentStatus.bind(deploymentController)
 );
 
@@ -118,6 +139,7 @@ router.get(
 router.get(
   '/',
   authenticate,
+  checkPermission('deployments', 'view'),
   validateQuery(deploymentListQuerySchema),
   patchesController.listDeployments
 );
@@ -126,7 +148,9 @@ router.get(
 router.post(
   '/',
   authenticate,
+  checkPermission('deployments', 'add'),
   validateBody(createDeploymentSchema),
+  audit({ action: AuditAction.CREATE, resource: AuditResource.DEPLOYMENT }),
   patchesController.createDeployment
 );
 
@@ -134,6 +158,7 @@ router.post(
 router.get(
   '/:id',
   authenticate,
+  checkPermission('deployments', 'view'),
   validateParams(deploymentCrudIdParamSchema),
   patchesController.getDeployment
 );
@@ -142,7 +167,9 @@ router.get(
 router.put(
   '/:id',
   authenticate,
+  checkPermission('deployments', 'edit'),
   validateParams(deploymentCrudIdParamSchema),
+  audit({ action: AuditAction.UPDATE, resource: AuditResource.DEPLOYMENT, getResourceId: (req) => req.params.id }),
   patchesController.updateDeployment
 );
 
@@ -150,7 +177,9 @@ router.put(
 router.post(
   '/:id/cancel',
   authenticate,
+  checkPermission('deployments', 'edit'),
   validateParams(deploymentCrudIdParamSchema),
+  audit({ action: AuditAction.CANCEL, resource: AuditResource.DEPLOYMENT, getResourceId: (req) => req.params.id }),
   patchesController.cancelDeployment
 );
 
@@ -158,7 +187,9 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
+  checkPermission('deployments', 'delete'),
   validateParams(deploymentCrudIdParamSchema),
+  audit({ action: AuditAction.DELETE, resource: AuditResource.DEPLOYMENT, getResourceId: (req) => req.params.id }),
   patchesController.deleteDeployment
 );
 
@@ -166,6 +197,7 @@ router.delete(
 router.get(
   '/:id/preview',
   authenticate,
+  checkPermission('deployments', 'view'),
   validateParams(deploymentCrudIdParamSchema),
   patchesController.getDeploymentPreview
 );
@@ -174,7 +206,9 @@ router.get(
 router.post(
   '/:id/execute',
   authenticate,
+  checkPermission('deployments', 'edit'),
   validateParams(deploymentCrudIdParamSchema),
+  audit({ action: AuditAction.EXECUTE, resource: AuditResource.DEPLOYMENT, getResourceId: (req) => req.params.id }),
   patchesController.executeDeployment
 );
 

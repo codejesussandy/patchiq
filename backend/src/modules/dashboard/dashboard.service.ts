@@ -837,14 +837,27 @@ export class DashboardService {
    * Get agent connectivity data
    */
   async getAgentConnectivity(): Promise<{ status: string; count: number }[]> {
-    const result = await prisma.agent.groupBy({
-      by: ['status'],
-      _count: true,
-    });
+    // R1B: Use configurable endpoint online status timeout from server settings
+    const { getTypedServerSettings } = await import('@modules/settings/server-settings');
+    const { calculateAgentStatus } = await import('@shared/utils/agent-status');
 
-    return result.map((r) => ({
-      status: r.status,
-      count: r._count,
+    const [agents, serverSettings] = await Promise.all([
+      prisma.agent.findMany({ select: { lastHeartbeat: true, status: true } }),
+      getTypedServerSettings(),
+    ]);
+
+    const offlineThresholdSeconds = serverSettings.endpointOnlineStatusTimeoutHours * 3600;
+
+    // Compute real-time status using configurable timeout
+    const statusCounts: Record<string, number> = {};
+    for (const agent of agents) {
+      const computedStatus = calculateAgentStatus(agent, offlineThresholdSeconds);
+      statusCounts[computedStatus] = (statusCounts[computedStatus] || 0) + 1;
+    }
+
+    return Object.entries(statusCounts).map(([status, count]) => ({
+      status,
+      count,
     }));
   }
 

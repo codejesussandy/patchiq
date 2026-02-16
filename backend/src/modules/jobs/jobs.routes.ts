@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '@middleware/auth';
+import { audit, AuditAction, AuditResource } from '@middleware/audit';
+import { checkPermission } from '@middleware/rbac';
 import { validateBody, validateQuery, validateParams } from '@middleware/validation';
 import * as controller from './jobs.controller';
 import {
@@ -33,6 +35,7 @@ const router = Router();
 router.get(
   '/patch',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateQuery(patchJobListQuerySchema),
   controller.listPatchJobs
 );
@@ -40,13 +43,16 @@ router.get(
 router.post(
   '/patch',
   authenticate,
+  checkPermission('jobs', 'add'),
   validateBody(createPatchJobSchema),
+  audit({ action: AuditAction.CREATE, resource: AuditResource.JOB }),
   controller.createPatchJob
 );
 
 router.get(
   '/patch/:id',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateParams(idParamSchema),
   controller.getPatchJob
 );
@@ -54,7 +60,9 @@ router.get(
 router.delete(
   '/patch/:id',
   authenticate,
+  checkPermission('jobs', 'delete'),
   validateParams(idParamSchema),
+  audit({ action: AuditAction.DELETE, resource: AuditResource.JOB, getResourceId: (req) => req.params.id }),
   controller.deletePatchJob
 );
 
@@ -65,6 +73,7 @@ router.delete(
 router.get(
   '/vulnerability',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateQuery(vulnerabilityJobListQuerySchema),
   controller.listVulnerabilityJobs
 );
@@ -72,32 +81,40 @@ router.get(
 router.post(
   '/vulnerability',
   authenticate,
+  checkPermission('jobs', 'add'),
   validateBody(createVulnerabilityJobSchema),
+  audit({ action: AuditAction.CREATE, resource: AuditResource.JOB }),
   controller.createVulnerabilityJob
 );
 
 router.get(
   '/vulnerability/db-sync',
   authenticate,
+  checkPermission('jobs', 'view'),
   controller.getVulnerabilityDBSync
 );
 
 router.put(
   '/vulnerability/db-sync',
   authenticate,
+  checkPermission('jobs', 'edit'),
   validateBody(updateVulnerabilityDBSyncSchema),
+  audit({ action: AuditAction.UPDATE, resource: AuditResource.JOB }),
   controller.updateVulnerabilityDBSync
 );
 
 router.post(
   '/vulnerability/db-sync/now',
   authenticate,
+  checkPermission('jobs', 'edit'),
+  audit({ action: AuditAction.SYNC, resource: AuditResource.JOB }),
   controller.triggerVulnerabilityDBSync
 );
 
 router.get(
   '/vulnerability/:id',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateParams(idParamSchema),
   controller.getVulnerabilityJob
 );
@@ -105,7 +122,9 @@ router.get(
 router.delete(
   '/vulnerability/:id',
   authenticate,
+  checkPermission('jobs', 'delete'),
   validateParams(idParamSchema),
+  audit({ action: AuditAction.DELETE, resource: AuditResource.JOB, getResourceId: (req) => req.params.id }),
   controller.deleteVulnerabilityJob
 );
 
@@ -116,6 +135,7 @@ router.delete(
 router.get(
   '/software/deployed',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateQuery(softwareDeploymentListQuerySchema),
   controller.listSoftwareDeployments
 );
@@ -123,13 +143,16 @@ router.get(
 router.post(
   '/software/deployed',
   authenticate,
+  checkPermission('jobs', 'add'),
   validateBody(createSoftwareDeploymentSchema),
+  audit({ action: AuditAction.CREATE, resource: AuditResource.DEPLOYMENT }),
   controller.createSoftwareDeployment
 );
 
 router.get(
   '/software/deployed/:id',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateParams(idParamSchema),
   controller.getSoftwareDeployment
 );
@@ -137,6 +160,7 @@ router.get(
 router.get(
   '/software/deployed/:id/tasks',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateParams(idParamSchema),
   controller.getSoftwareDeploymentTasks
 );
@@ -144,7 +168,9 @@ router.get(
 router.delete(
   '/software/deployed/:id',
   authenticate,
+  checkPermission('jobs', 'delete'),
   validateParams(idParamSchema),
+  audit({ action: AuditAction.DELETE, resource: AuditResource.DEPLOYMENT, getResourceId: (req) => req.params.id }),
   controller.deleteSoftwareDeployment
 );
 
@@ -155,6 +181,7 @@ router.delete(
 router.get(
   '/config/catalog',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateQuery(configCatalogListQuerySchema),
   controller.listConfigCatalog
 );
@@ -162,13 +189,16 @@ router.get(
 router.post(
   '/config/catalog',
   authenticate,
+  checkPermission('jobs', 'add'),
   validateBody(createConfigCatalogSchema),
+  audit({ action: AuditAction.CREATE, resource: AuditResource.JOB }),
   controller.createConfigCatalog
 );
 
 router.get(
   '/config/catalog/:id',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateParams(idParamSchema),
   controller.getConfigCatalog
 );
@@ -176,15 +206,19 @@ router.get(
 router.put(
   '/config/catalog/:id',
   authenticate,
+  checkPermission('jobs', 'edit'),
   validateParams(idParamSchema),
   validateBody(updateConfigCatalogSchema),
+  audit({ action: AuditAction.UPDATE, resource: AuditResource.JOB, getResourceId: (req) => req.params.id }),
   controller.updateConfigCatalog
 );
 
 router.delete(
   '/config/catalog/:id',
   authenticate,
+  checkPermission('jobs', 'delete'),
   validateParams(idParamSchema),
+  audit({ action: AuditAction.DELETE, resource: AuditResource.JOB, getResourceId: (req) => req.params.id }),
   controller.deleteConfigCatalog
 );
 
@@ -195,6 +229,7 @@ router.delete(
 router.get(
   '/config/bundles',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateQuery(configBundleListQuerySchema),
   controller.listConfigBundles
 );
@@ -202,13 +237,16 @@ router.get(
 router.post(
   '/config/bundles',
   authenticate,
+  checkPermission('jobs', 'add'),
   validateBody(createConfigBundleSchema),
+  audit({ action: AuditAction.CREATE, resource: AuditResource.JOB }),
   controller.createConfigBundle
 );
 
 router.get(
   '/config/bundles/:id',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateParams(idParamSchema),
   controller.getConfigBundle
 );
@@ -216,15 +254,19 @@ router.get(
 router.put(
   '/config/bundles/:id',
   authenticate,
+  checkPermission('jobs', 'edit'),
   validateParams(idParamSchema),
   validateBody(updateConfigBundleSchema),
+  audit({ action: AuditAction.UPDATE, resource: AuditResource.JOB, getResourceId: (req) => req.params.id }),
   controller.updateConfigBundle
 );
 
 router.delete(
   '/config/bundles/:id',
   authenticate,
+  checkPermission('jobs', 'delete'),
   validateParams(idParamSchema),
+  audit({ action: AuditAction.DELETE, resource: AuditResource.JOB, getResourceId: (req) => req.params.id }),
   controller.deleteConfigBundle
 );
 
@@ -235,6 +277,7 @@ router.delete(
 router.get(
   '/config/deployed',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateQuery(configDeploymentListQuerySchema),
   controller.listConfigDeployments
 );
@@ -242,13 +285,16 @@ router.get(
 router.post(
   '/config/deployed',
   authenticate,
+  checkPermission('jobs', 'add'),
   validateBody(createConfigDeploymentSchema),
+  audit({ action: AuditAction.CREATE, resource: AuditResource.DEPLOYMENT }),
   controller.createConfigDeployment
 );
 
 router.get(
   '/config/deployed/:id/tasks',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateParams(idParamSchema),
   controller.getConfigDeploymentTasks
 );
@@ -256,7 +302,9 @@ router.get(
 router.delete(
   '/config/deployed/:id',
   authenticate,
+  checkPermission('jobs', 'delete'),
   validateParams(idParamSchema),
+  audit({ action: AuditAction.DELETE, resource: AuditResource.DEPLOYMENT, getResourceId: (req) => req.params.id }),
   controller.deleteConfigDeployment
 );
 
@@ -269,6 +317,7 @@ const deploymentPoliciesRouter = Router();
 deploymentPoliciesRouter.get(
   '/',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateQuery(deploymentPolicyListQuerySchema),
   controller.listDeploymentPolicies
 );
@@ -276,13 +325,16 @@ deploymentPoliciesRouter.get(
 deploymentPoliciesRouter.post(
   '/',
   authenticate,
+  checkPermission('jobs', 'add'),
   validateBody(createDeploymentPolicySchema),
+  audit({ action: AuditAction.CREATE, resource: AuditResource.DEPLOYMENT_POLICY }),
   controller.createDeploymentPolicy
 );
 
 deploymentPoliciesRouter.get(
   '/:id',
   authenticate,
+  checkPermission('jobs', 'view'),
   validateParams(idParamSchema),
   controller.getDeploymentPolicy
 );
@@ -290,15 +342,19 @@ deploymentPoliciesRouter.get(
 deploymentPoliciesRouter.put(
   '/:id',
   authenticate,
+  checkPermission('jobs', 'edit'),
   validateParams(idParamSchema),
   validateBody(updateDeploymentPolicySchema),
+  audit({ action: AuditAction.UPDATE, resource: AuditResource.DEPLOYMENT_POLICY, getResourceId: (req) => req.params.id }),
   controller.updateDeploymentPolicy
 );
 
 deploymentPoliciesRouter.delete(
   '/:id',
   authenticate,
+  checkPermission('jobs', 'delete'),
   validateParams(idParamSchema),
+  audit({ action: AuditAction.DELETE, resource: AuditResource.DEPLOYMENT_POLICY, getResourceId: (req) => req.params.id }),
   controller.deleteDeploymentPolicy
 );
 

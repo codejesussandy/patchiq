@@ -192,12 +192,121 @@ export class AgentsController {
 
   /**
    * GET /v1/agent-versions
-   * Get all agent versions
+   * Get all agent versions with optional filters
    */
-  getAgentVersions = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getAgentVersions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const versions = await this.agentsService.getAgentVersions();
-      sendSuccess(res, versions);
+      const { platform, deprecated } = req.query;
+
+      // If filters provided, use filtered method
+      if (platform || deprecated) {
+        const versions = await this.agentsService.listAgentVersionsFiltered({
+          platform: platform as string | undefined,
+          deprecated: deprecated as string | undefined,
+        });
+        sendSuccess(res, versions);
+      } else {
+        const versions = await this.agentsService.getAgentVersions();
+        sendSuccess(res, versions);
+      }
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /v1/agent-versions/latest
+   * Get latest agent version for platform/architecture
+   */
+  getLatest = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { platform, architecture } = req.query;
+
+      if (!platform || !architecture) {
+        sendError(res, 400, 'BAD_REQUEST', 'platform and architecture query params are required');
+        return;
+      }
+
+      const version = await this.agentsService.getLatestAgentVersionForPlatform(
+        platform as string,
+        architecture as string
+      );
+      sendSuccess(res, version);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /v1/agent-versions
+   * Create a new agent version
+   */
+  create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const version = await this.agentsService.createAgentVersion(req.body);
+      sendSuccess(res, version, 201);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /v1/agent-versions/:id
+   * Get agent version details
+   */
+  getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+
+      // Fetch version from database
+      const version = await this.agentsService.getAgentVersionById(id);
+
+      // Transform to response format
+      const response = {
+        id: version.id,
+        platform: version.platform,
+        architecture: version.architecture,
+        version: version.version,
+        filePath: version.filePath,
+        fileSize: version.fileSize ? Number(version.fileSize) : null,
+        checksum: version.checksum,
+        releaseNotes: version.releaseNotes || null,
+        isRecommended: version.isRecommended ?? false,
+        isDeprecated: version.isDeprecated ?? false,
+        downloadCount: version.downloadCount ?? 0,
+        lastUpdatedAt: version.lastUpdatedAt.toISOString(),
+        createdAt: version.createdAt.toISOString(),
+      };
+
+      sendSuccess(res, response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * PUT /v1/agent-versions/:id
+   * Update agent version
+   */
+  update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const version = await this.agentsService.updateAgentVersion(id, req.body);
+      sendSuccess(res, version);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * DELETE /v1/agent-versions/:id
+   * Delete agent version
+   */
+  deleteVersion = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const result = await this.agentsService.deleteAgentVersion(id);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }
@@ -211,6 +320,11 @@ export class AgentsController {
     try {
       const { id } = req.params;
       const version = await this.agentsService.getAgentVersionById(id);
+
+      // Increment download count
+      this.agentsService.incrementDownloadCount(id).catch(() => {
+        // Swallow errors for download count tracking
+      });
 
       // Check if we have a file path in the database (uploaded to MinIO)
       if (!version.filePath) {

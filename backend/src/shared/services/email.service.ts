@@ -113,17 +113,17 @@ export async function sendTestEmail(
     const info = await transporter.sendMail({
       from: `"${fromName}" <${fromAddress}>`,
       to: testEmail,
-      subject: 'PatchIQ Mail Server Test',
-      text: 'This is a test email from PatchIQ to verify your mail server configuration.',
+      subject: 'PatchIQ Test Email',
+      text: 'This is a test email from PatchIQ.',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1890ff;">PatchIQ Mail Server Test</h2>
-          <p>This is a test email from PatchIQ to verify your mail server configuration.</p>
+          <h2 style="color: #1890ff;">PatchIQ Test Email</h2>
+          <p>This is a test email from PatchIQ.</p>
           <p>If you received this email, your mail server is configured correctly.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
           <p style="color: #888; font-size: 12px;">
-            Sent at: ${new Date().toISOString()}<br>
-            Server: ${config.host}:${config.port}
+            Timestamp: ${new Date().toISOString()}<br>
+            Server: ${config.host}
           </p>
         </div>
       `,

@@ -25,6 +25,7 @@ export const authenticate: RequestHandler = (
       id: payload.userId,
       email: payload.email,
       role: payload.role,
+      roleId: payload.roleId,
       organizationId: payload.organizationId,
     };
 
@@ -51,6 +52,7 @@ export const optionalAuth: RequestHandler = (
           id: payload.userId,
           email: payload.email,
           role: payload.role,
+          roleId: payload.roleId,
           organizationId: payload.organizationId,
         };
       }
@@ -77,5 +79,5 @@ export function requireRole(...roles: string[]): RequestHandler {
   };
 }
 
-export const requireAdmin = requireRole('ADMIN');
-export const requireUser = requireRole('ADMIN', 'USER');
+export const requireAdmin = requireRole('admin');
+export const requireUser = requireRole('admin', 'user');

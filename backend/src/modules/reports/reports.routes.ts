@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import { authenticate, requireUser } from '@middleware/auth';
+import { authenticate } from '@middleware/auth';
+import { audit, AuditAction, AuditResource } from '@middleware/audit';
+import { checkPermission } from '@middleware/rbac';
 import { validateQuery, validateParams, validateBody } from '@middleware/validation';
 import * as controller from './reports.controller';
 import {
@@ -15,69 +17,72 @@ import {
 
 const router = Router();
 
-// All routes require authentication
+// All routes require authentication + RBAC permission checks
 router.use(authenticate);
-router.use(requireUser);
 
 // ============================================
 // Templates (must be before :id routes)
 // ============================================
 
 // GET /v1/reports/templates - Get available report templates
-router.get('/templates', controller.getTemplates);
+router.get('/templates', checkPermission('reports', 'view'), controller.getTemplates);
 
 // ============================================
 // Schedules
 // ============================================
 
 // GET /v1/reports/schedules - List report schedules
-router.get('/schedules', validateQuery(listSchedulesQuerySchema), controller.listSchedules);
+router.get('/schedules', checkPermission('reports', 'view'), validateQuery(listSchedulesQuerySchema), controller.listSchedules);
 
 // POST /v1/reports/schedules - Create schedule
-router.post('/schedules', validateBody(createScheduleBodySchema), controller.createSchedule);
+router.post('/schedules', checkPermission('reports', 'add'), validateBody(createScheduleBodySchema), audit({ action: AuditAction.CREATE, resource: AuditResource.REPORT_SCHEDULE }), controller.createSchedule);
 
 // PUT /v1/reports/schedules/:id - Update schedule
 router.put(
   '/schedules/:id',
+  checkPermission('reports', 'edit'),
   validateParams(scheduleParamsSchema),
   validateBody(updateScheduleBodySchema),
+  audit({ action: AuditAction.UPDATE, resource: AuditResource.REPORT_SCHEDULE, getResourceId: (req) => req.params.id }),
   controller.updateSchedule
 );
 
 // DELETE /v1/reports/schedules/:id - Delete schedule
-router.delete('/schedules/:id', validateParams(scheduleParamsSchema), controller.deleteSchedule);
+router.delete('/schedules/:id', checkPermission('reports', 'delete'), validateParams(scheduleParamsSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.REPORT_SCHEDULE, getResourceId: (req) => req.params.id }), controller.deleteSchedule);
 
 // ============================================
 // Reports CRUD
 // ============================================
 
 // GET /v1/reports - List reports
-router.get('/', validateQuery(listReportsQuerySchema), controller.listReports);
+router.get('/', checkPermission('reports', 'view'), validateQuery(listReportsQuerySchema), controller.listReports);
 
 // POST /v1/reports - Create report (wizard or simple)
-router.post('/', controller.createReport);
+router.post('/', checkPermission('reports', 'add'), audit({ action: AuditAction.CREATE, resource: AuditResource.REPORT }), controller.createReport);
 
 // GET /v1/reports/:id - Get report by ID
-router.get('/:id', validateParams(reportParamsSchema), controller.getReportById);
+router.get('/:id', checkPermission('reports', 'view'), validateParams(reportParamsSchema), controller.getReportById);
 
 // PUT /v1/reports/:id - Update report
 router.put(
   '/:id',
+  checkPermission('reports', 'edit'),
   validateParams(reportParamsSchema),
   validateBody(updateReportBodySchema),
+  audit({ action: AuditAction.UPDATE, resource: AuditResource.REPORT, getResourceId: (req) => req.params.id }),
   controller.updateReport
 );
 
 // DELETE /v1/reports/:id - Delete report
-router.delete('/:id', validateParams(reportParamsSchema), controller.deleteReport);
+router.delete('/:id', checkPermission('reports', 'delete'), validateParams(reportParamsSchema), audit({ action: AuditAction.DELETE, resource: AuditResource.REPORT, getResourceId: (req) => req.params.id }), controller.deleteReport);
 
 // GET /v1/reports/:id/download - Download report file
-router.get('/:id/download', validateParams(reportParamsSchema), controller.downloadReport);
+router.get('/:id/download', checkPermission('reports', 'view'), validateParams(reportParamsSchema), controller.downloadReport);
 
 // POST /v1/reports/:id/regenerate - Regenerate report
-router.post('/:id/regenerate', validateParams(reportParamsSchema), controller.regenerateReport);
+router.post('/:id/regenerate', checkPermission('reports', 'edit'), validateParams(reportParamsSchema), audit({ action: AuditAction.REFRESH, resource: AuditResource.REPORT, getResourceId: (req) => req.params.id }), controller.regenerateReport);
 
 // POST /v1/reports/:id/send - Send report via email
-router.post('/:id/send', validateParams(reportParamsSchema), validateBody(sendReportBodySchema), controller.sendReport);
+router.post('/:id/send', checkPermission('reports', 'edit'), validateParams(reportParamsSchema), validateBody(sendReportBodySchema), audit({ action: AuditAction.SEND, resource: AuditResource.REPORT, getResourceId: (req) => req.params.id }), controller.sendReport);
 
 export default router;

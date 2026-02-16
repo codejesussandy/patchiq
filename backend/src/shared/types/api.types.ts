@@ -172,13 +172,21 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface UserRoleInfo {
+  id: string;
+  name: string;
+  permissions: RolePermissions;
+}
+
 export interface UserPublic {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
   role: string;
+  roleInfo: UserRoleInfo;
   isOnboarded: boolean;
+  authSource?: string;
   organizationId?: string | null;
   departmentId?: string | null;
   locationId?: string | null;
@@ -235,6 +243,7 @@ export interface UserMeResponse {
   name: string | null;
   contactNumber: string | null;
   role: string;
+  roleInfo: UserRoleInfo;
   organizationId: string | null;
   departmentId: string | null;
   locationId: string | null;
@@ -276,6 +285,7 @@ export interface AgentRegistrationResponse {
   tokenExpiresIn: number;
   config: AgentConfig;
   isReRegistration: boolean;
+  status: AgentStatusEnum;
   message?: string;
 }
 
@@ -332,7 +342,15 @@ export interface AgentVersionResponse {
   platform: string;
   architecture: string;
   version: string;
+  filePath: string | null;
+  fileSize: number | null;
+  checksum: string | null;
+  releaseNotes: string | null;
+  isRecommended: boolean;
+  isDeprecated: boolean;
+  downloadCount: number;
   lastUpdatedAt: string;
+  createdAt: string;
 }
 
 export interface CommandResponse {
@@ -1611,6 +1629,9 @@ export interface OrganizationResponse {
   name: string;
   description: string | null;
   isDefault: boolean;
+  branchCount?: number;
+  userCount?: number;
+  assetCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -1644,6 +1665,7 @@ export interface DepartmentResponse {
   branchId: string;
   branchName?: string;
   organizationName?: string;
+  userCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -1657,6 +1679,50 @@ export interface LocationResponse {
   timezone: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface OrgTreeNode {
+  id: string;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
+  branchCount: number;
+  userCount: number;
+  assetCount: number;
+  branches: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    isDefault: boolean;
+    userCount: number;
+    assetCount: number;
+    departments: Array<{
+      id: string;
+      name: string;
+      description: string | null;
+      userCount: number;
+    }>;
+  }>;
+}
+
+export interface OrgTreeResponse {
+  organizations: OrgTreeNode[];
+  locations: Array<{
+    id: string;
+    name: string;
+    city: string | null;
+    country: string | null;
+    userCount: number;
+    assetCount: number;
+  }>;
+  summary: {
+    totalOrganizations: number;
+    totalBranches: number;
+    totalDepartments: number;
+    totalLocations: number;
+    totalUsers: number;
+    totalAssets: number;
+  };
 }
 
 export interface UserListItem {
@@ -1704,10 +1770,16 @@ export interface RolePermissions {
   patches?: ModulePermissions;
   vulnerabilities?: ModulePermissions;
   jobs?: ModulePermissions;
+  deployments?: ModulePermissions;
   discovery?: ModulePermissions;
   reports?: ModulePermissions;
   dashboard?: ModulePermissions;
   settings?: ModulePermissions;
+  hub?: ModulePermissions;
+  'patch-repository'?: ModulePermissions;
+  'patch-templates'?: ModulePermissions;
+  ai?: ModulePermissions;
+  notifications?: ModulePermissions;
 }
 
 export interface RoleResponse {
@@ -1862,9 +1934,11 @@ export interface ComputerGroupResponse {
   id: string;
   name: string;
   description: string | null;
-  criteria: Record<string, unknown> | null;
-  memberCount: number;
+  endpoints: string[];
+  endpointCount: number;
+  createdBy: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface DeploymentPolicyResponse {
@@ -1931,7 +2005,10 @@ export interface DistributionServerResponse {
   location: string | null;
   url: string;
   version: string | null;
-  createdOn: string;
+  status: 'Active' | 'Inactive' | 'Maintenance';
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RedHatNominationResponse {
@@ -1951,6 +2028,51 @@ export interface VendorLogoResponse {
   type: 'integration' | 'vendor' | 'os';
   logoUrl: string;
   createdAt: string;
+}
+
+export interface DeleteImpactResponse {
+  canDelete: boolean;
+  blockedReason?: string;
+  impact: {
+    branches?: number;
+    departments?: number;
+    users: number;
+    assets: number;
+    enrollSecrets?: number;
+  };
+  affectedItems: {
+    branches?: Array<{ id: string; name: string }>;
+    departments?: Array<{ id: string; name: string }>;
+    users?: Array<{ id: string; email: string; name: string | null }>;
+  };
+}
+
+// R5: Bulk User Import
+export interface BulkImportResponse {
+  totalRows: number;
+  successful: number;
+  failed: number;
+  results: Array<{
+    row: number;
+    email: string;
+    status: 'created' | 'invited' | 'failed';
+    error?: string;
+    userId?: string;
+  }>;
+}
+
+// R6: Bulk User Status Change
+export interface BulkActionResponse {
+  total: number;
+  successful: number;
+  failed: number;
+  skipped: number;
+  results: Array<{
+    userId: string;
+    email: string;
+    status: 'success' | 'failed' | 'skipped';
+    error?: string;
+  }>;
 }
 
 // ============================================

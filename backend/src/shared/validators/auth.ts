@@ -5,6 +5,7 @@ import { emailSchema, passwordSchema, phoneSchema } from './common';
 export const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1, 'Password is required'),
+  authType: z.enum(['ldap', 'local']).optional(),
 });
 
 // Refresh token validation

@@ -48,7 +48,7 @@ export const notificationPreferencesSchema = z.object({
   alertEmail: z.boolean().optional(),
   systemInApp: z.boolean().optional(),
   systemEmail: z.boolean().optional(),
-});
+}).strict(); // Reject unknown keys like "smsNotification"
 
 export type ListNotificationsQuery = z.infer<typeof listNotificationsQuerySchema>;
 export type NotificationHistoryQuery = z.infer<typeof notificationHistoryQuerySchema>;

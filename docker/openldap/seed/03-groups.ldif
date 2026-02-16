@@ -1,0 +1,39 @@
+dn: cn=IT-Admins,ou=Groups,dc=corp,dc=example,dc=com
+objectClass: groupOfNames
+cn: IT-Admins
+member: cn=john.admin,ou=People,dc=corp,dc=example,dc=com
+member: cn=sarah.admin,ou=People,dc=corp,dc=example,dc=com
+member: cn=hank.multi,ou=People,dc=corp,dc=example,dc=com
+
+dn: cn=Patch-Managers,ou=Groups,dc=corp,dc=example,dc=com
+objectClass: groupOfNames
+cn: Patch-Managers
+member: cn=jane.patches,ou=People,dc=corp,dc=example,dc=com
+member: cn=tom.patches,ou=People,dc=corp,dc=example,dc=com
+member: cn=hank.multi,ou=People,dc=corp,dc=example,dc=com
+member: cn=iris.multi,ou=People,dc=corp,dc=example,dc=com
+
+dn: cn=Security-Team,ou=Groups,dc=corp,dc=example,dc=com
+objectClass: groupOfNames
+cn: Security-Team
+member: cn=bob.security,ou=People,dc=corp,dc=example,dc=com
+member: cn=eve.security,ou=People,dc=corp,dc=example,dc=com
+member: cn=iris.multi,ou=People,dc=corp,dc=example,dc=com
+
+dn: cn=IT-Users,ou=Groups,dc=corp,dc=example,dc=com
+objectClass: groupOfNames
+cn: IT-Users
+member: cn=alice.user,ou=People,dc=corp,dc=example,dc=com
+member: cn=charlie.user,ou=People,dc=corp,dc=example,dc=com
+member: cn=diana.user,ou=People,dc=corp,dc=example,dc=com
+member: cn=frank.user,ou=People,dc=corp,dc=example,dc=com
+member: cn=grace.user,ou=People,dc=corp,dc=example,dc=com
+member: cn=kate.disabled,ou=People,dc=corp,dc=example,dc=com
+member: cn=mike.special,ou=People,dc=corp,dc=example,dc=com
+member: cn=Nina Ünïcödë,ou=People,dc=corp,dc=example,dc=com
+member: cn=oscar.longdn,ou=People,dc=corp,dc=example,dc=com
+
+dn: cn=Service-Accounts,ou=Groups,dc=corp,dc=example,dc=com
+objectClass: groupOfNames
+cn: Service-Accounts
+member: cn=pam.svc,ou=Service Accounts,dc=corp,dc=example,dc=com

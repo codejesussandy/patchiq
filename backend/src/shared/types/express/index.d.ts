@@ -5,6 +5,7 @@ declare global {
         id: string;
         email: string;
         role: string;
+        roleId?: string;
         organizationId?: string;
       };
       agentId?: string;

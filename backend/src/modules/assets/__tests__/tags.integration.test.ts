@@ -26,7 +26,7 @@ describe('Tags API Integration Tests', () => {
         email: testEmail,
         passwordHash: await hashPassword(testPassword),
         name: 'Tags Test User',
-        role: 'ADMIN',
+        role: { connect: { name: 'admin' } },
         isActive: true,
         isOnboarded: true,
       },

@@ -1,4 +1,4 @@
-import { User, Organization, Department, Location } from '@prisma/client';
+import { User, Organization, Department, Location, Role } from '@prisma/client';
 
 // Re-export shared API types
 export type {
@@ -9,6 +9,7 @@ export type {
 
 // Keep Prisma-specific internal types
 export type UserWithRelations = User & {
+  role: Role;
   organization?: Organization | null;
   department?: Department | null;
   location?: Location | null;

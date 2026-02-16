@@ -45,7 +45,8 @@ describe('AuthService', () => {
         email: 'user@example.com',
         passwordHash,
         name: 'Test User',
-        role: 'USER',
+        roleId: 'role-user',
+        role: { id: 'role-user', name: 'user' },
         isActive: true,
         isOnboarded: true,
         organizationId: null,
@@ -83,6 +84,7 @@ describe('AuthService', () => {
         email: 'user@example.com',
         passwordHash,
         isActive: true,
+        role: { id: 'role-user', name: 'user' },
       };
 
       (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
@@ -99,6 +101,7 @@ describe('AuthService', () => {
         email: 'user@example.com',
         passwordHash,
         isActive: false,
+        role: { id: 'role-user', name: 'user' },
       };
 
       (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
@@ -115,7 +118,8 @@ describe('AuthService', () => {
         email: 'user@example.com',
         passwordHash,
         name: 'Test User',
-        role: 'USER',
+        roleId: 'role-user',
+        role: { id: 'role-user', name: 'user' },
         isActive: true,
         isOnboarded: true,
         organizationId: null,
@@ -132,6 +136,7 @@ describe('AuthService', () => {
       expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
         where: { email: 'user@example.com' },
         include: {
+          role: true,
           organization: true,
           department: true,
           location: true,
@@ -169,7 +174,8 @@ describe('AuthService', () => {
       const refreshToken = signRefreshToken({
         userId: 'user-1',
         email: 'user@example.com',
-        role: 'USER',
+        role: 'user',
+        roleId: 'role-user',
       });
 
       (mockPrisma.refreshToken.findFirst as jest.Mock).mockResolvedValue(null);
@@ -183,7 +189,8 @@ describe('AuthService', () => {
       const refreshToken = signRefreshToken({
         userId: 'user-1',
         email: 'user@example.com',
-        role: 'USER',
+        role: 'user',
+        roleId: 'role-user',
       });
 
       const mockStoredToken = {
@@ -195,7 +202,8 @@ describe('AuthService', () => {
         user: {
           id: 'user-1',
           email: 'user@example.com',
-          role: 'USER',
+          roleId: 'role-user',
+          role: { id: 'role-user', name: 'user' },
           isActive: true,
           organizationId: null,
         },
@@ -216,7 +224,8 @@ describe('AuthService', () => {
       const refreshToken = signRefreshToken({
         userId: 'user-1',
         email: 'user@example.com',
-        role: 'USER',
+        role: 'user',
+        roleId: 'role-user',
       });
 
       const mockStoredToken = {
@@ -228,7 +237,8 @@ describe('AuthService', () => {
         user: {
           id: 'user-1',
           email: 'user@example.com',
-          role: 'USER',
+          roleId: 'role-user',
+          role: { id: 'role-user', name: 'user' },
           isActive: false, // User disabled
           organizationId: null,
         },
@@ -382,12 +392,14 @@ describe('AuthService', () => {
         email: 'user@example.com',
         name: 'Test User',
         contactNumber: '+1234567890',
-        role: 'USER',
+        roleId: 'role-user',
+        role: { id: 'role-user', name: 'user' },
         organizationId: 'org-1',
         departmentId: null,
         locationId: null,
         isOnboarded: true,
         createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         organization: { id: 'org-1', name: 'Test Org' },
         department: null,
         location: null,
@@ -401,7 +413,7 @@ describe('AuthService', () => {
       expect(result.email).toBe('user@example.com');
       expect(result.firstName).toBe('Test');
       expect(result.lastName).toBe('User');
-      expect(result.role).toBe('USER');
+      expect(result.role).toBe('user');
       expect(result.isOnboarded).toBe(true);
       expect(result.createdAt).toBe('2024-01-01T00:00:00.000Z');
     });
