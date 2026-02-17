@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { SearchOutlined } from '@ant-design/icons';
+import { SearchOutlined, MenuOutlined } from '@ant-design/icons';
 import { Layout, Menu, Input, Avatar, Button, Tooltip, Popover } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -25,6 +25,8 @@ interface HeaderBarProps {
   onOrgSwitch: (orgId: string) => void;
   chatOpen: boolean;
   onToggleChat: () => void;
+  showMobileMenu?: boolean;
+  onMobileMenuToggle?: () => void;
 }
 
 export const HeaderBar = ({
@@ -34,6 +36,8 @@ export const HeaderBar = ({
   onOrgSwitch,
   chatOpen,
   onToggleChat,
+  showMobileMenu = false,
+  onMobileMenuToggle,
 }: HeaderBarProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -68,6 +72,7 @@ export const HeaderBar = ({
 
   return (
     <Header
+      role="banner"
       style={{
         position: 'fixed',
         top: 0,
@@ -81,6 +86,22 @@ export const HeaderBar = ({
         height: '60px',
       }}
     >
+      {showMobileMenu && (
+        <Button
+          type="text"
+          icon={<MenuOutlined style={{ fontSize: 20 }} />}
+          onClick={onMobileMenuToggle}
+          aria-label="Open navigation menu"
+          style={{
+            marginRight: 12,
+            width: 40,
+            height: 40,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        />
+      )}
       <div style={{
         display: 'flex',
         alignItems: 'center',

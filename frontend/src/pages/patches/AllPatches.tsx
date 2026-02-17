@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import {
   SearchOutlined, FilterOutlined, MoreOutlined, DownloadOutlined, PlusOutlined,
   DeleteOutlined, RocketOutlined, ScanOutlined, AppstoreOutlined, WarningOutlined,
@@ -237,6 +238,9 @@ export const AllPatches = () => {
 
   return (
     <div>
+      <Helmet>
+        <title>{osFilter ? `${osFilter} Patches` : 'Patches'} - PatchIQ</title>
+      </Helmet>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Title level={3} style={{ margin: 0 }}>{osFilter ? `${osFilter} Patches` : 'All Patches'}</Title>
         <Space>

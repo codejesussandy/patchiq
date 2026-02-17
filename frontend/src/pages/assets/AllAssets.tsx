@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import {
   FilterOutlined,
   PlusOutlined,
@@ -249,7 +250,7 @@ export function AllAssets() {
           const actionMenuItems = [
             { key: 'edit', label: 'Edit', onClick: (info: { domEvent: React.MouseEvent }) => { info.domEvent.stopPropagation(); navigate(`/assets/${record.id}`); } },
             { key: 'delete', label: 'Delete', danger: true, onClick: (info: { domEvent: React.MouseEvent }) => { info.domEvent.stopPropagation(); handleDelete(record); } },
-          ];
+          ] as any;
           return <Dropdown menu={{ items: actionMenuItems }} trigger={['click']}><Button type="text" size="small" icon={<MoreOutlined />} onClick={(e) => { e.stopPropagation(); e.preventDefault(); }} /></Dropdown>;
         },
       };
@@ -261,6 +262,9 @@ export function AllAssets() {
 
   return (
     <div style={{ background: '#fff', height: '100vh', display: 'flex', flexDirection: 'column', padding: '0' }}>
+      <Helmet>
+        <title>Assets - PatchIQ</title>
+      </Helmet>
       <div style={{ padding: '8px 12px 4px 12px', flexShrink: 0 }}>
         <Title level={3} style={{ margin: 0 }}>Assets</Title>
       </div>
@@ -308,7 +312,7 @@ export function AllAssets() {
           style={{ width: '100%' }}
           rowSelection={{ selectedRowKeys, onChange: (keys) => setSelectedRowKeys(keys) }}
           columns={columns}
-          data={assets as unknown as Record<string, unknown>[]}
+          data={assets}
           rowKey="id"
           loading={loading}
           scroll={{ x: 'max-content' }}

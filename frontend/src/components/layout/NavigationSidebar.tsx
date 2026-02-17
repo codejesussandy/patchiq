@@ -74,6 +74,8 @@ export const NavigationSidebar = ({
 
   return (
     <Sider
+      role="navigation"
+      aria-label="Primary navigation"
       collapsed={!isExpanded}
       trigger={null}
       width={SIDEBAR_EXPANDED_WIDTH}

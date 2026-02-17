@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { SearchOutlined } from '@ant-design/icons';
 import { Table, Input, Empty } from 'antd';
 import type { ColumnType, TableProps } from 'antd/es/table';
-import type { ExpandableConfig } from 'antd/es/table/interface';
+import type { ExpandableConfig, TableRowSelection } from 'antd/es/table/interface';
 import { useDebouncedSearch } from '../../hooks/useDebouncedSearch';
 
 export interface DataTableColumn<T> extends ColumnType<T> {
@@ -12,13 +12,18 @@ export interface DataTableColumn<T> extends ColumnType<T> {
 }
 
 export interface DataTablePagination {
-  current: number;
-  pageSize: number;
-  total: number;
-  onChange: (page: number, pageSize: number) => void;
+  current?: number;
+  pageSize?: number;
+  total?: number;
+  onChange?: (page: number, pageSize: number) => void;
+  showSizeChanger?: boolean;
+  showTotal?: (total: number, range: [number, number]) => React.ReactNode;
+  pageSizeOptions?: string[] | number[];
+  showQuickJumper?: boolean;
+  size?: 'default' | 'small';
 }
 
-export interface DataTableProps<T extends Record<string, unknown>> {
+export interface DataTableProps<T = any> {
   data: T[] | undefined;
   loading?: boolean;
   columns: DataTableColumn<T>[];
@@ -38,6 +43,7 @@ export interface DataTableProps<T extends Record<string, unknown>> {
   selectable?: boolean;
   selectedRowKeys?: React.Key[];
   onSelectionChange?: (keys: React.Key[], rows: T[]) => void;
+  rowSelection?: TableRowSelection<T>;
 
   toolbar?: React.ReactNode;
   rowActions?: (record: T) => React.ReactNode;
@@ -50,6 +56,7 @@ export interface DataTableProps<T extends Record<string, unknown>> {
   rowKey?: string | ((record: T) => string);
   expandable?: ExpandableConfig<T>;
   onRow?: (record: T, index?: number) => React.HTMLAttributes<HTMLElement>;
+  onRowClick?: (record: T) => void;
   style?: React.CSSProperties;
   className?: string;
   bordered?: boolean;
@@ -64,7 +71,7 @@ export interface DataTableProps<T extends Record<string, unknown>> {
   sticky?: boolean | { offsetHeader?: number };
 }
 
-export function DataTable<T extends Record<string, unknown>>({
+export function DataTable<T = any>({
   data,
   loading = false,
   columns,
@@ -77,6 +84,7 @@ export function DataTable<T extends Record<string, unknown>>({
   selectable = false,
   selectedRowKeys,
   onSelectionChange,
+  rowSelection: customRowSelection,
   toolbar,
   rowActions,
   scroll,
@@ -84,6 +92,7 @@ export function DataTable<T extends Record<string, unknown>>({
   rowKey = 'id',
   expandable,
   onRow,
+  onRowClick,
   style,
   className,
   bordered,
@@ -128,14 +137,14 @@ export function DataTable<T extends Record<string, unknown>>({
     return cols;
   }, [columns, rowActions]);
 
-  const rowSelection = selectable
+  const rowSelection = customRowSelection || (selectable
     ? {
         selectedRowKeys: selectedRowKeys || [],
         onChange: (keys: React.Key[], rows: T[]) => {
           onSelectionChange?.(keys, rows);
         },
       }
-    : undefined;
+    : undefined);
 
   const tablePagination =
     pagination === false
@@ -191,10 +200,32 @@ export function DataTable<T extends Record<string, unknown>>({
         rowKey={rowKey}
         rowSelection={rowSelection}
         pagination={tablePagination}
-        scroll={scroll ?? { x: 'max-content' }}
+        scroll={scroll ?? { x: 'max-content', y: 600 }}
+        virtual
         size={size}
         expandable={expandable}
-        onRow={onRow}
+        onRow={(record, index) => {
+          const customProps = onRow?.(record, index) || {};
+          return {
+            ...customProps,
+            tabIndex: 0,
+            onClick: (e) => {
+              customProps.onClick?.(e);
+              onRowClick?.(record);
+            },
+            onKeyDown: (e) => {
+              customProps.onKeyDown?.(e);
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onRowClick?.(record);
+              }
+            },
+            style: {
+              ...customProps.style,
+              cursor: onRowClick ? 'pointer' : customProps.style?.cursor,
+            },
+          };
+        }}
         bordered={bordered}
         showHeader={showHeader}
         footer={footer}

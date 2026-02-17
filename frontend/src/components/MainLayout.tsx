@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { Grid, Layout } from 'antd';
+import { Grid, Layout, Drawer } from 'antd';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { categoryService } from '../services/category.service';
@@ -57,6 +57,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [categoryManagementModalOpen, setCategoryManagementModalOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   // ── Data fetching ──────────────────────────────────────────────
 
@@ -76,7 +77,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const fetchOrganizations = async () => {
     try {
       const orgs = await settingsService.getOrganizations();
-      setOrganizations(Array.isArray(orgs) ? orgs : []);
+      setOrganizations(Array.isArray(orgs) ? orgs as unknown as Organization[] : []);
     } catch {
       // Silently fail — orgs dropdown will just be empty
     }
@@ -226,6 +227,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const isTabletOrSmaller = !screens.lg;
   const showSidebar = sidebarConfig && !isTabletOrSmaller;
   const showCategoryPanel = (sidebarConfig?.title === 'Assets' || sidebarConfig?.title === 'Patches') && !isTabletOrSmaller;
+  const showMobileDrawer = Boolean(sidebarConfig && isTabletOrSmaller); // Show drawer button on mobile/tablet
   const sidebarWidth = showSidebar ? SIDEBAR_COLLAPSED_WIDTH : 0;
   const categoryPanelWidth = showCategoryPanel ? CATEGORY_PANEL_WIDTH : 0;
   const contentMarginLeft = sidebarWidth + categoryPanelWidth;
@@ -241,6 +243,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         onOrgSwitch={setSelectedOrgId}
         chatOpen={chatOpen}
         onToggleChat={() => setChatOpen((prev) => !prev)}
+        showMobileMenu={showMobileDrawer}
+        onMobileMenuToggle={() => setMobileDrawerOpen(true)}
       />
 
       <Layout style={{ marginTop: '60px' }}>
@@ -280,16 +284,76 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
           }}
         >
           <Content
+            as="main"
+            role="main"
+            aria-label="Main content"
             style={{
               padding: '24px 32px',
               background: '#fff',
               minHeight: 'calc(100vh - 60px)',
+              maxWidth: '1500px',
+              margin: '0 auto',
+              width: '100%',
             }}
           >
             {children}
           </Content>
         </Layout>
       </Layout>
+
+      {/* Mobile/Tablet Navigation Drawer */}
+      <Drawer
+        title={sidebarConfig?.title || 'Navigation'}
+        placement="left"
+        onClose={() => setMobileDrawerOpen(false)}
+        open={mobileDrawerOpen}
+        width={sidebarConfig?.title === 'Assets' || sidebarConfig?.title === 'Patches' ? 560 : 280}
+        styles={{ body: { padding: 0 } }}
+      >
+        <div style={{ display: 'flex', height: '100%' }}>
+          {sidebarConfig && (
+            <NavigationSidebar
+              sidebarConfig={sidebarConfig}
+              selectedPatchTab={selectedPatchTab}
+              selectedAssetTab={selectedAssetTab}
+              selectedSideMenu={getSelectedSideMenu()}
+              expandedMenus={expandedMenus}
+              onPatchTabChange={(tab) => {
+                handlePatchTabChange(tab);
+                setMobileDrawerOpen(false);
+              }}
+              onAssetTabChange={(tab) => {
+                handleAssetTabChange(tab);
+                setMobileDrawerOpen(false);
+              }}
+              onSideMenuClick={(key) => {
+                handleSideMenuClick(key);
+                setMobileDrawerOpen(false);
+              }}
+              onExpandedMenusChange={setExpandedMenus}
+            />
+          )}
+          {(sidebarConfig?.title === 'Assets' || sidebarConfig?.title === 'Patches') && (
+            <CategoryPanel
+              sidebarTitle={sidebarConfig.title}
+              sidebarWidth={SIDEBAR_COLLAPSED_WIDTH}
+              categories={categories}
+              subCategories={subCategories}
+              selectedSideMenu={getSelectedSideMenu()}
+              expandedAssetSections={expandedAssetSections}
+              onSideMenuClick={(key) => {
+                handleSideMenuClick(key);
+                setMobileDrawerOpen(false);
+              }}
+              onExpandedSectionsChange={setExpandedAssetSections}
+              onOpenCategoryModal={() => {
+                setCategoryManagementModalOpen(true);
+                setMobileDrawerOpen(false);
+              }}
+            />
+          )}
+        </div>
+      </Drawer>
 
       <CategoryManagementModal
         open={categoryManagementModalOpen}

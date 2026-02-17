@@ -1,6 +1,7 @@
 import { ReloadOutlined } from '@ant-design/icons';
 import { Row, Col, Card, Typography, Spin, Select, Button, Space } from 'antd';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Helmet } from 'react-helmet-async';
 import { DataTable } from '../components/shared/DataTable';
 import { useDashboardData, useRefreshDashboard } from '../hooks/useDashboard';
 
@@ -9,15 +10,20 @@ const COLORS = { critical: '#ff4d4f', high: '#fa8c16', medium: '#faad14', low: '
 const PIE_COLORS_SET = ['#5B8FF9', '#5AD8A6', '#F6BD16', '#E8684A', '#6DC8EC', '#9270CA', '#FF9D4D', '#269A99'];
 
 const StatCard: React.FC<{ title: string; value: number | string; suffix?: string }> = ({ title, value, suffix }) => (
-  <Card style={{ textAlign: 'center', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', height: '100%', padding: '16px' }}>
+  <Card
+    aria-label={`${title}: ${value}${suffix || ''}`}
+    style={{ textAlign: 'center', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', height: '100%', padding: '16px' }}
+  >
     <Text type="secondary" style={{ fontSize: 16, display: 'block', marginBottom: 8 }}>{title}</Text>
     <div style={{ fontSize: 32, fontWeight: 700, color: '#1890ff' }}>{value}{suffix && <span style={{ fontSize: 16, marginLeft: 4 }}>{suffix}</span>}</div>
   </Card>
 );
 
-const ChartCard: React.FC<{ title: string; children: React.ReactNode; height?: number }> = ({ title, children, height = 250 }) => (
+const ChartCard: React.FC<{ title: string; children: React.ReactNode; height?: number; ariaLabel?: string }> = ({ title, children, height = 250, ariaLabel }) => (
   <Card title={title} style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', height: '100%' }}>
-    <ResponsiveContainer width="100%" height={height}>{children}</ResponsiveContainer>
+    <div role="img" aria-label={ariaLabel || title}>
+      <ResponsiveContainer width="100%" height={height}>{children}</ResponsiveContainer>
+    </div>
   </Card>
 );
 
@@ -30,7 +36,7 @@ const PieChartWidget: React.FC<{ data: { name?: string; value?: number }[]; colo
   </PieChart>
 );
 
-const SeverityStackedBar: React.FC<{ data: unknown[]; xKey: string; height?: number; xAngle?: number; xHeight?: number; showLegend?: boolean }> = ({ data, xKey, _height = 250, xAngle, xHeight, showLegend = true }) => (
+const SeverityStackedBar: React.FC<{ data: unknown[]; xKey: string; height?: number; xAngle?: number; xHeight?: number; showLegend?: boolean }> = ({ data, xKey, xAngle, xHeight, showLegend = true }) => (
   <BarChart data={data}>
     <CartesianGrid strokeDasharray="3 3" />
     <XAxis dataKey={xKey} {...(xAngle ? { angle: xAngle, textAnchor: 'end', height: xHeight } : {})} />
@@ -66,10 +72,17 @@ export const Dashboard = () => {
   const s = data.stats;
   return (
     <div style={{ padding: '24px', background: '#f5f7fa', minHeight: '100vh' }}>
-      <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>Executive Dashboard</Title>
+      <Helmet>
+        <title>Executive Dashboard - PatchIQ</title>
+      </Helmet>
+        <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Title level={3} style={{ margin: 0 }}>Executive Dashboard</Title>
         <Space>
-          <Select defaultValue="all" style={{ width: 150 }}>
+          <Select
+            defaultValue="all"
+            style={{ width: 150 }}
+            aria-label="Filter dashboard by endpoint platform"
+          >
             <Select.Option value="all">All Endpoints</Select.Option><Select.Option value="windows">Windows Only</Select.Option><Select.Option value="linux">Linux Only</Select.Option>
           </Select>
           <Button icon={<ReloadOutlined spin={refreshing} />} onClick={handleRefresh} loading={refreshing} type="primary">Refresh</Button>
@@ -89,7 +102,11 @@ export const Dashboard = () => {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={12}>
-          <ChartCard title="Vulnerability Classification" height={280}>
+          <ChartCard
+            title="Vulnerability Classification"
+            height={280}
+            ariaLabel={`Vulnerability classification chart showing Critical: ${s.criticalVulnerabilities || 0}, High: ${s.highVulnerabilities || 0}, Medium: ${s.mediumVulnerabilities || 0}, Low: ${s.lowVulnerabilities || 0} vulnerabilities split by exploitable and non-exploitable`}
+          >
             <BarChart data={[
               { name: 'Total', critical: s.criticalVulnerabilities || 0, high: s.highVulnerabilities || 0, medium: s.mediumVulnerabilities || 0, low: s.lowVulnerabilities || 0 },
               { name: 'Non Exploit', critical: s.nonExploitableVulnerabilities?.critical || 0, high: s.nonExploitableVulnerabilities?.high || 0, medium: s.nonExploitableVulnerabilities?.medium || 0, low: s.nonExploitableVulnerabilities?.low || 0 },
@@ -121,7 +138,10 @@ export const Dashboard = () => {
         <Col xs={24} sm={12} lg={8}><ChartCard title="Expired Certificates"><PieChartWidget data={data.expiredCertificates} colorKey="cert" /></ChartCard></Col>
         <Col xs={24} sm={12} lg={8}><ChartCard title="Malicious Processes by Platform"><PieChartWidget data={data.maliciousProcessesByPlatform} colorKey="mal" /></ChartCard></Col>
         <Col xs={24} sm={12} lg={8}>
-          <ChartCard title="Total Vulnerability by Severity">
+          <ChartCard
+            title="Total Vulnerability by Severity"
+            ariaLabel={`Total vulnerabilities by severity: Critical ${s.criticalVulnerabilities || 0}, High ${s.highVulnerabilities || 0}, Medium ${s.mediumVulnerabilities || 0}, Low ${s.lowVulnerabilities || 0}`}
+          >
             <BarChart data={[{ name: 'Critical', value: s.criticalVulnerabilities || 0 }, { name: 'High', value: s.highVulnerabilities || 0 }, { name: 'Medium', value: s.mediumVulnerabilities || 0 }, { name: 'Low', value: s.lowVulnerabilities || 0 }]}>
               <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><RechartsTooltip /><Bar dataKey="value" fill="#722ed1" />
             </BarChart>
