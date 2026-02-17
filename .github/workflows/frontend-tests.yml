@@ -1,0 +1,492 @@
+name: Frontend Tests
+
+on:
+  pull_request:
+    branches: [main, full-dev-sandy-v2]
+    paths:
+      - 'frontend/**'
+      - 'shared/**'
+      - '.github/workflows/frontend-tests.yml'
+  push:
+    branches: [main, full-dev-sandy-v2]
+    paths:
+      - 'frontend/**'
+      - 'shared/**'
+      - '.github/workflows/frontend-tests.yml'
+
+# Cancel in-progress runs for the same PR
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '18'
+  CACHE_VERSION: v1
+
+jobs:
+  # ============================================================================
+  # Job 1: Quick Validation (Fast Fail)
+  # ============================================================================
+  quick-validation:
+    name: Quick Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            shared/package-lock.json
+
+      - name: Install shared dependencies
+        run: cd shared && npm ci
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Run ESLint
+        run: cd frontend && npm run lint
+
+      - name: TypeScript type check
+        run: cd frontend && npm run type-check
+
+      - name: Build test
+        run: cd frontend && npm run build
+
+      - name: Check bundle size
+        run: |
+          BUNDLE_SIZE=$(du -sk frontend/dist 2>/dev/null | cut -f1 || echo "0")
+          BUNDLE_SIZE_MB=$((BUNDLE_SIZE / 1024))
+          echo "Bundle size: ${BUNDLE_SIZE_MB}MB"
+          echo "BUNDLE_SIZE_MB=${BUNDLE_SIZE_MB}" >> $GITHUB_ENV
+
+          if [ $BUNDLE_SIZE_MB -gt 3 ]; then
+            echo "::warning::Bundle size (${BUNDLE_SIZE_MB}MB) exceeds 3MB threshold"
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist
+          retention-days: 1
+
+  # ============================================================================
+  # Job 2: Unit Tests
+  # ============================================================================
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: quick-validation
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            shared/package-lock.json
+
+      - name: Install shared dependencies
+        run: cd shared && npm ci
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Run unit tests with coverage
+        run: cd frontend && npm run test:unit -- --coverage
+
+      - name: Check coverage thresholds
+        run: |
+          cd frontend
+          # Extract coverage percentages from output
+          COVERAGE=$(npm run test:unit -- --coverage --reporter=json 2>&1 | grep -o '"lines":[0-9.]*' | head -1 | grep -o '[0-9.]*')
+          echo "Coverage: ${COVERAGE}%"
+
+          # Fail if coverage is below 70%
+          if [ $(echo "$COVERAGE < 70" | bc -l) -eq 1 ]; then
+            echo "::error::Coverage ${COVERAGE}% is below 70% threshold"
+            exit 1
+          fi
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-unit-coverage
+          path: frontend/coverage
+          retention-days: 7
+
+      - name: Generate coverage summary
+        id: coverage-summary
+        run: |
+          cd frontend
+          if [ -f coverage/coverage-summary.json ]; then
+            LINES=$(cat coverage/coverage-summary.json | jq -r '.total.lines.pct')
+            BRANCHES=$(cat coverage/coverage-summary.json | jq -r '.total.branches.pct')
+            FUNCTIONS=$(cat coverage/coverage-summary.json | jq -r '.total.functions.pct')
+            STATEMENTS=$(cat coverage/coverage-summary.json | jq -r '.total.statements.pct')
+
+            echo "lines=${LINES}" >> $GITHUB_OUTPUT
+            echo "branches=${BRANCHES}" >> $GITHUB_OUTPUT
+            echo "functions=${FUNCTIONS}" >> $GITHUB_OUTPUT
+            echo "statements=${STATEMENTS}" >> $GITHUB_OUTPUT
+          fi
+
+  # ============================================================================
+  # Job 3: Integration Tests (Parallel with Unit Tests)
+  # ============================================================================
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: quick-validation
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            shared/package-lock.json
+
+      - name: Install shared dependencies
+        run: cd shared && npm ci
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Run integration tests
+        run: cd frontend && npm run test:integration
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-integration-results
+          path: frontend/test-results
+          retention-days: 7
+
+  # ============================================================================
+  # Job 4: E2E Tests (Matrix Strategy)
+  # ============================================================================
+  e2e-tests:
+    name: E2E Tests (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: patchiq
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+            shared/package-lock.json
+
+      - name: Install shared dependencies
+        run: cd shared && npm ci
+
+      - name: Install backend dependencies
+        run: cd backend && npm ci
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Install Playwright browsers
+        run: cd frontend && npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Setup database
+        run: |
+          cd backend
+          npx prisma migrate deploy
+          npm run db:seed
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/patchiq
+
+      - name: Start backend server
+        run: |
+          cd backend
+          npm run dev &
+          # Wait for server to be ready
+          timeout 60 bash -c 'until curl -f http://localhost:3000/health 2>/dev/null; do sleep 2; done'
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/patchiq
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-jwt-secret
+
+      - name: Run Playwright E2E tests
+        run: cd frontend && npx playwright test --project=${{ matrix.browser }}
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: frontend/playwright-report
+          retention-days: 7
+
+      - name: Upload test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots-${{ matrix.browser }}
+          path: frontend/test-results
+          retention-days: 7
+
+  # ============================================================================
+  # Job 5: Critical Path Tests (Fast E2E Subset)
+  # ============================================================================
+  critical-path:
+    name: Critical Path Tests
+    runs-on: ubuntu-latest
+    needs: quick-validation
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: patchiq
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+            shared/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd shared && npm ci
+          cd ../backend && npm ci
+          cd ../frontend && npm ci
+
+      - name: Install Playwright
+        run: cd frontend && npx playwright install --with-deps chromium
+
+      - name: Setup database
+        run: |
+          cd backend
+          npx prisma migrate deploy
+          npm run db:seed
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/patchiq
+
+      - name: Start backend
+        run: |
+          cd backend
+          npm run dev &
+          timeout 60 bash -c 'until curl -f http://localhost:3000/health 2>/dev/null; do sleep 2; done'
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/patchiq
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-jwt-secret
+
+      - name: Run critical path tests
+        run: cd frontend && bash scripts/critical-path-tests.sh
+        env:
+          CI: true
+
+  # ============================================================================
+  # Job 6: Security Tests
+  # ============================================================================
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    needs: quick-validation
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: patchiq
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+            shared/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd shared && npm ci
+          cd ../backend && npm ci
+          cd ../frontend && npm ci
+
+      - name: Install Playwright
+        run: cd frontend && npx playwright install --with-deps chromium
+
+      - name: Setup database
+        run: |
+          cd backend
+          npx prisma migrate deploy
+          npm run db:seed
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/patchiq
+
+      - name: Start backend
+        run: |
+          cd backend
+          npm run dev &
+          timeout 60 bash -c 'until curl -f http://localhost:3000/health 2>/dev/null; do sleep 2; done'
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/patchiq
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-jwt-secret
+
+      - name: Run security tests
+        run: cd frontend && bash scripts/security-tests.sh
+        env:
+          CI: true
+
+      - name: Run accessibility tests
+        run: cd frontend && npx playwright test --grep @a11y
+        continue-on-error: true
+
+  # ============================================================================
+  # Job 7: Test Summary
+  # ============================================================================
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, e2e-tests, critical-path, security-tests]
+    if: always()
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate test summary
+        run: |
+          echo "# Frontend Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "## Job Status" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Quick Validation | ${{ needs.quick-validation.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests | ${{ needs.integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| E2E Tests | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Critical Path | ${{ needs.critical-path.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Tests | ${{ needs.security-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check overall status
+        run: |
+          if [ "${{ needs.unit-tests.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests.result }}" != "success" ] || \
+             [ "${{ needs.e2e-tests.result }}" != "success" ]; then
+            echo "::error::One or more critical test jobs failed"
+            exit 1
+          fi

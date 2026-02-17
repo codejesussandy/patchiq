@@ -15,6 +15,7 @@ PatchIQ is a patch and vulnerability management platform with a TypeScript monor
 - **`docs/sprint-0/ROADMAP.md`** — Codebase overhaul roadmap (all 4 phases completed)
 - **`docs/sprint-0/PRD-PHASE{1-4}-*.md`** — PRDs for each completed phase
 - **`backend/src/CONVENTIONS.md`** — Backend service architecture guidelines (Phase 2)
+- **`frontend/UNIT-TESTING-GUIDE.md`** — Frontend unit testing guide (Vitest + React Testing Library)
 - **`docs/.archive/`** — Old docs preserved for reference
 - Each backend module has its own `README.md` with endpoint tables and data flow
 
@@ -38,10 +39,16 @@ cd backend && npm run test:unit           # Unit tests only
 cd backend && npm run test:e2e            # E2E tests
 cd backend && npm test -- path/to/test    # Single test file
 
-# Frontend
-cd frontend && npm test                   # Playwright tests
+# Frontend E2E Tests (Playwright)
+cd frontend && npm test                   # Playwright E2E tests (85 tests)
 cd frontend && npm run test:ui            # Playwright UI mode
 cd frontend && npm run test:debug         # Debug mode
+
+# Frontend Unit Tests (Vitest)
+cd frontend && npm run test:unit          # Unit tests (53 tests)
+cd frontend && npm run test:watch         # Watch mode
+cd frontend && npm run test:unit:coverage # Coverage report
+cd frontend && npm run test:unit:ui       # Vitest UI mode
 ```
 
 ### Database
