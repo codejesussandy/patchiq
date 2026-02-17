@@ -205,7 +205,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       .filter((sub) => sub.categoryId === cat.id)
       .map((subCat) => ({
         title: (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', fontSize: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', fontSize: '16px' }}>
             <span>{subCat.name}</span>
             <span onClick={(e) => e.stopPropagation()}>
               <Dropdown
@@ -265,7 +265,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         ]}
       >
         <div style={{ marginBottom: '16px' }}>
-          <p style={{ color: '#666', fontSize: '12px' }}>
+          <p style={{ color: '#666', fontSize: '16px' }}>
             Manage categories and sub-categories. Hover over items to see edit/delete options.
           </p>
         </div>

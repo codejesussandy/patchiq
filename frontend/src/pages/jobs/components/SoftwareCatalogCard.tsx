@@ -112,7 +112,7 @@ export const SoftwareCatalogCard = ({ item, onDeploy, onDelete }: SoftwareCatalo
         marginBottom: 12, border: '1px dashed #d9d9d9',
       }}
     >
-      <Text type="secondary" style={{ fontSize: 12 }}>{item.logo || 'Add Logo'}</Text>
+      <Text type="secondary" style={{ fontSize: 16 }}>{item.logo || 'Add Logo'}</Text>
     </div>
 
     <div style={{ marginBottom: 8 }}>
@@ -120,7 +120,7 @@ export const SoftwareCatalogCard = ({ item, onDeploy, onDelete }: SoftwareCatalo
     </div>
 
     <div style={{ marginBottom: 12, minHeight: 40 }}>
-      <Text type="secondary" style={{ fontSize: 12 }}>{item.description}</Text>
+      <Text type="secondary" style={{ fontSize: 16 }}>{item.description}</Text>
     </div>
 
     <div style={{ marginBottom: 12 }}>

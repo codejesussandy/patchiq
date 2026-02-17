@@ -18,7 +18,7 @@ export const processColumns: ColumnsType<ProcessInfo> = [
     title: 'Memory', key: 'memory', width: 120,
     render: (_, record) => (
       <Space orientation="vertical" size={0}>
-        {record.memoryBytes && <Text style={{ fontSize: '12px' }}>{formatBytes(record.memoryBytes)}</Text>}
+        {record.memoryBytes && <Text style={{ fontSize: '16px' }}>{formatBytes(record.memoryBytes)}</Text>}
         {record.memoryPercent !== undefined && <Text type="secondary" style={{ fontSize: '11px' }}>{record.memoryPercent.toFixed(1)}%</Text>}
       </Space>
     ),

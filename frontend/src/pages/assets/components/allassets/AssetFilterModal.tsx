@@ -79,19 +79,19 @@ export const AssetFilterModal = ({
 
         {(filterCategoryId || filterStatus || filterOperationalStatus) && (
           <div style={{ padding: '12px', background: '#e6f7ff', borderRadius: '4px', marginTop: '12px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>Active Filters:</div>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>Active Filters:</div>
             {filterCategoryId && (
-              <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+              <div style={{ fontSize: '16px', marginBottom: '4px' }}>
                 Category: <strong>{categories.find((c) => c.id === filterCategoryId)?.name}</strong>
               </div>
             )}
             {filterStatus && (
-              <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+              <div style={{ fontSize: '16px', marginBottom: '4px' }}>
                 Status: <strong>{filterStatus}</strong>
               </div>
             )}
             {filterOperationalStatus && (
-              <div style={{ fontSize: '12px' }}>
+              <div style={{ fontSize: '16px' }}>
                 Operational Status: <strong>{filterOperationalStatus}</strong>
               </div>
             )}

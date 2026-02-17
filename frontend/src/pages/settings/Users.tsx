@@ -255,7 +255,7 @@ export const Users = () => {
     const color = colors[parseInt(user.id) % colors.length];
     return (
       <Space>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '12px' }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '16px' }}>
           {initials}
         </div>
         <span>{`${user.firstName} ${user.lastName}`}</span>

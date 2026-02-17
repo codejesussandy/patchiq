@@ -74,7 +74,7 @@ const renderIPConfiguration = (ipConfig?: IPConfiguration) => {
       )}
       {ipConfig.ipv6Address && (
         <Descriptions.Item label="IPv6 Address" span={2}>
-          <Text copyable style={{ fontSize: '12px' }}>{ipConfig.ipv6Address}</Text>
+          <Text copyable style={{ fontSize: '16px' }}>{ipConfig.ipv6Address}</Text>
         </Descriptions.Item>
       )}
       {ipConfig.dhcpEnabled !== undefined && (
@@ -155,7 +155,7 @@ export const NetworkTab = ({ assetId }: NetworkTabProps) => {
       dataIndex: 'macAddress',
       key: 'macAddress',
       width: 150,
-      render: (mac: string) => <Text copyable style={{ fontFamily: 'monospace', fontSize: '12px' }}>{mac}</Text> },
+      render: (mac: string) => <Text copyable style={{ fontFamily: 'monospace', fontSize: '16px' }}>{mac}</Text> },
     {
       title: 'IP Address',
       key: 'ipAddress',
@@ -186,7 +186,7 @@ export const NetworkTab = ({ assetId }: NetworkTabProps) => {
       render: (_, record) =>
         record.driverVersion ? (
           <Tooltip title={`Date: ${record.driverDate || 'Unknown'}`}>
-            <Text style={{ fontSize: '12px' }}>{record.driverVersion}</Text>
+            <Text style={{ fontSize: '16px' }}>{record.driverVersion}</Text>
           </Tooltip>
         ) : (
           <Text type="secondary">—</Text>

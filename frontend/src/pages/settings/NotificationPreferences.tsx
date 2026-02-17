@@ -78,7 +78,7 @@ export const NotificationPreferences = () => {
         <div>
           <Text strong>{text}</Text>
           <br />
-          <Text type="secondary" style={{ fontSize: 12 }}>{record.description}</Text>
+          <Text type="secondary" style={{ fontSize: 16 }}>{record.description}</Text>
         </div>
       ) },
     {
@@ -123,7 +123,7 @@ export const NotificationPreferences = () => {
         style={{ maxWidth: 600 }}
       />
 
-      <Text type="secondary" style={{ display: 'block', marginTop: 16, fontSize: 12 }}>
+      <Text type="secondary" style={{ display: 'block', marginTop: 16, fontSize: 16 }}>
         Email notifications require a configured mail server (Settings &gt; Company Configuration &gt; Mail Server).
       </Text>
     </div>

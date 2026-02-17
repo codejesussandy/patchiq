@@ -71,11 +71,11 @@ export const AuditTimelineModal = ({
           <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#333' }}>Custom Date Range</div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>From</div>
+              <div style={{ fontSize: '16px', color: '#666', marginBottom: '4px' }}>From</div>
               <DatePicker value={customStartDate} onChange={onCustomStartChange} placeholder="Start Date" style={{ width: '100%' }} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>To</div>
+              <div style={{ fontSize: '16px', color: '#666', marginBottom: '4px' }}>To</div>
               <DatePicker value={customEndDate} onChange={onCustomEndChange} placeholder="End Date" style={{ width: '100%' }} />
             </div>
           </div>

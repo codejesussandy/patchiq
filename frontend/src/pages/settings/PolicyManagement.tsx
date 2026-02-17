@@ -20,8 +20,8 @@ import { ConfirmModal } from '../../components/shared/ConfirmModal';
 import { DataTable } from '../../components/shared/DataTable';
 import { useModal } from '../../hooks/useModal';
 import { useAlertPolicies, useCreateAlertPolicy, useUpdateAlertPolicy, useDeleteAlertPolicy } from '../../hooks/useSettings';
-import { PolicyFormModal } from './components/PolicyFormModal';
 import { sanitizeInput } from '../../utils/sanitize';
+import { PolicyFormModal } from './components/PolicyFormModal';
 
 const { Title } = Typography;
 

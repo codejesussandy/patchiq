@@ -10,7 +10,7 @@ const PIE_COLORS_SET = ['#5B8FF9', '#5AD8A6', '#F6BD16', '#E8684A', '#6DC8EC', '
 
 const StatCard: React.FC<{ title: string; value: number | string; suffix?: string }> = ({ title, value, suffix }) => (
   <Card style={{ textAlign: 'center', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', height: '100%', padding: '16px' }}>
-    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{title}</Text>
+    <Text type="secondary" style={{ fontSize: 16, display: 'block', marginBottom: 8 }}>{title}</Text>
     <div style={{ fontSize: 32, fontWeight: 700, color: '#1890ff' }}>{value}{suffix && <span style={{ fontSize: 16, marginLeft: 4 }}>{suffix}</span>}</div>
   </Card>
 );

@@ -40,7 +40,7 @@ export const AssetStep1 = ({ categories, subCategories, selectedCategoryId, onCa
             help={
               <>
                 {fieldErrors.assetName && <span style={{ color: '#ff4d4f', display: 'block' }}>{fieldErrors.assetName}</span>}
-                <span style={{ fontSize: '12px', color: '#999' }}>{charCounts.assetName || 0}/255 characters</span>
+                <span style={{ fontSize: '16px', color: '#999' }}>{charCounts.assetName || 0}/255 characters</span>
               </>
             }
             validateStatus={fieldErrors.assetName ? 'error' : ''}
@@ -98,7 +98,7 @@ export const AssetStep1 = ({ categories, subCategories, selectedCategoryId, onCa
         <Form.Item
           label="Make"
           name="make"
-          help={<span style={{ fontSize: '12px', color: '#999' }}>{charCounts.make || 0}/255</span>}
+          help={<span style={{ fontSize: '16px', color: '#999' }}>{charCounts.make || 0}/255</span>}
         >
           <Input
             placeholder="Enter manufacturer"
@@ -111,7 +111,7 @@ export const AssetStep1 = ({ categories, subCategories, selectedCategoryId, onCa
         <Form.Item
           label="Model"
           name="model"
-          help={<span style={{ fontSize: '12px', color: '#999' }}>{charCounts.model || 0}/255</span>}
+          help={<span style={{ fontSize: '16px', color: '#999' }}>{charCounts.model || 0}/255</span>}
         >
           <Input
             placeholder="Enter model"
@@ -126,7 +126,7 @@ export const AssetStep1 = ({ categories, subCategories, selectedCategoryId, onCa
         <Form.Item
           label="Serial Number"
           name="serialNumber"
-          help={<span style={{ fontSize: '12px', color: '#999' }}>{charCounts.serialNumber || 0}/255</span>}
+          help={<span style={{ fontSize: '16px', color: '#999' }}>{charCounts.serialNumber || 0}/255</span>}
         >
           <Input
             placeholder="Enter serial number"
@@ -139,7 +139,7 @@ export const AssetStep1 = ({ categories, subCategories, selectedCategoryId, onCa
         <Form.Item
           label="UUID"
           name="uuid"
-          help={<span style={{ fontSize: '12px', color: '#999' }}>{charCounts.uuid || 0}/255</span>}
+          help={<span style={{ fontSize: '16px', color: '#999' }}>{charCounts.uuid || 0}/255</span>}
         >
           <Input
             placeholder="Enter UUID"

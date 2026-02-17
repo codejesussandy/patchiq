@@ -151,7 +151,7 @@ export const PatchPreferences = () => {
             {/* Last Synced At */}
             {data && (
               <div style={{ marginBottom: '24px' }}>
-                <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+                <Text type="secondary" style={{ fontSize: '16px', display: 'block', marginBottom: '8px' }}>
                   Last Synced At {formatLastSyncTime(data.lastSyncedAt)}
                 </Text>
               </div>

@@ -111,7 +111,7 @@ export const VulnerabilitiesTab = ({ assetId }: VulnerabilitiesTabProps) => {
             <Card size="small">
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', color }}>{count}</div>
-                <Text type="secondary" style={{ fontSize: '12px' }}>{label}</Text>
+                <Text type="secondary" style={{ fontSize: '16px' }}>{label}</Text>
               </div>
             </Card>
           </Col>

@@ -45,7 +45,7 @@ export const AgentConfiguration = () => {
     <Row gutter={[32, 24]} style={{ marginBottom: '16px' }}>
       <Col xs={24} sm={12}>
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', fontWeight: 500 }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '16px', fontWeight: 500 }}>
             * {label1}
           </label>
           <Form.Item
@@ -68,7 +68,7 @@ export const AgentConfiguration = () => {
       </Col>
       <Col xs={24} sm={12}>
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', fontWeight: 500 }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '16px', fontWeight: 500 }}>
             * {label2}
           </label>
           <Form.Item
@@ -108,7 +108,7 @@ export const AgentConfiguration = () => {
           <Row gutter={[32, 24]}>
             <Col xs={24} sm={12}>
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', fontWeight: 500 }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '16px', fontWeight: 500 }}>
                   * Allowed Bandwidth to download Files
                 </label>
                 <Form.Item

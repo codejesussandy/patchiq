@@ -12,9 +12,9 @@ import { DataTable } from '../../components/shared/DataTable';
 import { useModal } from '../../hooks/useModal';
 import { useComputerGroups, useAvailableEndpoints, useCreateComputerGroup, useUpdateComputerGroup, useDeleteComputerGroup } from '../../hooks/useSettings';
 import type { ComputerGroup } from '../../types/settings.types';
+import { sanitizeInput } from '../../utils/sanitize';
 import { ColumnFilterModal } from './components/ColumnFilterModal';
 import { ComputerGroupFormModal } from './components/ComputerGroupFormModal';
-import { sanitizeInput } from '../../utils/sanitize';
 
 const { Title } = Typography;
 

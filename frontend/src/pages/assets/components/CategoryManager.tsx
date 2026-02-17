@@ -198,7 +198,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
         .map((subCat) => ({
           key: `${cat.id}-${subCat.id}`,
           label: (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', fontSize: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', fontSize: '16px' }}>
               <span>{subCat.name}</span>
               <span onClick={(e) => e.stopPropagation()} onClickCapture={(e) => e.stopPropagation()}>
                 <Dropdown

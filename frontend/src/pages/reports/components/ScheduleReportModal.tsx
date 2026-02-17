@@ -14,8 +14,8 @@ import dayjs from 'dayjs';
 import { useCreateSchedule } from '../../../hooks/useReports';
 import type { Report, ScheduleFrequency } from '../../../types/reports.types';
 import { REPORT_TYPE_LABELS } from '../../../types/reports.types';
-import { validateEmail } from '../../../utils/validation';
 import { sanitizeInput } from '../../../utils/sanitize';
+import { validateEmail } from '../../../utils/validation';
 
 const { Text } = Typography;
 

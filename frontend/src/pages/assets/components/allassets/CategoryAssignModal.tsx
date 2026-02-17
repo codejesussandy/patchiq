@@ -83,16 +83,16 @@ export const CategoryAssignModal = ({
 
         {asset && selectedCategory && (
           <div style={{ padding: '12px', background: '#f5f5f5', borderRadius: '4px', marginTop: '12px' }}>
-            <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+            <div style={{ fontSize: '16px', marginBottom: '4px' }}>
               <strong>Asset:</strong> {asset.name}
             </div>
             {selectedCategory && (
-              <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+              <div style={{ fontSize: '16px', marginBottom: '4px' }}>
                 <strong>Category:</strong> {categories.find((c) => c.id === selectedCategory)?.name}
               </div>
             )}
             {selectedSubCategory && (
-              <div style={{ fontSize: '12px' }}>
+              <div style={{ fontSize: '16px' }}>
                 <strong>Sub-Category:</strong> {subCategories.find((s) => s.id === selectedSubCategory)?.name}
               </div>
             )}

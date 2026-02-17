@@ -91,7 +91,7 @@ export const ProfileMenu = ({ organizations, selectedOrgId, onOrgSwitch, onClose
           <div style={{ fontWeight: 600, fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {getUserDisplayName()}
           </div>
-          <div style={{ fontSize: '12px', color: '#8c8c8c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontSize: '16px', color: '#8c8c8c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {user?.email}
           </div>
           <Tag color={getRoleBadgeColor()} style={{ marginTop: 4, fontSize: '11px', lineHeight: '18px' }}>
@@ -133,12 +133,12 @@ export const ProfileMenu = ({ organizations, selectedOrgId, onOrgSwitch, onClose
                 <span style={{ fontSize: '13px', fontWeight: selectedOrgId === org.id ? 500 : 400 }}>
                   {org.name}
                 </span>
-                {selectedOrgId === org.id && <CheckOutlined style={{ color: '#1677ff', fontSize: 12 }} />}
+                {selectedOrgId === org.id && <CheckOutlined style={{ color: '#1677ff', fontSize: 16 }} />}
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ fontSize: '12px', color: '#bfbfbf', padding: '4px 8px' }}>No organizations</div>
+          <div style={{ fontSize: '16px', color: '#bfbfbf', padding: '4px 8px' }}>No organizations</div>
         )}
       </div>
 

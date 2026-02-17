@@ -113,7 +113,7 @@ export const RedHatAgentNomination = () => {
       dataIndex: 'lastSyncTime',
       key: 'lastSyncTime',
       width: '18%',
-      render: (text) => <span style={{ fontSize: '12px' }}>{text}</span> },
+      render: (text) => <span style={{ fontSize: '16px' }}>{text}</span> },
     {
       title: 'Updated By',
       dataIndex: 'updatedBy',
@@ -124,7 +124,7 @@ export const RedHatAgentNomination = () => {
       dataIndex: 'updatedAt',
       key: 'updatedAt',
       width: '18%',
-      render: (text) => <span style={{ fontSize: '12px' }}>{text}</span> },
+      render: (text) => <span style={{ fontSize: '16px' }}>{text}</span> },
     {
       title: 'Actions',
       key: 'actions',

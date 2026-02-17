@@ -235,7 +235,7 @@ export const NotificationDropdown = () => {
                         {formatTime(item.createdAt)}
                       </Text>
                     </div>
-                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
+                    <Text type="secondary" style={{ fontSize: 16, display: 'block', marginTop: 2 }}>
                       {item.message}
                     </Text>
                     {item.category && (
@@ -252,7 +252,7 @@ export const NotificationDropdown = () => {
                       <Button
                         type="text"
                         size="small"
-                        icon={<CheckOutlined style={{ fontSize: 12 }} />}
+                        icon={<CheckOutlined style={{ fontSize: 16 }} />}
                         onClick={(e) => handleMarkAsRead(item.id, e)}
                         title="Mark as read"
                         aria-label="Mark as read"
@@ -262,7 +262,7 @@ export const NotificationDropdown = () => {
                     <Button
                       type="text"
                       size="small"
-                      icon={<DeleteOutlined style={{ fontSize: 12 }} />}
+                      icon={<DeleteOutlined style={{ fontSize: 16 }} />}
                       onClick={(e) => handleDelete(item.id, e)}
                       title="Delete"
                       aria-label="Delete notification"

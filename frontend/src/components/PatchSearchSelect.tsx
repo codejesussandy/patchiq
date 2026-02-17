@@ -58,7 +58,7 @@ export const PatchSearchSelect: React.FC<PatchSearchSelectProps> = ({
             </span>
           )}
         </div>
-        <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
+        <div style={{ fontSize: '16px', color: '#8c8c8c' }}>
           {patch.patchId} • {patch.severity}
         </div>
       </div>

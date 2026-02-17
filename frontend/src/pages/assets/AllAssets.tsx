@@ -234,7 +234,7 @@ export function AllAssets() {
               {category ? (
                 <div>
                   <Tag color={category.color || 'blue'}>{category.name}</Tag>
-                  {subCategory && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#666' }}>{'\u2192'} {subCategory.name}</span>}
+                  {subCategory && <span style={{ marginLeft: '8px', fontSize: '16px', color: '#666' }}>{'\u2192'} {subCategory.name}</span>}
                 </div>
               ) : <span style={{ color: '#999' }}>Unassigned</span>}
             </div>
@@ -346,9 +346,9 @@ export function AllAssets() {
           )}
           {selectedAssetForCategory && selectedCategory && (
             <div style={{ padding: '12px', background: '#f5f5f5', borderRadius: '4px', marginTop: '12px' }}>
-              <div style={{ fontSize: '12px', marginBottom: '4px' }}><strong>Asset:</strong> {selectedAssetForCategory.name}</div>
-              {selectedCategory && <div style={{ fontSize: '12px', marginBottom: '4px' }}><strong>Category:</strong> {categories.find((c) => c.id === selectedCategory)?.name}</div>}
-              {selectedSubCategory && <div style={{ fontSize: '12px' }}><strong>Sub-Category:</strong> {subCategories.find((s) => s.id === selectedSubCategory)?.name}</div>}
+              <div style={{ fontSize: '16px', marginBottom: '4px' }}><strong>Asset:</strong> {selectedAssetForCategory.name}</div>
+              {selectedCategory && <div style={{ fontSize: '16px', marginBottom: '4px' }}><strong>Category:</strong> {categories.find((c) => c.id === selectedCategory)?.name}</div>}
+              {selectedSubCategory && <div style={{ fontSize: '16px' }}><strong>Sub-Category:</strong> {subCategories.find((s) => s.id === selectedSubCategory)?.name}</div>}
             </div>
           )}
         </Form>

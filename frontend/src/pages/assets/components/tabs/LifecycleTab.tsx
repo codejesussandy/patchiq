@@ -59,25 +59,25 @@ export const LifecycleTab = ({ assetId, onEditFinancialData }: LifecycleTabProps
             <Row gutter={[24, 16]}>
               {lifecycle.purchaseDate && (
                 <Col span={6}>
-                  <Text type="secondary" style={{ display: 'block', fontSize: '12px' }}>Purchase Date</Text>
+                  <Text type="secondary" style={{ display: 'block', fontSize: '16px' }}>Purchase Date</Text>
                   <Text strong>{lifecycle.purchaseDate}</Text>
                 </Col>
               )}
               {lifecycle.amcExpiryDate && (
                 <Col span={6}>
-                  <Text type="secondary" style={{ display: 'block', fontSize: '12px' }}>AMC Expiry Date</Text>
+                  <Text type="secondary" style={{ display: 'block', fontSize: '16px' }}>AMC Expiry Date</Text>
                   <Text strong>{lifecycle.amcExpiryDate}</Text>
                 </Col>
               )}
               {lifecycle.warrantyExpiryDate && (
                 <Col span={6}>
-                  <Text type="secondary" style={{ display: 'block', fontSize: '12px' }}>Warranty Expiry Date</Text>
+                  <Text type="secondary" style={{ display: 'block', fontSize: '16px' }}>Warranty Expiry Date</Text>
                   <Text strong>{lifecycle.warrantyExpiryDate}</Text>
                 </Col>
               )}
               {lifecycle.endOfLife && (
                 <Col span={6}>
-                  <Text type="secondary" style={{ display: 'block', fontSize: '12px' }}>End of Life</Text>
+                  <Text type="secondary" style={{ display: 'block', fontSize: '16px' }}>End of Life</Text>
                   <Text strong>{lifecycle.endOfLife}</Text>
                 </Col>
               )}
@@ -135,7 +135,7 @@ export const LifecycleTab = ({ assetId, onEditFinancialData }: LifecycleTabProps
               }}
             >
               {[40000, 30000, 20000, 10000, 0].map((value) => (
-                <div key={value} style={{ fontSize: '12px', color: '#666', height: '20px' }}>
+                <div key={value} style={{ fontSize: '16px', color: '#666', height: '20px' }}>
                   {'\u20B9'}{(value / 1000).toFixed(0)}k
                 </div>
               ))}
@@ -160,7 +160,7 @@ export const LifecycleTab = ({ assetId, onEditFinancialData }: LifecycleTabProps
                       minHeight: '30px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                     }}
                   />
-                  <div style={{ marginTop: '12px', fontSize: '12px', color: '#666', fontWeight: 500, textAlign: 'center' }}>
+                  <div style={{ marginTop: '12px', fontSize: '16px', color: '#666', fontWeight: 500, textAlign: 'center' }}>
                     {index + 1}
                   </div>
                 </div>
@@ -169,13 +169,13 @@ export const LifecycleTab = ({ assetId, onEditFinancialData }: LifecycleTabProps
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', marginLeft: '76px' }}>
             <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-              <Text type="secondary" style={{ fontSize: '12px' }}><strong>Method:</strong> {lifecycle.depreciationMethod}</Text>
-              <Text type="secondary" style={{ fontSize: '12px' }}><strong>Annual Depreciation:</strong> {'\u20B9'}{lifecycle.annualDepreciation?.toLocaleString() || 'N/A'}</Text>
-              <Text type="secondary" style={{ fontSize: '12px' }}><strong>Total Depreciation:</strong> {'\u20B9'}{lifecycle.totalDepreciation?.toLocaleString() || 'N/A'}</Text>
-              <Text type="secondary" style={{ fontSize: '12px' }}><strong>Years Elapsed:</strong> {lifecycle.yearsElapsed?.toFixed(1) || 'N/A'}</Text>
-              <Text type="secondary" style={{ fontSize: '12px' }}><strong>Years Remaining:</strong> {lifecycle.yearsRemaining?.toFixed(1) || 'N/A'}</Text>
+              <Text type="secondary" style={{ fontSize: '16px' }}><strong>Method:</strong> {lifecycle.depreciationMethod}</Text>
+              <Text type="secondary" style={{ fontSize: '16px' }}><strong>Annual Depreciation:</strong> {'\u20B9'}{lifecycle.annualDepreciation?.toLocaleString() || 'N/A'}</Text>
+              <Text type="secondary" style={{ fontSize: '16px' }}><strong>Total Depreciation:</strong> {'\u20B9'}{lifecycle.totalDepreciation?.toLocaleString() || 'N/A'}</Text>
+              <Text type="secondary" style={{ fontSize: '16px' }}><strong>Years Elapsed:</strong> {lifecycle.yearsElapsed?.toFixed(1) || 'N/A'}</Text>
+              <Text type="secondary" style={{ fontSize: '16px' }}><strong>Years Remaining:</strong> {lifecycle.yearsRemaining?.toFixed(1) || 'N/A'}</Text>
             </div>
-            <Text type="secondary" style={{ fontSize: '12px' }}>Year(s)</Text>
+            <Text type="secondary" style={{ fontSize: '16px' }}>Year(s)</Text>
           </div>
         </div>
       </Card>
@@ -196,7 +196,7 @@ function TimelineDot({ label, date, value, extra, color, tagColor, align }: {
     <div style={{ zIndex: 1, flex: 1, textAlign: align }}>
       <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: color, margin: '0 auto' }} />
       <div style={{ marginTop: 8 }}>
-        <Text type="secondary" style={{ display: 'block', fontSize: '12px' }}>{label}</Text>
+        <Text type="secondary" style={{ display: 'block', fontSize: '16px' }}>{label}</Text>
         <Text strong>{date}</Text>
         <div>
           {value !== undefined && <Tag color={tagColor}>{'\u20B9'}{value.toLocaleString()}</Tag>}

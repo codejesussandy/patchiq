@@ -7,7 +7,7 @@ interface LogoProps {
 
 export const Logo = ({ style, size = 'medium' }: LogoProps) => {
   const sizes = {
-    small: { width: 24, height: 24, fontSize: 12 },
+    small: { width: 24, height: 24, fontSize: 16 },
     medium: { width: 32, height: 32, fontSize: 16 },
     large: { width: 40, height: 40, fontSize: 20 },
   };

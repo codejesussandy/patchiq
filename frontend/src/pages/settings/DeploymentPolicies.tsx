@@ -91,7 +91,7 @@ export const DeploymentPolicies = () => {
       render: (_, record: DeploymentPolicy) => <a href="#" onClick={(e) => { e.preventDefault(); handleViewPolicy(record); }} style={{ color: '#1890ff' }}>{record.name}</a> },
     { title: 'Description', dataIndex: 'description', key: 'description', render: (text: string) => text || '—' },
     { title: 'Type', dataIndex: 'type', key: 'type',
-      render: (text: string) => <span style={{ backgroundColor: text === 'SCHEDULE' ? '#e6f7ff' : '#f6f8fb', color: text === 'SCHEDULE' ? '#1890ff' : '#666', padding: '4px 8px', borderRadius: '2px', fontSize: '12px' }}>{text}</span> },
+      render: (text: string) => <span style={{ backgroundColor: text === 'SCHEDULE' ? '#e6f7ff' : '#f6f8fb', color: text === 'SCHEDULE' ? '#1890ff' : '#666', padding: '4px 8px', borderRadius: '2px', fontSize: '16px' }}>{text}</span> },
     { title: 'Created By', dataIndex: 'createdBy', key: 'createdBy' },
     { title: 'Created On', dataIndex: 'createdAt', key: 'createdAt', render: (text: string) => formatDate(text) },
     { title: 'Actions', key: 'actions', width: 100, align: 'right',

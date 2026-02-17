@@ -111,7 +111,7 @@ function TransferPanel({
                 <Checkbox checked={isSelected} />
                 {getOSIcon(item.os)}
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, color: '#666' }}>{item.title}</div>
+                  <div style={{ fontSize: 16, color: '#666' }}>{item.title}</div>
                   {item.subtitle && (
                     <div style={{ fontSize: 11, color: '#999' }}>{item.subtitle}</div>
                   )}

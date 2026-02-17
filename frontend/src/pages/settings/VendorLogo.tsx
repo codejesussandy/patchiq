@@ -108,7 +108,7 @@ export const VendorLogo = () => {
     { title: 'Logo', dataIndex: 'logoUrl', key: 'logo', width: 80,
       render: (logoUrl: string, record: VendorLogoType) => (
         <div style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fafafa', borderRadius: '4px', border: '1px solid #e8e8e8' }}>
-          {logoUrl ? <img src={logoUrl} alt={record.name} style={{ maxWidth: '36px', maxHeight: '36px', objectFit: 'contain' }} /> : <span style={{ color: '#bfbfbf', fontSize: '12px' }}>N/A</span>}
+          {logoUrl ? <img src={logoUrl} alt={record.name} style={{ maxWidth: '36px', maxHeight: '36px', objectFit: 'contain' }} /> : <span style={{ color: '#bfbfbf', fontSize: '16px' }}>N/A</span>}
         </div>
       ) },
     { title: 'Name', dataIndex: 'name', key: 'name', sorter: (a: VendorLogoType, b: VendorLogoType) => a.name.localeCompare(b.name),
@@ -174,7 +174,7 @@ export const VendorLogo = () => {
               <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }}><CloudUploadOutlined /></div>
                 <div style={{ marginBottom: '8px' }}><Text strong style={{ fontSize: '14px' }}>Click or drag files in to upload</Text></div>
-                <Text type="secondary" style={{ fontSize: '12px' }}>Select one png image for best result. Support for a single upload</Text>
+                <Text type="secondary" style={{ fontSize: '16px' }}>Select one png image for best result. Support for a single upload</Text>
               </div>
             </Upload.Dragger>
             {logoPreview && (

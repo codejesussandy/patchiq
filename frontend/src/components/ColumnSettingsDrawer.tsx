@@ -200,7 +200,7 @@ const SortableItem = ({
 
       {showWidthSlider && column.visible && !isHiddenSection && (
         <div style={{ marginTop: 8, marginLeft: 32, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Text type="secondary" style={{ fontSize: 12, minWidth: 40 }}>
+          <Text type="secondary" style={{ fontSize: 16, minWidth: 40 }}>
             Width:
           </Text>
           <Slider
@@ -210,7 +210,7 @@ const SortableItem = ({
             onChange={(value) => onWidthChange(column.key, value)}
             style={{ flex: 1, margin: 0 }}
           />
-          <Text type="secondary" style={{ fontSize: 12, minWidth: 40 }}>
+          <Text type="secondary" style={{ fontSize: 16, minWidth: 40 }}>
             {column.width || 150}px
           </Text>
         </div>
@@ -470,7 +470,7 @@ export const ColumnSettingsDrawer = ({
     label: (
       <div>
         <div style={{ fontWeight: 500 }}>{preset.name}</div>
-        <div style={{ fontSize: 12, color: '#999' }}>{preset.description}</div>
+        <div style={{ fontSize: 16, color: '#999' }}>{preset.description}</div>
       </div>
     ),
     onClick: () => handleApplyPreset(preset),
@@ -493,7 +493,7 @@ export const ColumnSettingsDrawer = ({
             borderBottom: '1px solid #f0f0f0',
           }}
         >
-          <Text strong style={{ fontSize: 12, textTransform: 'uppercase', color: '#666' }}>
+          <Text strong style={{ fontSize: 16, textTransform: 'uppercase', color: '#666' }}>
             {title} ({sectionColumns.length})
           </Text>
         </div>
@@ -595,7 +595,7 @@ export const ColumnSettingsDrawer = ({
       <Divider style={{ margin: '12px 0' }} />
 
       {/* Instructions */}
-      <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
+      <Text type="secondary" style={{ fontSize: 16, display: 'block', marginBottom: 12 }}>
         Drag to reorder. Use arrows or keyboard. Click pin icon to cycle: left → right → unpinned.
       </Text>
 

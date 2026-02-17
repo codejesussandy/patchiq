@@ -57,7 +57,7 @@ export const HubBundleUploadModal = ({
 
       <Card size="small" style={{ textAlign: 'left', background: '#f9f9f9' }}>
         <Title level={5}>Bundle Structure</Title>
-        <Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 12 }}>
+        <Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 16 }}>
           <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
 {`package-bundle/
   manifest.json       # Required: Package metadata

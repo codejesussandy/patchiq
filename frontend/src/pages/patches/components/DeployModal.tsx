@@ -88,7 +88,7 @@ export const DeployModal = ({ open, deployForm, selectedPatches, agents, loading
               <Space>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: agent?.status === 'CONNECTED' ? '#52c41a' : '#ff4d4f', display: 'inline-block' }} />
                 <span>{option.label}</span>
-                {agent?.status !== 'CONNECTED' && <Text type="secondary" style={{ fontSize: 12 }}>(Offline)</Text>}
+                {agent?.status !== 'CONNECTED' && <Text type="secondary" style={{ fontSize: 16 }}>(Offline)</Text>}
               </Space>
             );
           }}

@@ -1,6 +1,5 @@
 import { Button, Form, Input, Modal, Select } from 'antd';
 import type { FormInstance } from 'antd';
-import { sanitizeInput } from '../../../utils/sanitize';
 
 interface Endpoint {
   id: string;

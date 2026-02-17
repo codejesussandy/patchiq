@@ -77,7 +77,7 @@ export const CategoryPanel = ({
           alignItems: 'center',
         }}
       >
-        <span style={{ fontWeight: 600, fontSize: '12px', color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        <span style={{ fontWeight: 600, fontSize: '16px', color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           Categories
         </span>
         <div style={{ display: 'flex', gap: 4 }}>

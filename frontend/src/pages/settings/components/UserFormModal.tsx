@@ -19,7 +19,6 @@ import {
 } from 'antd';
 import type { FormInstance } from 'antd';
 import { validateEmail } from '../../../utils/validation';
-import { sanitizeInput } from '../../../utils/sanitize';
 
 const { Dragger } = Upload;
 
@@ -140,7 +139,7 @@ export const UserFormModal = ({
               help={
                 <>
                   {emailError && <span style={{ color: '#ff4d4f', display: 'block' }}>{emailError}</span>}
-                  <span style={{ fontSize: '12px', color: '#999' }}>{emailCharCount}/255 characters</span>
+                  <span style={{ fontSize: '16px', color: '#999' }}>{emailCharCount}/255 characters</span>
                 </>
               }
               validateStatus={emailError ? 'error' : ''}
@@ -268,7 +267,7 @@ export const UserFormModal = ({
                   <InboxOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
                 </p>
                 <p>Click or drag file to this area to upload</p>
-                <p style={{ color: '#999', fontSize: '12px' }}>Support for a single upload</p>
+                <p style={{ color: '#999', fontSize: '16px' }}>Support for a single upload</p>
               </Dragger>
             </Form.Item>
           </>

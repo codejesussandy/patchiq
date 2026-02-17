@@ -62,7 +62,7 @@ export const antivirusColumns: ColumnsType<AntivirusProduct> = [
     render: (name: string, record) => (
       <Space orientation="vertical" size={0}>
         <Text strong>{name}</Text>
-        {record.vendor && <Text type="secondary" style={{ fontSize: '12px' }}>{record.vendor}</Text>}
+        {record.vendor && <Text type="secondary" style={{ fontSize: '16px' }}>{record.vendor}</Text>}
       </Space>
     ),
   },
@@ -115,8 +115,8 @@ export const userColumns: ColumnsType<LocalUser> = [
     title: 'Password', key: 'password', width: 150,
     render: (_, record) => (
       <Space orientation="vertical" size={0}>
-        {record.passwordRequired !== undefined && <Text type="secondary" style={{ fontSize: '12px' }}>Required: {record.passwordRequired ? 'Yes' : 'No'}</Text>}
-        {record.passwordAge && <Text type="secondary" style={{ fontSize: '12px' }}>Age: {record.passwordAge}</Text>}
+        {record.passwordRequired !== undefined && <Text type="secondary" style={{ fontSize: '16px' }}>Required: {record.passwordRequired ? 'Yes' : 'No'}</Text>}
+        {record.passwordAge && <Text type="secondary" style={{ fontSize: '16px' }}>Age: {record.passwordAge}</Text>}
         {record.passwordNeverExpires && <Tag color="warning" style={{ marginTop: 4 }}>Never Expires</Tag>}
       </Space>
     ),

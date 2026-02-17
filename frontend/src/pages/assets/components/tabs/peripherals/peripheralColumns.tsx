@@ -70,7 +70,7 @@ export const monitorColumns: ColumnsType<Monitor> = [
           {record.isPrimary && <Tag color="blue">Primary</Tag>}
           {record.isBuiltIn && <Tag color="green">Built-in</Tag>}
         </Space>
-        {record.manufacturer && <Text type="secondary" style={{ fontSize: '12px' }}>{record.manufacturer}</Text>}
+        {record.manufacturer && <Text type="secondary" style={{ fontSize: '16px' }}>{record.manufacturer}</Text>}
       </Space>
     ),
   },
@@ -128,7 +128,7 @@ export const printerColumns: ColumnsType<Printer> = [
   },
   { title: 'Connection', dataIndex: 'connectionType', key: 'connectionType', width: 100, render: (type?: string) => <Tag>{type || 'Unknown'}</Tag> },
   { title: 'Status', dataIndex: 'status', key: 'status', width: 100, render: (status?: string) => <Badge status={getPrinterStatusColor(status)} text={status || 'Unknown'} /> },
-  { title: 'IP Address', dataIndex: 'ipAddress', key: 'ipAddress', width: 130, render: (ip?: string) => ip ? <Text copyable style={{ fontFamily: 'monospace', fontSize: '12px' }}>{ip}</Text> : '\u2014' },
+  { title: 'IP Address', dataIndex: 'ipAddress', key: 'ipAddress', width: 130, render: (ip?: string) => ip ? <Text copyable style={{ fontFamily: 'monospace', fontSize: '16px' }}>{ip}</Text> : '\u2014' },
   {
     title: 'Capabilities', dataIndex: 'capabilities', key: 'capabilities',
     render: (caps?: string[]) => caps && caps.length > 0 ? (

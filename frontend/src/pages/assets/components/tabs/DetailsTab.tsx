@@ -129,7 +129,7 @@ export const DetailsTab = ({
               <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: asset.agent.status === 'CONNECTED' ? '#52c41a' : '#ff4d4f', display: 'inline-block' }} />
               <span>Agent Status</span>
               <Tag color={asset.agent.status === 'CONNECTED' ? 'green' : 'red'}>{asset.agent.status}</Tag>
-              {asset.agent.status !== 'CONNECTED' && asset.agent.lastHeartbeatRelative && <Text type="secondary" style={{ fontSize: 12 }}>Last seen: {asset.agent.lastHeartbeatRelative}</Text>}
+              {asset.agent.status !== 'CONNECTED' && asset.agent.lastHeartbeatRelative && <Text type="secondary" style={{ fontSize: 16 }}>Last seen: {asset.agent.lastHeartbeatRelative}</Text>}
             </Space>
           }
           extra={<Button type="primary" icon={<ReloadOutlined spin={refreshingInventory} />} onClick={handleRefreshInventory} loading={refreshingInventory} size="small">Refresh Inventory</Button>}
@@ -139,18 +139,18 @@ export const DetailsTab = ({
             <Col span={6}><Text type="secondary">Agent Version</Text><div><Text strong>{asset.agent.version || 'Unknown'}</Text></div></Col>
             <Col span={6}><Text type="secondary">Last Heartbeat</Text><div><Text strong>{asset.agent.lastHeartbeatRelative || 'Never'}</Text></div></Col>
             <Col span={6}><Text type="secondary">Heartbeat Interval</Text><div><Text strong>{asset.agent.heartbeatInterval || 60} seconds</Text></div></Col>
-            <Col span={6}><Text type="secondary">Agent ID</Text><div><Text strong style={{ fontFamily: 'monospace', fontSize: '12px' }}>{asset.agent.id?.substring(0, 8) || 'N/A'}...</Text></div></Col>
+            <Col span={6}><Text type="secondary">Agent ID</Text><div><Text strong style={{ fontFamily: 'monospace', fontSize: '16px' }}>{asset.agent.id?.substring(0, 8) || 'N/A'}...</Text></div></Col>
           </Row>
         </Card>
       )}
 
       {/* Performance */}
       <Card
-        title={<Space><span>Performance</span>{telemetryLastUpdated && <Text type="secondary" style={{ fontSize: '12px', fontWeight: 'normal' }}>Last updated: {telemetryLastUpdated.toLocaleTimeString()}</Text>}{loadingTelemetry && telemetry && <Spin size="small" />}</Space>}
+        title={<Space><span>Performance</span>{telemetryLastUpdated && <Text type="secondary" style={{ fontSize: '16px', fontWeight: 'normal' }}>Last updated: {telemetryLastUpdated.toLocaleTimeString()}</Text>}{loadingTelemetry && telemetry && <Spin size="small" />}</Space>}
         extra={
           <Space>
             <Tooltip title={`Auto-refresh every ${TELEMETRY_POLL_INTERVAL / 1000}s`}>
-              <Space><Text type="secondary" style={{ fontSize: '12px' }}>Auto-refresh</Text><Switch size="small" checked={autoRefreshEnabled} onChange={setAutoRefreshEnabled} /></Space>
+              <Space><Text type="secondary" style={{ fontSize: '16px' }}>Auto-refresh</Text><Switch size="small" checked={autoRefreshEnabled} onChange={setAutoRefreshEnabled} /></Space>
             </Tooltip>
             <Tooltip title="Refresh now"><Button type="text" size="small" icon={<ReloadOutlined spin={loadingTelemetry} />} onClick={() => refetchTelemetry()} disabled={loadingTelemetry} /></Tooltip>
           </Space>

@@ -26,7 +26,7 @@ const getScoreLevel = (score: number): string => {
 const tooltipContent = (
   <div style={{ maxWidth: 280 }}>
     <div style={{ fontWeight: 600, marginBottom: 6 }}>Risk Score Calculation</div>
-    <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+    <div style={{ fontSize: 16, lineHeight: 1.6 }}>
       The risk score (0–100) is a weighted composite of:
       <ul style={{ margin: '4px 0', paddingLeft: 16 }}>
         <li><strong>CVSS Score</strong> — base vulnerability severity</li>
@@ -54,7 +54,7 @@ export const RiskScoreDisplay = ({ score, showLabel = false, size = 'default' }:
       <span style={{ cursor: 'help', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
         <Text strong style={{ color, fontSize }}>{score.toFixed(0)}</Text>
         {showLabel && <Text style={{ color, fontSize: fontSize - 1 }}>({level})</Text>}
-        <InfoCircleOutlined style={{ color: '#bfbfbf', fontSize: 12 }} />
+        <InfoCircleOutlined style={{ color: '#bfbfbf', fontSize: 16 }} />
       </span>
     </Tooltip>
   );

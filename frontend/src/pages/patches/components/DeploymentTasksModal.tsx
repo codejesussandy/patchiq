@@ -120,7 +120,7 @@ export const DeploymentTasksModal = ({
             render: (name: string) => (
               <Space>
                 <span style={{ width: 24, height: 24, borderRadius: '50%', backgroundColor: '#1890ff', display: 'inline-flex',
-                  alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: 12 }}>
+                  alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: 16 }}>
                   {name.charAt(0).toUpperCase()}
                 </span>
                 <Text>{name}</Text>
@@ -130,10 +130,10 @@ export const DeploymentTasksModal = ({
           { title: 'Created By', dataIndex: 'createdBy', key: 'createdBy', sorter: (a, b) => a.createdBy.localeCompare(b.createdBy) },
           { title: 'Last Updated', dataIndex: 'lastUpdated', key: 'lastUpdated',
             sorter: (a, b) => new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime(),
-            render: (text: string) => <div><div>{text.split(', ')[0]}</div><div style={{ fontSize: 12, color: '#8c8c8c' }}>{text.split(', ')[1]}</div></div> },
+            render: (text: string) => <div><div>{text.split(', ')[0]}</div><div style={{ fontSize: 16, color: '#8c8c8c' }}>{text.split(', ')[1]}</div></div> },
           { title: 'Created On', dataIndex: 'createdOn', key: 'createdOn',
             sorter: (a, b) => new Date(a.createdOn).getTime() - new Date(b.createdOn).getTime(),
-            render: (text: string) => <div><div>{text.split(', ')[0]}</div><div style={{ fontSize: 12, color: '#8c8c8c' }}>{text.split(', ')[1]}</div></div> },
+            render: (text: string) => <div><div>{text.split(', ')[0]}</div><div style={{ fontSize: 16, color: '#8c8c8c' }}>{text.split(', ')[1]}</div></div> },
         ]}
         scroll={{ x: 'max-content' }}
       />

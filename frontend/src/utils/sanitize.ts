@@ -82,9 +82,9 @@ export const sanitizeObject = <T extends Record<string, unknown>>(
     const value = sanitized[key];
 
     if (typeof value === 'string') {
-      sanitized[key] = sanitizeInput(value) as T[Extract<keyof T, string>];
+      (sanitized as Record<string, unknown>)[key] = sanitizeInput(value);
     } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      sanitized[key] = sanitizeObject(value as Record<string, unknown>) as T[Extract<keyof T, string>];
+      (sanitized as Record<string, unknown>)[key] = sanitizeObject(value as Record<string, unknown>);
     }
   });
 

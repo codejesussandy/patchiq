@@ -78,8 +78,8 @@ export const SyncProgressPanel = ({ progress, severityCounts }: SyncProgressPane
         </Col>
         <Col span={6}>
           <div>
-            <Text type="secondary" style={{ fontSize: 12 }}>Current CVE</Text>
-            <div><Text code style={{ fontSize: 12 }}>{progress.currentCVE || 'Processing...'}</Text></div>
+            <Text type="secondary" style={{ fontSize: 16 }}>Current CVE</Text>
+            <div><Text code style={{ fontSize: 16 }}>{progress.currentCVE || 'Processing...'}</Text></div>
           </div>
         </Col>
 

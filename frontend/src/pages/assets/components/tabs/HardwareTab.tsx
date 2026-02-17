@@ -75,7 +75,7 @@ export const HardwareTab = ({ assetId, osType, manufacturer, model }: HardwareTa
 
       {/* Processor */}
       <Card
-        title={<div><div style={{ fontWeight: 600 }}>{hardware.processor?.name ?? 'Unknown Processor'}</div><Text type="secondary" style={{ fontSize: '12px' }}>PROCESSOR DETAILS</Text></div>}
+        title={<div><div style={{ fontWeight: 600 }}>{hardware.processor?.name ?? 'Unknown Processor'}</div><Text type="secondary" style={{ fontSize: '16px' }}>PROCESSOR DETAILS</Text></div>}
         size="small" style={{ marginBottom: 16 }}
       >
         <Row gutter={16}>
@@ -91,7 +91,7 @@ export const HardwareTab = ({ assetId, osType, manufacturer, model }: HardwareTa
 
       {/* Baseboard */}
       <Card
-        title={<div><div style={{ fontWeight: 600 }}>{hardware.baseBoard?.name ?? 'Unknown Baseboard'}</div><Text type="secondary" style={{ fontSize: '12px' }}>BASEBOARD DETAILS</Text></div>}
+        title={<div><div style={{ fontWeight: 600 }}>{hardware.baseBoard?.name ?? 'Unknown Baseboard'}</div><Text type="secondary" style={{ fontSize: '16px' }}>BASEBOARD DETAILS</Text></div>}
         size="small" style={{ marginBottom: 16 }}
       >
         <Row gutter={16}>
@@ -118,7 +118,7 @@ export const HardwareTab = ({ assetId, osType, manufacturer, model }: HardwareTa
                 return capacity >= 1000 ? `${(capacity / 1024).toFixed(1)} TB` : `${Math.round(capacity)} GB`;
               })()}
             </div>
-            <Text type="secondary" style={{ fontSize: '12px' }}>STORAGE</Text>
+            <Text type="secondary" style={{ fontSize: '16px' }}>STORAGE</Text>
           </div>
         }
         size="small" style={{ marginBottom: 16 }}
@@ -159,7 +159,7 @@ export const HardwareTab = ({ assetId, osType, manufacturer, model }: HardwareTa
         title={
           <div>
             <div style={{ fontWeight: 600 }}>{(hardware.memory || []).length} Slots - {(hardware.memory || []).reduce((acc, m) => acc + parseFloat(m.capacity || '0'), 0)} GB</div>
-            <Text type="secondary" style={{ fontSize: '12px' }}>MEMORY</Text>
+            <Text type="secondary" style={{ fontSize: '16px' }}>MEMORY</Text>
           </div>
         }
         size="small" style={{ marginBottom: 16 }}
@@ -189,7 +189,7 @@ export const HardwareTab = ({ assetId, osType, manufacturer, model }: HardwareTa
 
       {/* Network Adapters */}
       <Card
-        title={<div><div style={{ fontWeight: 600 }}>{(hardware.networkAdapters || []).length} Network Adapters</div><Text type="secondary" style={{ fontSize: '12px' }}>NETWORK ADAPTERS</Text></div>}
+        title={<div><div style={{ fontWeight: 600 }}>{(hardware.networkAdapters || []).length} Network Adapters</div><Text type="secondary" style={{ fontSize: '16px' }}>NETWORK ADAPTERS</Text></div>}
         size="small"
       >
         <DataTable

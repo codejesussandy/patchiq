@@ -71,7 +71,7 @@ export const CreateDeploymentModal = ({
                   <Checkbox value={patch.id}>
                     <div>
                       <div style={{ fontWeight: 500 }}>{patch.software}</div>
-                      <Text type="secondary" style={{ fontSize: 12 }}>{patch.patchId} | {patch.os} | Severity: {patch.severity}</Text>
+                      <Text type="secondary" style={{ fontSize: 16 }}>{patch.patchId} | {patch.os} | Severity: {patch.severity}</Text>
                     </div>
                   </Checkbox>
                 </Card>
@@ -109,7 +109,7 @@ export const PreviewDeploymentModal = ({ open, previewData, onConfirm, onCancel 
             {(previewData.selectedPatches as Patch[])?.map((patch) => (
               <div key={patch.id} style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
                 <div style={{ fontWeight: 500 }}>{patch.software}</div>
-                <Text type="secondary" style={{ fontSize: 12 }}>{patch.patchId} | {patch.os} | {patch.severity}</Text>
+                <Text type="secondary" style={{ fontSize: 16 }}>{patch.patchId} | {patch.os} | {patch.severity}</Text>
               </div>
             ))}
           </div>

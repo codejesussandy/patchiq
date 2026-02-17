@@ -8,8 +8,8 @@ import { DataTable } from '../../components/shared/DataTable';
 import { useModal } from '../../hooks/useModal';
 import { useIntegrations, useCreateIntegration, useUpdateIntegration, useDeleteIntegration, useToggleIntegrationStatus } from '../../hooks/useSettings';
 import type { Integration } from '../../types/settings.types';
-import { IntegrationFormModal } from './components/IntegrationFormModal';
 import { sanitizeInput } from '../../utils/sanitize';
+import { IntegrationFormModal } from './components/IntegrationFormModal';
 
 const { Title } = Typography;
 

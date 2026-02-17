@@ -12,7 +12,6 @@ import {
 } from 'antd';
 import type { FormInstance } from 'antd';
 import { DataTable } from '../../../components/shared/DataTable';
-import { sanitizeInput } from '../../../utils/sanitize';
 
 interface Condition {
   id: string;

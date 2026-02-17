@@ -76,7 +76,7 @@ export const ServerSettings = () => {
           <Row gutter={[32, 24]}>
             <Col xs={24} sm={12}>
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', fontWeight: 500 }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '16px', fontWeight: 500 }}>
                   * Session Timeout
                 </label>
                 <Form.Item
@@ -99,7 +99,7 @@ export const ServerSettings = () => {
             </Col>
             <Col xs={24} sm={12}>
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', fontWeight: 500 }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '16px', fontWeight: 500 }}>
                   * Session Idle Timeout
                 </label>
                 <Form.Item
@@ -128,7 +128,7 @@ export const ServerSettings = () => {
           <Row gutter={[32, 24]}>
             <Col xs={24} sm={12}>
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', fontWeight: 500 }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '16px', fontWeight: 500 }}>
                   * Endpoint Online Status Timeout
                 </label>
                 <Form.Item
@@ -151,7 +151,7 @@ export const ServerSettings = () => {
             </Col>
             <Col xs={24} sm={12}>
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', fontWeight: 500 }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '16px', fontWeight: 500 }}>
                   * EDCA, Scan Job Time
                 </label>
                 <Form.Item

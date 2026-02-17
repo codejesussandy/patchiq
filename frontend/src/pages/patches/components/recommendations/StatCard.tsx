@@ -13,7 +13,7 @@ export const StatCard: React.FC<{
       <Spin />
     ) : (
       <>
-        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{title}</Text>
+        <Text type="secondary" style={{ fontSize: 16, display: 'block', marginBottom: 8 }}>{title}</Text>
         <div style={{ fontSize: 28, fontWeight: 700, color }}>{value}</div>
       </>
     )}

@@ -268,7 +268,7 @@ export function DeploymentTasksModal({
             <Col><Space size={4}><Badge status="error" /><Text type="secondary">Failed:</Text><Text strong style={{ color: '#ff4d4f' }}>{summary.failed}</Text></Space></Col>
             {summary.type && (
               <Col flex="auto" style={{ textAlign: 'right' }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
+                <Text type="secondary" style={{ fontSize: 16 }}>
                   Type: <Tag style={{ marginRight: 0 }}>{summary.type.toUpperCase()}</Tag>
                 </Text>
               </Col>
@@ -333,8 +333,8 @@ export function DeploymentTasksModal({
               <div style={{ padding: '4px 0' }}>
                 {error && (
                   <div style={{ marginBottom: 8 }}>
-                    <Text strong type="danger" style={{ fontSize: 12 }}>Error: </Text>
-                    <Text type="danger" style={{ fontSize: 12 }}>{error}</Text>
+                    <Text strong type="danger" style={{ fontSize: 16 }}>Error: </Text>
+                    <Text type="danger" style={{ fontSize: 16 }}>{error}</Text>
                   </div>
                 )}
                 {output && (
@@ -342,7 +342,7 @@ export function DeploymentTasksModal({
                     background: '#f5f5f5',
                     padding: 12,
                     borderRadius: 4,
-                    fontSize: 12,
+                    fontSize: 16,
                     maxHeight: 300,
                     overflow: 'auto',
                     whiteSpace: 'pre-wrap',

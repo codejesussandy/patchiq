@@ -56,7 +56,7 @@ export const AgentApprovals = () => {
       dataIndex: 'uuid',
       key: 'uuid',
       width: '20%',
-      render: (text) => <span style={{ fontSize: '12px' }}>{text}</span> },
+      render: (text) => <span style={{ fontSize: '16px' }}>{text}</span> },
     {
       title: 'Host Name',
       dataIndex: 'hostName',
@@ -68,14 +68,14 @@ export const AgentApprovals = () => {
       key: 'ipAddresses',
       width: '20%',
       render: (addresses: string[]) => (
-        <span style={{ fontSize: '12px' }}>{addresses.join(', ')}</span>
+        <span style={{ fontSize: '16px' }}>{addresses.join(', ')}</span>
       ) },
     {
       title: 'Created On',
       dataIndex: 'createdOn',
       key: 'createdOn',
       width: '18%',
-      render: (text) => <span style={{ fontSize: '12px' }}>{text}</span> },
+      render: (text) => <span style={{ fontSize: '16px' }}>{text}</span> },
     {
       title: 'Performed By',
       dataIndex: 'performedBy',

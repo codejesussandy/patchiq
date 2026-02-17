@@ -117,13 +117,13 @@ export const RoleCapabilitiesPicker = ({
     >
       {/* Left column - All available capabilities */}
       <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid #d9d9d9', overflow: 'hidden' }}>
-        <div style={{ fontWeight: 600, padding: '12px 12px 8px 12px', color: '#1890ff', fontSize: '12px', backgroundColor: '#fafafa', zIndex: 10, flexShrink: 0 }}>
+        <div style={{ fontWeight: 600, padding: '12px 12px 8px 12px', color: '#1890ff', fontSize: '16px', backgroundColor: '#fafafa', zIndex: 10, flexShrink: 0 }}>
           {totalCount} Items
         </div>
         <div style={{ overflowY: 'auto', padding: '0 12px 12px 12px', flex: 1 }}>
           {CAPABILITIES_CATEGORIES.map((category) => (
             <div key={category.name} style={{ marginBottom: '14px' }}>
-              <div style={{ fontWeight: 600, fontSize: '12px', color: '#262626', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ fontWeight: 600, fontSize: '16px', color: '#262626', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 {category.name}
               </div>
               {category.capabilities.map((cap) => (
@@ -162,12 +162,12 @@ export const RoleCapabilitiesPicker = ({
 
       {/* Right column - Selected capabilities */}
       <div style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', overflow: 'hidden' }}>
-        <div style={{ fontWeight: 600, padding: '12px 12px 8px 12px', color: '#1890ff', fontSize: '12px', backgroundColor: '#ffffff', zIndex: 10, flexShrink: 0 }}>
+        <div style={{ fontWeight: 600, padding: '12px 12px 8px 12px', color: '#1890ff', fontSize: '16px', backgroundColor: '#ffffff', zIndex: 10, flexShrink: 0 }}>
           {selectedCapabilities.length} Items
         </div>
         <div style={{ overflowY: 'auto', padding: '0 12px 12px 12px', flex: 1 }}>
           {selectedCapabilities.length === 0 ? (
-            <div style={{ color: '#bfbfbf', fontSize: '12px', paddingTop: '16px', textAlign: 'center', fontStyle: 'italic' }}>
+            <div style={{ color: '#bfbfbf', fontSize: '16px', paddingTop: '16px', textAlign: 'center', fontStyle: 'italic' }}>
               No capabilities selected
             </div>
           ) : (

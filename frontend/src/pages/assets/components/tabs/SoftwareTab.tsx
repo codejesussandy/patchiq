@@ -189,7 +189,7 @@ export const SoftwareTab = ({ assetId, asset }: SoftwareTabProps) => {
       render: (name: string, record: (typeof licensedApps)[0]) => (
         <Space orientation="vertical" size={0}>
           <Text strong>{name}</Text>
-          {record.vendor && <Text type="secondary" style={{ fontSize: 12 }}>{record.vendor}</Text>}
+          {record.vendor && <Text type="secondary" style={{ fontSize: 16 }}>{record.vendor}</Text>}
         </Space>
       ),
     },

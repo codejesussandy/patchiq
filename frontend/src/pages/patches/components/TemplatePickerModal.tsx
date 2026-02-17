@@ -76,7 +76,7 @@ export const TemplatePickerModal = ({
               >
                 <div>
                   <Text strong>{t.name}</Text><br />
-                  <Text type="secondary" style={{ fontSize: 12 }}>{t.vendor}</Text>
+                  <Text type="secondary" style={{ fontSize: 16 }}>{t.vendor}</Text>
                 </div>
                 <Tag color={t.category === 'A' ? 'green' : t.category === 'B' ? 'blue' : 'orange'}>
                   {t.category === 'A' ? 'Auto' : t.category === 'B' ? 'Semi' : 'Manual'}

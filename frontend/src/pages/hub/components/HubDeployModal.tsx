@@ -93,7 +93,7 @@ export const HubDeployModal = ({
             <div>
               <Text strong>{deployingDisplayName}</Text>
               <br />
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary" style={{ fontSize: 16 }}>
                 {deployingPackageId} - v{deployingVersion} - {deployingInstallSource.toUpperCase()}
               </Text>
             </div>
@@ -159,7 +159,7 @@ export const HubDeployModal = ({
 
           {selectedAgents.length > 0 && (
             <div style={{ marginTop: -8, marginBottom: 16 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary" style={{ fontSize: 16 }}>
                 {selectedAgents.length} endpoint(s) selected
               </Text>
             </div>

@@ -73,7 +73,7 @@ const TagSelector: React.FC<TagSelectorProps> = ({
         )}
         {!tag.color && `${tag.icon ? tag.icon + ' ' : ''}${tag.name}`}
         {tag.description && (
-          <span style={{ fontSize: '12px', color: '#666' }}>({tag.description})</span>
+          <span style={{ fontSize: '16px', color: '#666' }}>({tag.description})</span>
         )}
       </Space>
     ),

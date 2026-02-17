@@ -232,7 +232,7 @@ export const UnifiedPatchesTab = ({ assetId, agentId, patchSummary: initialSumma
                             <Text strong>{deployment.patchName}</Text>
                             <Tag color={getStatusColor(deployment.status)}>{deployment.status}</Tag>
                           </Space>
-                          <Text type="secondary" style={{ fontSize: '12px' }}>{new Date(deployment.date).toLocaleString()}</Text>
+                          <Text type="secondary" style={{ fontSize: '16px' }}>{new Date(deployment.date).toLocaleString()}</Text>
                         </Space>
                       </div>
                     ),

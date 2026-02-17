@@ -204,7 +204,7 @@ export const AIChatPanel = ({ open, onClose }: AIChatPanelProps) => {
           <Button
             type="text"
             size="small"
-            icon={<CloseOutlined style={{ fontSize: 12, color: '#8c8c8c' }} />}
+            icon={<CloseOutlined style={{ fontSize: 16, color: '#8c8c8c' }} />}
             onClick={onClose}
             aria-label="Close AI chat"
           />

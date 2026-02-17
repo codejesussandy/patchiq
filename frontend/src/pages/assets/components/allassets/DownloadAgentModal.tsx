@@ -79,7 +79,7 @@ export const DownloadAgentModal = ({ open, onClose }: DownloadAgentModalProps) =
               <WindowsOutlined style={{ fontSize: '32px', color: '#1890ff' }} />
               <div>
                 <div style={{ fontWeight: 600 }}>Windows Agent</div>
-                <div style={{ fontSize: '12px', color: '#666' }}>Windows 10/11, Server 2016+</div>
+                <div style={{ fontSize: '16px', color: '#666' }}>Windows 10/11, Server 2016+</div>
               </div>
             </div>
             <Button type="primary" icon={<DownloadOutlined />} onClick={() => handleAgentDownload('windows')}>Download</Button>
@@ -90,7 +90,7 @@ export const DownloadAgentModal = ({ open, onClose }: DownloadAgentModalProps) =
               <AppleOutlined style={{ fontSize: '32px', color: '#555' }} />
               <div>
                 <div style={{ fontWeight: 600 }}>macOS Agent</div>
-                <div style={{ fontSize: '12px', color: '#666' }}>macOS 12 (Monterey) and later</div>
+                <div style={{ fontSize: '16px', color: '#666' }}>macOS 12 (Monterey) and later</div>
               </div>
             </div>
             <Button type="primary" icon={<DownloadOutlined />} onClick={() => handleAgentDownload('macos')}>Download</Button>
@@ -101,7 +101,7 @@ export const DownloadAgentModal = ({ open, onClose }: DownloadAgentModalProps) =
               <span style={{ fontSize: '28px' }}>&#x1F427;</span>
               <div>
                 <div style={{ fontWeight: 600 }}>Linux Agent</div>
-                <div style={{ fontSize: '12px', color: '#666' }}>Ubuntu 20.04+, RHEL 8+, Debian 11+</div>
+                <div style={{ fontSize: '16px', color: '#666' }}>Ubuntu 20.04+, RHEL 8+, Debian 11+</div>
               </div>
             </div>
             <Button type="primary" icon={<DownloadOutlined />} onClick={() => handleAgentDownload('linux')}>Download</Button>

@@ -138,7 +138,7 @@ export const RolesAndPrivileges = () => {
           <div style={{ marginBottom: '24px' }}>
             <Title level={5} style={{ marginBottom: '16px' }}>Permissions</Title>
             <PermissionsGrid permissions={permissions} onPermissionsChange={setPermissions} />
-            <Text type="secondary" style={{ fontSize: '12px', marginTop: '12px', display: 'block' }}>
+            <Text type="secondary" style={{ fontSize: '16px', marginTop: '12px', display: 'block' }}>
               Select the permissions that users with this role will have access to.
             </Text>
           </div>

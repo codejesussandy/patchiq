@@ -128,7 +128,7 @@ export const WiFiConnectionCard = ({ wifiConnection }: WiFiConnectionCardProps) 
       {wifiConnection.bssid && (
         <div style={{ marginTop: 16 }}>
           <Text type="secondary">BSSID: </Text>
-          <Text copyable style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+          <Text copyable style={{ fontFamily: 'monospace', fontSize: '16px' }}>
             {wifiConnection.bssid}
           </Text>
         </div>

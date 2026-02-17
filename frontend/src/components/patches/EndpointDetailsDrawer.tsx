@@ -176,7 +176,7 @@ export const EndpointDetailsDrawer = ({
             </Col>
             <Col span={8}>
               <div>
-                <Text type="secondary" style={{ fontSize: 12 }}>Last Scan</Text>
+                <Text type="secondary" style={{ fontSize: 16 }}>Last Scan</Text>
                 <div style={{ fontSize: 14, fontWeight: 500 }}>
                   {endpoint.patchSummary.lastScanDate}
                 </div>
@@ -195,7 +195,7 @@ export const EndpointDetailsDrawer = ({
               <Space>
                 <DesktopOutlined style={{ color: '#8c8c8c' }} />
                 <div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>OS</Text>
+                  <Text type="secondary" style={{ fontSize: 16 }}>OS</Text>
                   <div>{endpoint.os} {endpoint.osVersion}</div>
                 </div>
               </Space>
@@ -204,7 +204,7 @@ export const EndpointDetailsDrawer = ({
               <Space>
                 <HddOutlined style={{ color: '#8c8c8c' }} />
                 <div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>Model</Text>
+                  <Text type="secondary" style={{ fontSize: 16 }}>Model</Text>
                   <div>{endpoint.manufacturer} {endpoint.model || 'N/A'}</div>
                 </div>
               </Space>
@@ -213,7 +213,7 @@ export const EndpointDetailsDrawer = ({
               <Space>
                 <ApiOutlined style={{ color: '#8c8c8c' }} />
                 <div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>IP Address</Text>
+                  <Text type="secondary" style={{ fontSize: 16 }}>IP Address</Text>
                   <div>{endpoint.ipAddress || 'N/A'}</div>
                 </div>
               </Space>
@@ -222,7 +222,7 @@ export const EndpointDetailsDrawer = ({
               <Space>
                 <EnvironmentOutlined style={{ color: '#8c8c8c' }} />
                 <div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>Location</Text>
+                  <Text type="secondary" style={{ fontSize: 16 }}>Location</Text>
                   <div>{endpoint.location || 'N/A'}</div>
                 </div>
               </Space>
@@ -231,7 +231,7 @@ export const EndpointDetailsDrawer = ({
               <Space>
                 <UserOutlined style={{ color: '#8c8c8c' }} />
                 <div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>Owner</Text>
+                  <Text type="secondary" style={{ fontSize: 16 }}>Owner</Text>
                   <div>{endpoint.owner || 'N/A'}</div>
                 </div>
               </Space>
@@ -240,7 +240,7 @@ export const EndpointDetailsDrawer = ({
               <Space>
                 <ClockCircleOutlined style={{ color: '#8c8c8c' }} />
                 <div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>Last Seen</Text>
+                  <Text type="secondary" style={{ fontSize: 16 }}>Last Seen</Text>
                   <div>{endpoint.lastSeen}</div>
                 </div>
               </Space>

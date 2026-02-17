@@ -59,7 +59,7 @@ const TagDisplay: React.FC<TagDisplayProps> = ({
             color={tag.color || 'blue'}
             style={{
               cursor: clickable ? 'pointer' : 'default',
-              fontSize: size === 'small' ? '11px' : size === 'large' ? '14px' : '12px',
+              fontSize: size === 'small' ? '11px' : size === 'large' ? '14px' : '16px',
               padding: size === 'small' ? '2px 6px' : size === 'large' ? '6px 12px' : '4px 8px',
             }}
             onClick={() => {

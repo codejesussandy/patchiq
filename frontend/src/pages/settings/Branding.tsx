@@ -203,13 +203,13 @@ export const Branding = () => {
               </div>
 
               <div style={{ marginBottom: '16px' }}>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
+                <Text type="secondary" style={{ fontSize: '16px' }}>
                   Please select logo image
                 </Text>
               </div>
 
               <div style={{ marginBottom: '16px' }}>
-                <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>
+                <Text type="secondary" style={{ fontSize: '16px', display: 'block' }}>
                   Support for a single upload
                 </Text>
               </div>
@@ -217,7 +217,7 @@ export const Branding = () => {
               {logoFile && (
                 <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#e6f7ff', borderRadius: '4px' }}>
                   <Space orientation="vertical" style={{ width: '100%' }}>
-                    <Text style={{ fontSize: '12px', color: '#0050b3' }}>
+                    <Text style={{ fontSize: '16px', color: '#0050b3' }}>
                       Selected: {logoFile.name}
                     </Text>
                   </Space>
@@ -265,7 +265,7 @@ export const Branding = () => {
 
           {/* Info Section */}
           <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#f6f8fa', borderRadius: '8px' }}>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
+            <Text type="secondary" style={{ fontSize: '16px' }}>
               <strong>Note:</strong> Upload your company logo in PNG, JPG, GIF, or SVG format. The logo will be displayed as your company branding throughout the application.
             </Text>
           </div>

@@ -69,10 +69,10 @@ export const UserImportModal = ({
         <p style={{ fontSize: '14px', color: '#000' }}>
           Click or drag file to this area to upload
         </p>
-        <p style={{ fontSize: '12px', color: '#8c8c8c', marginTop: '8px' }}>
+        <p style={{ fontSize: '16px', color: '#8c8c8c', marginTop: '8px' }}>
           Please select CSV file containing user data
         </p>
-        <p style={{ fontSize: '12px', color: '#8c8c8c' }}>
+        <p style={{ fontSize: '16px', color: '#8c8c8c' }}>
           Support for a single upload.
         </p>
       </Dragger>

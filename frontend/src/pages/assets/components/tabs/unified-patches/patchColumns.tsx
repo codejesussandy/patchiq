@@ -31,7 +31,7 @@ export const createPatchColumns = ({ agentId, deploying, onDeploy }: PatchColumn
           <Text strong>{record.name}</Text>
         </Space>
         {record.kbNumber && (
-          <Text type="secondary" style={{ fontSize: '12px', marginLeft: 22 }}>{record.kbNumber}</Text>
+          <Text type="secondary" style={{ fontSize: '16px', marginLeft: 22 }}>{record.kbNumber}</Text>
         )}
       </Space>
     ),

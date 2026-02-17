@@ -88,7 +88,7 @@ export function buildAssetColumns({ visibleColumns, categories, subCategories, o
               {category ? (
                 <div>
                   <Tag color={category.color || 'blue'}>{category.name}</Tag>
-                  {subCategory && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#666' }}>→ {subCategory.name}</span>}
+                  {subCategory && <span style={{ marginLeft: '8px', fontSize: '16px', color: '#666' }}>→ {subCategory.name}</span>}
                 </div>
               ) : (
                 <span style={{ color: '#999' }}>Unassigned</span>

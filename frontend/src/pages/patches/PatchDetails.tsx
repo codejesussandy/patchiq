@@ -534,7 +534,7 @@ export const PatchDetails = () => {
             <Text strong>Selected Patch:</Text>
             <div style={{ marginTop: 8 }}>
               <div>{selectedPatch.title || selectedPatch.software}</div>
-              <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
+              <div style={{ fontSize: '16px', color: '#8c8c8c' }}>
                 {selectedPatch.patchId}
                 {selectedPatch.kbNumber && ` • ${selectedPatch.kbNumber}`}
                 {' • '}
