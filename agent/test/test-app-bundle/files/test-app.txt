@@ -1,7 +1,0 @@
-PatchIQ Test Application
-========================
-
-This is a test file bundled with the application.
-It serves to verify that file copying works correctly during installation.
-
-Version: 1.0.0
