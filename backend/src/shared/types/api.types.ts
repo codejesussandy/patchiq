@@ -186,10 +186,10 @@ export interface UserPublic {
   role: string;
   roleInfo: UserRoleInfo;
   isOnboarded: boolean;
-  authSource?: string;
   organizationId?: string | null;
   departmentId?: string | null;
   locationId?: string | null;
+  authSource?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1729,6 +1729,8 @@ export interface UserListItem {
   id: string;
   email: string;
   name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   contactNumber: string | null;
   role: string;
   status: 'Active' | 'Suspended' | 'Invite Sent' | 'Deleted';

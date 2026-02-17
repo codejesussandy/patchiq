@@ -161,8 +161,21 @@ export const assetUpdateSchema = z.object({
   depreciationRate: z.union([z.number(), z.string().transform(v => parseFloat(v))]).optional().nullable(),
 });
 
+// Schema for asset ID parameter - accepts both UUID and assetTag formats
+const assetIdOrTagSchema = z.string().refine(
+  (val) => {
+    // Accept UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(val)) return true;
+
+    // Accept assetTag format (any non-empty string that's not a UUID)
+    return val.length > 0;
+  },
+  { message: 'Invalid asset ID or tag format' }
+);
+
 export const assetIdParamSchema = z.object({
-  id: uuidSchema,
+  id: assetIdOrTagSchema,
 });
 
 export const assetQuerySchema = z.object({

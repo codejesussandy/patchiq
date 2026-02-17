@@ -218,19 +218,6 @@ export interface AgentTagRelation {
   tag: string;
 }
 
-export interface AgentGroup {
-  id: string;
-  name: string;
-  description: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AgentGroupMembership {
-  agentId: string;
-  groupId: string;
-}
-
 export interface AgentDownload {
   id: string;
   os: string;

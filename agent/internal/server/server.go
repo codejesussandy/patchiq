@@ -1069,8 +1069,8 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	// Add system metrics
 	if s.lastTelemetry != nil {
 		health["system"] = map[string]interface{}{
-			"cpuPercent":    s.lastTelemetry.CPUPercent,
-			"memoryPercent": s.lastTelemetry.MemoryPercent,
+			"cpuPercent":    s.lastTelemetry.CPU.UsagePercent,
+			"memoryPercent": s.lastTelemetry.Memory.UsagePercent,
 		}
 	}
 

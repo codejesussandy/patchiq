@@ -32,7 +32,7 @@ export const ActionMenu = ({
     danger: item.danger,
     disabled: item.disabled,
     onClick: item.onClick,
-  }));
+  })) as MenuProps['items'];
 
   return (
     <Dropdown menu={{ items: menuItems }} trigger={['click']}>

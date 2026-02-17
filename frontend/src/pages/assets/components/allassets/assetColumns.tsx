@@ -106,7 +106,7 @@ export function buildAssetColumns({ visibleColumns, categories, subCategories, o
           const actionMenuItems = [
             { key: 'edit', label: 'Edit', onClick: (info: { domEvent: React.MouseEvent }) => { info.domEvent.stopPropagation(); onNavigate(`/assets/${record.id}`); } },
             { key: 'delete', label: 'Delete', danger: true, onClick: (info: { domEvent: React.MouseEvent }) => { info.domEvent.stopPropagation(); onDelete(record); } },
-          ];
+          ] as any;
           return (
             <Dropdown menu={{ items: actionMenuItems }} trigger={['click']}>
               <Button type="text" size="small" icon={<MoreOutlined />} onClick={(e) => { e.stopPropagation(); e.preventDefault(); }} />

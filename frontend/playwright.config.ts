@@ -11,7 +11,7 @@ export default defineConfig({
     ['list']
   ],
   use: {
-    baseURL: 'http://localhost:5001',
+    baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -19,15 +19,36 @@ export default defineConfig({
     navigationTimeout: 30000,
   },
   projects: [
+    // Setup project - runs authentication before all tests
+    {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+    },
+    // Main test project - uses authenticated state
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Use authenticated state from setup
+        storageState: './auth.json',
+      },
+      dependencies: ['setup'],
+    },
+    // Safari test project
+    {
+      name: 'webkit',
+      use: {
+        ...devices['Desktop Safari'],
+        // Use authenticated state from setup
+        storageState: './auth.json',
+      },
+      dependencies: ['setup'],
     },
   ],
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5001',
-    reuseExistingServer: !process.env.CI,
+    url: 'http://localhost:5173',
+    reuseExistingServer: true,
     timeout: 120000,
   },
   expect: {

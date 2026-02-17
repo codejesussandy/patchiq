@@ -36,7 +36,11 @@
     "db:generate": "prisma generate",
     "db:reset": "prisma migrate reset --force",
     "clear-and-rescan": "ts-node -r tsconfig-paths/register scripts/clear-and-rescan-vulnerabilities.ts",
-    "generate:types": "node ../shared/scripts/generate-types.js"
+    "generate:types": "node ../shared/scripts/generate-types.js",
+    "generate:test-data": "ts-node scripts/generate-test-data.ts",
+    "generate:test-data:minimal": "ts-node scripts/generate-test-data.ts --preset=minimal",
+    "generate:test-data:standard": "ts-node scripts/generate-test-data.ts --preset=standard",
+    "generate:test-data:full": "ts-node scripts/generate-test-data.ts --preset=full"
   },
   "keywords": [
     "patchiq",

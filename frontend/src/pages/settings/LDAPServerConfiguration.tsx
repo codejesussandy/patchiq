@@ -246,7 +246,7 @@ export const LDAPServerConfiguration = () => {
   const filteredConfigs = ldapConfigs.filter((config) => {
     if (!searchText) return true;
     const s = searchText.toLowerCase();
-    return config.id.toLowerCase().includes(s) || config.name.toLowerCase().includes(s) || config.host.toLowerCase().includes(s) || config.fqdn.toLowerCase().includes(s) || (config.description && config.description.toLowerCase().includes(s));
+    return config.id.toLowerCase().includes(s) || config.name.toLowerCase().includes(s) || config.host.toLowerCase().includes(s) || (config.fqdn && config.fqdn.toLowerCase().includes(s)) || (config.description && config.description.toLowerCase().includes(s));
   });
 
   const paginatedData = filteredConfigs.slice((pagination.current! - 1) * pagination.pageSize!, pagination.current! * pagination.pageSize!);

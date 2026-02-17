@@ -52,7 +52,7 @@ export const Audit = () => {
   const [customStartDate, setCustomStartDate] = useState<Dayjs | null>(null);
   const [customEndDate, setCustomEndDate] = useState<Dayjs | null>(null);
 
-  const auditLogs: AuditLog[] = Array.isArray(rawAuditLogs) ? rawAuditLogs : [];
+  const auditLogs: AuditLog[] = Array.isArray(rawAuditLogs) ? rawAuditLogs as unknown as AuditLog[] : [];
   const modules: string[] = filterOptionsData?.modules || [];
   const users: string[] = filterOptionsData?.users || [];
   const operations: string[] = filterOptionsData?.operations || [];

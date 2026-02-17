@@ -377,9 +377,9 @@ export class OrganizationsService {
     ]);
 
     // Build maps
-    const orgUserMap = new Map(orgUserCounts.map(c => [c.organizationId, c._count]));
-    const orgAssetMap = new Map(orgAssetCounts.map(c => [c.organizationId, c._count]));
-    const deptUserMap = new Map(deptUserCounts.map(c => [c.departmentId, c._count]));
+    const orgUserMap = new Map(orgUserCounts.map(c => [c.organizationId ?? '', c._count]));
+    const orgAssetMap = new Map(orgAssetCounts.map(c => [c.organizationId ?? '', c._count]));
+    const deptUserMap = new Map(deptUserCounts.map(c => [c.departmentId ?? '', c._count]));
 
     let totalBranches = 0;
     let totalDepartments = 0;
@@ -1055,10 +1055,6 @@ export class OrganizationsService {
     if (!department) {
       throw new NotFoundError('Department not found');
     }
-
-    const enrollSecretCount = await prisma.enrollSecret.count({
-      where: { departmentId: id },
-    });
 
     // Default behavior: block if children exist
     if (!options?.cascade) {

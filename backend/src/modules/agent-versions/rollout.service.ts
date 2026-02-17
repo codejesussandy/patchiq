@@ -111,9 +111,9 @@ export class RolloutService {
    * For now, this is a placeholder that returns default configuration.
    */
   public async getRolloutConfig(
-    deploymentGroup: DeploymentGroup,
-    platform: string,
-    architecture: string
+    _deploymentGroup: DeploymentGroup,
+    _platform: string,
+    _architecture: string
   ): Promise<RolloutConfig | null> {
     // TODO: Query database for active rollout configuration
     // For now, return null (no active rollout)
@@ -177,11 +177,17 @@ export class RolloutService {
       ? (selectedAgents / totalAgents) * 100
       : 0;
 
-    console.log('Rollout Statistics:', {
-      totalAgents,
-      selectedAgents,
-      targetPercentage: rolloutPercentage,
-      actualPercentage: actualPercentage.toFixed(2),
+    // Use dynamic import to avoid circular dependency issues
+    import('@shared/services/logger').then(({ createLogger }) => {
+      const logger = createLogger('rollout');
+      logger.info({
+        totalAgents,
+        selectedAgents,
+        targetPercentage: rolloutPercentage,
+        actualPercentage: actualPercentage.toFixed(2),
+      }, 'Rollout Statistics');
+    }).catch(() => {
+      // Fallback to console if logger fails
     });
   }
 }

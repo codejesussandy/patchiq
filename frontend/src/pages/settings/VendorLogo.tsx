@@ -44,7 +44,7 @@ export const VendorLogo = () => {
   const [filterForm] = Form.useForm();
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
 
-  const logos = rawLogos || [];
+  const logos = (rawLogos as unknown as VendorLogoType[]) || [];
   const filteredLogos = logos.filter((logo) => logo.name.toLowerCase().includes(searchText.toLowerCase()));
   const hasHiddenColumns = Object.values(filters).some(v => !v);
 

@@ -39,7 +39,7 @@ export const PatchSearchSelect: React.FC<PatchSearchSelectProps> = ({
     includeSuperseded: true, // Show all patches in search
   });
 
-  const patches = data?.data || [];
+  const patches = (data?.data as unknown as Patch[]) || [];
 
   // Filter out excluded IDs
   const filteredPatches = patches.filter(

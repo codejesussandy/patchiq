@@ -40,7 +40,7 @@ export const PatchDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: patch = null, isLoading: loading, refetch } = usePatch(id || '');
+  const { data: patch = null, isLoading: loading, refetch } = usePatch(id || '') as unknown as { data: Patch | null; isLoading: boolean; refetch: () => void };
   const { data: affectedSoftwares = [] } = useAffectedSoftwares(id || '');
   const { data: vulnerabilities = [] } = usePatchVulnerabilities(id || '');
   const { data: endpoints = [] } = usePatchEndpoints(id || '');
@@ -115,7 +115,7 @@ export const PatchDetails = () => {
           architecture: values.architecture || undefined, referenceUrl: values.referenceUrl || undefined,
           languagesSupported: values.languagesSupported || [], tags: values.tags || [], cveNumbers: values.cveNumbers || [],
         };
-        await updatePatchMutation.mutateAsync({ id: patch!.id, data: payload });
+        await updatePatchMutation.mutateAsync({ id: patch!.id, patch: payload });
         const products = await patchService.getAffectedSoftwares(patch!.id);
         setEditAffectedProducts(products);
         setEditStep(1);

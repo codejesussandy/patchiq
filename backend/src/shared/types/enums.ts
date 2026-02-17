@@ -21,7 +21,7 @@ export type UserRole = 'ADMIN' | 'USER' | 'MANAGER';
 // Agent Enums
 // ============================================
 
-export type AgentStatus = 'PENDING' | 'CONNECTED' | 'DISCONNECTED' | 'ERROR';
+export type AgentStatus = 'PENDING' | 'CONNECTED' | 'DISCONNECTED' | 'ERROR' | 'PENDING_APPROVAL' | 'REJECTED';
 
 export type AgentCommandType = 'SCAN' | 'UPDATE' | 'DEPLOY' | 'REBOOT' | 'COLLECT_INVENTORY' | 'COLLECT_TELEMETRY';
 

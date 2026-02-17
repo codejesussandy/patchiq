@@ -94,10 +94,10 @@ export const PatchJobsDeployed = () => {
     page: pagination.page,
     limit: pagination.pageSize,
     search: debouncedSearch || undefined,
-  });
+  }) as unknown as { data: PatchDeploymentItem[]; isLoading: boolean; refetch: () => void };
   const cancelMutation = useCancelPatchDeployment();
   const retryMutation = useRetryPatchDeployment();
-  const { data: detail = null, refetch: refetchDetail } = usePatchDeploymentStatus(selectedDeploymentId);
+  const { data: detail = null, refetch: refetchDetail } = usePatchDeploymentStatus(selectedDeploymentId) as { data: any; refetch: () => void };
 
   // Auto-refresh detail when in progress
   useEffect(() => {

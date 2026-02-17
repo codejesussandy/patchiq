@@ -83,6 +83,7 @@ export type Category = {
   slaTarget?: string;
   complianceRequired?: boolean;
   complianceTags?: string[];
+  subCategories?: SubCategory[];
 };
 
 export type SubCategory = {

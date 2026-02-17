@@ -79,7 +79,7 @@ export const SoftwareInventory = () => {
       title: 'Manufacturer',
       dataIndex: 'manufacturer',
       key: 'manufacturer',
-      sorter: (a, b) => a.manufacturer.localeCompare(b.manufacturer) },
+      sorter: (a, b) => (a.manufacturer || '').localeCompare(b.manufacturer || '') },
     {
       title: 'Total Instances',
       dataIndex: 'totalInstances',

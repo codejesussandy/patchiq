@@ -33,6 +33,7 @@ export type Patch = {
   id: string;
   software: string;
   patchId: string;
+  title?: string;
   endpoints: number;
   os: PatchOS;
   severity: PatchSeverity;
@@ -149,6 +150,7 @@ export type Deployment = {
   id: string;
   name: string;
   deploymentId: string;
+  description?: string;
   type: 'INSTALL' | 'ROLLBACK';
   status: 'INSTALLED' | 'COMPLETED' | 'IN_PROGRESS' | 'FAILED';
   pending: number;
@@ -156,6 +158,10 @@ export type Deployment = {
   failed: number;
   createdBy: string;
   createdOn: string;
+  targetAgentIds?: string[];
+  patches?: Array<{ id: string; patchId?: string }>;
+  skipApprovalCheck?: boolean;
+  retryCount?: number;
 };
 
 export type PatchTest = {

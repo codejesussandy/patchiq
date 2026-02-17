@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { BaseCrudService, type ListQuery } from '@shared/services/base-crud.service';
 import type { IntegrationResponse } from './settings.types';
-import type { CreateIntegrationInput, UpdateIntegrationInput, ListIntegrationsQuery } from './settings.validators';
+import type { CreateIntegrationInput, UpdateIntegrationInput } from './settings.validators';
 
 type IntegrationModel = Prisma.IntegrationGetPayload<object>;
 
@@ -68,7 +68,7 @@ export class IntegrationCrudService extends BaseCrudService<
   }
 
   async toggle(id: string, enabled: boolean): Promise<IntegrationResponse> {
-    const existing = await this.ensureExists(id);
+    await this.ensureExists(id);
     const record = await this.delegate.update({
       where: { id },
       data: { enabled },

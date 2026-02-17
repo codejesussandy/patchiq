@@ -30,7 +30,7 @@ export const Branding = () => {
   if (fetchedBranding && !initialized) {
     setBrandingData(fetchedBranding || { companyName: 'SkenzerIQ' });
     if (fetchedBranding?.logoUrl) {
-      setLogoPreview(fetchedBranding.logoUrl);
+      setLogoPreview(String(fetchedBranding.logoUrl));
     }
     setInitialized(true);
   }

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from '@db/client';
-import { NotFoundError, BadRequestError, ConflictError, UnauthorizedError, ForbiddenError } from '@shared/errors';
+import { NotFoundError, BadRequestError, ConflictError, UnauthorizedError } from '@shared/errors';
 import { paginate, getPaginationParams } from '@shared/utils/pagination';
 import { encrypt, decrypt } from '@shared/utils/crypto';
 import { emailService } from '@shared/services/email.service';
@@ -414,7 +414,7 @@ export class SettingsService {
   }
 
   async updateAgentConfig(input: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const updates = Object.entries(input).filter(([, value]) => value !== undefined);
+    const updates = Object.entries(input).filter(([_key, value]) => value !== undefined);
 
     for (const [key, value] of updates) {
       await prisma.setting.upsert({
@@ -495,7 +495,7 @@ export class SettingsService {
     return this.getProxyServer();
   }
 
-  async testProxyServer(input: Record<string, unknown>): Promise<SuccessResponse> {
+  async testProxyServer(_input: Record<string, unknown>): Promise<SuccessResponse> {
     // R3B: Test endpoint must use SAVED config from DB, not submitted config
     const settings = await prisma.setting.findMany({
       where: { category: 'proxy' },

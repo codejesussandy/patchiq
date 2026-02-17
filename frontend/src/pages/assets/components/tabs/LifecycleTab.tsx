@@ -185,9 +185,9 @@ export const LifecycleTab = ({ assetId, onEditFinancialData }: LifecycleTabProps
 
 function TimelineDot({ label, date, value, extra, color, tagColor, align }: {
   label: string;
-  date?: string;
-  value?: number;
-  extra?: string;
+  date?: string | null;
+  value?: number | null;
+  extra?: string | null;
   color: string;
   tagColor: string;
   align: 'left' | 'center' | 'right';
@@ -199,7 +199,7 @@ function TimelineDot({ label, date, value, extra, color, tagColor, align }: {
         <Text type="secondary" style={{ display: 'block', fontSize: '16px' }}>{label}</Text>
         <Text strong>{date}</Text>
         <div>
-          {value !== undefined && <Tag color={tagColor}>{'\u20B9'}{value.toLocaleString()}</Tag>}
+          {value !== undefined && value !== null && <Tag color={tagColor}>{'\u20B9'}{value.toLocaleString()}</Tag>}
           {extra && <Tag color={tagColor}>{extra}</Tag>}
         </div>
       </div>

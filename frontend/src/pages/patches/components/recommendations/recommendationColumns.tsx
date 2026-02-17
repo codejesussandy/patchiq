@@ -53,19 +53,19 @@ export function buildRecommendationColumns({ actionLoading, onAccept, onReject, 
       title: 'Actions', key: 'actions', width: 200, fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          {record.status === 'RECOMMENDED' && (
+          {record.status === 'recommended' && (
             <>
               <Button type="primary" size="small" icon={<CheckCircleOutlined />} loading={actionLoading === record.id} onClick={() => onAccept(record.id)}>Accept</Button>
               <Button size="small" danger icon={<CloseCircleOutlined />} loading={actionLoading === record.id} onClick={() => onReject(record.id)}>Reject</Button>
             </>
           )}
-          {record.status === 'ACCEPTED' && (
+          {record.status === 'accepted' && (
             <Button type="primary" size="small" icon={<RocketOutlined />} loading={actionLoading === record.id} onClick={() => onDeploy(record.id)}>Deploy</Button>
           )}
           {['DEPLOYED', 'VERIFIED', 'FAILED'].includes(record.status) && (
             <Button size="small" icon={<EyeOutlined />} onClick={() => onNavigate('/patches/deployed/deployed')}>View Deployment</Button>
           )}
-          {record.status === 'REJECTED' && <Text type="secondary">Rejected</Text>}
+          {record.status === 'rejected' && <Text type="secondary">Rejected</Text>}
         </Space>
       ),
     },

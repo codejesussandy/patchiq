@@ -13,30 +13,16 @@ import type {
   PatchOS,
   TestStatus,
   ApprovalStatus,
-  DeploymentStatus,
-  DeploymentType,
   DeploymentConfigType,
   DeploymentScope,
   AssetStatus,
   OperationalStatus,
   LicenseStatus,
   AgentStatus as AgentStatusEnum,
-  OSFamily,
   VulnerabilitySeverity,
-  VulnerabilityStatus,
   ExceptionType,
   ExceptionScope,
-  JobType,
-  JobStatus,
-  VulnerabilityScanType,
-  VulnerabilityJobStatus,
-  Recurrence,
   SoftwareDeploymentType,
-  SelectionType,
-  NotifyTo,
-  ConfigurationType,
-  CommandType,
-  Architecture,
   ReportType,
   ReportFormat,
   ReportStatus,
@@ -44,8 +30,6 @@ import type {
   ApplicationFilterType,
   ScopeFilterType,
   PolicyType,
-  SupportedModule,
-  RelatedType,
   PatchSourceCategory,
   PatchSourceAuthType,
   DownloadJobStatus,
@@ -1725,6 +1709,8 @@ export interface UserListItem {
   id: string;
   email: string;
   name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   contactNumber: string | null;
   role: string;
   status: 'Active' | 'Suspended' | 'Invite Sent' | 'Deleted';

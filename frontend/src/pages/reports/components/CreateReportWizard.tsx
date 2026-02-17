@@ -146,10 +146,10 @@ export const CreateReportWizard = ({ open, onClose, onSuccess, mode = 'create', 
 
   const renderStep2 = () => (
     <div>
-      <Divider orientation="left">Timeline</Divider>
+      <Divider orientation={'left' as const}>Timeline</Divider>
       <Form.Item label="Date Range" name="dateRange" rules={[{ required: true, message: 'Please select date range' }]}><RangePicker style={{ width: '100%' }} /></Form.Item>
       {availableFilters.length > 0 && (<>
-        <Divider orientation="left">Filters</Divider>
+        <Divider orientation={'left' as const}>Filters</Divider>
         <Row gutter={16}>
           {availableFilters.includes('severity') && <Col span={12}><Form.Item label="Severity" name="severity">
             <Select mode="multiple" placeholder="Select severity" allowClear options={[{ value: 'CRITICAL', label: 'Critical' }, { value: 'HIGH', label: 'High' }, { value: 'MEDIUM', label: 'Medium' }, { value: 'LOW', label: 'Low' }]} />
@@ -165,7 +165,7 @@ export const CreateReportWizard = ({ open, onClose, onSuccess, mode = 'create', 
           </Form.Item></Col>}
         </Row>
       </>)}
-      <Divider orientation="left">Columns</Divider>
+      <Divider orientation={'left' as const}>Columns</Divider>
       <Form.Item label="Select Columns to Include">
         <Transfer dataSource={transferData} titles={['Available', 'Selected']} targetKeys={selectedColumns} onChange={handleTransferChange}
           render={(item) => item.title} listStyle={{ width: 250, height: 300 }} showSearch filterOption={(inputValue, option) => option.title.toLowerCase().includes(inputValue.toLowerCase())} />
@@ -177,11 +177,11 @@ export const CreateReportWizard = ({ open, onClose, onSuccess, mode = 'create', 
   const renderStep3 = () => {
     return (
       <div>
-        <Divider orientation="left">Export Format</Divider>
+        <Divider orientation={'left' as const}>Export Format</Divider>
         <Form.Item label="Format" name="format" rules={[{ required: true, message: 'Please select format' }]}>
           <Select placeholder="Select export format" options={[{ value: 'PDF', label: 'PDF' }, { value: 'CSV', label: 'CSV' }, { value: 'Excel', label: 'Excel' }]} />
         </Form.Item>
-        <Divider orientation="left">Schedule</Divider>
+        <Divider orientation={'left' as const}>Schedule</Divider>
         <Form.Item label="Enable Schedule" name="enableSchedule" valuePropName="checked"><Switch /></Form.Item>
         {enableSchedule && (<>
           <Row gutter={16}>

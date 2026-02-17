@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string) => {
     try {
       const response = await authService.login({ email, password });
-      setUser(response.user);
+      setUser(response.user as unknown as User);
       message.success('Login successful');
     } catch (error: unknown) {
       const axiosErr = error as { response?: { data?: { error?: { message?: string } } } };

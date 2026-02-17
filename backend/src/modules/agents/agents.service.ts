@@ -1,6 +1,6 @@
 import { prisma } from '@/db/client';
 import { Prisma } from '@prisma/client';
-import { NotFoundError, ConflictError, ForbiddenError, UnauthorizedError } from '@shared/errors';
+import { NotFoundError, ConflictError, ForbiddenError } from '@shared/errors';
 import { cveDatabase } from '@shared/services/cve-database.service';
 import { createLogger } from '@shared/services/logger';
 import { calculateAgentStatus } from '@shared/utils/agent-status';
@@ -103,7 +103,7 @@ export class AgentsService {
         tokenExpiresIn: 3600,
         config: await this.getDefaultConfig(),
         isReRegistration: true,
-        status: existingAgent.status as any,
+        status: existingAgent.status as 'CONNECTED' | 'PENDING_APPROVAL' | 'REJECTED' | 'ERROR' | 'DISCONNECTED',
         message: 'Agent re-registered successfully',
       };
     }
@@ -210,7 +210,7 @@ export class AgentsService {
       tokenExpiresIn: 3600,
       config: await this.getDefaultConfig(),
       isReRegistration: false,
-      status: initialStatus as any,
+      status: initialStatus as 'CONNECTED' | 'PENDING_APPROVAL' | 'REJECTED' | 'ERROR' | 'DISCONNECTED',
     };
   }
 
@@ -1185,8 +1185,7 @@ export class AgentsService {
   /**
    * Process telemetry submission from agent
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async processTelemetry(agentId: string, telemetry: any): Promise<void> {
+  async processTelemetry(agentId: string, telemetry: Record<string, unknown>): Promise<void> {
     const agent = await prisma.agent.findUnique({
       where: { id: agentId },
     });
@@ -1226,7 +1225,7 @@ export class AgentsService {
         pendingReboot,
         // Full payload for detailed views - store the complete telemetry from agent
         rawPayload: telemetry as Prisma.InputJsonValue,
-        timestamp: new Date(telemetry.collectedAt),
+        timestamp: new Date(telemetry.collectedAt as string | number | Date),
       },
     });
 
@@ -1517,8 +1516,21 @@ export class AgentsService {
   /**
    * Transform AgentVersion model to response type
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private transformAgentVersion(v: any): AgentVersionResponse {
+  private transformAgentVersion(v: {
+    id: string;
+    platform: string;
+    architecture: string;
+    version: string;
+    filePath: string | null;
+    fileSize: bigint | null;
+    checksum: string | null;
+    releaseNotes: string | null;
+    isRecommended: boolean;
+    isDeprecated: boolean;
+    downloadCount: number;
+    lastUpdatedAt: Date;
+    createdAt: Date;
+  }): AgentVersionResponse {
     return {
       id: v.id,
       platform: v.platform,

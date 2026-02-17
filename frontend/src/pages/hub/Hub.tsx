@@ -233,7 +233,7 @@ export const Hub = () => {
     catch { message.error('Failed to get download URL'); }
   };
 
-  const handleBundleUpload = async (file: File) => {
+  const handleBundleUpload = async (file: File): Promise<false> => {
     if (!file.name.endsWith('.tar.gz') && !file.name.endsWith('.tgz')) { message.error('Please upload a .tar.gz or .tgz file'); return false; }
     try {
       const result = await uploadBundleMutation.mutateAsync(file);

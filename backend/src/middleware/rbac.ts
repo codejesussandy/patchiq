@@ -102,6 +102,7 @@ export function checkPermission(
   module: PermissionModule,
   action: PermissionAction,
 ): RequestHandler {
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = req.user;

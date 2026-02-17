@@ -601,8 +601,6 @@ func listAvailableRollbacks() {
 			continue
 		}
 
-		// Try to get version from backup
-		version := "unknown"
 		// Version detection would require executing the binary with --version
 		// For now, just show the file info
 

@@ -181,7 +181,7 @@ export const UnifiedPatchesTab = ({ assetId, agentId, patchSummary: initialSumma
             <Col span={4.5}><Card style={{ textAlign: 'center' }}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Medium</Text><div style={{ fontSize: 24, fontWeight: 700, color: '#faad14' }}>{mediumRecs}</div></Card></Col>
             <Col span={4.5}><Card style={{ textAlign: 'center' }}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Low</Text><div style={{ fontSize: 24, fontWeight: 700, color: '#52c41a' }}>{lowRecs}</div></Card></Col>
           </Row>
-          <Card title="CVE-Based Patch Recommendations" extra={<Button icon={<ReloadOutlined />} onClick={fetchRecommendations} loading={recommendationsLoading} size="small">Refresh</Button>}>
+          <Card title="CVE-Based Patch Recommendations" extra={<Button icon={<ReloadOutlined />} onClick={() => { void fetchRecommendations(); }} loading={recommendationsLoading} size="small">Refresh</Button>}>
             {recommendationsLoading ? <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>
               : recommendations.length > 0 ? <DataTable data={recommendations} columns={recommendationColumns} rowKey="id" pagination={{ pageSize: 20 }} scroll={{ x: 'max-content' }} size="small" />
               : <Empty description="No patch recommendations for this asset" />}
@@ -224,7 +224,7 @@ export const UnifiedPatchesTab = ({ assetId, agentId, patchSummary: initialSumma
               {deployments.length > 0 ? (
                 <Timeline style={{ marginTop: 16, maxHeight: 400, overflowY: 'auto' }}
                   items={deployments.slice(0, 10).map((deployment) => ({
-                    color: deployment.status === 'SUCCESS' ? 'green' : deployment.status === 'FAILED' ? 'red' : 'blue',
+                    color: deployment.status === 'COMPLETED' ? 'green' : deployment.status === 'FAILED' ? 'red' : 'blue',
                     children: (
                       <div>
                         <Space direction="vertical" size={0}>

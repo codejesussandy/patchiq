@@ -105,7 +105,7 @@ export const PatchRecommendations = () => {
           const deployId = result.deployment?.deploymentId;
           Modal.success({
             title: 'Deployment Created',
-            content: <div><p>Deployment <strong>{deployId || 'N/A'}</strong> has been created and is now in progress.</p><p>You can track its status on the Patch Deployments page.</p></div>,
+            content: <div><p>Deployment <strong>{String(deployId) || 'N/A'}</strong> has been created and is now in progress.</p><p>You can track its status on the Patch Deployments page.</p></div>,
             okText: 'View Deployments',
             onOk: () => navigate('/patches/deployed/deployed'),
             cancelButtonProps: { style: { display: 'inline-block' } },
@@ -118,8 +118,8 @@ export const PatchRecommendations = () => {
 
   // Bulk action helpers
   const selectedItems = recommendations.filter((r) => selectedRowKeys.includes(r.id));
-  const selectedRecommended = selectedItems.filter((r) => r.status === 'RECOMMENDED');
-  const selectedAccepted = selectedItems.filter((r) => r.status === 'ACCEPTED');
+  const selectedRecommended = selectedItems.filter((r) => r.status === 'recommended');
+  const selectedAccepted = selectedItems.filter((r) => r.status === 'accepted');
 
   const handleBulkAccept = async () => {
     if (selectedRecommended.length === 0) { message.warning('No recommendations in RECOMMENDED status selected'); return; }

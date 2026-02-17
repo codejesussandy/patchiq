@@ -5,7 +5,7 @@ const { Option } = Select;
 const { TextArea } = Input;
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-  <Divider orientation="left" orientationMargin={0} style={{ marginTop: 4, marginBottom: 16 }}>
+  <Divider orientation={'left' as const} orientationMargin={0} style={{ marginTop: 4, marginBottom: 16 }}>
     <Text strong style={{ fontSize: 13 }}>{children}</Text>
   </Divider>
 );

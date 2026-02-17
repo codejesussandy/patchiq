@@ -2,10 +2,12 @@
 
 ## Document Overview
 
-**Version:** 1.0
-**Date:** 2026-02-16
+**Version:** 1.1
+**Date:** 2026-02-17 (Updated with Phase 5A)
 **Owner:** QA Team
-**Status:** Planning
+**Status:** In Progress (Phase 4 Complete, Phase 5A Ready to Launch)
+
+**🆕 UPDATE (2026-02-17):** Added **Phase 5A: UI/UX Consistency Audit** based on user feedback identifying critical UI inconsistencies across pages (headings, buttons, toggles, table spacing). This new phase ensures visual consistency before performance/accessibility testing.
 
 This roadmap defines the comprehensive testing strategy for validating the PatchIQ frontend application after the merge of `full-dev-heramb` into `full-dev-sandy-v2`.
 
@@ -126,7 +128,7 @@ const errors = await page.evaluate(() => window.consoleErrors);
 
 ## Executive Summary
 
-The PatchIQ frontend consists of 11 major feature areas spanning 40+ pages, 18+ service integrations, and 19 React Query hooks. This roadmap organizes testing into 5 phases over an estimated 3-4 week timeline, prioritizing critical path features first.
+The PatchIQ frontend consists of 11 major feature areas spanning 40+ pages, 18+ service integrations, and 19 React Query hooks. This roadmap organizes testing into **6 phases** over an estimated **4-5 week timeline**, prioritizing critical path features first.
 
 **Testing Scope:**
 - 11 major feature areas
@@ -135,6 +137,7 @@ The PatchIQ frontend consists of 11 major feature areas spanning 40+ pages, 18+ 
 - 12+ asset detail tabs
 - Real-time notifications (SSE)
 - RBAC & permissions
+- **UI/UX consistency (NEW - Phase 5A)**
 - Cross-browser compatibility
 - Performance & accessibility
 
@@ -722,7 +725,130 @@ Agent 33: "Test console errors:
 
 ---
 
-### Phase 5: Cross-Cutting & Polish (Week 3-4)
+### Phase 5A: UI/UX Consistency Audit (Week 3-4) 🎨 **NEW**
+**Duration:** 2-3 days audit + 1-2 weeks fixes
+**Goal:** Ensure visual consistency across all 40+ pages
+
+| Priority | Category | Scope | Estimated Time |
+|----------|----------|-------|----------------|
+| P0 | Typography Consistency | H1-H6, body text, labels across all pages | 1 day |
+| P0 | Button & Toggle Consistency | All interactive elements standardization | 0.5 days |
+| P0 | Table & Data Grid Consistency | Row height, cell padding, spacing across 20+ tables | 1 day |
+| P0 | Layout & Spacing Consistency | 8px grid system, card spacing, margins | 0.5 days |
+| P1 | Color Palette Consistency | Semantic colors, grayscale, brand colors | 0.5 days |
+| P1 | Icon Consistency | Icon library, sizes, usage patterns | 0.5 days |
+
+**🤖🎭 Teammate + Playwright Workflow for Phase 5A:**
+
+**Why This Phase Was Added:**
+User feedback identified critical UI inconsistencies:
+- ❌ Headings and subheadings vary between pages
+- ❌ Buttons and toggles look different across modules
+- ❌ Tables have inconsistent spacing (row height, cell padding)
+- ❌ No unified design system enforcement
+
+**Day 1: Launch 6 Agents in Parallel**
+
+```bash
+# Agent 34: Typography Consistency Audit
+"Audit typography across all 40+ pages using Playwright.
+Extract H1-H6, body, label, caption styles (font-size, weight, line-height, color).
+Create matrix: Pages × Typography Elements.
+Identify inconsistencies (e.g., H1 is 24px on one page, 32px on another).
+Recommend standardized typography system with CSS variables."
+
+# Agent 35: Button & Toggle Consistency Audit
+"Audit all buttons, toggles, inputs across pages.
+Extract styles: color, size, padding, border-radius, font-weight.
+Group by variant (primary, secondary, danger, ghost, link).
+Identify: 10+ primary button variants → should be 1 standard.
+Recommend button system (max 5 variants) with Ant Design props."
+
+# Agent 36: Table & Data Grid Consistency Audit
+"Audit 20+ tables across pages.
+Measure: row height, cell padding, column header styles, borders.
+Check pagination, search, filter, action icon consistency.
+Identify: row height varies 48px vs 56px vs 64px.
+Recommend standard table configuration."
+
+# Agent 37: Layout & Spacing Consistency Audit
+"Audit layout spacing across all pages.
+Measure: page padding, card margins, grid gaps, section spacing.
+Create spacing inventory (all unique values used).
+Identify deviations from 8px grid (e.g., random 18px, 22px, 28px).
+Recommend 8px-based spacing system (4px, 8px, 12px, 16px, 24px, 32px)."
+
+# Agent 38: Color Palette Consistency Audit
+"Extract all colors used across pages (text, background, border).
+Categorize: semantic colors (success/error/warning), text, backgrounds.
+Identify palette bloat (15+ grays instead of 5-6 standard shades).
+Recommend color system aligned with Ant Design.
+Provide CSS color variables."
+
+# Agent 39: Icon Consistency Audit
+"Audit all icons across pages (Ant Design Icons, React Icons, custom SVG).
+Check: icon library consistency, sizes (16px vs 20px vs 24px), colors.
+Identify: Edit icon = PencilIcon OR EditOutlined OR FormOutlined.
+Recommend single icon library with standard sizes (16px, 20px, 24px)."
+```
+
+**Day 2: Results Collection & Synthesis**
+- Collect all 6 agent reports
+- Create master inconsistency report with screenshots
+- Calculate consistency score per category (0-100%)
+- Prioritize fixes: P0 (blocks production) vs P1 (important) vs P2 (nice-to-have)
+
+**Day 3: Design System Definition**
+- Define PatchIQ Design System v1.0:
+  - Typography scale (H1: 32px, H2: 24px, H3: 20px, etc.)
+  - Button variants (max 5: primary, default, dashed, link, danger)
+  - Spacing scale (8px grid: 4px, 8px, 12px, 16px, 24px, 32px, 48px, 64px)
+  - Color palette (30 max colors, semantic + grayscale)
+  - Table standards (56px row height, 16px cell padding)
+  - Icon system (Ant Design Icons only, 3 sizes)
+- Create implementation roadmap (estimated 40-50 hours)
+
+**Weeks 2-3: Implementation (40-50 hours)**
+- Fix typography inconsistencies (8 hours)
+- Standardize buttons/toggles (6 hours)
+- Fix table spacing (10 hours)
+- Implement spacing system (12 hours)
+- Consolidate color palette (6 hours)
+- Standardize icons (4 hours)
+- Create design system documentation
+- Build regression test suite
+
+**Success Criteria:**
+- Consistency score >= 90% in all 6 categories
+- Typography: Max 2-3 sizes per heading level
+- Buttons: Max 5 variants (down from 10+)
+- Tables: Consistent 56px row height, 16px cell padding
+- Spacing: 90%+ values from 8px grid
+- Colors: Max 30 unique colors (down from 50+)
+- Icons: Single library (Ant Design), max 3 sizes
+
+**Exit Criteria:**
+- All 6 agents completed successfully
+- Master inconsistency report created with screenshots
+- PatchIQ Design System v1.0 documented
+- Implementation roadmap created
+- P0/P1 fixes implemented (consistency score >= 90%)
+- Regression tests passing
+- No visual inconsistencies in side-by-side page comparisons
+
+**Deliverables:**
+- 6 agent reports (typography, buttons, tables, spacing, colors, icons)
+- Master inconsistency report with visual comparison grid
+- PatchIQ Design System v1.0 documentation
+- CSS design tokens file (variables)
+- Updated component library
+- Before/after screenshots
+- Regression test suite
+- Implementation guide for developers
+
+---
+
+### Phase 5B: Cross-Cutting & Polish (Week 4-5)
 **Duration:** 5 days
 **Goal:** Validate UX, performance, and compatibility
 
@@ -734,22 +860,22 @@ Agent 33: "Test console errors:
 | P2 | Cross-Browser | Chrome, Firefox, Safari, Edge | 1 day |
 | P2 | Integration Flows | End-to-end user journeys | 1 day |
 
-**🤖 Teammate Workflow for Phase 5 (Final Polish):**
+**🤖 Teammate Workflow for Phase 5B (Final Polish):**
 
 **Day 1 - Performance Audit:**
 ```bash
 # Launch 3 concurrent agents for performance testing
-Agent 34: "Run Lighthouse audits on all major pages:
+Agent 40: "Run Lighthouse audits on all major pages:
           Dashboard, Assets List, Patch Details, Settings.
           Document Performance scores, identify bottlenecks.
           Check bundle sizes, network waterfall, render times."
 
-Agent 35: "Test large dataset performance:
+Agent 41: "Test large dataset performance:
           Load assets page with 1000+ items → Measure render time.
           Test search latency → Type query → Measure response time.
           Test table sorting/filtering with large datasets."
 
-Agent 36: "Profile real-time features:
+Agent 42: "Profile real-time features:
           Monitor SSE connection stability over 30 minutes.
           Check polling intervals (should be 5-10s, not 1s).
           Measure telemetry refresh performance."
@@ -757,31 +883,31 @@ Agent 36: "Profile real-time features:
 
 **Day 2 - Responsive Design:**
 ```bash
-Agent 37: "Test mobile layout (320px - iPhone SE):
+Agent 43: "Test mobile layout (320px - iPhone SE):
           Navigate through all major pages → Screenshot each.
           Verify: Tables scroll horizontally, buttons stack, text readable.
           Test touch targets (>= 44x44px)."
 
-Agent 38: "Test tablet layout (768px - iPad):
+Agent 44: "Test tablet layout (768px - iPad):
           Navigate through all major pages → Screenshot each.
           Verify: 2-column layouts, sidebar behavior, form layouts."
 
-Agent 39: "Test desktop layouts (1920px, 2560px):
+Agent 45: "Test desktop layouts (1920px, 2560px):
           Verify: No wasted whitespace, responsive grids, breakpoints work."
 ```
 
 **Day 3 - Accessibility Audit:**
 ```bash
-Agent 40: "Run axe DevTools audit on all pages:
+Agent 46: "Run axe DevTools audit on all pages:
           Document all WCAG violations by severity.
           Check: Color contrast, ARIA labels, form labels, focus indicators."
 
-Agent 41: "Test keyboard navigation:
+Agent 47: "Test keyboard navigation:
           Navigate through entire app using only keyboard (Tab, Enter, Esc).
           Verify: Focus order logical, no focus traps, modals closable.
           Document any keyboard-inaccessible features."
 
-Agent 42: "Test with screen reader (VoiceOver or NVDA):
+Agent 48: "Test with screen reader (VoiceOver or NVDA):
           Navigate login → dashboard → assets detail.
           Verify: All content announced, form labels read, buttons described."
 ```
@@ -789,36 +915,36 @@ Agent 42: "Test with screen reader (VoiceOver or NVDA):
 **Day 4 - Cross-Browser Testing:**
 ```bash
 # Launch 4 concurrent agents (one per browser)
-Agent 43: "Test in Chrome 120+:
+Agent 49: "Test in Chrome 120+:
           Full smoke test → All critical paths → Document any issues."
 
-Agent 44: "Test in Firefox 120+:
+Agent 50: "Test in Firefox 120+:
           Full smoke test → Document rendering differences, console errors."
 
-Agent 45: "Test in Safari 17+:
+Agent 51: "Test in Safari 17+:
           Full smoke test → Document Safari-specific issues (EventSource, fetch)."
 
-Agent 46: "Test in Edge 120+:
+Agent 52: "Test in Edge 120+:
           Full smoke test → Document Edge-specific issues."
 ```
 
 **Day 5 - End-to-End Integration Flows:**
 ```bash
 # Launch 5 concurrent agents for complete user journeys
-Agent 47: "Login → Create Asset → View Details → Delete Asset → Logout"
+Agent 53: "Login → Create Asset → View Details → Delete Asset → Logout"
 
-Agent 48: "Login → Create Patch → Deploy to Assets → Monitor Status → Verify Completion"
+Agent 54: "Login → Create Patch → Deploy to Assets → Monitor Status → Verify Completion"
 
-Agent 49: "Login → Trigger Vuln Scan → Create Exception → Verify Dashboard Updates"
+Agent 55: "Login → Trigger Vuln Scan → Create Exception → Verify Dashboard Updates"
 
-Agent 50: "Login → Upload Package to Hub → Deploy to Assets → Verify Installation"
+Agent 56: "Login → Upload Package to Hub → Deploy to Assets → Verify Installation"
 
-Agent 51: "Login → Configure LDAP → Sync Users → Assign Roles → Test LDAP Login"
+Agent 57: "Login → Configure LDAP → Sync Users → Assign Roles → Test LDAP Login"
 ```
 
 **Final Results Synthesis:**
-- Collect reports from all 18 agents (Agents 34-51)
-- Create Phase 5 completion report with:
+- Collect reports from all 18 agents (Agents 40-57)
+- Create Phase 5B completion report with:
   - Performance scores (Lighthouse)
   - Accessibility violations (axe)
   - Browser compatibility matrix
@@ -839,7 +965,7 @@ Agent 51: "Login → Configure LDAP → Sync Users → Assign Roles → Test LDA
 - Mobile experience validated (320px, 768px, 1920px)
 - Accessibility audit passes (>= 90 axe score, 0 critical violations)
 - Browser compatibility confirmed (Chrome, Firefox, Safari, Edge)
-- All 18 agents report completion with documented findings
+- All 18 agents (Agents 40-57) report completion with documented findings
 
 ---
 
@@ -1165,18 +1291,21 @@ Only happens with patches targeting Windows
 ## Metrics & Success Criteria
 
 ### Phase Exit Metrics
-| Metric | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5 |
+| Metric | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5A | Phase 5B |
 |--------|---------|---------|---------|---------|---------|
-| Test Cases Passed | 80% | 85% | 90% | 95% | 98% |
-| P0 Bugs Open | 0 | 0 | 0 | 0 | 0 |
-| P1 Bugs Open | ≤ 2 | ≤ 3 | ≤ 5 | ≤ 3 | ≤ 2 |
-| Console Errors | 0 critical | 0 critical | 0 critical | 0 | 0 |
-| Performance Score | N/A | N/A | N/A | N/A | ≥ 85 |
-| Accessibility Score | N/A | N/A | N/A | N/A | ≥ 90 |
+| Test Cases Passed | 80% | 85% | 90% | 95% | 95% | 98% |
+| P0 Bugs Open | 0 | 0 | 0 | 0 | 0 | 0 |
+| P1 Bugs Open | ≤ 2 | ≤ 3 | ≤ 5 | ≤ 3 | ≤ 2 | ≤ 2 |
+| Console Errors | 0 critical | 0 critical | 0 critical | 0 | 0 | 0 |
+| UI Consistency Score | N/A | N/A | N/A | N/A | ≥ 90% | N/A |
+| Performance Score | N/A | N/A | N/A | N/A | N/A | ≥ 85 |
+| Accessibility Score | N/A | N/A | N/A | N/A | N/A | ≥ 90 |
 
 ### Final Acceptance Criteria
 - [ ] All P0 and P1 bugs resolved
 - [ ] All critical user flows tested end-to-end
+- [ ] **UI consistency score ≥ 90% (NEW - Phase 5A)**
+- [ ] **Design system documented and implemented (NEW - Phase 5A)**
 - [ ] Performance score ≥ 85 (Lighthouse)
 - [ ] Accessibility score ≥ 90 (axe)
 - [ ] Cross-browser compatibility confirmed
@@ -1399,19 +1528,20 @@ TaskOutput(task_id="a1b2c3d", block=true, timeout=300000)
 
 ### Teammate Budget
 
-Total agents planned: **51 agents** across 5 phases
+Total agents planned: **57 agents** across 6 phases
 
 - Phase 1: 8 agents
 - Phase 2: 7 agents
 - Phase 3: 7 agents
 - Phase 4: 11 agents
-- Phase 5: 18 agents
+- Phase 5A: 6 agents (UI Consistency Audit)
+- Phase 5B: 18 agents (Performance, Accessibility, Cross-Browser)
 
 **Cost estimation:**
 - Average agent uses ~10,000-20,000 tokens
-- Total: ~500,000-1,000,000 tokens
-- At $15/million input tokens (Opus): ~$7.50-$15 total
-- **ROI:** Saves 2-3 weeks of manual testing labor
+- Total: ~570,000-1,140,000 tokens
+- At $15/million input tokens (Opus): ~$8.50-$17 total
+- **ROI:** Saves 3-4 weeks of manual testing labor
 
 ---
 

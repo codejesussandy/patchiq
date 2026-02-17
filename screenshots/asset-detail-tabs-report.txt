@@ -1,0 +1,119 @@
+
+════════════════════════════════════════════════════════════
+TEST REPORT: Asset Detail Tabs
+════════════════════════════════════════════════════════════
+Date: 2026-02-16T17:29:57.021Z
+Test Type: Manual Playwright Screenshot Capture
+
+SUMMARY TABLE:
+──────────────
+Tab Name             | Load Time  | Data Present  | Status   | Notes
+──────────────────── | ────────── | ───────────── | ──────── | ──────────────────────────────
+Asset Life cycle     | 0ms        | No            | FAIL     | Tab not found
+Vulnerabilities      | 0ms        | No            | FAIL     | Tab not found
+Patches              | 0ms        | No            | FAIL     | Tab not found
+Alerts               | 0ms        | No            | FAIL     | Tab not found
+Audit Log            | 0ms        | No            | FAIL     | Tab not found
+Software             | 0ms        | No            | FAIL     | Tab not found
+
+DETAILED RESULTS:
+─────────────────
+
+1. Asset Life cycle Tab
+   Status: FAIL
+   Load Time: 0ms (Target: < 2000ms)
+   Data Present: No
+   Notes: Tab not found
+   Error: Tab element not found
+   Screenshot: asset-tab-asset-life-cycle.png
+
+
+2. Vulnerabilities Tab
+   Status: FAIL
+   Load Time: 0ms (Target: < 2000ms)
+   Data Present: No
+   Notes: Tab not found
+   Error: Tab element not found
+   Screenshot: asset-tab-vulnerabilities.png
+
+
+3. Patches Tab
+   Status: FAIL
+   Load Time: 0ms (Target: < 2000ms)
+   Data Present: No
+   Notes: Tab not found
+   Error: Tab element not found
+   Screenshot: asset-tab-patches.png
+
+
+4. Alerts Tab
+   Status: FAIL
+   Load Time: 0ms (Target: < 2000ms)
+   Data Present: No
+   Notes: Tab not found
+   Error: Tab element not found
+   Screenshot: asset-tab-alerts.png
+
+
+5. Audit Log Tab
+   Status: FAIL
+   Load Time: 0ms (Target: < 2000ms)
+   Data Present: No
+   Notes: Tab not found
+   Error: Tab element not found
+   Screenshot: asset-tab-audit-log.png
+
+
+6. Software Tab
+   Status: FAIL
+   Load Time: 0ms (Target: < 2000ms)
+   Data Present: No
+   Notes: Tab not found
+   Error: Tab element not found
+   Screenshot: asset-tab-software.png
+
+
+OVERALL SUMMARY:
+────────────────
+Total Tabs Tested: 6
+✓ Passed: 0
+⚠ Partial: 0
+✗ Failed: 6
+Overall Status: ✗ FAIL
+
+CONSOLE ERRORS:
+───────────────
+Total: 2
+1. Failed to load resource: the server responded with a status of 400 (Bad Request)
+2. Failed to load resource: the server responded with a status of 400 (Bad Request)
+
+
+SCREENSHOTS CAPTURED:
+─────────────────────
+1. step-01-login-page.png
+2. step-02-assets-list.png
+3. step-03-asset-detail-initial.png
+4. asset-tab-asset-life-cycle.png
+5. asset-tab-vulnerabilities.png
+6. asset-tab-patches.png
+7. asset-tab-alerts.png
+8. asset-tab-audit-log.png
+9. asset-tab-software.png
+
+NOTES:
+──────
+- Tests executed with Playwright in non-headless mode
+- All screenshots saved to: /Users/shandesh/src/VS-code/PatchIQ/full-dev-sandy-v2/screenshots
+- Target load time per tab: < 2000ms
+- Data presence includes tables, cards, descriptions, or empty states
+
+BUGS FOUND:
+───────────
+1. Asset Life cycle Tab: Tab element not found
+2. Vulnerabilities Tab: Tab element not found
+3. Patches Tab: Tab element not found
+4. Alerts Tab: Tab element not found
+5. Audit Log Tab: Tab element not found
+6. Software Tab: Tab element not found
+
+════════════════════════════════════════════════════════════

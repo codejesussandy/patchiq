@@ -152,7 +152,7 @@ export const PatchesTab = ({ assetId, agentId, patchSummary: initialSummary }: P
             {deployments.length > 0 ? (
               <Timeline style={{ marginTop: 16, maxHeight: 250, overflowY: 'auto' }}
                 items={deployments.slice(0, 5).map((deployment) => ({
-                  color: deployment.status === 'SUCCESS' ? 'green' : deployment.status === 'FAILED' ? 'red' : 'blue',
+                  color: deployment.status === 'COMPLETED' ? 'green' : deployment.status === 'FAILED' ? 'red' : 'blue',
                   children: (
                     <div><Space direction="vertical" size={0}>
                       <Space><Text strong>{deployment.patchName}</Text><Tag color={getStatusColor(deployment.status)}>{deployment.status}</Tag></Space>

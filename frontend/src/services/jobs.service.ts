@@ -34,6 +34,7 @@ export interface ConfigBundle {
   id: string;
   bundleId: string;
   bundleName: string;
+  name?: string;
   os: 'Windows' | 'Mac' | 'Linux';
   description?: string;
   configurations: string[];
@@ -61,6 +62,7 @@ export interface ConfigDeployment {
   failed: number;
   createdBy: string;
   createdOn?: string;
+  createdAt?: string;
 }
 
 export interface CreateConfigDeploymentInput {
@@ -93,6 +95,7 @@ export interface DeploymentPolicy {
   schedule?: string;
   createdBy: string;
   createdOn?: string;
+  createdAt?: string;
 }
 
 export interface CreateDeploymentPolicyInput {

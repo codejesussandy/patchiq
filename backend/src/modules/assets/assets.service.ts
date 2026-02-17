@@ -641,9 +641,9 @@ export async function listAssets(params: AssetQueryInput & PaginationParams) {
       include: {
         tags: { include: { tag: true } },
         agent: { select: { id: true, status: true, hostname: true, ipAddress: true, macAddress: true, lastHeartbeat: true, agentVersion: true } },
-        hardware: true,
-        category: true,
-        subCategory: true,
+        hardware: { select: { ramTotal: true, diskTotal: true, systemSKU: true } },
+        category: { select: { name: true } },
+        subCategory: { select: { name: true } },
       },
       ...getPaginationParams(params),
       orderBy: params.sort
@@ -656,9 +656,38 @@ export async function listAssets(params: AssetQueryInput & PaginationParams) {
   return paginate(assets.map(transformAsset), total, params);
 }
 
+/**
+ * Helper function to resolve asset ID (UUID or assetId) to actual UUID
+ * Supports both UUID format (e.g., "24196e90-f486-49c4-8494-836a2cd58bfb")
+ * and assetId format (e.g., "AST-SRV-005")
+ */
+async function resolveAssetId(id: string): Promise<string> {
+  // Check if ID is already a UUID format
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+  if (isUUID) {
+    return id;
+  }
+
+  // Look up by assetTag to get the UUID
+  const asset = await prisma.asset.findFirst({
+    where: { assetTag: id },
+    select: { id: true },
+  });
+
+  if (!asset) {
+    throw new NotFoundError('Asset not found');
+  }
+
+  return asset.id;
+}
+
 export async function getAssetById(id: string): Promise<AssetResponse> {
+  // Resolve to UUID (supports both UUID and assetId)
+  const uuid = await resolveAssetId(id);
+
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
     include: {
       tags: { include: { tag: true } },
       agent: {
@@ -757,8 +786,9 @@ export async function createAsset(data: AssetCreateInput, userId?: string): Prom
 }
 
 export async function updateAsset(id: string, data: AssetUpdateInput, userId?: string): Promise<AssetResponse> {
+  const uuid = await resolveAssetId(id);
   const existing = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
     include: { tags: { include: { tag: true } } },
   });
 
@@ -771,7 +801,7 @@ export async function updateAsset(id: string, data: AssetUpdateInput, userId?: s
     const existingSerial = await prisma.asset.findFirst({
       where: {
         serialNumber: data.serialNumber,
-        id: { not: id },
+        id: { not: uuid },
       },
     });
     if (existingSerial) {
@@ -783,14 +813,14 @@ export async function updateAsset(id: string, data: AssetUpdateInput, userId?: s
   if (data.tags !== undefined) {
     // Delete existing tag associations
     await prisma.assetTag.deleteMany({
-      where: { assetId: id },
+      where: { assetId: uuid },
     });
 
     // Create new tag associations
     if (data.tags.length > 0) {
       await prisma.assetTag.createMany({
         data: data.tags.map((tagId) => ({
-          assetId: id,
+          assetId: uuid,
           tagId,
         })),
       });
@@ -798,7 +828,7 @@ export async function updateAsset(id: string, data: AssetUpdateInput, userId?: s
   }
 
   const asset = await prisma.asset.update({
-    where: { id },
+    where: { id: uuid },
     data: {
       // Basic info
       name: data.name,
@@ -924,7 +954,7 @@ export async function updateAsset(id: string, data: AssetUpdateInput, userId?: s
     userId,
     action: AuditAction.UPDATE,
     resource: AuditResource.ASSET,
-    resourceId: id,
+    resourceId: uuid,
     details: {
       assetName: asset.name,
       assetTag: asset.assetTag,
@@ -941,8 +971,9 @@ export async function updateAsset(id: string, data: AssetUpdateInput, userId?: s
 }
 
 export async function deleteAsset(id: string, userId?: string): Promise<void> {
+  const uuid = await resolveAssetId(id);
   const existing = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
   });
 
   if (!existing) {
@@ -951,7 +982,7 @@ export async function deleteAsset(id: string, userId?: string): Promise<void> {
 
   // Soft delete would be preferable in production
   await prisma.asset.delete({
-    where: { id },
+    where: { id: uuid },
   });
 
   // Create audit log with deleted asset info
@@ -959,7 +990,7 @@ export async function deleteAsset(id: string, userId?: string): Promise<void> {
     userId,
     action: AuditAction.DELETE,
     resource: AuditResource.ASSET,
-    resourceId: id,
+    resourceId: uuid,
     details: {
       deletedAsset: {
         name: existing.name,
@@ -1018,9 +1049,9 @@ function formatBytesToSize(bytes: bigint | null | undefined): string | null {
 type AssetWithIncludes = Prisma.AssetGetPayload<object> & {
   tags?: Array<{ tag: Prisma.TagGetPayload<object> }>;
   agent?: { id: string; status: string; hostname: string | null; ipAddress: string | null; macAddress: string | null; lastHeartbeat: Date | null; agentVersion: string | null } | null;
-  hardware?: Prisma.AssetHardwareGetPayload<object> | null;
-  category?: Prisma.CategoryGetPayload<object> | null;
-  subCategory?: Prisma.SubCategoryGetPayload<object> | null;
+  hardware?: { ramTotal: bigint | null; diskTotal: bigint | null; systemSKU: string | null } | null;
+  category?: { name: string } | null;
+  subCategory?: { name: string } | null;
 };
 
 function transformAsset(asset: AssetWithIncludes): AssetResponse {
@@ -1298,8 +1329,9 @@ export async function getAssetLifeCycle(id: string, method?: string): Promise<As
 }
 
 export async function getAssetHardware(id: string): Promise<AssetHardware | null> {
+  const uuid = await resolveAssetId(id);
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
     include: {
       hardware: true,
     },
@@ -1509,9 +1541,10 @@ export async function getAssetHardware(id: string): Promise<AssetHardware | null
 }
 
 export async function getAssetSoftware(id: string): Promise<AssetSoftware | null> {
+  const uuid = await resolveAssetId(id);
   // First, get the asset for OS info
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
   });
 
   if (!asset) {
@@ -1520,7 +1553,7 @@ export async function getAssetSoftware(id: string): Promise<AssetSoftware | null
 
   // Get the full software inventory from rawPayload
   const softwareInventory = await prisma.assetSoftwareInventory.findUnique({
-    where: { assetId: id },
+    where: { assetId: uuid },
   });
 
   // Extract data from rawPayload if available
@@ -1769,8 +1802,9 @@ export async function getAssetSoftware(id: string): Promise<AssetSoftware | null
 }
 
 export async function getAssetSecurity(id: string): Promise<AssetSecurity | null> {
+  const uuid = await resolveAssetId(id);
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
     include: {
       security: true,
     },
@@ -1811,8 +1845,9 @@ export async function getAssetSecurity(id: string): Promise<AssetSecurity | null
 }
 
 export async function getAssetNetwork(id: string): Promise<AssetNetwork | null> {
+  const uuid = await resolveAssetId(id);
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
     select: {
       ipAddress: true,
       macAddress: true,
@@ -1852,8 +1887,9 @@ export async function getAssetNetwork(id: string): Promise<AssetNetwork | null> 
 }
 
 export async function getAssetPeripherals(id: string): Promise<AssetPeripherals | null> {
+  const uuid = await resolveAssetId(id);
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
     include: {
       peripherals: true,
     },
@@ -1943,8 +1979,9 @@ export async function getAssetPeripherals(id: string): Promise<AssetPeripherals 
 }
 
 export async function getAssetTelemetry(id: string): Promise<AssetTelemetry | null> {
+  const uuid = await resolveAssetId(id);
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
     include: {
       agent: {
         include: {
@@ -2056,8 +2093,9 @@ export async function getAssetTelemetryHistory(
   id: string,
   period: 'hour' | 'day' | 'week' = 'day'
 ): Promise<TelemetryHistory> {
+  const uuid = await resolveAssetId(id);
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
     select: { agent: { select: { id: true } } },
   });
 
@@ -2103,8 +2141,9 @@ export async function getAssetTelemetryHistory(
 }
 
 export async function getAssetErrors(id: string): Promise<SystemErrors> {
+  const uuid = await resolveAssetId(id);
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
     include: {
       agent: {
         include: {
@@ -2157,8 +2196,9 @@ export async function getAssetErrors(id: string): Promise<SystemErrors> {
 }
 
 export async function getAssetAuditLog(id: string): Promise<AssetAuditLog[]> {
+  const uuid = await resolveAssetId(id);
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
   });
 
   if (!asset) {
@@ -2168,7 +2208,7 @@ export async function getAssetAuditLog(id: string): Promise<AssetAuditLog[]> {
   const logs = await prisma.auditLog.findMany({
     where: {
       resource: 'asset',
-      resourceId: id,
+      resourceId: uuid,
     },
     orderBy: { timestamp: 'desc' },
     take: 50,
@@ -2191,8 +2231,9 @@ export async function getAssetAuditLog(id: string): Promise<AssetAuditLog[]> {
 // ============================================
 
 export async function getAssetAlerts(id: string): Promise<{ data: AssetAlertResponse[]; summary: { total: number; critical: number; warning: number; info: number; clear: number; open: number; resolved: number } }> {
+  const uuid = await resolveAssetId(id);
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
   });
 
   if (!asset) {
@@ -2200,7 +2241,7 @@ export async function getAssetAlerts(id: string): Promise<{ data: AssetAlertResp
   }
 
   const alerts = await prisma.assetAlert.findMany({
-    where: { assetId: id },
+    where: { assetId: uuid },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -2246,8 +2287,9 @@ export async function getAssetAlerts(id: string): Promise<{ data: AssetAlertResp
 // ============================================
 
 export async function getAssetVulnerabilities(id: string) {
+  const uuid = await resolveAssetId(id);
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
   });
 
   if (!asset) {
@@ -2256,7 +2298,7 @@ export async function getAssetVulnerabilities(id: string) {
 
   // Get vulnerabilities linked to this asset through the AssetVulnerability relation
   const assetVulnerabilities = await prisma.assetVulnerability.findMany({
-    where: { assetId: id },
+    where: { assetId: uuid },
     include: {
       vulnerability: {
         include: {
@@ -2343,8 +2385,9 @@ export async function getAssetPatches(id: string): Promise<{
     compliancePercent: number;
   };
 }> {
+  const uuid = await resolveAssetId(id);
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
     include: { agent: true },
   });
 
@@ -2354,7 +2397,7 @@ export async function getAssetPatches(id: string): Promise<{
 
   // Get all patch deployment tasks for this asset with their deployment and patches
   const patchTasks = await prisma.patchDeploymentTask.findMany({
-    where: { assetId: id },
+    where: { assetId: uuid },
     include: {
       deployment: {
         include: {
@@ -2571,8 +2614,9 @@ export async function getAssetDeployments(id: string): Promise<{
     errorMessage?: string;
   }>;
 }> {
+  const uuid = await resolveAssetId(id);
   const asset = await prisma.asset.findUnique({
-    where: { id },
+    where: { id: uuid },
     include: { agent: true },
   });
 
@@ -2595,7 +2639,7 @@ export async function getAssetDeployments(id: string): Promise<{
 
   // Get patch deployment tasks for this asset
   const patchTasks = await prisma.patchDeploymentTask.findMany({
-    where: { assetId: id },
+    where: { assetId: uuid },
     include: {
       deployment: {
         include: {

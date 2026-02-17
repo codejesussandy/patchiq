@@ -139,7 +139,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
             title: 'Deployment Created',
             content: (
               <div>
-                <p>Deployment <strong>{deployId || 'N/A'}</strong> has been created and is now in progress.</p>
+                <p>Deployment <strong>{String(deployId) || 'N/A'}</strong> has been created and is now in progress.</p>
                 <p>You can track its status on the Patch Deployments page.</p>
               </div>
             ),
@@ -210,7 +210,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          {record.status === 'RECOMMENDED' && (
+          {record.status === 'recommended' && (
             <>
               <Button
                 type="primary"
@@ -232,7 +232,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
               </Button>
             </>
           )}
-          {record.status === 'ACCEPTED' && (
+          {record.status === 'accepted' && (
             <Button
               type="primary"
               size="small"
@@ -253,7 +253,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
               View Deployment
             </Button>
           )}
-          {record.status === 'REJECTED' && (
+          {record.status === 'rejected' && (
             <Text type="secondary">Rejected</Text>
           )}
         </Space>
@@ -330,7 +330,7 @@ export const PatchRecommendationsTab = ({ assetId, agentId }: PatchRecommendatio
         extra={
           <Button
             icon={<ReloadOutlined />}
-            onClick={fetchData}
+            onClick={() => { void fetchData(); }}
             loading={loading}
             size="small"
           >

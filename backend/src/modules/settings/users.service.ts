@@ -50,7 +50,7 @@ export class UsersService {
     sortBy?: string;
     sortOrder?: string;
   }): Promise<PaginatedResponse<UserListItem>> {
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     // Status filtering
     if (params.status) {
@@ -106,7 +106,7 @@ export class UsersService {
     }
 
     // Sorting
-    let orderBy: any = { createdAt: 'desc' };
+    let orderBy: Record<string, unknown> = { createdAt: 'desc' };
     if (params.sortBy) {
       const sortOrder = params.sortOrder || 'desc';
       switch (params.sortBy) {
@@ -127,7 +127,7 @@ export class UsersService {
           break;
         case 'status':
           // Status is a computed field, sort by isActive then isOnboarded
-          orderBy = [{ isActive: sortOrder }, { isOnboarded: sortOrder }];
+          orderBy = [{ isActive: sortOrder }, { isOnboarded: sortOrder }] as unknown as Record<string, unknown>;
           break;
       }
     }
@@ -235,7 +235,7 @@ export class UsersService {
     return this.transformUserDetail(user);
   }
 
-  async updateUser(id: string, input: UpdateUserInput, updatedById?: string): Promise<UserDetailResponse> {
+  async updateUser(id: string, input: UpdateUserInput, _updatedById?: string): Promise<UserDetailResponse> {
     const user = await prisma.user.findUnique({
       where: { id },
       include: { role: { select: { name: true } } },
@@ -284,7 +284,7 @@ export class UsersService {
     });
 
     // Create audit log
-    await this.createAuditLog(updatedById, 'UPDATE', 'user', id, {
+    await this.createAuditLog(_updatedById, 'UPDATE', 'user', id, {
       before: oldData,
       after: {
         name: updated.name,
@@ -562,6 +562,8 @@ export class UsersService {
     id: string;
     email: string;
     name: string | null;
+    firstName: string | null;
+    lastName: string | null;
     contactNumber: string | null;
     role: { name: string };
     isActive: boolean;
@@ -582,10 +584,17 @@ export class UsersService {
       status = 'Invite Sent';
     }
 
+    // Compute full name from firstName + lastName, fallback to name field
+    const fullName = user.firstName && user.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user.name || null;
+
     return {
       id: user.id,
       email: user.email,
-      name: user.name,
+      name: fullName,
+      firstName: user.firstName,
+      lastName: user.lastName,
       contactNumber: user.contactNumber,
       role: user.role.name,
       status,
@@ -601,6 +610,8 @@ export class UsersService {
     id: string;
     email: string;
     name: string | null;
+    firstName: string | null;
+    lastName: string | null;
     contactNumber: string | null;
     role: { name: string };
     isActive: boolean;
@@ -810,7 +821,7 @@ export class UsersService {
   // R5: Bulk User Import
   // ============================================
 
-  async bulkImportUsers(input: BulkImportInput, importedById?: string): Promise<BulkImportResponse> {
+  async bulkImportUsers(input: BulkImportInput, _importedById?: string): Promise<BulkImportResponse> {
     const results: BulkImportResponse['results'] = [];
     const seenEmails = new Set<string>();
 

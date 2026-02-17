@@ -400,6 +400,9 @@ model Asset {
   @@index([ownerId])
   @@index([categoryId])
   @@index([subCategoryId])
+  @@index([createdAt])
+  @@index([name])
+  @@index([ipAddress])
   @@map("assets")
 }
 

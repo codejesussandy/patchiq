@@ -96,12 +96,12 @@ export const PatchCreateEditModal = ({ open, editingPatch, initialValues, onClos
           languagesSupported: values.languagesSupported || [], tags: values.tags || [], cveNumbers: values.cveNumbers || [],
         };
         if (editingPatch) {
-          await updatePatchMutation.mutateAsync({ id: editingPatch.id, data: payload });
+          await updatePatchMutation.mutateAsync({ id: editingPatch.id, patch: payload });
           const products = await patchService.getAffectedSoftwares(editingPatch.id);
           setAffectedProducts(products);
           setCreatedPatchId(editingPatch.id);
         } else if (createdPatchId) {
-          await updatePatchMutation.mutateAsync({ id: createdPatchId, data: payload });
+          await updatePatchMutation.mutateAsync({ id: createdPatchId, patch: payload });
           const products = await patchService.getAffectedSoftwares(createdPatchId);
           setAffectedProducts(products);
         } else {

@@ -32,12 +32,12 @@ const formatDateTime = (dateString?: string): string => {
 
 export const UserLocation = () => {
   const { message } = App.useApp();
-  const { data: locations = [], isLoading: loading, refetch } = useLocations();
+  const { data: locations = [], isLoading: loading, refetch } = useLocations() as unknown as { data: Location[]; isLoading: boolean; refetch: () => void };
   const { data: rawOrganizations = [] } = useOrganizations();
   const createLocationMutation = useCreateLocation();
   const updateLocationMutation = useUpdateLocation();
   const deleteLocationMutation = useDeleteLocation();
-  const organizations: Organization[] = Array.isArray(rawOrganizations) ? rawOrganizations as Organization[] : [];
+  const organizations: Organization[] = Array.isArray(rawOrganizations) ? rawOrganizations as unknown as Organization[] : [];
 
   const [searchText, setSearchText] = useState('');
   const [modalVisible, setModalVisible] = useState(false);

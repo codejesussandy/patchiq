@@ -78,7 +78,7 @@ export async function validatePassword(password: string, prisma: PrismaClient): 
     });
   }
 
-  if (policy.minSpecialCharacters && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password)) {
+  if (policy.minSpecialCharacters && !/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password)) {
     violations.push({
       field: 'password',
       message: 'Password must contain at least one special character (!@#$%^&*...)',

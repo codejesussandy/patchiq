@@ -229,6 +229,8 @@ async function main() {
       email: 'admin@patchiq.io',
       passwordHash: adminPasswordHash,
       name: 'System Administrator',
+      firstName: 'System',
+      lastName: 'Administrator',
       roleId: adminRole.id,
       organizationId: org.id,
       departmentId: department.id,
@@ -248,6 +250,8 @@ async function main() {
       email: 'demo@patchiq.io',
       passwordHash: demoPasswordHash,
       name: 'Demo User',
+      firstName: 'Demo',
+      lastName: 'User',
       roleId: userRole.id,
       organizationId: org.id,
       departmentId: department.id,
@@ -804,18 +808,23 @@ async function main() {
 
   const createdAssets = [];
   for (const asset of sampleAssets) {
+    // Extract agentId before creating asset (Asset model doesn't have agentId field)
+    const { agentId, ...assetData } = asset;
+
     const createdAsset = await prisma.asset.upsert({
       where: { serialNumber: asset.serialNumber },
       update: {},
-      create: asset,
+      create: assetData,
     });
     createdAssets.push(createdAsset);
 
-    // Update agent with assetId
-    await prisma.agent.update({
-      where: { id: asset.agentId },
-      data: { assetId: createdAsset.id },
-    });
+    // Update agent with assetId (relationship is defined on Agent side)
+    if (agentId) {
+      await prisma.agent.update({
+        where: { id: agentId },
+        data: { assetId: createdAsset.id },
+      });
+    }
   }
   console.log('Created', createdAssets.length, 'sample assets');
 

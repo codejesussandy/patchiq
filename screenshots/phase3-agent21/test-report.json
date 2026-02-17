@@ -1,0 +1,131 @@
+{
+  "testSuite": "Phase 3 Agent 21: Notifications Module - SSE Testing",
+  "timestamp": "2026-02-17T05:18:07.250Z",
+  "results": {
+    "TC09": {
+      "status": "PASS",
+      "duration": 816
+    },
+    "TC10": {
+      "status": "PASS",
+      "duration": 16400
+    }
+  },
+  "summary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "diagnostics": {
+    "consoleErrors": 0,
+    "sseConnections": 3,
+    "sseMessages": 0
+  },
+  "consoleMessages": [
+    {
+      "type": "debug",
+      "text": "[vite] connecting...",
+      "timestamp": 1771305470534
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected.",
+      "timestamp": 1771305470537
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "timestamp": 1771305470600
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting...",
+      "timestamp": 1771305471348
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected.",
+      "timestamp": 1771305471349
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "timestamp": 1771305471374
+    }
+  ],
+  "networkEvents": [
+    {
+      "type": "request",
+      "url": "http://localhost:5173/notifications",
+      "method": "GET",
+      "timestamp": 1771305471332
+    },
+    {
+      "type": "response",
+      "url": "http://localhost:5173/notifications",
+      "status": 200,
+      "timestamp": 1771305471334,
+      "contentType": "text/html"
+    },
+    {
+      "type": "request",
+      "url": "http://localhost:5173/v1/notifications/unread-count",
+      "method": "GET",
+      "timestamp": 1771305471821
+    },
+    {
+      "type": "request",
+      "url": "http://localhost:5173/v1/notifications/history?page=1&limit=20&sortBy=createdAt&sortOrder=desc",
+      "method": "GET",
+      "timestamp": 1771305471821
+    },
+    {
+      "type": "request",
+      "url": "http://localhost:5173/v1/notifications/unread-count",
+      "method": "GET",
+      "timestamp": 1771305471821
+    },
+    {
+      "type": "request",
+      "url": "http://localhost:5173/v1/notifications/stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmMDI1ZTkxNS0zMTkwLTRhNWMtYWM0Mi1jMmU2NDA5MWVkYTUiLCJlbWFpbCI6ImFkbWluQHBhdGNoaXEuaW8iLCJyb2xlIjoiYWRtaW4iLCJyb2xlSWQiOiI4YzViYmQ1NS1mNTE5LTQ1MTktYjYzNi1hNmE0MzljZmEzM2UiLCJvcmdhbml6YXRpb25JZCI6ImY1YmUyMGQ5LTU1MzEtNDA0Mi1hMWVmLWJhN2JiNjY0YzU0NCIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzEzMDU0NzEsImV4cCI6MTc3MTMwOTA3MSwianRpIjoiNzViZDhhOTgtYmZhZi00M2ExLWFiYmQtZjczODIyOTdlNDU5In0.cj5RHBtoEg4BnEtgDS69g0y5kM8zc5AGdZrul6ueZ84",
+      "method": "GET",
+      "timestamp": 1771305471828
+    },
+    {
+      "type": "sse",
+      "url": "http://localhost:5173/v1/notifications/stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmMDI1ZTkxNS0zMTkwLTRhNWMtYWM0Mi1jMmU2NDA5MWVkYTUiLCJlbWFpbCI6ImFkbWluQHBhdGNoaXEuaW8iLCJyb2xlIjoiYWRtaW4iLCJyb2xlSWQiOiI4YzViYmQ1NS1mNTE5LTQ1MTktYjYzNi1hNmE0MzljZmEzM2UiLCJvcmdhbml6YXRpb25JZCI6ImY1YmUyMGQ5LTU1MzEtNDA0Mi1hMWVmLWJhN2JiNjY0YzU0NCIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzEzMDU0NzEsImV4cCI6MTc3MTMwOTA3MSwianRpIjoiNzViZDhhOTgtYmZhZi00M2ExLWFiYmQtZjczODIyOTdlNDU5In0.cj5RHBtoEg4BnEtgDS69g0y5kM8zc5AGdZrul6ueZ84",
+      "method": "GET",
+      "timestamp": 1771305471828
+    },
+    {
+      "type": "response",
+      "url": "http://localhost:5173/v1/notifications/unread-count",
+      "status": 200,
+      "timestamp": 1771305471834,
+      "contentType": "application/json; charset=utf-8"
+    },
+    {
+      "type": "response",
+      "url": "http://localhost:5173/v1/notifications/history?page=1&limit=20&sortBy=createdAt&sortOrder=desc",
+      "status": 200,
+      "timestamp": 1771305471836,
+      "contentType": "application/json; charset=utf-8"
+    },
+    {
+      "type": "response",
+      "url": "http://localhost:5173/v1/notifications/stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmMDI1ZTkxNS0zMTkwLTRhNWMtYWM0Mi1jMmU2NDA5MWVkYTUiLCJlbWFpbCI6ImFkbWluQHBhdGNoaXEuaW8iLCJyb2xlIjoiYWRtaW4iLCJyb2xlSWQiOiI4YzViYmQ1NS1mNTE5LTQ1MTktYjYzNi1hNmE0MzljZmEzM2UiLCJvcmdhbml6YXRpb25JZCI6ImY1YmUyMGQ5LTU1MzEtNDA0Mi1hMWVmLWJhN2JiNjY0YzU0NCIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzEzMDU0NzEsImV4cCI6MTc3MTMwOTA3MSwianRpIjoiNzViZDhhOTgtYmZhZi00M2ExLWFiYmQtZjczODIyOTdlNDU5In0.cj5RHBtoEg4BnEtgDS69g0y5kM8zc5AGdZrul6ueZ84",
+      "status": 200,
+      "timestamp": 1771305471849,
+      "contentType": "text/event-stream"
+    },
+    {
+      "type": "response",
+      "url": "http://localhost:5173/v1/notifications/unread-count",
+      "status": 200,
+      "timestamp": 1771305471865,
+      "contentType": "application/json; charset=utf-8"
+    }
+  ],
+  "sseMessages": []
+}

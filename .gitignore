@@ -34,3 +34,8 @@ tmp/
 temp/
 *.tmp
 data/
+
+# Lighthouse reports
+lighthouse-reports/*.html
+lighthouse-reports/*.json
+!lighthouse-reports/README.md

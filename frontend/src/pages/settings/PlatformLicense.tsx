@@ -20,7 +20,7 @@ import { usePlatformLicense, useUpdatePlatformLicense } from '../../hooks/useSet
 
 const { Title, Text } = Typography;
 
-interface _License {
+interface License {
   licenseTo: string;
   productCode: string;
   licenseType: string;
@@ -41,7 +41,7 @@ interface _License {
 export const PlatformLicense = () => {
   const { message } = App.useApp();
   const [form] = Form.useForm();
-  const { data: license = null, isLoading: loading, refetch } = usePlatformLicense();
+  const { data: license = null, isLoading: loading, refetch } = usePlatformLicense() as unknown as { data: License | null; isLoading: boolean; refetch: () => void };
   const updateLicenseMutation = useUpdatePlatformLicense();
 
   const handleCopyToClipboard = (text: string) => {

@@ -1,0 +1,48 @@
+{
+  "summary": {
+    "totalMessages": 10,
+    "totalUniqueErrors": 0,
+    "totalUniqueWarnings": 5,
+    "totalErrorOccurrences": 0,
+    "totalWarningOccurrences": 10,
+    "pagesAudited": 5,
+    "criticalErrors": 0,
+    "highPriorityErrors": 0,
+    "mediumErrors": 0
+  },
+  "topErrors": [],
+  "topWarnings": [
+    [
+      "No routes matched location \"/discovery/scan-profiles\" ",
+      2
+    ],
+    [
+      "No routes matched location \"/discovery/scan-jobs\" ",
+      2
+    ],
+    [
+      "No routes matched location \"/discovery/credentials\" ",
+      2
+    ],
+    [
+      "No routes matched location \"/settings/integration\" ",
+      2
+    ],
+    [
+      "No routes matched location \"/settings/organization\" ",
+      2
+    ]
+  ],
+  "errorsByPage": {},
+  "warningsByPage": {
+    "/discovery/scan-profiles": 2,
+    "/discovery/scan-jobs": 2,
+    "/discovery/credentials": 2,
+    "/settings/integration": 2,
+    "/settings/organization": 2
+  },
+  "reactErrors": [],
+  "apiErrors": [],
+  "thirdPartyErrors": [],
+  "customErrors": []
+}

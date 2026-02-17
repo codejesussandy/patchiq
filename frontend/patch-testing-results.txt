@@ -1,0 +1,150 @@
+
+> frontend@0.0.0 test
+> playwright test e2e/patch-testing.spec.ts
+
+
+Running 9 tests using 1 worker
+
+Authentication complete. Storage state saved to: /Users/shandesh/src/VS-code/PatchIQ/full-dev-sandy-v2/frontend/auth.json
+  ✓  1 [setup] › e2e/auth.setup.ts:7:1 › authenticate (4.7s)
+✓ Navigated to /patches/test-approve
+  ✘  2 [chromium] › e2e/patch-testing.spec.ts:6:3 › Patch Testing Workflow (Phase 4 - Agent 24) › 1. Navigate to Patch Tests Page (30.8s)
+✓ Navigated to /patches/test-approve
+  ✘  3 [chromium] › e2e/patch-testing.spec.ts:6:3 › Patch Testing Workflow (Phase 4 - Agent 24) › 1. Navigate to Patch Tests Page (retry #1) (30.4s)
+  ✘  4 [chromium] › e2e/patch-testing.spec.ts:49:3 › Patch Testing Workflow (Phase 4 - Agent 24) › 2. Check UI Elements and Create Button (30.8s)
+ (30.2s)
+  ✘  6 [chromium] › e2e/patch-testing.spec.ts:95:3 › Patch Testing Workflow › 3. Check for Create Test button (0ms)
+  ✘  7 [chromium] › e2e/patch-testing.spec.ts:139:3 › Patch Testing Workflow › 4. Explore page elements and UI (0ms)
+  ✘  8 [chromium] › e2e/patch-testing.spec.ts:179:3 › Patch Testing Workflow › 5. Check page structure and content (0ms)
+  ✘  9 [chromium] › e2e/patch-testing.spec.ts:95:3 › Patch Testing Workflow › 3. Check for Create Test button (retry #1) (0ms)
+  ✘  10 [chromium] › e2e/patch-testing.spec.ts:139:3 › Patch Testing Workflow › 4. Explore page elements and UI (retry #1) (0ms)
+  ✘  11 [chromium] › e2e/patch-testing.spec.ts:179:3 › Patch Testing Workflow › 5. Check page structure and content (retry #1) (0ms)
+
+
+  1) [chromium] › e2e/patch-testing.spec.ts:9:3 › Patch Testing Workflow › 1. Login and navigate to patch tests page 
+
+    TimeoutError: page.goto: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - navigating to "http://localhost:5173/", waiting until "networkidle"[22m
+
+
+      12 |     
+      13 |     // Go to login page
+    > 14 |     await page.goto('http://localhost:5173', { waitUntil: 'networkidle' });
+         |                ^
+      15 |     console.log('Page loaded');
+      16 |     
+      17 |     // Wait for login form to appear
+        at /Users/shandesh/src/VS-code/PatchIQ/full-dev-sandy-v2/frontend/e2e/patch-testing.spec.ts:14:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/patch-testing-Patch-Testin-be83a-avigate-to-patch-tests-page-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/patch-testing-Patch-Testin-be83a-avigate-to-patch-tests-page-chromium/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    TimeoutError: page.goto: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - navigating to "http://localhost:5173/", waiting until "networkidle"[22m
+
+
+      12 |     
+      13 |     // Go to login page
+    > 14 |     await page.goto('http://localhost:5173', { waitUntil: 'networkidle' });
+         |                ^
+      15 |     console.log('Page loaded');
+      16 |     
+      17 |     // Wait for login form to appear
+        at /Users/shandesh/src/VS-code/PatchIQ/full-dev-sandy-v2/frontend/e2e/patch-testing.spec.ts:14:16
+
+    Error: browserContext._wrapApiCall: ENOENT: no such file or directory, open '/Users/shandesh/src/VS-code/PatchIQ/full-dev-sandy-v2/frontend/test-results/.playwright-artifacts-2/traces/5c28aca3eaab32a9aaf1-e015f7e197b9993da9a6-retry1.trace'
+
+    Error: ENOENT: no such file or directory, open '/Users/shandesh/src/VS-code/PatchIQ/full-dev-sandy-v2/frontend/test-results/.playwright-artifacts-2/a1b9e0f4efc668c8fa178d6141fdd6a0.zip'
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/patch-testing-Patch-Testin-be83a-avigate-to-patch-tests-page-chromium-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › e2e/patch-testing.spec.ts:45:3 › Patch Testing Workflow › 2. Navigate to Patch Tests page 
+
+    TimeoutError: page.goto: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - navigating to "http://localhost:5173/", waiting until "networkidle"[22m
+
+
+      38 |     
+      39 |     // Login first
+    > 40 |     await page.goto('http://localhost:5173', { waitUntil: 'networkidle' });
+         |                ^
+      41 |     await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+      42 |     await page.fill('input[type="email"]', 'admin@patchiq.io');
+      43 |     await page.fill('input[type="password"]', 'admin123');
+        at /Users/shandesh/src/VS-code/PatchIQ/full-dev-sandy-v2/frontend/e2e/patch-testing.spec.ts:40:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/patch-testing-Patch-Testin-83a83-avigate-to-Patch-Tests-page-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/patch-testing-Patch-Testin-83a83-avigate-to-Patch-Tests-page-chromium/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    TimeoutError: page.goto: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - navigating to "http://localhost:5173/", waiting until "networkidle"[22m
+
+
+      38 |   });
+      39 |
+    > 40 |   test('2. Check UI Elements and Create Button', async ({ page }) => {
+         |                ^
+      41 |     await page.goto('/patches/test-approve', { waitUntil: 'domcontentloaded' });
+      42 |     await page.waitForLoadState('networkidle');
+      43 |
+        at /Users/shandesh/src/VS-code/PatchIQ/full-dev-sandy-v2/frontend/e2e/patch-testing.spec.ts:40:16
+
+    Error: browserContext._wrapApiCall: ENOENT: no such file or directory, open '/Users/shandesh/src/VS-code/PatchIQ/full-dev-sandy-v2/frontend/test-results/.playwright-artifacts-4/traces/5c28aca3eaab32a9aaf1-a1c8c4c12b04980bf6db-retry1.trace'
+
+    Error: ENOENT: no such file or directory, open '/Users/shandesh/src/VS-code/PatchIQ/full-dev-sandy-v2/frontend/test-results/.playwright-artifacts-4/2830b2390070edc368489dbf175925a0.zip'
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/patch-testing-Patch-Testin-83a83-avigate-to-Patch-Tests-page-chromium-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › e2e/patch-testing.spec.ts:95:3 › Patch Testing Workflow › 3. Check for Create Test button 
+
+    Test not found in the worker process. Make sure test title does not change.
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test not found in the worker process. Make sure test title does not change.
+
+  4) [chromium] › e2e/patch-testing.spec.ts:139:3 › Patch Testing Workflow › 4. Explore page elements and UI 
+
+    Test not found in the worker process. Make sure test title does not change.
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test not found in the worker process. Make sure test title does not change.
+
+  5) [chromium] › e2e/patch-testing.spec.ts:179:3 › Patch Testing Workflow › 5. Check page structure and content 
+
+    Test not found in the worker process. Make sure test title does not change.
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test not found in the worker process. Make sure test title does not change.
+
+  5 failed
+    [chromium] › e2e/patch-testing.spec.ts:9:3 › Patch Testing Workflow › 1. Login and navigate to patch tests page 
+    [chromium] › e2e/patch-testing.spec.ts:45:3 › Patch Testing Workflow › 2. Navigate to Patch Tests page 
+    [chromium] › e2e/patch-testing.spec.ts:95:3 › Patch Testing Workflow › 3. Check for Create Test button 
+    [chromium] › e2e/patch-testing.spec.ts:139:3 › Patch Testing Workflow › 4. Explore page elements and UI 
+    [chromium] › e2e/patch-testing.spec.ts:179:3 › Patch Testing Workflow › 5. Check page structure and content 
+  1 passed (4.2m)

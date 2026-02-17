@@ -1,0 +1,20 @@
+
+Test: Assets List & CRUD
+Status: FAIL
+
+Search: FAIL - page.waitForLoadState: Timeout 30000ms exceeded.
+Pagination: FAIL - page.waitForLoadState: Timeout 30000ms exceeded.
+Sorting: FAIL - page.waitForLoadState: Timeout 30000ms exceeded.
+Filters: FAIL - page.waitForLoadState: Timeout 30000ms exceeded.
+Create Asset: FAIL - page.waitForLoadState: Timeout 30000ms exceeded.
+View Details: FAIL - page.waitForLoadState: Timeout 30000ms exceeded.
+
+Screenshots: 1
+  - assets-list-initial.png
+
+Console Errors: 0
+
+
+
+Overall: FAIL
+Bugs found: 6

@@ -131,7 +131,7 @@ export const createRecommendationColumns = ({
     title: 'Actions', key: 'actions', width: 220, fixed: 'right',
     render: (_, record) => (
       <Space size="small">
-        {record.status === 'RECOMMENDED' && (
+        {record.status === 'recommended' && (
           <>
             <Button type="primary" size="small" icon={<CheckCircleOutlined />} loading={actionLoading === record.id} onClick={() => onAccept(record.id)}>
               Accept
@@ -141,7 +141,7 @@ export const createRecommendationColumns = ({
             </Button>
           </>
         )}
-        {record.status === 'ACCEPTED' && (
+        {record.status === 'accepted' && (
           <Button type="primary" size="small" icon={<RocketOutlined />} loading={actionLoading === record.id} onClick={() => onDeploy(record.id)} disabled={!agentId}>
             Deploy
           </Button>

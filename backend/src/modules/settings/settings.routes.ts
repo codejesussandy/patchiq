@@ -85,7 +85,7 @@ import {
 const router = Router();
 
 // Multer error handler middleware — converts multer errors to 400 responses
-function handleMulterError(err: Error, req: Request, res: Response, next: NextFunction) {
+function handleMulterError(err: Error, _req: Request, res: Response, next: NextFunction) {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       res.status(413).json({ success: false, error: { code: 'FILE_TOO_LARGE', message: 'File size exceeds 5MB limit' } });
@@ -199,7 +199,7 @@ router.post('/ldap-configs/:id/test', checkPermission('settings', 'edit'), valid
 // ============================================
 router.get('/ldap-configs/:id/group-mappings', checkPermission('settings', 'view'), validateParams(ldapConfigParamSchema), settingsController.listGroupMappings.bind(settingsController));
 router.post('/ldap-configs/:id/group-mappings', checkPermission('settings', 'add'), validateParams(ldapConfigParamSchema), validateBody(createGroupMappingSchema), audit({ action: AuditAction.CREATE, resource: AuditResource.GROUP_MAPPING, getResourceId: (req) => req.params.id }), settingsController.createGroupMapping.bind(settingsController));
-router.put('/ldap-configs/:id/group-mappings/:mapId', checkPermission('settings', 'edit'), audit({ action: AuditAction.UPDATE, resource: AuditResource.GROUP_MAPPING, getResourceId: (req) => req.params.mapId }), settingsController.updateGroupMapping.bind(settingsController));
+router.put('/ldap-configs/:id/group-mappings/:mapId', checkPermission('settings', 'edit'), validateBody(updateGroupMappingSchema), audit({ action: AuditAction.UPDATE, resource: AuditResource.GROUP_MAPPING, getResourceId: (req) => req.params.mapId }), settingsController.updateGroupMapping.bind(settingsController));
 router.delete('/ldap-configs/:id/group-mappings/:mapId', checkPermission('settings', 'delete'), audit({ action: AuditAction.DELETE, resource: AuditResource.GROUP_MAPPING, getResourceId: (req) => req.params.mapId }), settingsController.deleteGroupMapping.bind(settingsController));
 router.post('/ldap-configs/:id/discover-groups', checkPermission('settings', 'view'), validateParams(ldapConfigParamSchema), settingsController.discoverGroups.bind(settingsController));
 

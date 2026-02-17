@@ -1,0 +1,69 @@
+{
+  "timestamp": "2026-02-17T11:01:02.194Z",
+  "totalTests": 6,
+  "passed": 6,
+  "failed": 0,
+  "warned": 0,
+  "results": [
+    {
+      "scenario": "SCENARIO 1: API Failures",
+      "test": "1.1 - Assets Endpoint Error",
+      "status": "PASS",
+      "message": "Page remained functional with API failure",
+      "screenshot": "scenario1-01-api-failure-2026-02-17T11-00-53-902Z.png",
+      "details": {
+        "hasContent": true
+      }
+    },
+    {
+      "scenario": "SCENARIO 2: Offline Mode",
+      "test": "2.1 - Offline Mode UI",
+      "status": "PASS",
+      "message": "UI remained visible in offline mode",
+      "screenshot": "scenario2-01-offline-mode-2026-02-17T11-00-55-834Z.png",
+      "details": {
+        "uiVisible": true
+      }
+    },
+    {
+      "scenario": "SCENARIO 2: Offline Mode",
+      "test": "2.2 - Recovery After Reconnect",
+      "status": "PASS",
+      "message": "Successfully recovered after going back online",
+      "screenshot": "scenario2-02-reconnected-2026-02-17T11-00-56-905Z.png",
+      "details": {}
+    },
+    {
+      "scenario": "SCENARIO 3: Timeouts",
+      "test": "3.1 - Delayed API Response",
+      "status": "PASS",
+      "message": "Page remained functional with 5000ms delay",
+      "screenshot": "scenario3-01-delayed-response-2026-02-17T11-00-57-328Z.png",
+      "details": {
+        "delayMs": 5000,
+        "elapsedMs": 101,
+        "functional": true
+      }
+    },
+    {
+      "scenario": "SCENARIO 4: HTTP 500 Errors",
+      "test": "4.1 - 500 Server Error",
+      "status": "PASS",
+      "message": "Page handled 500 error gracefully",
+      "screenshot": "scenario4-01-500-error-2026-02-17T11-00-59-695Z.png",
+      "details": {
+        "responsive": true
+      }
+    },
+    {
+      "scenario": "SCENARIO 5: SSE Failures",
+      "test": "5.1 - SSE Connection Error",
+      "status": "PASS",
+      "message": "Page remained functional with SSE failure",
+      "screenshot": "scenario5-01-sse-failure-2026-02-17T11-01-02-027Z.png",
+      "details": {
+        "functional": true
+      }
+    }
+  ]
+}

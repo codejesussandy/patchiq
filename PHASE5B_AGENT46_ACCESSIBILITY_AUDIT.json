@@ -1,0 +1,3278 @@
+[
+  {
+    "page": "Login",
+    "url": "http://localhost:3500/login",
+    "critical": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "tags": [
+          "cat.forms",
+          "wcag2a",
+          "wcag412",
+          "section508",
+          "section508.22.n",
+          "TTv5",
+          "TT5.c",
+          "EN-301-549",
+          "EN-9.4.1.2",
+          "ACT",
+          "RGAAv4",
+          "RGAA-11.1.1"
+        ],
+        "description": "Ensure every form element has a label",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/label?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "implicit-label",
+                "data": null,
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "Element does not have an implicit (wrapped) <label>"
+              },
+              {
+                "id": "explicit-label",
+                "data": null,
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "Element does not have an explicit <label>"
+              },
+              {
+                "id": "aria-label",
+                "data": null,
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "aria-label attribute does not exist or is empty"
+              },
+              {
+                "id": "aria-labelledby",
+                "data": null,
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
+              },
+              {
+                "id": "non-empty-title",
+                "data": {
+                  "messageKey": "noAttr"
+                },
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "Element has no title attribute"
+              },
+              {
+                "id": "non-empty-placeholder",
+                "data": {
+                  "messageKey": "noAttr"
+                },
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "Element has no placeholder attribute"
+              },
+              {
+                "id": "presentational-role",
+                "data": null,
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "critical",
+            "html": "<input id=\"_r_17_\" readonly=\"\" autocomplete=\"off\" class=\"ant-select-input\" role=\"combobox\" aria-expanded=\"false\" aria-haspopup=\"listbox\" aria-owns=\"_r_17__list\" aria-autocomplete=\"list\" aria-controls=\"_r_17__list\" type=\"search\" value=\"\">",
+            "target": [
+              "#_r_17_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+          }
+        ]
+      }
+    ],
+    "serious": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1890ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<header class=\"ant-layout-header\" style=\"position: fixed; top: 0px; z-index: 1000; width: 100%; display: flex; align-items: center; padding: 0px 24px; background: rgb(255, 255, 255); border-bottom: 1px solid rgb(240, 240, 240); height: 60px;\">",
+                    "target": [
+                      "header"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #1890ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-menu-title-content\">Dashboard</span>",
+            "target": [
+              ".ant-menu-item-selected > .ant-menu-title-content"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #1890ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "8.3pt (11px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<header class=\"ant-layout-header\" style=\"position: fixed; top: 0px; z-index: 1000; width: 100%; display: flex; align-items: center; padding: 0px 24px; background: rgb(255, 255, 255); border-bottom: 1px solid rgb(240, 240, 240); height: 60px;\">",
+                    "target": [
+                      "header"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<div style=\"font-size: 11px; color: rgb(140, 140, 140); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\">Default Organization</div>",
+            "target": [
+              "div[aria-label=\"User profile menu\"] > div > div:nth-child(2)"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ffffff",
+                  "bgColor": "#1890ff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<button type=\"button\" class=\"ant-btn css-var-_r_0_ ant-btn-primary ant-btn-color-primary ant-btn-variant-solid\">",
+                    "target": [
+                      ".ant-space-item:nth-child(2) > .ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span>Refresh</span>",
+            "target": [
+              ".ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid > span:nth-child(2)"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(1) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-typography ant-typography-secondary css-var-_r_0_\" style=\"font-size: 16px; display: block; margin-bottom: 8px;\">Total Endpoints</span>",
+            "target": [
+              ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(1) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > .ant-typography-secondary.ant-typography.css-var-_r_0_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-typography ant-typography-secondary css-var-_r_0_\" style=\"font-size: 16px; display: block; margin-bottom: 8px;\">Total Linux Endpoints</span>",
+            "target": [
+              ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > .ant-typography-secondary.ant-typography.css-var-_r_0_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(3) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-typography ant-typography-secondary css-var-_r_0_\" style=\"font-size: 16px; display: block; margin-bottom: 8px;\">Total Windows Endpoints</span>",
+            "target": [
+              ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(3) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > .ant-typography-secondary.ant-typography.css-var-_r_0_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(4) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-typography ant-typography-secondary css-var-_r_0_\" style=\"font-size: 16px; display: block; margin-bottom: 8px;\">Total Apple Mac Endpoint</span>",
+            "target": [
+              ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(4) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > .ant-typography-secondary.ant-typography.css-var-_r_0_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(5) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-typography ant-typography-secondary css-var-_r_0_\" style=\"font-size: 16px; display: block; margin-bottom: 8px;\">Total Vulnerability</span>",
+            "target": [
+              ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(5) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > .ant-typography-secondary.ant-typography.css-var-_r_0_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1890ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "bold",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(5) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #1890ff, background color: #ffffff, font size: 12.0pt (16px), font weight: bold). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"font-size: 16px; margin-left: 4px;\">18</span>",
+            "target": [
+              ".ant-card-body > div > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #1890ff, background color: #ffffff, font size: 12.0pt (16px), font weight: bold). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(6) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-typography ant-typography-secondary css-var-_r_0_\" style=\"font-size: 16px; display: block; margin-bottom: 8px;\">Total Software</span>",
+            "target": [
+              ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(6) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > .ant-typography-secondary.ant-typography.css-var-_r_0_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2024-44166\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2024-44166</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2024-44166\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2020-12389\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2020-12389</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2020-12389\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2017-5638\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2017-5638</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2017-5638\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2021-4140\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2021-4140</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2021-4140\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2021-44228\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2021-44228</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2021-44228\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2021-38503\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2021-38503</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2021-38503\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2026-0881\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2026-0881</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2026-0881\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2020-12388\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2020-12388</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2020-12388\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2025-2857\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2025-2857</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2025-2857\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2019-25136\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2019-25136</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2019-25136\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ff4d4f",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.26,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(255, 77, 79); font-weight: 600;\">31</span>",
+            "target": [
+              "tr[data-row-key=\"< 30 days\"] > td:nth-child(2) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ff4d4f",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.26,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(255, 77, 79); font-weight: 600;\">10</span>",
+            "target": [
+              "tr[data-row-key=\"30-60 days\"] > td:nth-child(2) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ff4d4f",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.26,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(255, 77, 79); font-weight: 600;\">25</span>",
+            "target": [
+              "tr[data-row-key=\"60-90 days\"] > td:nth-child(2) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#fa8c16",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 2.37,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 2.37 (foreground color: #fa8c16, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(250, 140, 22); font-weight: 600;\">11</span>",
+            "target": [
+              "tr[data-row-key=\"60-90 days\"] > td:nth-child(3) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.37 (foreground color: #fa8c16, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ff4d4f",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.26,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(255, 77, 79); font-weight: 600;\">72</span>",
+            "target": [
+              "tr[data-row-key=\"90-180 days\"] > td:nth-child(2) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#fa8c16",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 2.37,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 2.37 (foreground color: #fa8c16, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(250, 140, 22); font-weight: 600;\">23</span>",
+            "target": [
+              "tr[data-row-key=\"90-180 days\"] > td:nth-child(3) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.37 (foreground color: #fa8c16, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#faad14",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 1.9,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 1.9 (foreground color: #faad14, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(250, 173, 20); font-weight: 600;\">13</span>",
+            "target": [
+              "tr[data-row-key=\"90-180 days\"] > td:nth-child(4) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.9 (foreground color: #faad14, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ff4d4f",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.26,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(255, 77, 79); font-weight: 600;\">2030</span>",
+            "target": [
+              "tr[data-row-key=\"> 180 days\"] > td:nth-child(2) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#fa8c16",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 2.37,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 2.37 (foreground color: #fa8c16, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(250, 140, 22); font-weight: 600;\">754</span>",
+            "target": [
+              "tr[data-row-key=\"> 180 days\"] > td:nth-child(3) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.37 (foreground color: #fa8c16, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#faad14",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 1.9,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 1.9 (foreground color: #faad14, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(250, 173, 20); font-weight: 600;\">1439</span>",
+            "target": [
+              "tr[data-row-key=\"> 180 days\"] > td:nth-child(4) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.9 (foreground color: #faad14, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#52c41a",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 2.26,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 2.26 (foreground color: #52c41a, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(82, 196, 26); font-weight: 600;\">89</span>",
+            "target": [
+              "tr[data-row-key=\"> 180 days\"] > td:nth-child(5) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.26 (foreground color: #52c41a, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "tags": [
+          "cat.keyboard",
+          "wcag2a",
+          "wcag412",
+          "TTv5",
+          "TT6.a",
+          "EN-301-549",
+          "EN-9.4.1.2",
+          "RGAAv4",
+          "RGAA-7.1.1"
+        ],
+        "description": "Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies",
+        "help": "Interactive controls must not be nested",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/nested-interactive?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "no-focusable-content",
+                "data": null,
+                "relatedNodes": [
+                  {
+                    "html": "<input placeholder=\"Search...\" class=\"ant-input\" type=\"text\" value=\"\">",
+                    "target": [
+                      ".ant-input"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has focusable descendants"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<div role=\"button\" tabindex=\"0\" aria-label=\"Search\" style=\"display: flex; align...\">",
+            "target": [
+              "div[aria-label=\"Search\"]"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants"
+          }
+        ]
+      }
+    ],
+    "moderate": [],
+    "minor": [],
+    "total": 3,
+    "score": 80,
+    "timestamp": "2026-02-17T14:46:26.098Z"
+  },
+  {
+    "page": "Dashboard",
+    "url": "http://localhost:3500/dashboard",
+    "critical": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "tags": [
+          "cat.forms",
+          "wcag2a",
+          "wcag412",
+          "section508",
+          "section508.22.n",
+          "TTv5",
+          "TT5.c",
+          "EN-301-549",
+          "EN-9.4.1.2",
+          "ACT",
+          "RGAAv4",
+          "RGAA-11.1.1"
+        ],
+        "description": "Ensure every form element has a label",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/label?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "implicit-label",
+                "data": null,
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "Element does not have an implicit (wrapped) <label>"
+              },
+              {
+                "id": "explicit-label",
+                "data": null,
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "Element does not have an explicit <label>"
+              },
+              {
+                "id": "aria-label",
+                "data": null,
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "aria-label attribute does not exist or is empty"
+              },
+              {
+                "id": "aria-labelledby",
+                "data": null,
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
+              },
+              {
+                "id": "non-empty-title",
+                "data": {
+                  "messageKey": "noAttr"
+                },
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "Element has no title attribute"
+              },
+              {
+                "id": "non-empty-placeholder",
+                "data": {
+                  "messageKey": "noAttr"
+                },
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "Element has no placeholder attribute"
+              },
+              {
+                "id": "presentational-role",
+                "data": null,
+                "relatedNodes": [],
+                "impact": "critical",
+                "message": "Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "critical",
+            "html": "<input id=\"_r_1o_\" readonly=\"\" autocomplete=\"off\" class=\"ant-select-input\" role=\"combobox\" aria-expanded=\"false\" aria-haspopup=\"listbox\" aria-owns=\"_r_1o__list\" aria-autocomplete=\"list\" aria-controls=\"_r_1o__list\" type=\"search\" value=\"\">",
+            "target": [
+              "#_r_1o_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+          }
+        ]
+      }
+    ],
+    "serious": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1890ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<header class=\"ant-layout-header\" style=\"position: fixed; top: 0px; z-index: 1000; width: 100%; display: flex; align-items: center; padding: 0px 24px; background: rgb(255, 255, 255); border-bottom: 1px solid rgb(240, 240, 240); height: 60px;\">",
+                    "target": [
+                      "header"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #1890ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-menu-title-content\">Dashboard</span>",
+            "target": [
+              ".ant-menu-item-selected > .ant-menu-title-content"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #1890ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "8.3pt (11px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<header class=\"ant-layout-header\" style=\"position: fixed; top: 0px; z-index: 1000; width: 100%; display: flex; align-items: center; padding: 0px 24px; background: rgb(255, 255, 255); border-bottom: 1px solid rgb(240, 240, 240); height: 60px;\">",
+                    "target": [
+                      "header"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<div style=\"font-size: 11px; color: rgb(140, 140, 140); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\">Default Organization</div>",
+            "target": [
+              "div[aria-label=\"User profile menu\"] > div > div:nth-child(2)"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ffffff",
+                  "bgColor": "#1890ff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<button type=\"button\" class=\"ant-btn css-var-_r_0_ ant-btn-primary ant-btn-color-primary ant-btn-variant-solid\">",
+                    "target": [
+                      ".ant-space-item:nth-child(2) > .ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span>Refresh</span>",
+            "target": [
+              ".ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid > span:nth-child(2)"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(1) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-typography ant-typography-secondary css-var-_r_0_\" style=\"font-size: 16px; display: block; margin-bottom: 8px;\">Total Endpoints</span>",
+            "target": [
+              ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(1) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > .ant-typography-secondary.ant-typography.css-var-_r_0_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-typography ant-typography-secondary css-var-_r_0_\" style=\"font-size: 16px; display: block; margin-bottom: 8px;\">Total Linux Endpoints</span>",
+            "target": [
+              ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > .ant-typography-secondary.ant-typography.css-var-_r_0_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(3) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-typography ant-typography-secondary css-var-_r_0_\" style=\"font-size: 16px; display: block; margin-bottom: 8px;\">Total Windows Endpoints</span>",
+            "target": [
+              ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(3) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > .ant-typography-secondary.ant-typography.css-var-_r_0_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(4) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-typography ant-typography-secondary css-var-_r_0_\" style=\"font-size: 16px; display: block; margin-bottom: 8px;\">Total Apple Mac Endpoint</span>",
+            "target": [
+              ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(4) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > .ant-typography-secondary.ant-typography.css-var-_r_0_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(5) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-typography ant-typography-secondary css-var-_r_0_\" style=\"font-size: 16px; display: block; margin-bottom: 8px;\">Total Vulnerability</span>",
+            "target": [
+              ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(5) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > .ant-typography-secondary.ant-typography.css-var-_r_0_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1890ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "bold",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(5) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #1890ff, background color: #ffffff, font size: 12.0pt (16px), font weight: bold). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"font-size: 16px; margin-left: 4px;\">18</span>",
+            "target": [
+              ".ant-card-body > div > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #1890ff, background color: #ffffff, font size: 12.0pt (16px), font weight: bold). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-card ant-card-bordered css-var-_r_0_\" style=\"text-align: center; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 8px; height: 100%; padding: 16px;\">",
+                    "target": [
+                      ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(6) > .ant-card.ant-card-bordered.css-var-_r_0_"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-typography ant-typography-secondary css-var-_r_0_\" style=\"font-size: 16px; display: block; margin-bottom: 8px;\">Total Software</span>",
+            "target": [
+              ".ant-col-xs-12.ant-col-sm-8.ant-col-md-4:nth-child(6) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > .ant-typography-secondary.ant-typography.css-var-_r_0_"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2024-44166\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2024-44166</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2024-44166\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2020-12389\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2020-12389</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2020-12389\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2017-5638\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2017-5638</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2017-5638\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2021-4140\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2021-4140</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2021-4140\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2021-44228\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2021-44228</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2021-44228\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2021-38503\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2021-38503</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2021-38503\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2026-0881\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2026-0881</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2026-0881\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2020-12388\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2020-12388</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2020-12388\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2025-2857\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2025-2857</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2025-2857\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1677ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 4.1,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-12.ant-col-xs-24.ant-col:nth-child(2) > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<a href=\"https://nvd.nist.gov/vuln/detail/CVE-2019-25136\" target=\"_blank\" rel=\"noopener noreferrer\">CVE-2019-25136</a>",
+            "target": [
+              "tr[data-row-key=\"CVE-2019-25136\"] > td:nth-child(1) > a"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.1 (foreground color: #1677ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ff4d4f",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.26,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(255, 77, 79); font-weight: 600;\">31</span>",
+            "target": [
+              "tr[data-row-key=\"< 30 days\"] > td:nth-child(2) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ff4d4f",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.26,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(255, 77, 79); font-weight: 600;\">10</span>",
+            "target": [
+              "tr[data-row-key=\"30-60 days\"] > td:nth-child(2) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ff4d4f",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.26,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(255, 77, 79); font-weight: 600;\">25</span>",
+            "target": [
+              "tr[data-row-key=\"60-90 days\"] > td:nth-child(2) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#fa8c16",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 2.37,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 2.37 (foreground color: #fa8c16, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(250, 140, 22); font-weight: 600;\">11</span>",
+            "target": [
+              "tr[data-row-key=\"60-90 days\"] > td:nth-child(3) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.37 (foreground color: #fa8c16, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ff4d4f",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.26,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(255, 77, 79); font-weight: 600;\">72</span>",
+            "target": [
+              "tr[data-row-key=\"90-180 days\"] > td:nth-child(2) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#fa8c16",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 2.37,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 2.37 (foreground color: #fa8c16, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(250, 140, 22); font-weight: 600;\">23</span>",
+            "target": [
+              "tr[data-row-key=\"90-180 days\"] > td:nth-child(3) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.37 (foreground color: #fa8c16, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#faad14",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 1.9,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 1.9 (foreground color: #faad14, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(250, 173, 20); font-weight: 600;\">13</span>",
+            "target": [
+              "tr[data-row-key=\"90-180 days\"] > td:nth-child(4) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.9 (foreground color: #faad14, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ff4d4f",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.26,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(255, 77, 79); font-weight: 600;\">2030</span>",
+            "target": [
+              "tr[data-row-key=\"> 180 days\"] > td:nth-child(2) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#fa8c16",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 2.37,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 2.37 (foreground color: #fa8c16, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(250, 140, 22); font-weight: 600;\">754</span>",
+            "target": [
+              "tr[data-row-key=\"> 180 days\"] > td:nth-child(3) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.37 (foreground color: #fa8c16, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#faad14",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 1.9,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 1.9 (foreground color: #faad14, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(250, 173, 20); font-weight: 600;\">1439</span>",
+            "target": [
+              "tr[data-row-key=\"> 180 days\"] > td:nth-child(4) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.9 (foreground color: #faad14, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#52c41a",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 2.26,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div class=\"ant-table ant-table-small css-var-_r_0_ ant-table-css-var ant-table-fix-start-shadow ant-table-fix-end-shadow ant-table-scroll-horizontal\">",
+                    "target": [
+                      ".ant-col-lg-16 > .ant-card.ant-card-bordered.css-var-_r_0_ > .ant-card-body > div > .ant-table-wrapper.ant-table-css-var.css-var-_r_0_ > .ant-spin-nested-loading.css-var-_r_0_ > .ant-spin-container > .ant-table.ant-table-small.ant-table-fix-start-shadow"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 2.26 (foreground color: #52c41a, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"color: rgb(82, 196, 26); font-weight: 600;\">89</span>",
+            "target": [
+              "tr[data-row-key=\"> 180 days\"] > td:nth-child(5) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.26 (foreground color: #52c41a, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "tags": [
+          "cat.keyboard",
+          "wcag2a",
+          "wcag412",
+          "TTv5",
+          "TT6.a",
+          "EN-301-549",
+          "EN-9.4.1.2",
+          "RGAAv4",
+          "RGAA-7.1.1"
+        ],
+        "description": "Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies",
+        "help": "Interactive controls must not be nested",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/nested-interactive?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "no-focusable-content",
+                "data": null,
+                "relatedNodes": [
+                  {
+                    "html": "<input placeholder=\"Search...\" class=\"ant-input\" type=\"text\" value=\"\">",
+                    "target": [
+                      ".ant-input"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has focusable descendants"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<div role=\"button\" tabindex=\"0\" aria-label=\"Search\" style=\"display: flex; align...\">",
+            "target": [
+              "div[aria-label=\"Search\"]"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants"
+          }
+        ]
+      }
+    ],
+    "moderate": [],
+    "minor": [],
+    "total": 3,
+    "score": 80,
+    "timestamp": "2026-02-17T14:46:29.774Z"
+  },
+  {
+    "page": "Assets List",
+    "url": "http://localhost:3500/assets",
+    "critical": [],
+    "serious": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#878787",
+                  "bgColor": "#f5f5f5",
+                  "contrastRatio": 3.29,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.29 (foreground color: #878787, background color: #f5f5f5, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<div class=\"ant-result-subtitle\">Failed to fetch dynamically imported module: http://localhost:3500/src/pages/assets/AllAssets.tsx</div>",
+            "target": [
+              ".ant-result-subtitle"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.29 (foreground color: #878787, background color: #f5f5f5, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ffffff",
+                  "bgColor": "#1890ff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<button type=\"button\" class=\"ant-btn css-var-_r_0_ ant-btn-primary ant-btn-color-primary ant-btn-variant-solid\"><span>Try Again</span></button>",
+                    "target": [
+                      ".ant-btn-primary"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span>Try Again</span>",
+            "target": [
+              ".ant-btn-primary > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ],
+    "moderate": [],
+    "minor": [],
+    "total": 1,
+    "score": 95,
+    "timestamp": "2026-02-17T14:46:32.152Z"
+  },
+  {
+    "page": "Asset Detail",
+    "url": "http://localhost:3500/assets/1",
+    "critical": [],
+    "serious": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#878787",
+                  "bgColor": "#f5f5f5",
+                  "contrastRatio": 3.29,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.29 (foreground color: #878787, background color: #f5f5f5, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<div class=\"ant-result-subtitle\">Failed to fetch dynamically imported module: http://localhost:3500/src/pages/assets/components/AssetDetails.tsx</div>",
+            "target": [
+              ".ant-result-subtitle"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.29 (foreground color: #878787, background color: #f5f5f5, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ffffff",
+                  "bgColor": "#1890ff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<button type=\"button\" class=\"ant-btn css-var-_r_0_ ant-btn-primary ant-btn-color-primary ant-btn-variant-solid\"><span>Try Again</span></button>",
+                    "target": [
+                      ".ant-btn-primary"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span>Try Again</span>",
+            "target": [
+              ".ant-btn-primary > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ],
+    "moderate": [],
+    "minor": [],
+    "total": 1,
+    "score": 95,
+    "timestamp": "2026-02-17T14:46:35.520Z"
+  },
+  {
+    "page": "Patches List",
+    "url": "http://localhost:3500/patches",
+    "critical": [],
+    "serious": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#878787",
+                  "bgColor": "#f5f5f5",
+                  "contrastRatio": 3.29,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.29 (foreground color: #878787, background color: #f5f5f5, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<div class=\"ant-result-subtitle\">Failed to fetch dynamically imported module: http://localhost:3500/src/pages/patches/AllPatches.tsx</div>",
+            "target": [
+              ".ant-result-subtitle"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.29 (foreground color: #878787, background color: #f5f5f5, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ffffff",
+                  "bgColor": "#1890ff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<button type=\"button\" class=\"ant-btn css-var-_r_0_ ant-btn-primary ant-btn-color-primary ant-btn-variant-solid\"><span>Try Again</span></button>",
+                    "target": [
+                      ".ant-btn-primary"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span>Try Again</span>",
+            "target": [
+              ".ant-btn-primary > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ],
+    "moderate": [],
+    "minor": [],
+    "total": 1,
+    "score": 95,
+    "timestamp": "2026-02-17T14:46:37.899Z"
+  },
+  {
+    "page": "Patch Detail",
+    "url": "http://localhost:3500/patches/1",
+    "critical": [],
+    "serious": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#1890ff",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<header class=\"ant-layout-header\" style=\"position: fixed; top: 0px; z-index: 1000; width: 100%; display: flex; align-items: center; padding: 0px 24px; background: rgb(255, 255, 255); border-bottom: 1px solid rgb(240, 240, 240); height: 60px;\">",
+                    "target": [
+                      "header"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #1890ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span class=\"ant-menu-title-content\">Patches</span>",
+            "target": [
+              "li[aria-describedby=\"_r_1a_\"] > .ant-menu-title-content"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #1890ff, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "8.3pt (11px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<header class=\"ant-layout-header\" style=\"position: fixed; top: 0px; z-index: 1000; width: 100%; display: flex; align-items: center; padding: 0px 24px; background: rgb(255, 255, 255); border-bottom: 1px solid rgb(240, 240, 240); height: 60px;\">",
+                    "target": [
+                      "header"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<div style=\"font-size: 11px; color: rgb(140, 140, 140); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\">Default Organization</div>",
+            "target": [
+              "div[aria-label=\"User profile menu\"] > div > div:nth-child(2)"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#8c8c8c",
+                  "bgColor": "#ffffff",
+                  "contrastRatio": 3.36,
+                  "fontSize": "12.0pt (16px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<div style=\"position: fixed; left: 64px; top: 60px; bottom: 0px; width: 220px; background: rgb(255, 255, 255); border-right: 1px solid rgb(240, 240, 240); overflow: auto; z-index: 50; transition: left 0.2s; display: flex; flex-direction: column;\">",
+                    "target": [
+                      ".ant-layout-has-sider > div:nth-child(2)"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span style=\"font-weight: 600; font-size: 16px; color: rgb(140, 140, 140); text-transform: uppercase; letter-spacing: 0.5px;\">Categories</span>",
+            "target": [
+              ".ant-layout-has-sider > div:nth-child(2) > div:nth-child(1) > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ffffff",
+                  "bgColor": "#1890ff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<button type=\"button\" class=\"ant-btn css-var-_r_0_ ant-btn-primary ant-btn-color-primary ant-btn-variant-solid\"><span>Back to All Patches</span></button>",
+                    "target": [
+                      "main > div > .ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span>Back to All Patches</span>",
+            "target": [
+              "main > div > .ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "tags": [
+          "cat.keyboard",
+          "wcag2a",
+          "wcag412",
+          "TTv5",
+          "TT6.a",
+          "EN-301-549",
+          "EN-9.4.1.2",
+          "RGAAv4",
+          "RGAA-7.1.1"
+        ],
+        "description": "Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies",
+        "help": "Interactive controls must not be nested",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/nested-interactive?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "no-focusable-content",
+                "data": null,
+                "relatedNodes": [
+                  {
+                    "html": "<input placeholder=\"Search...\" class=\"ant-input\" type=\"text\" value=\"\">",
+                    "target": [
+                      ".ant-input"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has focusable descendants"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<div role=\"button\" tabindex=\"0\" aria-label=\"Search\" style=\"display: flex; align...\">",
+            "target": [
+              "div[aria-label=\"Search\"]"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants"
+          }
+        ]
+      }
+    ],
+    "moderate": [],
+    "minor": [],
+    "total": 2,
+    "score": 90,
+    "timestamp": "2026-02-17T14:46:41.408Z"
+  },
+  {
+    "page": "Vulnerabilities List",
+    "url": "http://localhost:3500/vulnerability/vulnerabilities",
+    "critical": [],
+    "serious": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#878787",
+                  "bgColor": "#f5f5f5",
+                  "contrastRatio": 3.29,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.29 (foreground color: #878787, background color: #f5f5f5, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<div class=\"ant-result-subtitle\">Failed to fetch dynamically imported module: http://localhost:3500/src/pages/vulnerability/Vulnerabilities.tsx</div>",
+            "target": [
+              ".ant-result-subtitle"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.29 (foreground color: #878787, background color: #f5f5f5, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ffffff",
+                  "bgColor": "#1890ff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<button type=\"button\" class=\"ant-btn css-var-_r_0_ ant-btn-primary ant-btn-color-primary ant-btn-variant-solid\"><span>Try Again</span></button>",
+                    "target": [
+                      ".ant-btn-primary"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span>Try Again</span>",
+            "target": [
+              ".ant-btn-primary > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ],
+    "moderate": [],
+    "minor": [],
+    "total": 1,
+    "score": 95,
+    "timestamp": "2026-02-17T14:46:43.784Z"
+  },
+  {
+    "page": "Vulnerability Detail",
+    "url": "http://localhost:3500/vulnerability/vulnerabilities/1",
+    "critical": [],
+    "serious": [],
+    "moderate": [],
+    "minor": [],
+    "total": 0,
+    "score": 100,
+    "timestamp": "2026-02-17T14:46:47.125Z"
+  },
+  {
+    "page": "Settings - User Management",
+    "url": "http://localhost:3500/settings/user-management/users",
+    "critical": [],
+    "serious": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#878787",
+                  "bgColor": "#f5f5f5",
+                  "contrastRatio": 3.29,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.29 (foreground color: #878787, background color: #f5f5f5, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<div class=\"ant-result-subtitle\">Failed to fetch dynamically imported module: http://localhost:3500/src/pages/settings/Users.tsx</div>",
+            "target": [
+              ".ant-result-subtitle"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.29 (foreground color: #878787, background color: #f5f5f5, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ffffff",
+                  "bgColor": "#1890ff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<button type=\"button\" class=\"ant-btn css-var-_r_0_ ant-btn-primary ant-btn-color-primary ant-btn-variant-solid\"><span>Try Again</span></button>",
+                    "target": [
+                      ".ant-btn-primary"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span>Try Again</span>",
+            "target": [
+              ".ant-btn-primary > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ],
+    "moderate": [],
+    "minor": [],
+    "total": 1,
+    "score": 95,
+    "timestamp": "2026-02-17T14:46:49.491Z"
+  },
+  {
+    "page": "Hub",
+    "url": "http://localhost:3500/hub",
+    "critical": [],
+    "serious": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "tags": [
+          "cat.color",
+          "wcag2aa",
+          "wcag143",
+          "TTv5",
+          "TT13.c",
+          "EN-301-549",
+          "EN-9.1.4.3",
+          "ACT",
+          "RGAAv4",
+          "RGAA-3.2.1"
+        ],
+        "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+        "nodes": [
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#878787",
+                  "bgColor": "#f5f5f5",
+                  "contrastRatio": 3.29,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<body>",
+                    "target": [
+                      "body"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.29 (foreground color: #878787, background color: #f5f5f5, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<div class=\"ant-result-subtitle\">Failed to fetch dynamically imported module: http://localhost:3500/src/pages/hub/Hub.tsx?t=1771339582246</div>",
+            "target": [
+              ".ant-result-subtitle"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.29 (foreground color: #878787, background color: #f5f5f5, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "any": [
+              {
+                "id": "color-contrast",
+                "data": {
+                  "fgColor": "#ffffff",
+                  "bgColor": "#1890ff",
+                  "contrastRatio": 3.24,
+                  "fontSize": "10.5pt (14px)",
+                  "fontWeight": "normal",
+                  "messageKey": null,
+                  "expectedContrastRatio": "4.5:1"
+                },
+                "relatedNodes": [
+                  {
+                    "html": "<button type=\"button\" class=\"ant-btn css-var-_r_0_ ant-btn-primary ant-btn-color-primary ant-btn-variant-solid\"><span>Try Again</span></button>",
+                    "target": [
+                      ".ant-btn-primary"
+                    ]
+                  }
+                ],
+                "impact": "serious",
+                "message": "Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+              }
+            ],
+            "all": [],
+            "none": [],
+            "impact": "serious",
+            "html": "<span>Try Again</span>",
+            "target": [
+              ".ant-btn-primary > span"
+            ],
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #ffffff, background color: #1890ff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ],
+    "moderate": [],
+    "minor": [],
+    "total": 1,
+    "score": 95,
+    "timestamp": "2026-02-17T14:46:52.855Z"
+  }
+]

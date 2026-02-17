@@ -1,0 +1,805 @@
+[
+  {
+    "page": "http://localhost:5173/dashboard",
+    "timestamp": "2026-02-17T12:00:48.571Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/assets",
+    "timestamp": "2026-02-17T12:00:50.253Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/patches",
+    "timestamp": "2026-02-17T12:00:51.875Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/patches/deployed/scheduled",
+    "timestamp": "2026-02-17T12:00:53.484Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/patches/deployed/completed",
+    "timestamp": "2026-02-17T12:00:55.062Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/patches/test-approve",
+    "timestamp": "2026-02-17T12:00:56.637Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/patches/zero-touch",
+    "timestamp": "2026-02-17T12:00:58.224Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/vulnerability/vulnerabilities",
+    "timestamp": "2026-02-17T12:00:59.807Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/vulnerability/manage-exception",
+    "timestamp": "2026-02-17T12:01:01.388Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/discovery/ip-discovery",
+    "timestamp": "2026-02-17T12:01:02.985Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/discovery/device-credentials",
+    "timestamp": "2026-02-17T12:01:04.561Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/discovery/agents",
+    "timestamp": "2026-02-17T12:01:06.128Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/assets/hub",
+    "timestamp": "2026-02-17T12:01:07.705Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/patches/patch-jobs",
+    "timestamp": "2026-02-17T12:01:09.282Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/notifications",
+    "timestamp": "2026-02-17T12:01:10.854Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/reports",
+    "timestamp": "2026-02-17T12:01:12.462Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/settings/user-management/users",
+    "timestamp": "2026-02-17T12:01:14.038Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/settings/user-management/roles",
+    "timestamp": "2026-02-17T12:01:15.604Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/settings/user-management/organization",
+    "timestamp": "2026-02-17T12:01:17.173Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/settings/agent-management/approval",
+    "timestamp": "2026-02-17T12:01:18.745Z",
+    "status": "success",
+    "h1": null,
+    "h2": null,
+    "h3": null,
+    "body": null,
+    "label": null,
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/settings/agent-management/configuration",
+    "timestamp": "2026-02-17T12:01:20.332Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/settings/patch-management/computer-groups",
+    "timestamp": "2026-02-17T12:01:21.936Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/settings/patch-management/patch-preference",
+    "timestamp": "2026-02-17T12:01:23.536Z",
+    "status": "success",
+    "h1": null,
+    "h2": null,
+    "h3": null,
+    "body": null,
+    "label": null,
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/settings/system-settings/mail-server",
+    "timestamp": "2026-02-17T12:01:25.092Z",
+    "status": "success",
+    "h1": null,
+    "h2": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "h3": null,
+    "body": {
+      "text": "Welcome to InventIQ",
+      "fontSize": "28px",
+      "fontWeight": "600",
+      "lineHeight": "35.4667px",
+      "color": "rgba(0, 0, 0, 0.88)",
+      "marginBottom": "8px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "label": {
+      "text": "Email",
+      "fontSize": "14px",
+      "fontWeight": "500",
+      "lineHeight": "22px",
+      "color": "rgb(38, 38, 38)",
+      "marginBottom": "0px",
+      "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    "caption": null
+  },
+  {
+    "page": "http://localhost:5173/settings/system-settings/ldap",
+    "timestamp": "2026-02-17T12:01:26.664Z",
+    "status": "success",
+    "h1": null,
+    "h2": null,
+    "h3": null,
+    "body": null,
+    "label": null,
+    "caption": null
+  }
+]

@@ -1,0 +1,55 @@
+{
+  "summary": {
+    "total_pages_audited": 25,
+    "successful_pages": 25,
+    "failed_pages": 0,
+    "consistency_score": 100
+  },
+  "typography_variations": {
+    "h1_font_sizes": [],
+    "h1_font_weights": [],
+    "h1_colors": [],
+    "h2_font_sizes": [
+      [
+        "28px",
+        22
+      ]
+    ],
+    "h2_font_weights": [
+      [
+        "600",
+        22
+      ]
+    ],
+    "h2_colors": [
+      [
+        "rgba(0, 0, 0, 0.88)",
+        22
+      ]
+    ],
+    "h3_font_sizes": [],
+    "body_font_sizes": [
+      [
+        "28px",
+        22
+      ]
+    ],
+    "body_colors": [
+      [
+        "rgba(0, 0, 0, 0.88)",
+        22
+      ]
+    ],
+    "label_font_sizes": [
+      [
+        "14px",
+        22
+      ]
+    ],
+    "caption_font_sizes": []
+  },
+  "inconsistent_pages": {
+    "h1": [],
+    "h2": []
+  }
+}
