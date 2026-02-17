@@ -20,9 +20,11 @@ export const MailServerConfiguration = () => {
     }
   }, [config, form]);
 
-  const onFinish = async (values: MailServerConfig) => {
+  const onFinish = async (values: MailServerConfig & { enableAuthentication?: boolean; testEmail?: string }) => {
     try {
-      await updateConfigMutation.mutateAsync(values);
+      // Filter out UI-only fields before sending to API
+      const { enableAuthentication: _enableAuthentication, testEmail: _testEmail, ...apiValues } = values;
+      await updateConfigMutation.mutateAsync(apiValues as MailServerConfig);
       message.success('Mail server configuration updated successfully');
     } catch {
       message.error('Failed to update mail server configuration');
@@ -62,7 +64,7 @@ export const MailServerConfiguration = () => {
         style={{ maxWidth: 600 }}
       >
         <Form.Item
-          name="smtpHost"
+          name="host"
           label="SMTP Host"
           rules={[{ required: true, message: 'Please enter SMTP host' }]}
         >
@@ -70,7 +72,7 @@ export const MailServerConfiguration = () => {
         </Form.Item>
 
         <Form.Item
-          name="smtpPort"
+          name="port"
           label="SMTP Port"
           rules={[
             { required: true, message: 'Please enter SMTP port' },
@@ -96,7 +98,7 @@ export const MailServerConfiguration = () => {
         </Form.Item>
 
         <Form.Item
-          name="email"
+          name="fromAddress"
           label="Email"
           rules={[
             { required: true, message: 'Please enter email' },

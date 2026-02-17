@@ -6,6 +6,7 @@ import { useTags } from '../../../hooks/useAssets';
 import { useCreatePatch, useUpdatePatch } from '../../../hooks/usePatches';
 import { useCveSuggestions } from '../../../hooks/useVulnerabilities';
 import { patchService, type Patch, type AffectedSoftware } from '../../../services/patch.service';
+import { sanitizeHTML } from '../../../utils/sanitize';
 import { AffectedProductsStep } from './AffectedProductsStep';
 import { PatchFormFields } from './PatchFormFields';
 
@@ -83,11 +84,12 @@ export const PatchCreateEditModal = ({ open, editingPatch, initialValues, onClos
         await form.validateFields();
         setSaving(true);
         const values = form.getFieldsValue();
+        // Sanitize all string inputs to prevent XSS
         const payload = {
-          software: values.software, platform: values.platform, os: values.platform,
-          vendor: values.vendor || undefined, product: values.product || undefined,
-          description: values.description || undefined, severity: values.severity, category: values.category,
-          bulletinId: values.bulletinId || undefined, kbNumber: values.kbNumber || undefined,
+          software: sanitizeHTML(values.software), platform: sanitizeHTML(values.platform), os: sanitizeHTML(values.platform),
+          vendor: values.vendor ? sanitizeHTML(values.vendor) : undefined, product: values.product ? sanitizeHTML(values.product) : undefined,
+          description: values.description ? sanitizeHTML(values.description) : undefined, severity: values.severity, category: values.category,
+          bulletinId: values.bulletinId ? sanitizeHTML(values.bulletinId) : undefined, kbNumber: values.kbNumber ? sanitizeHTML(values.kbNumber) : undefined,
           publishedAt: values.publishedAt?.format('YYYY-MM-DD') || undefined,
           rebootRequired: values.rebootRequired ?? false, supportUninstallation: values.supportUninstallation ?? false,
           architecture: values.architecture || undefined, referenceUrl: values.referenceUrl || undefined,

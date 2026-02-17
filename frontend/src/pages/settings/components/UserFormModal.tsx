@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   EyeOutlined,
   EyeInvisibleOutlined,
@@ -17,6 +18,7 @@ import {
   Button,
 } from 'antd';
 import type { FormInstance } from 'antd';
+import { validateEmail } from '../../../utils/validation';
 
 const { Dragger } = Upload;
 
@@ -75,6 +77,15 @@ export const UserFormModal = ({
   onFileChange,
 }: UserFormModalProps) => {
   const isSuperAdminUser = editingUser?.isSuperAdmin || editingUser?.isSystem;
+  const [emailCharCount, setEmailCharCount] = useState(0);
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmailCharCount(value.length);
+    const error = validateEmail(value);
+    setEmailError(error);
+  };
 
   return (
     <Modal
@@ -106,12 +117,12 @@ export const UserFormModal = ({
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item label="First Name" name="firstName" rules={[{ required: true, message: 'Please enter first name' }]}>
-              <Input placeholder="First Name" disabled={mode === 'view'} />
+              <Input placeholder="First Name" disabled={mode === 'view'} maxLength={255} />
             </Form.Item>
           </Col>
           <Col span={12}>
             <Form.Item label="Last Name" name="lastName" rules={[{ required: true, message: 'Please enter last name' }]}>
-              <Input placeholder="Last Name" disabled={mode === 'view'} />
+              <Input placeholder="Last Name" disabled={mode === 'view'} maxLength={255} />
             </Form.Item>
           </Col>
         </Row>
@@ -125,8 +136,20 @@ export const UserFormModal = ({
                 { required: true, message: 'Please enter email' },
                 { type: 'email', message: 'Please enter valid email' },
               ]}
+              help={
+                <>
+                  {emailError && <span style={{ color: '#ff4d4f', display: 'block' }}>{emailError}</span>}
+                  <span style={{ fontSize: '12px', color: '#999' }}>{emailCharCount}/255 characters</span>
+                </>
+              }
+              validateStatus={emailError ? 'error' : ''}
             >
-              <Input disabled={mode === 'view'} placeholder="user@example.com" />
+              <Input
+                disabled={mode === 'view'}
+                placeholder="user@example.com"
+                maxLength={255}
+                onChange={handleEmailChange}
+              />
             </Form.Item>
           </Col>
           <Col span={12}>

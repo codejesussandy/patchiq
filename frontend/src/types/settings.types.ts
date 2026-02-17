@@ -146,13 +146,13 @@ export type DeploymentPolicyFormData = {
   relatedType: string;
 };
 
-// Mail Server Configuration Types (UI-specific)
+// Mail Server Configuration Types (matches backend API)
 export type MailServerConfig = {
-  smtpHost: string;
-  smtpPort: number;
+  host: string;
+  port: number;
   protocol: 'NONE' | 'SSL' | 'TLS';
-  email: string;
-  enableAuthentication: boolean;
+  fromAddress: string;
+  fromName?: string;
   username?: string;
   password?: string;
   testEmail?: string;

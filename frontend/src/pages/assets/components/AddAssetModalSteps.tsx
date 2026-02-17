@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Row, Col, Form, Input, Select, DatePicker, Switch } from 'antd';
+import { validateAndSanitize } from '../../../utils/validation';
 import TagSelector from './TagSelector';
 
 const { Option } = Select;
@@ -11,14 +13,45 @@ interface Step1Props {
   form: ReturnType<typeof Form.useForm>[0];
 }
 
-export const AssetStep1 = ({ categories, subCategories, selectedCategoryId, onCategoryChange, form }: Step1Props) => (
-  <div>
-    <Row gutter={16}>
-      <Col span={12}>
-        <Form.Item label="Asset Name" name="assetName" rules={[{ required: true }]}>
-          <Input placeholder="Input" />
-        </Form.Item>
-      </Col>
+export const AssetStep1 = ({ categories, subCategories, selectedCategoryId, onCategoryChange, form }: Step1Props) => {
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
+  const [charCounts, setCharCounts] = useState<{ [key: string]: number }>({});
+
+  const handleFieldValidation = (fieldName: string, value: string, fieldType: 'text' | 'email' | 'hostname' | 'name') => {
+    if (!value) {
+      setFieldErrors(prev => ({ ...prev, [fieldName]: '' }));
+      setCharCounts(prev => ({ ...prev, [fieldName]: 0 }));
+      return;
+    }
+
+    const validation = validateAndSanitize(value, fieldType);
+    setFieldErrors(prev => ({ ...prev, [fieldName]: validation.error || '' }));
+    setCharCounts(prev => ({ ...prev, [fieldName]: value.length }));
+  };
+
+  return (
+    <div>
+      <Row gutter={16}>
+        <Col span={12}>
+          <Form.Item
+            label="Asset Name"
+            name="assetName"
+            rules={[{ required: true, message: 'Asset name is required' }]}
+            help={
+              <>
+                {fieldErrors.assetName && <span style={{ color: '#ff4d4f', display: 'block' }}>{fieldErrors.assetName}</span>}
+                <span style={{ fontSize: '12px', color: '#999' }}>{charCounts.assetName || 0}/255 characters</span>
+              </>
+            }
+            validateStatus={fieldErrors.assetName ? 'error' : ''}
+          >
+            <Input
+              placeholder="Enter asset name"
+              maxLength={255}
+              onChange={(e) => handleFieldValidation('assetName', e.target.value, 'name')}
+            />
+          </Form.Item>
+        </Col>
       <Col span={12}>
         <Form.Item label="Category" name="categoryId" rules={[{ required: true }]}>
           <Select
@@ -62,18 +95,58 @@ export const AssetStep1 = ({ categories, subCategories, selectedCategoryId, onCa
     </Row>
     <Row gutter={16}>
       <Col span={12}>
-        <Form.Item label="Make" name="make"><Input placeholder="Input" /></Form.Item>
+        <Form.Item
+          label="Make"
+          name="make"
+          help={<span style={{ fontSize: '12px', color: '#999' }}>{charCounts.make || 0}/255</span>}
+        >
+          <Input
+            placeholder="Enter manufacturer"
+            maxLength={255}
+            onChange={(e) => handleFieldValidation('make', e.target.value, 'text')}
+          />
+        </Form.Item>
       </Col>
       <Col span={12}>
-        <Form.Item label="Model" name="model"><Input placeholder="Input" /></Form.Item>
+        <Form.Item
+          label="Model"
+          name="model"
+          help={<span style={{ fontSize: '12px', color: '#999' }}>{charCounts.model || 0}/255</span>}
+        >
+          <Input
+            placeholder="Enter model"
+            maxLength={255}
+            onChange={(e) => handleFieldValidation('model', e.target.value, 'text')}
+          />
+        </Form.Item>
       </Col>
     </Row>
     <Row gutter={16}>
       <Col span={12}>
-        <Form.Item label="Serial Number" name="serialNumber"><Input placeholder="Enter serial number" /></Form.Item>
+        <Form.Item
+          label="Serial Number"
+          name="serialNumber"
+          help={<span style={{ fontSize: '12px', color: '#999' }}>{charCounts.serialNumber || 0}/255</span>}
+        >
+          <Input
+            placeholder="Enter serial number"
+            maxLength={255}
+            onChange={(e) => handleFieldValidation('serialNumber', e.target.value, 'text')}
+          />
+        </Form.Item>
       </Col>
       <Col span={12}>
-        <Form.Item label="UUID" name="uuid"><Input placeholder="Enter UUID" /></Form.Item>
+        <Form.Item
+          label="UUID"
+          name="uuid"
+          help={<span style={{ fontSize: '12px', color: '#999' }}>{charCounts.uuid || 0}/255</span>}
+        >
+          <Input
+            placeholder="Enter UUID"
+            maxLength={255}
+            onChange={(e) => handleFieldValidation('uuid', e.target.value, 'text')}
+          />
+        </Form.Item>
       </Col>
     </Row>
 
@@ -111,7 +184,8 @@ export const AssetStep1 = ({ categories, subCategories, selectedCategoryId, onCa
       <Form.Item label="Installed Date" name="installedDate"><DatePicker style={{ width: '100%' }} /></Form.Item>
     </div>
   </div>
-);
+  );
+};
 
 export const AssetStep2 = () => (
   <div>

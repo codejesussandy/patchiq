@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { AgentDetailsDrawer } from '../../components/agents/AgentDetailsDrawer';
 import { ConfirmModal } from '../../components/shared/ConfirmModal';
 import { DataTable } from '../../components/shared/DataTable';
+import { NoAgentsEmptyState, NoSearchResultsEmptyState } from '../../components/shared/EmptyState';
 import { useAgents, useAgentDownloads, useDeleteAgent } from '../../hooks/useAgents';
 import { useModal } from '../../hooks/useModal';
 import type { Agent } from '../../types/agent.types';
@@ -253,6 +254,13 @@ export const Agents = () => {
         loading={loading}
         pagination={false}
         style={{ marginBottom: '16px' }}
+        locale={{
+          emptyText: filteredAgents.length === 0 && agents.length === 0 ? (
+            <NoAgentsEmptyState onDownload={() => setDownloadModalVisible(true)} />
+          ) : (
+            <NoSearchResultsEmptyState onClear={() => setSearchText('')} />
+          )
+        }}
       />
 
       <Text type="secondary">

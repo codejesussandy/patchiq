@@ -14,6 +14,7 @@ import dayjs from 'dayjs';
 import { useCreateSchedule } from '../../../hooks/useReports';
 import type { Report, ScheduleFrequency } from '../../../types/reports.types';
 import { REPORT_TYPE_LABELS } from '../../../types/reports.types';
+import { validateEmail } from '../../../utils/validation';
 
 const { Text } = Typography;
 
@@ -51,6 +52,22 @@ export const ScheduleReportModal = ({
     try {
       await form.validateFields();
       const values = form.getFieldsValue();
+
+      // Validate all email recipients
+      if (values.recipients && values.recipients.length > 0) {
+        const invalidEmails: string[] = [];
+        values.recipients.forEach((email: string) => {
+          const error = validateEmail(email.trim());
+          if (error) {
+            invalidEmails.push(email);
+          }
+        });
+
+        if (invalidEmails.length > 0) {
+          message.error(`Invalid email addresses: ${invalidEmails.join(', ')}`);
+          return;
+        }
+      }
 
       if (report) {
         await createSchedule.mutateAsync({
@@ -200,12 +217,30 @@ export const ScheduleReportModal = ({
             <Form.Item
               label="Recipients"
               name="recipients"
-              rules={[{ required: true, message: 'Please add at least one recipient' }]}
+              rules={[
+                { required: true, message: 'Please add at least one recipient' },
+                {
+                  validator: (_, value) => {
+                    if (!value || value.length === 0) {
+                      return Promise.resolve();
+                    }
+                    const invalidEmails = value.filter((email: string) => {
+                      const error = validateEmail(email.trim());
+                      return error !== null;
+                    });
+                    if (invalidEmails.length > 0) {
+                      return Promise.reject(new Error(`Invalid email(s): ${invalidEmails.join(', ')}`));
+                    }
+                    return Promise.resolve();
+                  },
+                },
+              ]}
+              help="Enter email addresses separated by commas. Max 255 characters per email."
             >
               <Select
                 mode="tags"
-                placeholder="Enter email addresses"
-                tokenSeparators={[',']}
+                placeholder="user@example.com, admin@example.com"
+                tokenSeparators={[',',' ']}
                 style={{ width: '100%' }}
               />
             </Form.Item>

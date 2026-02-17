@@ -3,6 +3,8 @@ import { App, Modal, Steps, Form, Button } from 'antd';
 import dayjs from 'dayjs';
 import { useCategories, useCreateAsset, useUpdateAsset } from '../../../hooks/useAssets';
 import type { Asset } from '../../../types/asset.types';
+import { sanitizeHTML } from '../../../utils/sanitize';
+import { validateAndSanitize } from '../../../utils/validation';
 import { AssetStep1, AssetStep2, AssetStep3 } from './AddAssetModalSteps';
 
 interface AddAssetModalProps {
@@ -107,35 +109,64 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
       setLoading(true);
       const values = form.getFieldsValue(true);
 
+      // Validate critical fields before submission
+      if (values.assetName) {
+        const nameValidation = validateAndSanitize(values.assetName, 'name');
+        if (!nameValidation.isValid) {
+          message.error(nameValidation.error || 'Invalid asset name');
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (values.ownerEmail) {
+        const emailValidation = validateAndSanitize(values.ownerEmail, 'email');
+        if (!emailValidation.isValid) {
+          message.error(emailValidation.error || 'Invalid email address');
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (values.hostname) {
+        const hostnameValidation = validateAndSanitize(values.hostname, 'hostname');
+        if (!hostnameValidation.isValid) {
+          message.error(hostnameValidation.error || 'Invalid hostname');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Sanitize all string inputs to prevent XSS
       const transformedData = {
-        name: values.assetName,
+        name: sanitizeHTML(values.assetName),
         categoryId: values.categoryId || undefined,
         subCategoryId: values.subCategoryId || undefined,
-        osType: values.os || values.osType,
-        osVersion: values.osVersion,
-        model: values.model,
-        serialNumber: values.serialNumber,
+        osType: sanitizeHTML(values.os || values.osType),
+        osVersion: sanitizeHTML(values.osVersion),
+        model: sanitizeHTML(values.model),
+        serialNumber: sanitizeHTML(values.serialNumber),
         status: values.status,
-        manufacturer: values.make,
+        manufacturer: sanitizeHTML(values.make),
         tags: values.assetTags || [],
-        hostname: values.hostname,
-        ipAddress: values.ipAddress,
-        macAddress: values.macAddress,
-        ownerName: values.ownerTechnician,
-        ownerEmail: values.ownerEmail,
-        ownerDepartment: values.ownerDepartment,
-        vendor: values.vendor,
+        hostname: sanitizeHTML(values.hostname),
+        ipAddress: values.ipAddress, // Already validated at backend
+        macAddress: sanitizeHTML(values.macAddress),
+        ownerName: sanitizeHTML(values.ownerTechnician),
+        ownerEmail: values.ownerEmail, // Already validated above
+        ownerDepartment: sanitizeHTML(values.ownerDepartment),
+        vendor: sanitizeHTML(values.vendor),
         purchaseDate: values.purchaseDate?.toISOString?.() || values.purchaseDate,
         warrantyExpiry: values.warrantyExpiryDate?.toISOString?.() || values.warrantyExpiryDate,
-        purchaseOrderNumber: values.purchaseOrderNumber,
+        purchaseOrderNumber: sanitizeHTML(values.purchaseOrderNumber),
         purchaseCost: values.cost && !isNaN(parseFloat(values.cost)) ? parseFloat(values.cost) : undefined,
-        invoiceNumber: values.invoiceNo,
-        currency: values.currency,
+        invoiceNumber: sanitizeHTML(values.invoiceNo),
+        currency: sanitizeHTML(values.currency),
         currentValue: values.currentValue && !isNaN(parseFloat(values.currentValue)) ? parseFloat(values.currentValue) : undefined,
         salvageValue: values.salvageValue && !isNaN(parseFloat(values.salvageValue)) ? parseFloat(values.salvageValue) : undefined,
-        depreciationType: values.depreciationType || undefined,
-        amcVendor: values.amcVendor,
-        amcCost: values.amcCost,
+        depreciationType: sanitizeHTML(values.depreciationType),
+        amcVendor: sanitizeHTML(values.amcVendor),
+        amcCost: sanitizeHTML(values.amcCost),
         amcExpiryDate: values.amcExpiryDate?.toISOString?.() || values.amcExpiryDate,
         endOfLife: values.endOfLife?.toISOString?.() || values.endOfLife,
         endOfSupport: values.endOfSupport?.toISOString?.() || values.endOfSupport,

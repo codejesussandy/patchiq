@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  SearchOutlined,
   FilterOutlined,
   PlusOutlined,
   MoreOutlined,
@@ -38,6 +37,8 @@ import { useTableParams } from '../../hooks/useTableParams';
 import type { Asset } from '../../types/asset.types';
 import { AddAssetModal } from './components/AddAssetModal';
 import { DownloadAgentModal } from './components/allassets/DownloadAgentModal';
+
+const { Search } = Input;
 
 const { Title } = Typography;
 
@@ -267,14 +268,13 @@ export function AllAssets() {
       <Row gutter={[12, 12]} style={{ padding: '4px 12px', flexShrink: 0, marginRight: 0 }} align="middle">
         <Col flex="auto">
           <Space>
-            <Input
-              placeholder="Search"
-              prefix={<SearchOutlined />}
+            <Search
+              placeholder="Search assets..."
               style={{ width: 320 }}
               value={table.search}
               onChange={(e) => table.setSearch(e.target.value)}
               allowClear
-              onClear={() => table.setSearch('')}
+              onSearch={(value) => table.setSearch(value)}
             />
             <Button icon={<FilterOutlined />} onClick={() => setFilterModalVisible(true)}>Filter</Button>
             <Tooltip title="Column Settings"><Button icon={<TableSettingsIcon />} onClick={() => setColumnSettingsOpen(true)} /></Tooltip>

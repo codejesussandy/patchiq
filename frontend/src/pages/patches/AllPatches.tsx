@@ -3,10 +3,11 @@ import {
   SearchOutlined, FilterOutlined, MoreOutlined, DownloadOutlined, PlusOutlined,
   DeleteOutlined, RocketOutlined, ScanOutlined, AppstoreOutlined, WarningOutlined,
 } from '@ant-design/icons';
-import { App, Input, Button, Dropdown, Space, Typography, Modal, Form, Tag, Tooltip } from 'antd';
+import { App, Input, Button, Dropdown, Space, Typography, Modal, Form, Tag, Tooltip, theme } from 'antd';
 import type { UploadFile } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
+import { Link } from 'react-router-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SeverityBadge, OSIcon } from '../../components/patches';
 import { ConfirmModal } from '../../components/shared/ConfirmModal';
@@ -183,11 +184,18 @@ export const AllPatches = () => {
     finally { setDeployLoading(false); }
   };
 
+  const { token } = theme.useToken();
+
   const columns: ColumnsType<Patch> = [
-    { title: 'Software', dataIndex: 'software', key: 'software', width: 350, sorter: (a, b) => a.software.localeCompare(b.software),
+    { title: 'Software', dataIndex: 'software', key: 'software', width: 350, sorter: (a, b) => (a.software || '').localeCompare(b.software || ''),
       render: (software: string, record: Patch) => (
         <Space size="small">
-          <span>{software}</span>
+          <Link
+            to={`/patches/${record.id}`}
+            style={{ color: token.colorPrimary, fontWeight: 500 }}
+          >
+            {software}
+          </Link>
           {record.supersededBy && record.supersededBy.length > 0 && (
             <Tooltip title={`Superseded by: ${record.supersededBy.join(', ')}`}>
               <Tag color="warning" icon={<WarningOutlined />} style={{ fontSize: 11 }}>Superseded</Tag>
@@ -195,7 +203,12 @@ export const AllPatches = () => {
           )}
         </Space>
       ) },
-    { title: 'ID', dataIndex: 'patchId', key: 'patchId', width: 150 },
+    { title: 'ID', dataIndex: 'patchId', key: 'patchId', width: 150,
+      render: (patchId: string, record: Patch) => (
+        <Link to={`/patches/${record.id}`} style={{ fontFamily: 'monospace', color: token.colorPrimary }}>
+          {patchId}
+        </Link>
+      ) },
     { title: 'Endpoints', dataIndex: 'endpoints', key: 'endpoints', width: 120, align: 'center', sorter: (a, b) => a.endpoints - b.endpoints },
     { title: 'OS', dataIndex: 'os', key: 'os', width: 150, render: (os: string) => <OSIcon os={os} />,
       filters: [{ text: 'Windows', value: 'WINDOWS' }, { text: 'MacOS', value: 'MACOS' }, { text: 'Ubuntu', value: 'UBUNTU' }, { text: 'Linux', value: 'LINUX' }],
