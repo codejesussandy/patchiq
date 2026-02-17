@@ -14,6 +14,7 @@ import { useComputerGroups, useAvailableEndpoints, useCreateComputerGroup, useUp
 import type { ComputerGroup } from '../../types/settings.types';
 import { ColumnFilterModal } from './components/ColumnFilterModal';
 import { ComputerGroupFormModal } from './components/ComputerGroupFormModal';
+import { sanitizeInput } from '../../utils/sanitize';
 
 const { Title } = Typography;
 
@@ -77,8 +78,16 @@ export const ComputerGroups = () => {
   const handleModalSubmit = async () => {
     try {
       const values = await modalForm.validateFields();
-      if (editingGroup && modalMode === 'edit') { await updateGroupMutation.mutateAsync({ id: editingGroup.id, data: values }); message.success('Computer group updated successfully'); }
-      else if (modalMode === 'create') { await createGroupMutation.mutateAsync(values); message.success('Computer group created successfully'); }
+
+      // Sanitize string fields to prevent XSS
+      const sanitizedValues = {
+        ...values,
+        name: sanitizeInput(values.name),
+        description: sanitizeInput(values.description),
+      };
+
+      if (editingGroup && modalMode === 'edit') { await updateGroupMutation.mutateAsync({ id: editingGroup.id, data: sanitizedValues }); message.success('Computer group updated successfully'); }
+      else if (modalMode === 'create') { await createGroupMutation.mutateAsync(sanitizedValues); message.success('Computer group created successfully'); }
       handleModalClose();
     } catch { message.error(`Failed to ${editingGroup && modalMode === 'edit' ? 'update' : 'create'} computer group`); }
   };

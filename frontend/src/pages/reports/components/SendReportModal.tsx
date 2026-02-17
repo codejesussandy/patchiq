@@ -11,6 +11,7 @@ import {
 import { useSendReport } from '../../../hooks/useReports';
 import type { Report } from '../../../types/reports.types';
 import { REPORT_TYPE_LABELS, REPORT_FORMAT_LABELS } from '../../../types/reports.types';
+import { sanitizeInput } from '../../../utils/sanitize';
 
 const { TextArea } = Input;
 
@@ -48,14 +49,17 @@ export const SendReportModal = ({
       const values = form.getFieldsValue();
 
       if (report) {
+        // Sanitize string fields to prevent XSS
+        const sanitizedValues = {
+          recipients: values.recipients,
+          subject: sanitizeInput(values.subject),
+          message: sanitizeInput(values.message || ''),
+          format: values.format,
+        };
+
         await sendReport.mutateAsync({
           id: report.id,
-          data: {
-            recipients: values.recipients,
-            subject: values.subject,
-            message: values.message,
-            format: values.format,
-          },
+          data: sanitizedValues,
         });
         message.success(`Report sent successfully to ${values.recipients.length} recipient(s)`);
         onSuccess();

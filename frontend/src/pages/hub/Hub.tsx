@@ -54,6 +54,7 @@ import type {
   PackageVersionSummary } from '../../types/hub.types';
 import { PLATFORM_OPTIONS, CATEGORY_OPTIONS } from '../../types/hub.types';
 import { getErrorMessage } from '../../utils/error';
+import { sanitizeInput } from '../../utils/sanitize';
 import { SoftwareJobsBundle } from '../jobs/SoftwareJobsBundle';
 import { SoftwareJobsCatalog } from '../jobs/SoftwareJobsCatalog';
 import { SoftwareJobsDeployed as HubDeployments } from '../jobs/SoftwareJobsDeployed';
@@ -180,13 +181,45 @@ export const Hub = () => {
   };
 
   const handleCreatePackage = async (values: CreatePackageInput) => {
-    try { await createPackageMutation.mutateAsync(values); message.success('Package created successfully'); setCreateModalVisible(false); form.resetFields(); }
+    try {
+      // Sanitize string fields to prevent XSS
+      const sanitizedValues = {
+        ...values,
+        name: sanitizeInput(values.name),
+        displayName: sanitizeInput(values.displayName),
+        version: sanitizeInput(values.version),
+        vendor: values.vendor ? sanitizeInput(values.vendor) : values.vendor,
+        description: values.description ? sanitizeInput(values.description) : values.description,
+        downloadUrl: values.downloadUrl ? sanitizeInput(values.downloadUrl) : values.downloadUrl,
+      };
+
+      await createPackageMutation.mutateAsync(sanitizedValues);
+      message.success('Package created successfully');
+      setCreateModalVisible(false);
+      form.resetFields();
+    }
     catch { message.error('Failed to create package'); }
   };
 
   const handleUpdatePackage = async (values: CreatePackageInput) => {
     if (!editingPackage) return;
-    try { await updatePackageMutation.mutateAsync({ id: editingPackage.packageId, data: values }); message.success('Package updated successfully'); setEditingPackage(null); form.resetFields(); }
+    try {
+      // Sanitize string fields to prevent XSS
+      const sanitizedValues = {
+        ...values,
+        name: sanitizeInput(values.name),
+        displayName: sanitizeInput(values.displayName),
+        version: sanitizeInput(values.version),
+        vendor: values.vendor ? sanitizeInput(values.vendor) : values.vendor,
+        description: values.description ? sanitizeInput(values.description) : values.description,
+        downloadUrl: values.downloadUrl ? sanitizeInput(values.downloadUrl) : values.downloadUrl,
+      };
+
+      await updatePackageMutation.mutateAsync({ id: editingPackage.packageId, data: sanitizedValues });
+      message.success('Package updated successfully');
+      setEditingPackage(null);
+      form.resetFields();
+    }
     catch { message.error('Failed to update package'); }
   };
 

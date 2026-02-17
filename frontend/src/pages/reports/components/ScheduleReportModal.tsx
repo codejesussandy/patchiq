@@ -15,6 +15,7 @@ import { useCreateSchedule } from '../../../hooks/useReports';
 import type { Report, ScheduleFrequency } from '../../../types/reports.types';
 import { REPORT_TYPE_LABELS } from '../../../types/reports.types';
 import { validateEmail } from '../../../utils/validation';
+import { sanitizeInput } from '../../../utils/sanitize';
 
 const { Text } = Typography;
 
@@ -70,6 +71,9 @@ export const ScheduleReportModal = ({
       }
 
       if (report) {
+        // Sanitize recipients (email addresses don't need HTML sanitization, but strip potential XSS)
+        const sanitizedRecipients = (values.recipients || []).map((email: string) => sanitizeInput(email));
+
         await createSchedule.mutateAsync({
           reportId: report.id,
           enabled: values.enabled,
@@ -77,7 +81,7 @@ export const ScheduleReportModal = ({
           time: values.time?.format('HH:mm'),
           dayOfWeek: values.dayOfWeek,
           dayOfMonth: values.dayOfMonth,
-          recipients: values.recipients || [],
+          recipients: sanitizedRecipients,
         });
         message.success('Schedule saved successfully');
         onSuccess();

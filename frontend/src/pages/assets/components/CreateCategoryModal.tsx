@@ -11,6 +11,7 @@ import {
 import type { TabsProps } from 'antd';
 import { useCreateCategory, useCreateSubCategory } from '../../../hooks/useAssets';
 import type { Category, SubCategory } from '../../../types/asset.types';
+import { sanitizeInput } from '../../../utils/sanitize';
 
 interface CreateCategoryModalProps {
   visible: boolean;
@@ -58,8 +59,8 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   const handleCreateCategory = async (values: CategoryFormValues) => {
     try {
       const categoryData = {
-        name: values.categoryName,
-        description: values.categoryDescription || '',
+        name: sanitizeInput(values.categoryName),
+        description: sanitizeInput(values.categoryDescription || ''),
         color: selectedColor,
         assetCount: 0,
       } as Omit<Category, 'id'>;
@@ -79,11 +80,11 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
     try {
       const subCategoryData = {
         categoryId: values.parentCategory,
-        name: values.subCategoryName,
-        description: values.subCategoryDescription || '',
+        name: sanitizeInput(values.subCategoryName),
+        description: sanitizeInput(values.subCategoryDescription || ''),
         criticality: values.criticality || 'Medium',
-        businessUnit: values.businessUnit || '',
-        department: values.department || '',
+        businessUnit: sanitizeInput(values.businessUnit || ''),
+        department: sanitizeInput(values.department || ''),
         assetCount: 0,
       } as Omit<SubCategory, 'id'>;
 

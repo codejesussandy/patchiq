@@ -26,6 +26,7 @@ import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useOrganizations
 import { ColumnFilterModal } from './components/ColumnFilterModal';
 import { UserFormModal } from './components/UserFormModal';
 import { UserImportModal } from './components/UserImportModal';
+import { sanitizeInput } from '../../utils/sanitize';
 
 const { Title } = Typography;
 
@@ -179,11 +180,20 @@ export const Users = () => {
     try {
       const values = await drawerForm.validateFields();
       if (uploadedFile) values.avatar = uploadedFile.name;
+
+      // Sanitize string fields to prevent XSS
+      const sanitizedValues = {
+        ...values,
+        firstName: sanitizeInput(values.firstName),
+        lastName: sanitizeInput(values.lastName),
+        phone: values.phone ? sanitizeInput(values.phone) : values.phone,
+      };
+
       if (editingUser && drawerMode === 'edit') {
-        await updateUserMutation.mutateAsync({ id: editingUser.id, data: values });
+        await updateUserMutation.mutateAsync({ id: editingUser.id, data: sanitizedValues });
         message.success('User updated successfully');
       } else if (drawerMode === 'create') {
-        await createUserMutation.mutateAsync(values);
+        await createUserMutation.mutateAsync(sanitizedValues);
         message.success('User created successfully');
       }
       handleDrawerClose();

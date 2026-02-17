@@ -21,6 +21,7 @@ import { DataTable } from '../../components/shared/DataTable';
 import { useModal } from '../../hooks/useModal';
 import { useAlertPolicies, useCreateAlertPolicy, useUpdateAlertPolicy, useDeleteAlertPolicy } from '../../hooks/useSettings';
 import { PolicyFormModal } from './components/PolicyFormModal';
+import { sanitizeInput } from '../../utils/sanitize';
 
 const { Title } = Typography;
 
@@ -144,7 +145,34 @@ export const PolicyManagement = () => {
   const handleModalSubmit = async () => {
     try {
       const values = await modalForm.validateFields();
-      const payload = { ...values, conditions, actions, remediations };
+
+      // Sanitize string fields to prevent XSS
+      const sanitizedValues = {
+        ...values,
+        name: sanitizeInput(values.name),
+        description: sanitizeInput(values.description),
+        recipients: sanitizeInput(values.recipients),
+      };
+
+      // Sanitize dynamic array fields
+      const sanitizedConditions = conditions.map(cond => ({
+        ...cond,
+        attribute: sanitizeInput(cond.attribute),
+        condition: sanitizeInput(cond.condition),
+        value: sanitizeInput(cond.value),
+      }));
+
+      const sanitizedActions = actions.map(action => ({
+        ...action,
+        name: sanitizeInput(action.name),
+      }));
+
+      const sanitizedRemediations = remediations.map(remediation => ({
+        ...remediation,
+        name: sanitizeInput(remediation.name),
+      }));
+
+      const payload = { ...sanitizedValues, conditions: sanitizedConditions, actions: sanitizedActions, remediations: sanitizedRemediations };
       if (modalMode === 'create') {
         await createAlertMutation.mutateAsync(payload);
         message.success('Alert configuration created successfully');

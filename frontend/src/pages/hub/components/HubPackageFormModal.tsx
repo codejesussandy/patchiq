@@ -19,6 +19,7 @@ import {
   CATEGORY_OPTIONS,
   ARCHITECTURE_OPTIONS,
 } from '../../../types/hub.types';
+import { sanitizeInput } from '../../../utils/sanitize';
 
 const { TextArea } = Input;
 const { Text } = Typography;

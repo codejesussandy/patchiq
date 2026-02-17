@@ -3,6 +3,7 @@ import { App,
   Modal, Form, Input, Select, Checkbox, Button, Space, Divider } from 'antd';
 import { useCreateTag, useUpdateTag } from '../../../hooks/useAssets';
 import type { Tag as TagType } from '../../../types/asset.types';
+import { sanitizeInput } from '../../../utils/sanitize';
 
 interface CreateTagModalProps {
   visible: boolean;
@@ -82,12 +83,23 @@ const CreateTagModal: React.FC<CreateTagModalProps> = ({
 
   const handleSubmit = async (values: Record<string, unknown>) => {
     try {
+      // Sanitize string fields to prevent XSS
+      const sanitizedValues = {
+        ...values,
+        name: sanitizeInput(values.name as string),
+        description: sanitizeInput(values.description as string || ''),
+        icon: values.icon ? sanitizeInput(values.icon as string) : values.icon,
+        owner: values.owner ? sanitizeInput(values.owner as string) : values.owner,
+        manager: values.manager ? sanitizeInput(values.manager as string) : values.manager,
+        budget: values.budget ? sanitizeInput(values.budget as string) : values.budget,
+      };
+
       let newTag: TagType;
       if (tag) {
-        newTag = await updateTagMutation.mutateAsync({ id: tag.id, data: values as Partial<TagType> });
+        newTag = await updateTagMutation.mutateAsync({ id: tag.id, data: sanitizedValues as Partial<TagType> });
         message.success('Tag updated successfully');
       } else {
-        newTag = await createTagMutation.mutateAsync(values as Omit<TagType, 'id' | 'assetCount' | 'createdAt'>);
+        newTag = await createTagMutation.mutateAsync(sanitizedValues as Omit<TagType, 'id' | 'assetCount' | 'createdAt'>);
         message.success('Tag created successfully');
       }
       onSuccess(newTag);

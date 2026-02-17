@@ -19,6 +19,7 @@ import {
 } from 'antd';
 import type { FormInstance } from 'antd';
 import { validateEmail } from '../../../utils/validation';
+import { sanitizeInput } from '../../../utils/sanitize';
 
 const { Dragger } = Upload;
 

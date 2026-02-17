@@ -62,3 +62,31 @@ export const encodeHTML = (input: string): string => {
 
   return input.replace(/[&<>"']/g, (char) => map[char]);
 };
+
+/**
+ * Sanitize object fields recursively
+ * Useful for sanitizing form data before submission
+ */
+export const sanitizeObject = <T extends Record<string, unknown>>(
+  obj: T,
+  fieldsToSanitize?: string[]
+): T => {
+  const sanitized = { ...obj };
+
+  Object.keys(sanitized).forEach((key) => {
+    // If fieldsToSanitize is provided, only sanitize those fields
+    if (fieldsToSanitize && !fieldsToSanitize.includes(key)) {
+      return;
+    }
+
+    const value = sanitized[key];
+
+    if (typeof value === 'string') {
+      sanitized[key] = sanitizeInput(value) as T[Extract<keyof T, string>];
+    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      sanitized[key] = sanitizeObject(value as Record<string, unknown>) as T[Extract<keyof T, string>];
+    }
+  });
+
+  return sanitized;
+};

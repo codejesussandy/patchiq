@@ -16,6 +16,7 @@ import {
 } from '../../services/softwareJobs.service';
 import type { SoftwarePackage, HubBundle } from '../../types/hub.types';
 import { getErrorMessage } from '../../utils/error';
+import { sanitizeInput } from '../../utils/sanitize';
 import { JobToolbar, DeploymentStatusCell, DeploymentTasksModal, exportToCsv } from './components';
 import type { TaskItem as SharedTaskItem, DeploymentSummary } from './components';
 import { CreateSoftwareDeploymentModal } from './components/CreateSoftwareDeploymentModal';
@@ -166,8 +167,15 @@ export const SoftwareJobsDeployed = () => {
       const selectedPackage = applications.find((a: { key: string }) => selectedApplications.includes(a.key));
       if (!selectedPackage && selectionType === 'application') { message.error('Please select a package'); return; }
       if (selectedAgents.length === 0) { message.error('Please select at least one target agent'); return; }
+
+      // Sanitize string fields to prevent XSS
+      const sanitizedValues = {
+        name: sanitizeInput(values.deploymentName),
+        description: sanitizeInput(values.description),
+      };
+
       createDeploymentMutation.mutate({
-        name: values.deploymentName, description: values.description, type: deploymentType, targetAgentIds: selectedAgents,
+        name: sanitizedValues.name, description: sanitizedValues.description, type: deploymentType, targetAgentIds: selectedAgents,
         package: selectedPackage ? { name: selectedPackage.name, source: selectedPackage.installSource, version: 'latest' } : { name: 'bundle-install', source: 'bundle' },
         retryCount: parseInt(values.retryCount, 10) || 1, notifyOnComplete: true,
       }, {

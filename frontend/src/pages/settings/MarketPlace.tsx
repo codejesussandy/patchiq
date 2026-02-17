@@ -9,6 +9,7 @@ import { useModal } from '../../hooks/useModal';
 import { useIntegrations, useCreateIntegration, useUpdateIntegration, useDeleteIntegration, useToggleIntegrationStatus } from '../../hooks/useSettings';
 import type { Integration } from '../../types/settings.types';
 import { IntegrationFormModal } from './components/IntegrationFormModal';
+import { sanitizeInput } from '../../utils/sanitize';
 
 const { Title } = Typography;
 
@@ -61,8 +62,17 @@ export const MarketPlace = () => {
   const handleDrawerSubmit = async () => {
     try {
       const values = await drawerForm.validateFields();
-      if (editingIntegration && drawerMode === 'edit') { await updateIntegrationMutation.mutateAsync({ id: editingIntegration.id, data: values }); message.success('Integration updated successfully'); }
-      else if (drawerMode === 'create') { await createIntegrationMutation.mutateAsync(values); message.success('Integration created successfully'); }
+
+      // Sanitize string fields to prevent XSS
+      const sanitizedValues = {
+        ...values,
+        name: sanitizeInput(values.name),
+        description: sanitizeInput(values.description),
+        type: sanitizeInput(values.type),
+      };
+
+      if (editingIntegration && drawerMode === 'edit') { await updateIntegrationMutation.mutateAsync({ id: editingIntegration.id, data: sanitizedValues }); message.success('Integration updated successfully'); }
+      else if (drawerMode === 'create') { await createIntegrationMutation.mutateAsync(sanitizedValues); message.success('Integration created successfully'); }
       handleDrawerClose();
     } catch { message.error(`Failed to ${editingIntegration && drawerMode === 'edit' ? 'update' : 'create'} integration`); }
   };
