@@ -211,7 +211,7 @@ export const PolicyManagement = () => {
       </div>
 
       <Spin spinning={loading}>
-        <DataTable columns={columns} data={filteredAlerts} rowKey="id" pagination={pagination}
+        <DataTable size="middle" columns={columns} data={filteredAlerts} rowKey="id" pagination={pagination}
           onChange={(newPagination) => setPagination(newPagination as typeof pagination)} style={{ background: '#fff' }}
           locale={{ emptyText: 'No alert configurations found' }} />
       </Spin>

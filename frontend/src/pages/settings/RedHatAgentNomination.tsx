@@ -182,6 +182,7 @@ export const RedHatAgentNomination = () => {
 
       <Spin spinning={loading}>
         <DataTable<RedHatAgentNominationType>
+          size="middle"
           columns={columns}
           data={paginatedData}
           rowKey="id"
@@ -201,7 +202,6 @@ export const RedHatAgentNomination = () => {
               </span>
             ) }}
           style={{ marginTop: '16px' }}
-          size="small"
         />
       </Spin>
 

@@ -116,10 +116,10 @@ export const NotificationPreferences = () => {
       </div>
 
       <DataTable
+        size="middle"
         data={tableData}
         columns={columns}
         pagination={false}
-        size="middle"
         style={{ maxWidth: 600 }}
       />
 

@@ -247,6 +247,7 @@ export const EnrollSecret = () => {
 
       {/* Table */}
       <DataTable
+        size="middle"
         columns={columns}
         data={filteredSecrets}
         loading={loading}
@@ -257,7 +258,6 @@ export const EnrollSecret = () => {
           onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
         }}
         rowKey="id"
-        size="small"
         style={{ backgroundColor: 'white', borderRadius: '4px' }}
       />
 

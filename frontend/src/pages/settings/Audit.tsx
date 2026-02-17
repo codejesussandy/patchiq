@@ -126,7 +126,7 @@ export const Audit = () => {
         </div>
       </div>
       <Spin spinning={loading}>
-        <DataTable columns={columns} data={filteredLogs} rowKey="id" pagination={{ pageSize: 10, current: currentPage, onChange: setCurrentPage }} />
+        <DataTable size="middle" columns={columns} data={filteredLogs} rowKey="id" pagination={{ pageSize: 10, current: currentPage, onChange: setCurrentPage }} />
       </Spin>
       <AuditTimelineModal open={showTimeline} selectedTimePeriod={selectedTimePeriod}
         customStartDate={customStartDate} customEndDate={customEndDate}

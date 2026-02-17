@@ -319,7 +319,7 @@ export const Users = () => {
         </div>
       </div>
 
-      <DataTable columns={columns} data={paginatedData} rowKey="id" loading={loading} pagination={{ pageSize: pagination.pageSize, current: pagination.current, total: filteredUsers.length, onChange: (page, pageSize) => setPagination({ current: page, pageSize }), showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'], showTotal: (total, range) => `showing ${range[0]}\u2013${range[1]} of ${total} items` }} style={{ marginBottom: '24px' }} />
+      <DataTable size="middle" columns={columns} data={paginatedData} rowKey="id" loading={loading} pagination={{ pageSize: pagination.pageSize, current: pagination.current, total: filteredUsers.length, onChange: (page, pageSize) => setPagination({ current: page, pageSize }), showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'], showTotal: (total, range) => `showing ${range[0]}\u2013${range[1]} of ${total} items` }} style={{ marginBottom: '24px' }} />
 
       <UserFormModal open={drawerVisible} mode={drawerMode} editingUser={editingUser} form={drawerForm} organizations={organizations} departments={departments} roles={roles} branches={branches} onClose={handleDrawerClose} onSubmit={handleDrawerSubmit} onSwitchToEdit={() => setDrawerMode('edit')} onFileChange={(file) => setUploadedFile(file as File | null)} />
 

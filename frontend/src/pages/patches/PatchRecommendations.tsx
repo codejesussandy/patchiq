@@ -252,12 +252,17 @@ export const PatchRecommendations = () => {
       </BulkActionBar>
 
       <Card title="Recommendations" style={{ borderRadius: 8 }}>
-        <DataTable data={filteredRecommendations} columns={columns} rowKey="id"
+        <DataTable
+          size="middle"
+          data={filteredRecommendations}
+          columns={columns}
+          rowKey="id"
           selectable
           selectedRowKeys={selectedRowKeys}
           onSelectionChange={(keys) => setSelectedRowKeys(keys)}
           pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'], showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} recommendations` }}
-          scroll={{ x: 'max-content' }} />
+          scroll={{ x: 'max-content' }}
+        />
       </Card>
 
       <Modal title="Reject Recommendation" open={rejectModalVisible} onOk={handleRejectConfirm}

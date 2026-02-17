@@ -144,7 +144,9 @@ export const PatchDeployed = () => {
         </Space>
       </div>
 
-      <DataTable columns={columns} data={filteredDeployments} rowKey="id" loading={loading}
+      <DataTable
+        size="middle"
+        columns={columns} data={filteredDeployments} rowKey="id" loading={loading}
         pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total) => `Total ${total} assets found` }}
         scroll={{ x: 1200 }} style={{ marginBottom: '16px' }} />
 

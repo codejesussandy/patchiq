@@ -100,7 +100,7 @@ export const RolesAndPrivileges = () => {
         </div>
       </div>
 
-      <DataTable columns={columns} data={filteredRoles} rowKey="id" loading={loading} pagination={false} style={{ marginBottom: '16px' }} />
+      <DataTable size="middle" columns={columns} data={filteredRoles} rowKey="id" loading={loading} pagination={false} style={{ marginBottom: '16px' }} />
       <Text type="secondary">Total {filteredRoles.length} Role{filteredRoles.length !== 1 ? 's' : ''} Found</Text>
 
       <ConfirmModal title="Delete Role" description={`Are you sure you want to delete ${deleteModal.selectedItem?.name}? This will affect ${deleteModal.selectedItem?.users} user(s).`}

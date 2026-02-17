@@ -126,6 +126,7 @@ export const DistributionServer = () => {
       </div>
 
       <DataTable
+        size="middle"
         columns={columns}
         data={filteredData}
         rowKey="id"

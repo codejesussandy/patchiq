@@ -164,7 +164,7 @@ export const ComputerGroups = () => {
             <Typography.Text type="secondary">No computer groups found</Typography.Text>
           </div>
         ) : (
-          <DataTable columns={columns} data={filteredGroups} rowKey="id" pagination={pagination}
+          <DataTable size="middle" columns={columns} data={filteredGroups} rowKey="id" pagination={pagination}
             onChange={(newPagination) => setPagination(newPagination as { pageSize: number; current: number })}
             style={{ background: '#fff', borderRadius: '8px' }} />
         )}

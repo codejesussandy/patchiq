@@ -304,6 +304,7 @@ export function AllAssets() {
 
       <div style={{ flex: 1, overflow: 'auto', padding: '0 12px' }}>
         <DataTable
+          size="middle"
           style={{ width: '100%' }}
           rowSelection={{ selectedRowKeys, onChange: (keys) => setSelectedRowKeys(keys) }}
           columns={columns}

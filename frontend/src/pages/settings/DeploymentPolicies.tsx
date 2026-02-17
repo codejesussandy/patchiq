@@ -131,7 +131,7 @@ export const DeploymentPolicies = () => {
         </div>
       </div>
 
-      <DataTable columns={columns} data={paginatedData} rowKey="id" loading={loading}
+      <DataTable size="middle" columns={columns} data={paginatedData} rowKey="id" loading={loading}
         pagination={{ pageSize: pagination.pageSize, current: pagination.current, total: filteredPolicies.length,
           onChange: (page, pageSize) => setPagination({ current: page, pageSize }), showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'],
           showTotal: (total, range) => `showing ${range[0]}-${range[1]} of ${total} items` }}

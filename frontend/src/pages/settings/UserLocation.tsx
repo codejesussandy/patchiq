@@ -158,7 +158,7 @@ export const UserLocation = () => {
       </div>
 
       <div className="location-table-wrapper">
-        <DataTable columns={columns} data={paginatedLocations} rowKey="id" loading={loading}
+        <DataTable size="middle" columns={columns} data={paginatedLocations} rowKey="id" loading={loading}
           pagination={{ current: pagination.current, pageSize: pagination.pageSize, total: filteredLocations.length, showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'],
             showTotal: (total, range) => `showing ${range[0]}-${range[1]} of ${total} items` }}
           onChange={(p) => setPagination({ current: p.current || 1, pageSize: p.pageSize || 20 })}

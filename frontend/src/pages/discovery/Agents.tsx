@@ -248,6 +248,7 @@ export const Agents = () => {
       </div>
 
       <DataTable
+        size="middle"
         columns={columns}
         data={filteredAgents}
         rowKey="id"

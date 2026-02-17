@@ -183,11 +183,11 @@ export const AgentVersions = () => {
       </div>
 
       <DataTable
+        size="middle"
         columns={columns}
         data={filteredVersions}
         loading={loading}
         rowKey="id"
-        size="small"
         searchable
         searchPlaceholder="Search"
         searchValue={searchText}

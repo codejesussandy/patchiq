@@ -120,7 +120,7 @@ export const MarketPlace = () => {
         </div>
       </div>
 
-      <DataTable columns={columns} data={paginatedData} rowKey="key" loading={loading}
+      <DataTable size="middle" columns={columns} data={paginatedData} rowKey="key" loading={loading}
         pagination={{ pageSize: pagination.pageSize, current: pagination.current, total: filteredIntegrations.length,
           onChange: (page, pageSize) => setPagination({ current: page, pageSize }), showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'],
           showTotal: (total, range) => `showing ${range[0]}\u2013${range[1]} of ${total} items` }}

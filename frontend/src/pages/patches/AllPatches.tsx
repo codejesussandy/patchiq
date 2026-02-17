@@ -283,6 +283,7 @@ export const AllPatches = () => {
       </div>
 
       <DataTable
+        size="middle"
         rowSelection={{ selectedRowKeys, onChange: (keys: React.Key[]) => setSelectedRowKeys(keys) }}
         columns={columns} data={filteredPatches} rowKey="id" loading={loading}
         onRow={(record) => ({ onClick: () => navigate(`/patches/${record.id}`), style: { cursor: 'pointer' } })}

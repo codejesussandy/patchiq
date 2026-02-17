@@ -144,7 +144,7 @@ export const VendorLogo = () => {
         </Space>
       </div>
 
-      <DataTable columns={columns} data={filteredLogos} loading={loading} rowKey="id" pagination={pagination}
+      <DataTable size="middle" columns={columns} data={filteredLogos} loading={loading} rowKey="id" pagination={pagination}
         onChange={(pag) => setPagination(pag)} style={{ backgroundColor: 'white', borderRadius: '8px' }}
         locale={{ emptyText: filteredLogos.length === 0 ? 'No vendor logos found' : undefined }} />
 

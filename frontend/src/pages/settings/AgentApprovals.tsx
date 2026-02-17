@@ -131,6 +131,7 @@ export const AgentApprovals = () => {
 
       <Spin spinning={loading}>
         <DataTable<AgentApproval>
+          size="middle"
           columns={columns}
           data={paginatedData}
           rowKey="id"
@@ -150,7 +151,6 @@ export const AgentApprovals = () => {
               </span>
             ) }}
           style={{ marginTop: '16px' }}
-          size="small"
         />
       </Spin>
     </div>

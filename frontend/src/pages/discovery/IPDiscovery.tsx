@@ -124,10 +124,16 @@ export const IPDiscovery = () => {
         </div>
       </div>
 
-      <DataTable columns={columns} data={paginatedData} rowKey="id" loading={loading}
+      <DataTable
+        size="middle"
+        columns={columns}
+        data={paginatedData}
+        rowKey="id"
+        loading={loading}
         pagination={{ pageSize: pagination.pageSize, current: pagination.current, total: filteredRanges.length,
           onChange: (page, pageSize) => setPagination({ current: page, pageSize }), showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'],
-          showTotal: (total, range) => `showing ${range[0]}-${range[1]} of ${total} items` }} />
+          showTotal: (total, range) => `showing ${range[0]}-${range[1]} of ${total} items` }}
+      />
 
       <Modal title={editingRange ? 'Edit IP Range' : 'Create IP Range'} open={modalVisible} onCancel={() => { setModalVisible(false); form.resetFields(); }} width={600}
         footer={[<Button key="cancel" onClick={() => { setModalVisible(false); form.resetFields(); }}>Cancel</Button>, <Button key="submit" type="primary" onClick={handleSubmit}>{editingRange ? 'Update' : 'Create'} IP Range</Button>]}>
