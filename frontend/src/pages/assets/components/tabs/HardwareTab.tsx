@@ -45,7 +45,7 @@ export const HardwareTab = ({ assetId, osType, manufacturer, model }: HardwareTa
       {/* Device Header */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '24px', background: '#f5f5f5', borderRadius: '8px', marginBottom: 24 }}>
-          <div style={{ fontSize: '80px', color: isMac ? '#000' : isLinux ? '#E95420' : '#0078d4', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '120px' }}>
+          <div style={{ fontSize: '80px', color: isMac ? '#000' : isLinux ? '#E95420' : '#1890ff', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '120px' }}>
             {isMac ? <AppleOutlined /> : isLinux ? <DesktopOutlined style={{ color: '#E95420' }} /> : <WindowsOutlined />}
           </div>
           <div>

@@ -108,7 +108,7 @@ const severityColor = (sev: string) => {
 
 function osIcon(os: string) {
   const lower = (os || '').toLowerCase();
-  if (lower.includes('windows')) return <WindowsOutlined style={{ color: '#0078d4' }} />;
+  if (lower.includes('windows')) return <WindowsOutlined style={{ color: '#1890ff' }} />;
   if (lower.includes('mac') || lower.includes('darwin')) return <AppleOutlined />;
   if (lower.includes('linux') || lower.includes('ubuntu')) return <LinuxOutlined style={{ color: '#f9a825' }} />;
   return null;

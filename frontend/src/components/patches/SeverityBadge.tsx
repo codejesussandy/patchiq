@@ -7,8 +7,8 @@ type SeverityBadgeProps = {
 
 const severityConfig: Record<string, { color: string; icon: string; label: string }> = {
   CRITICAL: { color: '#ff4d4f', icon: '●', label: 'Critical severity' },
-  HIGH: { color: '#ff7a45', icon: '▲', label: 'High severity' },
-  MEDIUM: { color: '#ffa940', icon: '■', label: 'Medium severity' },
+  HIGH: { color: '#ff4d4f', icon: '▲', label: 'High severity' },
+  MEDIUM: { color: '#faad14', icon: '■', label: 'Medium severity' },
   LOW: { color: '#52c41a', icon: '◆', label: 'Low severity' },
   UNSPECIFIED: { color: '#1890ff', icon: '○', label: 'Unspecified severity' },
 };

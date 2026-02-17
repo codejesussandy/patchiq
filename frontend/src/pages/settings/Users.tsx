@@ -23,10 +23,10 @@ import { ConfirmModal } from '../../components/shared/ConfirmModal';
 import { DataTable } from '../../components/shared/DataTable';
 import { useModal } from '../../hooks/useModal';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useOrganizations, useDepartments, useRoles, useBranches } from '../../hooks/useSettings';
+import { sanitizeInput } from '../../utils/sanitize';
 import { ColumnFilterModal } from './components/ColumnFilterModal';
 import { UserFormModal } from './components/UserFormModal';
 import { UserImportModal } from './components/UserImportModal';
-import { sanitizeInput } from '../../utils/sanitize';
 
 const { Title } = Typography;
 
@@ -251,7 +251,7 @@ export const Users = () => {
 
   const getNameDisplay = (user: User) => {
     const initials = `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase();
-    const colors = ['#ff7a45', '#ffc069', '#1890ff', '#52c41a', '#722ed1'];
+    const colors = ['#ff4d4f', '#ffc069', '#1890ff', '#52c41a', '#722ed1'];
     const color = colors[parseInt(user.id) % colors.length];
     return (
       <Space>

@@ -76,7 +76,7 @@ export const DownloadAgentModal = ({ open, onClose }: DownloadAgentModalProps) =
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', padding: '16px', background: '#f5f5f5', borderRadius: '8px', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <WindowsOutlined style={{ fontSize: '32px', color: '#0078d4' }} />
+              <WindowsOutlined style={{ fontSize: '32px', color: '#1890ff' }} />
               <div>
                 <div style={{ fontWeight: 600 }}>Windows Agent</div>
                 <div style={{ fontSize: '12px', color: '#666' }}>Windows 10/11, Server 2016+</div>

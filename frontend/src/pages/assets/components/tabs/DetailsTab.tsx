@@ -95,7 +95,7 @@ export const DetailsTab = ({
     <div>
       {/* Asset Header */}
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
-        <WindowsOutlined style={{ fontSize: 48, color: '#0078d4' }} />
+        <WindowsOutlined style={{ fontSize: 48, color: '#1890ff' }} />
         <div>
           <Title level={4} style={{ margin: 0 }}>{asset.name}</Title>
           <Space>

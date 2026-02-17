@@ -147,7 +147,7 @@ export const SoftwareTab = ({ assetId, asset }: SoftwareTabProps) => {
   const getOSIcon = () => {
     const osName = software?.os?.name?.toLowerCase() || asset?.osType?.toLowerCase() || '';
     if (osName.includes('mac') || osName.includes('darwin')) return <AppleOutlined style={{ color: '#000', fontSize: '16px' }} />;
-    if (osName.includes('windows')) return <WindowsOutlined style={{ color: '#0078d4', fontSize: '16px' }} />;
+    if (osName.includes('windows')) return <WindowsOutlined style={{ color: '#1890ff', fontSize: '16px' }} />;
     if (osName.includes('linux') || osName.includes('ubuntu')) return <DesktopOutlined style={{ color: '#E95420', fontSize: '16px' }} />;
     return <DesktopOutlined style={{ fontSize: '16px' }} />;
   };

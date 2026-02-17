@@ -221,7 +221,7 @@ export const Agents = () => {
   );
 
   const getOSIcon = (os: string) => {
-    if (os === 'Windows 11') return <WindowsOutlined style={{ fontSize: 32, color: '#0078d4' }} />;
+    if (os === 'Windows 11') return <WindowsOutlined style={{ fontSize: 32, color: '#1890ff' }} />;
     if (os === 'MacOS') return <AppleOutlined style={{ fontSize: 32, color: '#000' }} />;
     return <div style={{ fontSize: 32 }}>🐧</div>;
   };

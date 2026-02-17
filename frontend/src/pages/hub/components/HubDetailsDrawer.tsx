@@ -32,7 +32,7 @@ const { Text } = Typography;
 
 const getPlatformIcon = (platform: string) => {
   switch (platform) {
-    case 'windows': return <WindowsOutlined style={{ color: '#0078d4' }} />;
+    case 'windows': return <WindowsOutlined style={{ color: '#1890ff' }} />;
     case 'macos': return <AppleOutlined style={{ color: '#000' }} />;
     case 'linux': return <LinuxOutlined style={{ color: '#f9a825' }} />;
     default: return <CloudOutlined style={{ color: '#1890ff' }} />;

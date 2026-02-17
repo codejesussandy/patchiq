@@ -1,3 +1,6 @@
+/* Import color system */
+@import './styles/colors.css';
+
 * {
   margin: 0;
   padding: 0;
