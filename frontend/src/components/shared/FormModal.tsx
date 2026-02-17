@@ -77,15 +77,18 @@ export function FormModal({
       onCancel={onClose}
       width={width}
       destroyOnClose
+      data-testid="form-modal"
       footer={[
-        <Button key="cancel" onClick={onClose}>
+        <Button key="cancel" onClick={onClose} data-testid="form-modal-cancel">
           Cancel
         </Button>,
         <Button
           key="submit"
           type="primary"
           loading={loading}
+          disabled={loading}
           onClick={handleSubmit}
+          data-testid="form-modal-submit"
         >
           {okText}
         </Button>,
@@ -96,6 +99,7 @@ export function FormModal({
         layout="vertical"
         autoComplete="off"
         style={{ marginTop: '16px' }}
+        data-testid="form-modal-form"
       >
         {children}
       </Form>

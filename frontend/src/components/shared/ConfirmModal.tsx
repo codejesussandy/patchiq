@@ -28,8 +28,9 @@ export function ConfirmModal({
       title={title}
       open={open}
       onCancel={onCancel}
+      data-testid="confirm-modal"
       footer={[
-        <Button key="cancel" onClick={onCancel}>
+        <Button key="cancel" onClick={onCancel} data-testid="confirm-modal-cancel">
           {cancelText}
         </Button>,
         <Button
@@ -37,7 +38,9 @@ export function ConfirmModal({
           type="primary"
           danger={danger}
           loading={loading}
+          disabled={loading}
           onClick={onConfirm}
+          data-testid="confirm-modal-confirm"
         >
           {confirmText}
         </Button>,
