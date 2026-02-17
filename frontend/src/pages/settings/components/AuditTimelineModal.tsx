@@ -59,7 +59,7 @@ export const AuditTimelineModal = ({
                   onCustomStartChange(null);
                   onCustomEndChange(null);
                 }}
-                style={{ textAlign: 'left', fontSize: '13px', height: '36px' }}
+                style={{ textAlign: 'left', fontSize: '13px', height: '40px' }}
               >
                 {period.label}
               </Button>

@@ -1,5 +1,6 @@
 /* Import color system */
 @import './styles/colors.css';
+@import './styles/spacing.css';
 
 * {
   margin: 0;

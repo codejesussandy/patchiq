@@ -774,6 +774,19 @@ function App() {
             token: {
               colorPrimary: '#1890ff',
               borderRadius: 8,
+              // Space tokens (8px grid system)
+              marginXS: 4,      // --space-1
+              marginSM: 8,      // --space-2
+              margin: 12,       // --space-3
+              marginMD: 16,     // --space-4
+              marginLG: 24,     // --space-6
+              marginXL: 32,     // --space-8
+              marginXXL: 48,    // --space-12
+              padding: 16,      // default padding
+              paddingSM: 12,
+              paddingMD: 16,
+              paddingLG: 24,
+              paddingXL: 32,
             },
           }}
         >

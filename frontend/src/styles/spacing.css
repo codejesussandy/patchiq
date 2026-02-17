@@ -1,0 +1,35 @@
+/* Global Spacing Variables - 8px Grid System */
+:root {
+  /* Micro spacing */
+  --space-0-5: 2px;   /* Minimal (borders) */
+  --space-1:   4px;   /* Tight */
+
+  /* Base spacing */
+  --space-2:   8px;   /* Small gap */
+  --space-3:   12px;  /* Medium-small */
+  --space-4:   16px;  /* Standard (DEFAULT) */
+  --space-5:   20px;  /* Medium */
+
+  /* Ant Design compatible */
+  --space-6:   24px;  /* Large (Ant Card default) */
+  --space-8:   32px;  /* X-Large */
+  --space-10:  40px;  /* XX-Large */
+  --space-12:  48px;  /* XXX-Large */
+  --space-16:  64px;  /* Hero */
+  --space-20:  80px;  /* Massive */
+
+  /* Named spacing (for semantic use) */
+  --spacing-xs:    var(--space-1);   /* 4px */
+  --spacing-sm:    var(--space-2);   /* 8px */
+  --spacing-md:    var(--space-4);   /* 16px */
+  --spacing-lg:    var(--space-6);   /* 24px */
+  --spacing-xl:    var(--space-8);   /* 32px */
+  --spacing-xxl:   var(--space-12);  /* 48px */
+
+  /* Component-specific */
+  --form-item-margin-bottom: var(--space-6);  /* 24px */
+  --card-padding: var(--space-6);             /* 24px */
+  --page-padding: var(--space-4);             /* 16px */
+  --button-gap: var(--space-2);               /* 8px */
+  --section-margin-bottom: var(--space-8);    /* 32px */
+}

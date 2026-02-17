@@ -122,7 +122,7 @@ export const RoleCapabilitiesPicker = ({
         </div>
         <div style={{ overflowY: 'auto', padding: '0 12px 12px 12px', flex: 1 }}>
           {CAPABILITIES_CATEGORIES.map((category) => (
-            <div key={category.name} style={{ marginBottom: '14px' }}>
+            <div key={category.name} style={{ marginBottom: '16px' }}>
               <div style={{ fontWeight: 600, fontSize: '16px', color: '#262626', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 {category.name}
               </div>

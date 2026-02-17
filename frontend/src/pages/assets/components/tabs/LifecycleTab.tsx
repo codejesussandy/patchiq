@@ -153,11 +153,11 @@ export const LifecycleTab = ({ assetId, onEditFinancialData }: LifecycleTabProps
                   </div>
                   <div
                     style={{
-                      width: '100%', maxWidth: '50px',
+                      width: '100%', maxWidth: '48px',
                       height: `${(point.value / maxValue) * 100}%`,
                       background: index === 0 ? '#5b8ff9' : '#ff6b72',
                       borderRadius: '8px 8px 0 0', transition: 'all 0.3s ease',
-                      minHeight: '30px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                      minHeight: '32px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                     }}
                   />
                   <div style={{ marginTop: '12px', fontSize: '16px', color: '#666', fontWeight: 500, textAlign: 'center' }}>

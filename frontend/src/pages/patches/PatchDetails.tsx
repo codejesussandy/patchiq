@@ -340,7 +340,7 @@ export const PatchDetails = () => {
   };
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}><Spin size="large" /></div>;
-  if (!patch) return <div style={{ textAlign: 'center', padding: '50px' }}><Title level={4}>Patch not found</Title><Button type="primary" onClick={() => navigate('/patches')}>Back to All Patches</Button></div>;
+  if (!patch) return <div style={{ textAlign: 'center', padding: '48px' }}><Title level={4}>Patch not found</Title><Button type="primary" onClick={() => navigate('/patches')}>Back to All Patches</Button></div>;
 
   return (
     <div>

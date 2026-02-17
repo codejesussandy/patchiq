@@ -114,7 +114,7 @@ export const PolicyFormModal = ({
 
         <Row gutter={16} style={{ marginBottom: '20px' }}>
           <Col span={12}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', height: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '100%' }}>
               <Form.Item name="enabled" valuePropName="checked" style={{ margin: 0 }}>
                 <Checkbox>Enable</Checkbox>
               </Form.Item>
