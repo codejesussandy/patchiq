@@ -314,8 +314,7 @@ agent-release:
 	@ls -lh agent/dist/
 	@echo ""
 	@echo "$(CYAN)Generating checksums...$(NC)"
-	@chmod +x scripts/generate-checksums.sh
-	@./scripts/generate-checksums.sh agent/dist
+	@cd agent/dist && sha256sum * > checksums.txt 2>/dev/null || shasum -a 256 * > checksums.txt
 	@echo ""
 	@echo "$(CYAN)Uploading via backend API...$(NC)"
 	@TOKEN=$$(curl -sf $(PUBLIC_URL)/v1/auth/login \

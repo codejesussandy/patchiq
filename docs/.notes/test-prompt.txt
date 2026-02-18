@@ -1,0 +1,22 @@
+analyse "docs/sprint-3/test-rewrite.md" this is a massive file with approx 2.5k lines we are going to work on phase 1.
+
+since its a markdown file you can just extract the common sections and the current phase info if you need more info extract as you go and create a proper plan to write the test files.
+in this plan you need to maintain the current goal, and reference all the appropriate files properly have a good validation criteria for before running the tests, and then i want you to document everything that surfaced after running the
+test. you are not allowed to fix anything that fails when you run the tests, you just have to document what you made and what didnt work in the code.
+
+you can use background task agents or team mate which ever is appropriate and efficient, but make sure to use sonnet model only nothing else.
+first i want you to make the background task agents or team mates to implement the test files. i want you to validate all the test files and verify if they follow all the requirement we have and also see how the actual code is and if it
+missed any corners at all with its test.
+
+few things for you to know and maintain when doing the test-rewrite:
+1. this is a massive issue my team has been dealing with for over 2 months, there are too many type mismatch schema issues and integration issues, and soo much more.
+2. when you are using mock services or mocking anything as a matter of fact i want you to maintain a clean document for all the mocks you used to make sure there are no mismatches in mock vs real, so its easy for me to debug the issue
+when i run it.
+3. when you are write any test (unit/ integration/ e2e/ playwright) i want the tests to be incredibly through and touching all the components.
+4. for every test file or bundle maintain a clean output so that there's not a loot of bloat logs in the out put which is not useful (do not eliminate them reduce them safely)
+5. have logical catches so that we know if there is some logical issues too.
+6. i want you to maintain a summary of the failed issues in a document.
+7. maintain a clean cli banner which is both AI agent (you/ claude code) friendly and human friendly
+
+there are too many places where i asked you to maintain a document. the documentation structure should be docs/test-report/phase-{n}/{individual-report-title}.md make sure these docs are seperated properly in its phase number. and keep it
+breif yet detailed to a point where i get all the info with least possible word or token count.

@@ -25,6 +25,14 @@ yarn-debug.log*
 # Agent build artifacts
 agent/dist/
 agent/patchify-agent*
+agent/patchiq-agent
+agent/patchiq-agent-*
+
+# Generated reports
+backend/reports/
+
+# Build cache
+*.tsbuildinfo
 
 # Test results (root level)
 test-results/

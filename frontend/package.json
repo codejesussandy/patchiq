@@ -21,12 +21,7 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:integration:ui": "vitest --ui --config vitest.integration.config.ts",
-    "test:integration:watch": "vitest --config vitest.integration.config.ts",
-    "validate:quick": "bash scripts/quick-validation.sh",
-    "validate:standard": "bash scripts/standard-validation.sh",
-    "validate:complete": "bash scripts/complete-validation.sh",
-    "validate:security": "bash scripts/security-tests.sh",
-    "validate:critical-path": "bash scripts/critical-path-tests.sh"
+    "test:integration:watch": "vitest --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
