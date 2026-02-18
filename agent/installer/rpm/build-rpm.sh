@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VERSION="${1:-1.0.0}"
+VERSION="${1:-0.1.0}"
 RELEASE="${2:-1}"
 
 echo "Building patchiq-agent RPM v$VERSION-$RELEASE..."

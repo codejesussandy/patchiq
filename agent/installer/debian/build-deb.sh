@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VERSION="${1:-1.0.0}"
+VERSION="${1:-0.1.0}"
 ARCH="amd64"
 PACKAGE="patchiq-agent"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,9 +19,10 @@ rm -rf "$BUILD_DIR"
 
 # Create directory structure
 mkdir -p "${BUILD_DIR}/DEBIAN"
-mkdir -p "${BUILD_DIR}/usr/bin"
+mkdir -p "${BUILD_DIR}/usr/local/bin"
 mkdir -p "${BUILD_DIR}/etc/systemd/system"
-mkdir -p "${BUILD_DIR}/etc/patchiq-agent"
+mkdir -p "${BUILD_DIR}/etc/patchiq"
+mkdir -p "${BUILD_DIR}/var/lib/patchiq-agent"
 
 echo "✓ Created directory structure"
 
@@ -32,8 +33,8 @@ if [ ! -f "${AGENT_ROOT}/dist/patchiq-agent-linux-amd64" ]; then
     exit 1
 fi
 
-cp "${AGENT_ROOT}/dist/patchiq-agent-linux-amd64" "${BUILD_DIR}/usr/bin/patchiq-agent"
-chmod +x "${BUILD_DIR}/usr/bin/patchiq-agent"
+cp "${AGENT_ROOT}/dist/patchiq-agent-linux-amd64" "${BUILD_DIR}/usr/local/bin/patchiq-agent"
+chmod +x "${BUILD_DIR}/usr/local/bin/patchiq-agent"
 echo "✓ Copied agent binary"
 
 # Create systemd service file
@@ -46,7 +47,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/patchiq-agent
+ExecStart=/usr/local/bin/patchiq-agent
 Restart=always
 RestartSec=10
 User=root
@@ -56,7 +57,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/var/log /var/lib/patchiq-agent /etc/patchiq-agent
+ReadWritePaths=/var/log /var/lib/patchiq-agent /etc/patchiq
 
 # Logging
 StandardOutput=journal
@@ -69,19 +70,13 @@ EOF
 echo "✓ Created systemd service file"
 
 # Create default configuration file (placeholder)
-cat > "${BUILD_DIR}/etc/patchiq-agent/config.yaml" <<EOF
-# PatchIQ Agent Configuration
-# Edit this file to configure the agent
-
-# Hub connection settings
-hub:
-  url: "https://your-hub-server:3000"
-  api_key: ""
-
-# Agent settings
-agent:
-  log_level: "info"
-  data_dir: "/var/lib/patchiq-agent"
+cat > "${BUILD_DIR}/etc/patchiq/config.json" <<EOF
+{
+  "serverUrl": "",
+  "webUiPort": 4504,
+  "dataDir": "/var/lib/patchiq-agent",
+  "enableDownloadResume": true
+}
 EOF
 echo "✓ Created default configuration file"
 
@@ -133,10 +128,10 @@ echo ""
 echo "Service status:"
 systemctl status patchiq-agent.service --no-pager || true
 echo ""
-echo "Configuration file: /etc/patchiq-agent/config.yaml"
+echo "Configuration file: /etc/patchiq/config.json"
 echo "Logs: journalctl -u patchiq-agent -f"
 echo ""
-echo "To configure the agent, edit /etc/patchiq-agent/config.yaml"
+echo "To configure the agent, edit /etc/patchiq/config.json"
 echo "and restart the service: systemctl restart patchiq-agent"
 echo ""
 
@@ -175,7 +170,7 @@ if [ "$1" = "purge" ]; then
     rm -rf /var/lib/patchiq-agent
 
     # Remove configuration directory
-    rm -rf /etc/patchiq-agent
+    rm -rf /etc/patchiq
 
     echo "PatchIQ Agent data removed"
 fi

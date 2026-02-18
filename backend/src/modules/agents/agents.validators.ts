@@ -90,8 +90,25 @@ export const updateAgentVersionSchema = z.object({
   isDeprecated: z.boolean().optional(),
 });
 
+// Bulk update schema
+export const bulkUpdateSchema = z.object({
+  versionId: z.string().optional(),
+});
+
+// Agent errors query schema
+export const agentErrorsQuerySchema = z.object({
+  agentId: z.string().uuid().optional(),
+  commandType: z.string().optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  page: z.coerce.number().positive().default(1),
+  limit: z.coerce.number().positive().max(100).default(20),
+});
+export type AgentErrorsQuery = z.infer<typeof agentErrorsQuerySchema>;
+
 // Type exports
 export type ListAgentsQuery = z.infer<typeof listAgentsQuerySchema>;
+export type BulkUpdateInput = z.infer<typeof bulkUpdateSchema>;
 export type RegisterAgentInput = z.infer<typeof registerAgentSchema>;
 export type HeartbeatInput = z.infer<typeof heartbeatSchema>;
 export type CommandResultInput = z.infer<typeof commandResultSchema>;

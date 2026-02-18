@@ -23,8 +23,8 @@ export function useNotificationSSE({ onNotification, enabled = true }: UseNotifi
   const esRef = useRef<EventSource | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onNotificationRef = useRef(onNotification);
+  const reconnectAttemptsRef = useRef(0);
   const [, setIsConnected] = useState(false);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
   onNotificationRef.current = onNotification;
 
   const connect = useCallback(() => {
@@ -41,9 +41,9 @@ export function useNotificationSSE({ onNotification, enabled = true }: UseNotifi
 
     es.onopen = () => {
       setIsConnected(true);
-      if (reconnectAttempts > 0) {
+      if (reconnectAttemptsRef.current > 0) {
         message.success('Notifications reconnected', 2);
-        setReconnectAttempts(0);
+        reconnectAttemptsRef.current = 0;
       }
     };
 
@@ -63,19 +63,18 @@ export function useNotificationSSE({ onNotification, enabled = true }: UseNotifi
       es.close();
       esRef.current = null;
 
-      setReconnectAttempts((prev) => {
-        const newAttempts = prev + 1;
-        if (newAttempts === 1) {
-          message.warning('Notification connection lost. Reconnecting...', 3);
-        }
-        return newAttempts;
-      });
+      const attempts = reconnectAttemptsRef.current;
+      reconnectAttemptsRef.current = attempts + 1;
 
-      // Reconnect after 5 seconds
-      // eslint-disable-next-line react-hooks/immutability -- self-referencing reconnect pattern
-      reconnectTimerRef.current = setTimeout(connect, 5000);
+      if (attempts === 0) {
+        message.warning('Notification connection lost. Reconnecting...', 3);
+      }
+
+      // Exponential backoff: min(5000 * 2^attempts, 30000)
+      const delay = Math.min(5000 * Math.pow(2, attempts), 30000);
+      reconnectTimerRef.current = setTimeout(connect, delay);
     };
-  }, [message, reconnectAttempts]);
+  }, [message]);
 
   useEffect(() => {
     if (!enabled) return;

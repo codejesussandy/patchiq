@@ -18,7 +18,7 @@
     <!-- List all component packages -->
     <pkg-ref id="io.patchiq.agent">
         <bundle-version>
-            <bundle id="io.patchiq.agent" CFBundleShortVersionString="1.0.0-test"/>
+            <bundle id="io.patchiq.agent" CFBundleShortVersionString="0.1.0"/>
         </bundle-version>
     </pkg-ref>
 
@@ -34,5 +34,5 @@
         <pkg-ref id="io.patchiq.agent"/>
     </choice>
 
-    <pkg-ref id="io.patchiq.agent" version="1.0.0-test" onConclusion="none">component.pkg</pkg-ref>
+    <pkg-ref id="io.patchiq.agent" version="0.1.0" onConclusion="none">component.pkg</pkg-ref>
 </installer-gui-script>

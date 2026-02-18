@@ -28,24 +28,41 @@ Features:
 
 %install
 rm -rf $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT/usr/bin
+mkdir -p $RPM_BUILD_ROOT/usr/local/bin
 mkdir -p $RPM_BUILD_ROOT/etc/systemd/system
+mkdir -p $RPM_BUILD_ROOT/etc/patchiq
+mkdir -p $RPM_BUILD_ROOT/var/lib/patchiq-agent
 
 # Install binary
-install -m 755 %{SOURCE0} $RPM_BUILD_ROOT/usr/bin/patchiq-agent
+install -m 755 %{SOURCE0} $RPM_BUILD_ROOT/usr/local/bin/patchiq-agent
+
+# Create default config file
+cat > $RPM_BUILD_ROOT/etc/patchiq/config.json <<'EOF'
+{
+  "serverUrl": "",
+  "webUiPort": 4504,
+  "dataDir": "/var/lib/patchiq-agent",
+  "enableDownloadResume": true
+}
+EOF
 
 # Create systemd service file
 cat > $RPM_BUILD_ROOT/etc/systemd/system/patchiq-agent.service <<'EOF'
 [Unit]
-Description=PatchIQ Agent
-After=network.target
+Description=PatchIQ Agent for Patch and Software Management
+Documentation=https://patchiq.io/docs
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/patchiq-agent
+ExecStart=/usr/local/bin/patchiq-agent
 Restart=always
 RestartSec=10
 User=root
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=patchiq-agent
 
 [Install]
 WantedBy=multi-user.target
@@ -66,9 +83,11 @@ fi
 systemctl daemon-reload
 
 %files
-/usr/bin/patchiq-agent
+/usr/local/bin/patchiq-agent
 /etc/systemd/system/patchiq-agent.service
+%config(noreplace) /etc/patchiq/config.json
+%dir /var/lib/patchiq-agent
 
 %changelog
-* Fri Feb 14 2026 PatchIQ <support@patchiq.io> - 1.0.0-1
+* Wed Feb 18 2026 PatchIQ <support@patchiq.io> - 0.1.0-1
 - Initial release

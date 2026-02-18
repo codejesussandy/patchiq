@@ -26,8 +26,9 @@ import (
 )
 
 var (
-	version   = "1.2.0"
-	buildDate = "unknown"
+	version          = "0.1.0"
+	buildDate        = "unknown"
+	defaultServerURL = ""
 )
 
 
@@ -72,12 +73,12 @@ func main() {
 	// Parse command line flags
 	configPath := flag.String("config", "", "Path to config file")
 	port := flag.Int("port", 4504, "Web UI port")
-	// Default server URL from environment variable or use localhost
-	defaultServerURL := os.Getenv("PATCHIQ_SERVER_URL")
-	if defaultServerURL == "" {
-		defaultServerURL = "http://dev.skenzeriq.com:5173/api"
+	// Server URL priority: env var → ldflags value (set at build time) → must be provided via --server flag
+	envServerURL := os.Getenv("PATCHIQ_SERVER_URL")
+	if envServerURL != "" {
+		defaultServerURL = envServerURL
 	}
-	serverURL := flag.String("server", defaultServerURL, "Backend server URL (e.g., http://your-server:5173/api)")
+	serverURL := flag.String("server", defaultServerURL, "Backend server URL (e.g., http://your-server:3500/api)")
 	proxyURL := flag.String("proxy", "", "HTTP/HTTPS proxy URL (e.g., http://proxy:8080)")
 	proxyUser := flag.String("proxy-user", "", "Proxy authentication username")
 	proxyPassword := flag.String("proxy-password", "", "Proxy authentication password")
@@ -287,6 +288,12 @@ func main() {
 
 	// Create and start backend manager (unless disabled)
 	var backendMgr *backend.Manager
+	if !*noBackend && cfg.ServerURL == "" {
+		log.Println("WARNING: No server URL configured. Agent cannot communicate with backend.")
+		log.Println("  Set PATCHIQ_SERVER_URL environment variable, use --server flag,")
+		log.Println("  or run 'patchiq-agent --setup' to configure.")
+		log.Println("  Running in local-only mode.")
+	}
 	if !*noBackend && cfg.ServerURL != "" {
 		backendMgr = backend.New(cfg, cm, em, version)
 		if err := backendMgr.Start(); err != nil {

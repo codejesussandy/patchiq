@@ -1,16 +1,19 @@
 import request from 'supertest';
-import { getTestApp, generateTestTokens, authenticatedRequest, randomString } from '../utils/testHelpers';
+import { getTestApp, generateTestTokensAsync, authenticatedRequest, randomString } from '../utils/testHelpers';
 import { prisma } from '@db/client';
 
 describe('Agents Module', () => {
   const app = getTestApp();
-  const tokens = generateTestTokens('test-admin-id', 'admin');
-  const auth = authenticatedRequest(app, tokens.accessToken);
+  let auth: ReturnType<typeof authenticatedRequest>;
 
   let testAgentId: string;
   let testAgentMachineId: string;
 
   beforeAll(async () => {
+    // Generate tokens with proper roleId for RBAC
+    const tokens = await generateTestTokensAsync('test-admin-id', 'admin');
+    auth = authenticatedRequest(app, tokens.accessToken);
+
     // Create a test agent for tests
     testAgentMachineId = `TEST-MACHINE-${randomString(8)}`;
     const agent = await prisma.agent.create({

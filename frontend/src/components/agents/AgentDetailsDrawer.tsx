@@ -4,6 +4,7 @@ import { Drawer, Tabs, Tag, Space, Spin, Empty, Button, Divider, Statistic, Row,
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
 import { agentService } from '../../services/agent.service';
+import type { AgentLogs } from '../../services/agent.service';
 import type { Agent, Command } from '../../types/agent.types';
 import { DataTable } from '../shared/DataTable';
 
@@ -49,6 +50,8 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
   const navigate = useNavigate();
   const [commands, setCommands] = useState<Command[]>([]);
   const [commandsLoading, setCommandsLoading] = useState(false);
+  const [logs, setLogs] = useState<AgentLogs | null>(null);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   const fetchCommands = async () => {
     if (!agent) return;
@@ -63,9 +66,23 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
     }
   };
 
+  const fetchLogs = async () => {
+    if (!agent) return;
+    setLogsLoading(true);
+    try {
+      const data = await agentService.getAgentLogs(agent.id);
+      setLogs(data);
+    } catch {
+      setLogs(null);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (agent && open) {
       fetchCommands();
+      fetchLogs();
     }
   }, [agent, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -271,6 +288,50 @@ export const AgentDetailsDrawer = ({ agent, open, onClose }: AgentDetailsDrawerP
             />
           ) : (
             <Empty description="No commands" />
+          )}
+        </Spin>
+      ) },
+    {
+      key: 'logs',
+      label: 'Logs',
+      children: (
+        <Spin spinning={logsLoading}>
+          {logs ? (
+            <Space orientation="vertical" style={{ width: '100%' }} size="small">
+              <Space wrap>
+                {logs.hostname && (
+                  <Text type="secondary"><Text strong>Hostname:</Text> {logs.hostname}</Text>
+                )}
+                {logs.os && (
+                  <Text type="secondary"><Text strong>OS:</Text> {logs.os}</Text>
+                )}
+                {logs.agentVersion && (
+                  <Text type="secondary"><Text strong>Agent Version:</Text> {logs.agentVersion}</Text>
+                )}
+                {logs.uploadedAt && (
+                  <Text type="secondary"><Text strong>Uploaded:</Text> {new Date(logs.uploadedAt).toLocaleString()}</Text>
+                )}
+              </Space>
+              <pre
+                style={{
+                  background: '#1e1e1e',
+                  color: '#d4d4d4',
+                  padding: '12px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                  maxHeight: '500px',
+                  overflowY: 'auto',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                  margin: 0,
+                }}
+              >
+                {logs.content || '(empty)'}
+              </pre>
+            </Space>
+          ) : (
+            <Empty description="No logs available" />
           )}
         </Spin>
       ) },

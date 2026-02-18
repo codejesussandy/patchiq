@@ -5,7 +5,7 @@
 # Configuration: Set PUBLIC_HOST, PUBLIC_PORT, PUBLIC_SCHEME in .env
 # See .env.example for details.
 
-.PHONY: help dev dev-fresh dev-services dev-backend dev-frontend dev-agent stop clean logs logs-backend logs-frontend db-migrate db-seed db-studio db-reset agent-build agent-run agent-install-air build-windows build-windows-amd64 build-windows-arm64 test test-backend test-frontend check check-types check-lint check-build check-health check-all install status minio-console api-docs api-endpoints dev-all clean-all preflight generate-types
+.PHONY: help dev dev-fresh dev-services dev-backend dev-frontend dev-agent stop clean logs logs-backend logs-frontend db-migrate db-seed db-studio db-reset agent-build agent-run agent-install-air build-windows build-windows-amd64 build-windows-arm64 agent-release agent-dev-push test test-backend test-frontend check check-types check-lint check-build check-health check-all install status minio-console api-docs api-endpoints dev-all clean-all preflight generate-types
 
 # Colors for output
 GREEN := \033[0;32m
@@ -30,6 +30,9 @@ REDIS_EXTERNAL_PORT ?= 4501
 PGADMIN_PORT ?= 4502
 PRISMA_STUDIO_PORT ?= 4503
 AGENT_WEBUI_PORT ?= 4504
+
+# Version (single source of truth for agent builds)
+VERSION ?= 0.1.0
 
 # Agent build configuration (embedded at compile time)
 PATCHIQ_SERVER_URL ?= $(PUBLIC_URL)/api
@@ -251,7 +254,7 @@ db-reset:
 
 agent-build:
 	@echo "$(CYAN)Building agent binary (server: $(PATCHIQ_SERVER_URL))...$(NC)"
-	cd agent && go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL)" -o patchify-agent ./cmd/agent
+	cd agent && go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL) -X main.version=$(VERSION) -X main.buildDate=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o patchify-agent ./cmd/agent
 	@echo "$(GREEN)Agent built: agent/patchify-agent$(NC)"
 
 agent-run:
@@ -275,7 +278,7 @@ build-windows-amd64:
 		echo "$(YELLOW)Install with: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest$(NC)"; \
 	fi
 	@# Build Windows amd64 binary
-	@cd agent && GOOS=windows GOARCH=amd64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL) -X main.version=1.1.0 -X main.buildDate=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/patchiq-agent-windows-amd64.exe ./cmd/agent
+	@cd agent && GOOS=windows GOARCH=amd64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL) -X main.version=$(VERSION) -X main.buildDate=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/patchiq-agent-windows-amd64.exe ./cmd/agent
 	@# Clean up resource file
 	@rm -f agent/resource_amd64.syso
 	@echo "$(GREEN)Built: agent/dist/patchiq-agent-windows-amd64.exe$(NC)"
@@ -293,7 +296,7 @@ build-windows-arm64:
 		echo "$(YELLOW)Install with: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest$(NC)"; \
 	fi
 	@# Build Windows arm64 binary
-	@cd agent && GOOS=windows GOARCH=arm64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL) -X main.version=1.1.0 -X main.buildDate=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/patchiq-agent-windows-arm64.exe ./cmd/agent
+	@cd agent && GOOS=windows GOARCH=arm64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL) -X main.version=$(VERSION) -X main.buildDate=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/patchiq-agent-windows-arm64.exe ./cmd/agent
 	@# Clean up resource file
 	@rm -f agent/resource_arm64.syso
 	@echo "$(GREEN)Built: agent/dist/patchiq-agent-windows-arm64.exe$(NC)"
@@ -301,10 +304,10 @@ build-windows-arm64:
 agent-release:
 	@echo "$(CYAN)Building agent binaries for all platforms (server: $(PATCHIQ_SERVER_URL))...$(NC)"
 	@mkdir -p agent/dist
-	@cd agent && GOOS=linux GOARCH=amd64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL)" -o dist/patchiq-agent-linux-amd64 ./cmd/agent
-	@cd agent && GOOS=linux GOARCH=arm64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL)" -o dist/patchiq-agent-linux-arm64 ./cmd/agent
-	@cd agent && GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL)" -o dist/patchiq-agent-darwin-amd64 ./cmd/agent
-	@cd agent && GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL)" -o dist/patchiq-agent-darwin-arm64 ./cmd/agent
+	@cd agent && GOOS=linux GOARCH=amd64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL) -X main.version=$(VERSION) -X main.buildDate=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/patchiq-agent-linux-amd64 ./cmd/agent
+	@cd agent && GOOS=linux GOARCH=arm64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL) -X main.version=$(VERSION) -X main.buildDate=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/patchiq-agent-linux-arm64 ./cmd/agent
+	@cd agent && GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL) -X main.version=$(VERSION) -X main.buildDate=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/patchiq-agent-darwin-amd64 ./cmd/agent
+	@cd agent && GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL) -X main.version=$(VERSION) -X main.buildDate=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/patchiq-agent-darwin-arm64 ./cmd/agent
 	@# Build Windows binaries with version info
 	@$(MAKE) build-windows
 	@echo "$(GREEN)Binaries built:$(NC)"
@@ -348,6 +351,48 @@ agent-release:
 	upload Mac arm64 agent/dist/patchiq-agent-darwin-arm64
 	@echo ""
 	@echo "$(GREEN)Agent release complete! All binaries uploaded and DB updated.$(NC)"
+
+agent-dev-push:
+	@echo "$(CYAN)Building agent for current platform...$(NC)"
+	@mkdir -p agent/dist
+	@# Detect current platform
+	@GOOS_VAL=$$(uname -s | tr '[:upper:]' '[:lower:]'); \
+	GOARCH_VAL=$$(uname -m); \
+	case "$$GOARCH_VAL" in x86_64) GOARCH_VAL=amd64;; aarch64|arm64) GOARCH_VAL=arm64;; esac; \
+	case "$$GOOS_VAL" in darwin) PLATFORM=Mac;; linux) PLATFORM=Linux;; *) PLATFORM=Windows;; esac; \
+	EXT=""; if [ "$$GOOS_VAL" = "windows" ]; then EXT=".exe"; fi; \
+	BINARY="agent/dist/patchiq-agent-$$GOOS_VAL-$$GOARCH_VAL$$EXT"; \
+	echo "  Platform: $$GOOS_VAL/$$GOARCH_VAL"; \
+	cd agent && GOOS=$$GOOS_VAL GOARCH=$$GOARCH_VAL go build -ldflags "-X main.defaultServerURL=$(PATCHIQ_SERVER_URL) -X main.version=$(VERSION) -X main.buildDate=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/patchiq-agent-$$GOOS_VAL-$$GOARCH_VAL$$EXT ./cmd/agent; \
+	echo "$(GREEN)Built: $$BINARY$(NC)"; \
+	echo "$(CYAN)Authenticating...$(NC)"; \
+	TOKEN=$$(curl -sf $(PUBLIC_URL)/v1/auth/login \
+		-H 'Content-Type: application/json' \
+		-d '{"email":"admin@patchiq.io","password":"admin123"}' \
+		| python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',d).get('accessToken',d.get('accessToken','')))"); \
+	if [ -z "$$TOKEN" ]; then \
+		echo "$(RED)Failed to get auth token. Is the backend running?$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(CYAN)Uploading binary...$(NC)"; \
+	VERSIONS=$$(curl -sf $(PUBLIC_URL)/v1/agent-versions -H "Authorization: Bearer $$TOKEN"); \
+	VID=$$(echo "$$VERSIONS" | python3 -c "import sys,json; r=json.load(sys.stdin); vs=r.get('data',r) if isinstance(r.get('data'),list) else r; vs=vs if isinstance(vs,list) else vs.get('data',[]); print(next((v['id'] for v in vs if v['platform']=='$$PLATFORM' and v['architecture']=='$$GOARCH_VAL'),''))"); \
+	if [ -z "$$VID" ]; then \
+		echo "$(RED)No DB record for $$PLATFORM/$$GOARCH_VAL$(NC)"; \
+		exit 1; \
+	fi; \
+	curl -sf -X POST "$(PUBLIC_URL)/v1/agent-versions/$$VID/upload" \
+		-H "Authorization: Bearer $$TOKEN" \
+		-H "Content-Type: application/octet-stream" \
+		--data-binary "@$$BINARY" > /dev/null; \
+	echo "$(GREEN)Uploaded $$PLATFORM/$$GOARCH_VAL$(NC)"; \
+	echo "$(CYAN)Triggering bulk update...$(NC)"; \
+	RESULT=$$(curl -sf -X POST "$(PUBLIC_URL)/v1/agents/bulk-update" \
+		-H "Authorization: Bearer $$TOKEN" \
+		-H "Content-Type: application/json" \
+		-d '{}'); \
+	echo "$$RESULT" | python3 -c "import sys,json; r=json.load(sys.stdin); d=r.get('data',r); print('$(GREEN)Bulk update triggered: ' + str(d.get('agentsQueued', 0)) + ' agents queued$(NC)')" 2>/dev/null || echo "$(GREEN)Bulk update triggered$(NC)"
+	@echo "$(GREEN)Dev push complete!$(NC)"
 
 agent-install-air:
 	@echo "$(CYAN)Installing Air for Go hot reload...$(NC)"
@@ -493,7 +538,7 @@ status: check-health
 minio-console:
 	@echo "$(CYAN)MinIO Console:$(NC)"
 	@echo "  URL:      $(PUBLIC_URL)/minio/"
-	@echo "  Direct:   http://localhost:5002"
+	@echo "  Direct:   http://localhost:9001"
 	@echo "  Username: patchiq_admin"
 	@echo "  Password: patchiq_secret_key"
 	@echo ""

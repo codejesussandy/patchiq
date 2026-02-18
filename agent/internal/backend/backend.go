@@ -117,6 +117,9 @@ type Manager struct {
 	// Download progress tracking
 	downloadProgress map[string]*DownloadProgress
 	progressMutex    sync.RWMutex
+
+	// Log upload tracking
+	heartbeatCount int
 }
 
 // New creates a new backend manager
@@ -568,7 +571,14 @@ func (m *Manager) sendHeartbeat() error {
 
 	m.mu.Lock()
 	m.lastHeartbeat = time.Now()
+	m.heartbeatCount++
+	count := m.heartbeatCount
 	m.mu.Unlock()
+
+	// Upload logs every 10th heartbeat or when there's an error
+	if count%10 == 0 || lastErr != "" {
+		go m.uploadLogs()
+	}
 
 	// Handle response flags
 	if resp.CommandsPending {
@@ -580,6 +590,39 @@ func (m *Manager) sendHeartbeat() error {
 	}
 
 	return nil
+}
+
+func (m *Manager) uploadLogs() {
+	logPath := filepath.Join(m.config.DataDir, "agent.log")
+
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		log.Printf("No log file to upload: %v", err)
+		return
+	}
+
+	lines := strings.Split(string(data), "\n")
+	startIdx := 0
+	if len(lines) > 500 {
+		startIdx = len(lines) - 500
+	}
+	logContent := strings.Join(lines[startIdx:], "\n")
+
+	hostname, _ := os.Hostname()
+	payload := map[string]interface{}{
+		"logs":         logContent,
+		"agentVersion": m.agentVersion,
+		"os":           runtime.GOOS,
+		"architecture": runtime.GOARCH,
+		"hostname":     hostname,
+		"timestamp":    time.Now().UTC().Format(time.RFC3339),
+	}
+
+	if err := m.client.PostJSON("/logs", payload); err != nil {
+		log.Printf("Failed to upload logs: %v", err)
+	} else {
+		log.Println("Logs uploaded successfully")
+	}
 }
 
 func (m *Manager) inventoryLoop() {

@@ -423,7 +423,7 @@ async function main() {
     },
     {
       key: 'agent.heartbeat_interval_seconds',
-      value: 60,
+      value: 30,
       category: 'agent',
     },
     {

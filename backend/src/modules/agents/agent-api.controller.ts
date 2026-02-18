@@ -198,6 +198,36 @@ export class AgentApiController {
   };
 
   /**
+   * POST /api/agent/logs
+   * Receive and store agent logs
+   */
+  receiveAgentLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const agentId = req.headers['x-agent-id'] as string;
+
+      if (!agentId) {
+        throw new BadRequestError('X-Agent-Id header is required');
+      }
+
+      const { logs, agentVersion, os, architecture, hostname, timestamp } = req.body;
+
+      await this.agentsService.storeAgentLogs(agentId, {
+        content: logs,
+        agentVersion,
+        os,
+        architecture,
+        hostname,
+        uploadedAt: timestamp || new Date().toISOString(),
+      });
+
+      logger.info({ agentId }, 'Agent logs received');
+      sendSuccess(res, { message: 'Logs received' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * POST /api/agent/token/refresh
    * Refresh agent token
    */

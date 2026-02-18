@@ -74,5 +74,8 @@ router.post('/inventory', validateBody(inventorySchema), controller.submitInvent
 // POST /api/agent/telemetry - Submit telemetry data
 router.post('/telemetry', controller.submitTelemetry);
 
+// POST /api/agent/logs - Receive agent logs
+router.post('/logs', controller.receiveAgentLogs);
+
 export const agentApiRoutes = router;
 export default agentApiRoutes;

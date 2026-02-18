@@ -26,9 +26,9 @@ export default defineConfig({
   server: {
     port: parseInt(process.env.VITE_PORT || '5173'),
     host: '0.0.0.0',  // Allow connections from any host
-    allowedHosts: ['dev.skenzeriq.com', 'ssh.skenzer.com', 'localhost'],
+    allowedHosts: [process.env.PUBLIC_HOST, 'localhost'].filter(Boolean) as string[],
     hmr: {
-      host: 'localhost',
+      host: process.env.HMR_HOST || 'localhost',
       port: parseInt(process.env.PUBLIC_PORT || '3500'),
       protocol: 'ws',
     },

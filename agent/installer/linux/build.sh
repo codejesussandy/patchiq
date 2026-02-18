@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VERSION=${1:-1.0.0}
+VERSION=${1:-0.1.0}
 ARCH=${2:-amd64}
 FORMAT=${3:-deb}
 
@@ -33,12 +33,12 @@ GOOS=linux GOARCH=$GOARCH go build \
     ./cmd/agent
 
 # Create directory structure
-mkdir -p "$BUILD_DIR/opt/patchiq"
+mkdir -p "$BUILD_DIR/usr/local/bin"
 mkdir -p "$BUILD_DIR/etc/systemd/system"
 mkdir -p "$BUILD_DIR/etc/patchiq"
 
-cp "$BUILD_DIR/patchiq-agent" "$BUILD_DIR/opt/patchiq/"
-chmod +x "$BUILD_DIR/opt/patchiq/patchiq-agent"
+cp "$BUILD_DIR/patchiq-agent" "$BUILD_DIR/usr/local/bin/"
+chmod +x "$BUILD_DIR/usr/local/bin/patchiq-agent"
 
 # Create systemd service
 cat > "$BUILD_DIR/etc/systemd/system/patchiq-agent.service" <<'SYSTEMD'
@@ -50,7 +50,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
-ExecStart=/opt/patchiq/patchiq-agent
+ExecStart=/usr/local/bin/patchiq-agent
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -65,7 +65,7 @@ SYSTEMD
 cat > "$BUILD_DIR/etc/patchiq/config.json" <<'CONFIG'
 {
   "serverUrl": "",
-  "webUiPort": 5003,
+  "webUiPort": 4504,
   "dataDir": "/var/lib/patchiq-agent",
   "enableDownloadResume": true
 }
@@ -78,9 +78,6 @@ cat > "$BUILD_DIR/post-install.sh" <<'POSTINSTALL'
 # Create data directory
 mkdir -p /var/lib/patchiq-agent
 chmod 755 /var/lib/patchiq-agent
-
-# Symlink for CLI access
-ln -sf /opt/patchiq/patchiq-agent /usr/local/bin/patchiq-agent
 
 # Reload systemd
 systemctl daemon-reload
@@ -108,9 +105,6 @@ chmod +x "$BUILD_DIR/pre-uninstall.sh"
 # Create post-uninstall script
 cat > "$BUILD_DIR/post-uninstall.sh" <<'POSTUNINSTALL'
 #!/bin/bash
-
-# Remove symlink
-rm -f /usr/local/bin/patchiq-agent
 
 # Reload systemd
 systemctl daemon-reload
@@ -144,7 +138,7 @@ fpm \
     --config-files /etc/patchiq/config.json \
     -C "$BUILD_DIR" \
     --package "$OUTPUT_DIR/patchiq-agent_${VERSION}_${ARCH}.$FORMAT" \
-    opt/patchiq/patchiq-agent=/opt/patchiq/patchiq-agent \
+    usr/local/bin/patchiq-agent=/usr/local/bin/patchiq-agent \
     etc/systemd/system/patchiq-agent.service=/etc/systemd/system/patchiq-agent.service \
     etc/patchiq/config.json=/etc/patchiq/config.json
 

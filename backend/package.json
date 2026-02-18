@@ -1,6 +1,6 @@
 {
   "name": "patchiq-backend",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "PatchIQ Backend API Server",
   "main": "dist/server.js",
   "scripts": {

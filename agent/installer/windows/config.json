@@ -1,6 +1,6 @@
 {
   "serverUrl": "",
-  "webUiPort": 8080,
+  "webUiPort": 4504,
   "enableWebUi": true,
   "heartbeatIntervalSeconds": 60,
   "inventoryIntervalSeconds": 21600,

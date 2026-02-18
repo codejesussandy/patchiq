@@ -479,6 +479,39 @@ func (c *Client) RefreshToken() error {
 	return nil
 }
 
+// PostJSON sends an authenticated POST request with a JSON payload to an agent API endpoint.
+// path should be relative to /api/agent (e.g. "/logs").
+func (c *Client) PostJSON(path string, payload interface{}) error {
+	if !c.IsRegistered() {
+		return fmt.Errorf("agent not registered")
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	httpReq, err := http.NewRequest("POST", c.agentAPIURL(path), bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	c.setHeaders(httpReq)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("request to %s failed with status %d: %s", path, resp.StatusCode, string(respBody))
+	}
+
+	return nil
+}
+
 // setHeaders sets common headers for authenticated requests
 func (c *Client) setHeaders(req *http.Request) {
 	req.Header.Set("Content-Type", "application/json")

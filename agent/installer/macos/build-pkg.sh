@@ -6,9 +6,9 @@
 #   ./build-pkg.sh [VERSION] [ARCH]
 #
 # Examples:
-#   ./build-pkg.sh 1.0.0 arm64
-#   ./build-pkg.sh 1.0.0 amd64
-#   ./build-pkg.sh           # Defaults to 1.0.0 and current architecture
+#   ./build-pkg.sh 0.1.0 arm64
+#   ./build-pkg.sh 0.1.0 amd64
+#   ./build-pkg.sh           # Defaults to 0.1.0 and current architecture
 #
 # Requirements:
 #   - macOS with pkgbuild and productbuild
@@ -29,7 +29,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-VERSION="${1:-1.0.0}"
+VERSION="${1:-0.1.0}"
 ARCH="${2:-$(uname -m)}"
 IDENTIFIER="io.patchiq.agent"
 INSTALL_LOCATION="/"
@@ -90,7 +90,7 @@ echo -e "${GREEN}✓ Found agent binary: $AGENT_BINARY${NC}"
 echo -e "${YELLOW}Preparing build directory...${NC}"
 rm -rf "$BUILD_DIR"
 mkdir -p "$PAYLOAD_DIR/usr/local/bin"
-mkdir -p "$PAYLOAD_DIR/Library/LaunchAgents"
+mkdir -p "$PAYLOAD_DIR/Library/LaunchDaemons"
 mkdir -p "$PAYLOAD_DIR/var/log/patchiq"
 
 # Copy agent binary
@@ -99,9 +99,9 @@ cp "$AGENT_BINARY" "$PAYLOAD_DIR/usr/local/bin/patchiq-agent"
 chmod +x "$PAYLOAD_DIR/usr/local/bin/patchiq-agent"
 echo -e "${GREEN}✓ Agent binary copied${NC}"
 
-# Create LaunchAgent plist
-echo -e "${YELLOW}Creating LaunchAgent plist...${NC}"
-cat > "$PAYLOAD_DIR/Library/LaunchAgents/io.patchiq.agent.plist" <<'PLIST'
+# Create LaunchDaemon plist
+echo -e "${YELLOW}Creating LaunchDaemon plist...${NC}"
+cat > "$PAYLOAD_DIR/Library/LaunchDaemons/io.patchiq.agent.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -133,7 +133,7 @@ cat > "$PAYLOAD_DIR/Library/LaunchAgents/io.patchiq.agent.plist" <<'PLIST'
 </dict>
 </plist>
 PLIST
-echo -e "${GREEN}✓ LaunchAgent plist created${NC}"
+echo -e "${GREEN}✓ LaunchDaemon plist created${NC}"
 
 # Ensure scripts directory exists
 mkdir -p "$SCRIPTS_DIR"
@@ -150,15 +150,8 @@ cat > "$SCRIPTS_DIR/preinstall" <<'PREINSTALL'
 
 # Stop existing service if running
 echo "Stopping existing PatchIQ Agent..."
-launchctl bootout gui/$(id -u)/io.patchiq.agent 2>/dev/null || true
-launchctl unload ~/Library/LaunchAgents/io.patchiq.agent.plist 2>/dev/null || true
-
-# System-wide service (if running as root)
-if [ "$(id -u)" = "0" ]; then
-    for uid in $(dscl . -list /Users UniqueID | awk '$2 >= 501 {print $2}'); do
-        launchctl bootout gui/$uid/io.patchiq.agent 2>/dev/null || true
-    done
-fi
+launchctl stop io.patchiq.agent 2>/dev/null || true
+launchctl unload /Library/LaunchDaemons/io.patchiq.agent.plist 2>/dev/null || true
 
 echo "Pre-install complete."
 exit 0
@@ -184,33 +177,19 @@ chmod 755 /var/log/patchiq
 
 # Set proper permissions
 chmod +x /usr/local/bin/patchiq-agent
-chmod 644 ~/Library/LaunchAgents/io.patchiq.agent.plist
+chown root:wheel /usr/local/bin/patchiq-agent
+chmod 644 /Library/LaunchDaemons/io.patchiq.agent.plist
+chown root:wheel /Library/LaunchDaemons/io.patchiq.agent.plist
 
-# Load LaunchAgent for current user
-USER_ID=$(id -u)
-USER_NAME=$(id -un)
-
-if [ "$USER_ID" != "0" ]; then
-    # Running as user - load for current user
-    echo "Loading PatchIQ Agent for user $USER_NAME..."
-    launchctl bootstrap gui/$USER_ID ~/Library/LaunchAgents/io.patchiq.agent.plist
-    launchctl enable gui/$USER_ID/io.patchiq.agent
-    launchctl kickstart -k gui/$USER_ID/io.patchiq.agent
-else
-    # Running as root - load for console user
-    CONSOLE_USER=$(stat -f%Su /dev/console)
-    CONSOLE_UID=$(id -u "$CONSOLE_USER")
-
-    echo "Loading PatchIQ Agent for console user $CONSOLE_USER..."
-    sudo -u "$CONSOLE_USER" launchctl bootstrap gui/$CONSOLE_UID /Users/$CONSOLE_USER/Library/LaunchAgents/io.patchiq.agent.plist
-    sudo -u "$CONSOLE_USER" launchctl enable gui/$CONSOLE_UID/io.patchiq.agent
-    sudo -u "$CONSOLE_USER" launchctl kickstart -k gui/$CONSOLE_UID/io.patchiq.agent
-fi
+# Load and start LaunchDaemon (system-wide)
+echo "Loading PatchIQ Agent daemon..."
+launchctl load /Library/LaunchDaemons/io.patchiq.agent.plist
+launchctl start io.patchiq.agent
 
 echo ""
 echo "PatchIQ Agent installed successfully!"
 echo ""
-echo "The agent is now running in the background."
+echo "The agent is now running as a system daemon."
 echo "Logs: /var/log/patchiq/agent.log"
 echo ""
 echo "To check status: launchctl list | grep patchiq"
@@ -311,7 +290,7 @@ cat > "$RESOURCES_DIR/welcome.html" <<'HTML'
     <p><strong>What will be installed:</strong></p>
     <ul>
         <li>PatchIQ Agent binary at /usr/local/bin/patchiq-agent</li>
-        <li>LaunchAgent for automatic startup</li>
+        <li>LaunchDaemon for system-wide automatic startup</li>
         <li>Log directory at /var/log/patchiq</li>
     </ul>
 

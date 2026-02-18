@@ -1,5 +1,5 @@
 # PatchIQ Agent Installer Script
-# Version: 1.0.0
+# Version: 0.1.0
 # Run as Administrator: Right-click PowerShell -> Run as Administrator
 
 <#
@@ -11,10 +11,10 @@
     to communicate with the PatchIQ backend, and starts the local web UI.
 
 .PARAMETER ServerUrl
-    The URL of the PatchIQ backend API (default: http://localhost:5001/api)
+    The URL of the PatchIQ backend API (default: http://localhost:3000/api)
 
 .PARAMETER UiPort
-    The port for the local web UI (default: 5003)
+    The port for the local web UI (default: 4504)
 
 .PARAMETER AgentExePath
     Path to the patchiq-agent.exe file (default: same directory as script)
@@ -34,10 +34,10 @@
 [CmdletBinding()]
 param(
     [Parameter()]
-    [string]$ServerUrl = "http://localhost:5001/api",
+    [string]$ServerUrl = "http://localhost:3000/api",
 
     [Parameter()]
-    [int]$UiPort = 5003,
+    [int]$UiPort = 4504,
 
     [Parameter()]
     [string]$AgentExePath,
@@ -53,7 +53,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "1.0.0"
+$Version = "0.1.0"
 
 # Configuration
 $InstallDir = "$env:ProgramFiles\PatchIQ"

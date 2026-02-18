@@ -43,21 +43,37 @@ export async function ensureTestUser() {
         email: 'test-user@patchiq.io',
         passwordHash: '$2b$10$dummyHashForTestUserOnly',
         name: 'Test User',
-        role: 'ADMIN',
+        role: { connect: { name: 'admin' } },
         isActive: true,
         isOnboarded: true,
-        organizationId: TEST_ORGANIZATION_ID,
+        organization: { connect: { id: TEST_ORGANIZATION_ID } },
       },
     });
   }
 }
 
 // Generate test auth tokens
-export function generateTestTokens(userId: string = TEST_USER_ID, role: string = 'ADMIN') {
+// Accepts an optional roleId so RBAC middleware can look up the role.
+// If not provided, attempts to resolve from DB at call time (requires DB).
+export function generateTestTokens(userId: string = TEST_USER_ID, role: string = 'ADMIN', roleId?: string) {
   return generateTokenPair({
     userId,
     email: `${role}@patchiq.io`,
     role,
+    roleId,
+    organizationId: TEST_ORGANIZATION_ID,
+  });
+}
+
+// Async version that resolves roleId from DB automatically
+export async function generateTestTokensAsync(userId: string = TEST_USER_ID, roleName: string = 'admin') {
+  const role = await prisma.role.findFirst({ where: { name: roleName } });
+  if (!role) throw new Error(`Role '${roleName}' not found in database`);
+  return generateTokenPair({
+    userId,
+    email: `${roleName}@patchiq.io`,
+    role: roleName.toUpperCase(),
+    roleId: role.id,
     organizationId: TEST_ORGANIZATION_ID,
   });
 }

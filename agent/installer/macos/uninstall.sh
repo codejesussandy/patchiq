@@ -8,7 +8,7 @@
 # This script will:
 #   - Stop the PatchIQ Agent service
 #   - Remove the agent binary
-#   - Remove the LaunchAgent plist
+#   - Remove the LaunchDaemon plist
 #   - Remove log files (optional)
 #   - Remove configuration files (optional)
 #
@@ -47,37 +47,23 @@ echo ""
 echo -e "${YELLOW}Uninstalling PatchIQ Agent...${NC}"
 echo ""
 
-# Stop and unload LaunchAgent
+# Stop and unload LaunchDaemon
 echo -e "${YELLOW}Stopping PatchIQ Agent service...${NC}"
 
-# Stop for all users
-for uid in $(dscl . -list /Users UniqueID | awk '$2 >= 501 {print $2}'); do
-    username=$(dscl . -list /Users UniqueID | awk -v uid="$uid" '$2 == uid {print $1}')
-    user_home=$(dscl . -read /Users/$username NFSHomeDirectory | awk '{print $2}')
-
-    if [ -f "$user_home/Library/LaunchAgents/io.patchiq.agent.plist" ]; then
-        echo "  Stopping for user: $username (UID: $uid)"
-        sudo -u "$username" launchctl bootout gui/$uid/io.patchiq.agent 2>/dev/null || true
-        sudo -u "$username" launchctl unload "$user_home/Library/LaunchAgents/io.patchiq.agent.plist" 2>/dev/null || true
-    fi
-done
+launchctl stop io.patchiq.agent 2>/dev/null || true
+launchctl unload /Library/LaunchDaemons/io.patchiq.agent.plist 2>/dev/null || true
 
 echo -e "${GREEN}✓ Service stopped${NC}"
 
-# Remove LaunchAgent plist
-echo -e "${YELLOW}Removing LaunchAgent configuration...${NC}"
+# Remove LaunchDaemon plist
+echo -e "${YELLOW}Removing LaunchDaemon configuration...${NC}"
 
-for uid in $(dscl . -list /Users UniqueID | awk '$2 >= 501 {print $2}'); do
-    username=$(dscl . -list /Users UniqueID | awk -v uid="$uid" '$2 == uid {print $1}')
-    user_home=$(dscl . -read /Users/$username NFSHomeDirectory | awk '{print $2}')
+if [ -f "/Library/LaunchDaemons/io.patchiq.agent.plist" ]; then
+    rm -f /Library/LaunchDaemons/io.patchiq.agent.plist
+    echo "  Removed LaunchDaemon plist"
+fi
 
-    if [ -f "$user_home/Library/LaunchAgents/io.patchiq.agent.plist" ]; then
-        rm -f "$user_home/Library/LaunchAgents/io.patchiq.agent.plist"
-        echo "  Removed plist for user: $username"
-    fi
-done
-
-echo -e "${GREEN}✓ LaunchAgent configuration removed${NC}"
+echo -e "${GREEN}✓ LaunchDaemon configuration removed${NC}"
 
 # Remove agent binary
 echo -e "${YELLOW}Removing agent binary...${NC}"

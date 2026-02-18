@@ -8,7 +8,8 @@ import { env } from '@config/env';
 import { AgentsService } from './agents.service';
 
 const logger = createLogger('agents-controller');
-import type { ListAgentsQuery } from './agents.validators';
+import type { ListAgentsQuery, AgentErrorsQuery } from './agents.validators';
+import { bulkUpdateSchema, agentErrorsQuerySchema } from './agents.validators';
 
 // Bucket for agent binaries
 const AGENTS_BUCKET = 'agents';
@@ -172,6 +173,34 @@ export class AgentsController {
         clearInterval(interval);
         res.end();
       });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /v1/agents/errors
+   * Get failed agent commands for error dashboard
+   */
+  getErrors = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const query = typedQuery<AgentErrorsQuery>(req);
+      const result = await this.agentsService.getAgentErrors(query);
+      sendSuccess(res, { data: result.data, total: result.total, page: result.page, limit: result.limit });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /v1/agents/:id/logs
+   * Get agent logs stored in metadata
+   */
+  getAgentLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const logs = await this.agentsService.getAgentLogs(id);
+      sendSuccess(res, logs);
     } catch (error) {
       next(error);
     }
@@ -520,6 +549,25 @@ echo "Starting PatchIQ Agent..."
         ...result,
         targetVersion: targetVersion.version,
       });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /v1/agents/bulk-update
+   * Trigger update for all connected agents
+   */
+  bulkUpdate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const parsed = bulkUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        sendError(res, 400, 'VALIDATION_ERROR', parsed.error.message);
+        return;
+      }
+      const { versionId } = parsed.data;
+      const result = await this.agentsService.bulkUpdateAgents(versionId);
+      sendSuccess(res, result);
     } catch (error) {
       next(error);
     }

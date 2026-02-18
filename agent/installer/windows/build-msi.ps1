@@ -9,7 +9,7 @@
 #   .\build-msi.ps1 -Version "1.2.3" -SkipBuild       # Skip Go build, use existing binary
 
 param(
-    [string]$Version = "1.0.0",
+    [string]$Version = "0.1.0",
     [string]$ServerUrl = "http://localhost:3000/api",
     [int]$WebUIPort = 4504,
     [string]$LogLevel = "info",

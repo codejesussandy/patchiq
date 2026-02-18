@@ -9,6 +9,7 @@ export const agentKeys = {
   commands: (id: string) => [...agentKeys.all, 'commands', id] as const,
   downloads: () => [...agentKeys.all, 'downloads'] as const,
   versions: () => ['agent-versions'] as const,
+  errors: (params?: Record<string, unknown>) => [...agentKeys.all, 'errors', params] as const,
 };
 
 export function useAgents() {
@@ -45,6 +46,21 @@ export function useAgentVersions() {
   return useQuery({
     queryKey: agentKeys.versions(),
     queryFn: () => agentService.getAgentVersions(),
+  });
+}
+
+export function useAgentErrors(params?: {
+  agentId?: string;
+  commandType?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}) {
+  return useQuery({
+    queryKey: agentKeys.errors(params),
+    queryFn: () => agentService.getAgentErrors(params),
+    refetchInterval: 30000,
   });
 }
 

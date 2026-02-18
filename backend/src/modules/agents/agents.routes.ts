@@ -4,7 +4,7 @@ import { audit, AuditAction, AuditResource } from '@middleware/audit';
 import { checkPermission } from '@middleware/rbac';
 import { validateQuery } from '@middleware/validation';
 import { AgentsController } from './agents.controller';
-import { listAgentsQuerySchema } from './agents.validators';
+import { listAgentsQuerySchema, agentErrorsQuerySchema } from './agents.validators';
 
 const router = Router();
 const controller = new AgentsController();
@@ -14,6 +14,12 @@ router.use(authenticate);
 
 // GET /v1/agents/downloads - must be before /:id to avoid conflict
 router.get('/downloads', checkPermission('agents', 'view'), controller.getAgentDownloads);
+
+// GET /v1/agents/errors - must be before /:id to avoid conflict
+router.get('/errors', checkPermission('agents', 'view'), validateQuery(agentErrorsQuerySchema), controller.getErrors);
+
+// POST /v1/agents/bulk-update - must be before /:id to avoid conflict
+router.post('/bulk-update', checkPermission('agents', 'edit'), audit({ action: AuditAction.UPDATE, resource: AuditResource.AGENT }), controller.bulkUpdate);
 
 // GET /v1/agents - List all agents
 router.get('/', checkPermission('agents', 'view'), validateQuery(listAgentsQuerySchema), controller.listAgents);
@@ -41,6 +47,9 @@ router.get('/:id/telemetry/latest', checkPermission('agents', 'view'), controlle
 
 // GET /v1/agents/:id/telemetry/stream - SSE stream for real-time telemetry
 router.get('/:id/telemetry/stream', checkPermission('agents', 'view'), controller.streamTelemetry);
+
+// GET /v1/agents/:id/logs - Get agent logs
+router.get('/:id/logs', checkPermission('agents', 'view'), controller.getAgentLogs);
 
 export const agentsRoutes = router;
 export default agentsRoutes;

@@ -7,15 +7,8 @@
 
 # Stop existing service if running
 echo "Stopping existing PatchIQ Agent..."
-launchctl bootout gui/$(id -u)/io.patchiq.agent 2>/dev/null || true
-launchctl unload ~/Library/LaunchAgents/io.patchiq.agent.plist 2>/dev/null || true
-
-# System-wide service (if running as root)
-if [ "$(id -u)" = "0" ]; then
-    for uid in $(dscl . -list /Users UniqueID | awk '$2 >= 501 {print $2}'); do
-        launchctl bootout gui/$uid/io.patchiq.agent 2>/dev/null || true
-    done
-fi
+launchctl stop io.patchiq.agent 2>/dev/null || true
+launchctl unload /Library/LaunchDaemons/io.patchiq.agent.plist 2>/dev/null || true
 
 echo "Pre-install complete."
 exit 0

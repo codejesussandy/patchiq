@@ -3,6 +3,29 @@ import { api } from './api.service';
 
 export type { Agent, AgentDownload, Command, AgentVersion } from '../types/agent.types';
 
+export type AgentLogs = {
+  content: string;
+  agentVersion?: string;
+  hostname?: string;
+  os?: string;
+  uploadedAt?: string;
+};
+
+export type AgentError = {
+  id: string;
+  type: string;
+  status: string;
+  errorMessage: string;
+  result?: string;
+  createdAt: string;
+  agent: {
+    id: string;
+    name: string;
+    hostname: string;
+    os: string;
+  };
+};
+
 export const agentService = {
   async getAgents(): Promise<Agent[]> {
     const response = await api.get('/agents');
@@ -29,6 +52,28 @@ export const agentService = {
   async getAgentCommands(id: string): Promise<Command[]> {
     const response = await api.get(`/agents/${id}/commands`);
     return response.data;
+  },
+
+  async getAgentErrors(params?: {
+    agentId?: string;
+    commandType?: string;
+    from?: string;
+    to?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: AgentError[]; total: number; page: number; limit: number }> {
+    const response = await api.get('/agents/errors', { params });
+    return {
+      data: response.data.data || [],
+      total: response.data.total || 0,
+      page: response.data.page || 1,
+      limit: response.data.limit || 20,
+    };
+  },
+
+  async getAgentLogs(id: string): Promise<AgentLogs | null> {
+    const response = await api.get(`/agents/${id}/logs`);
+    return response.data ?? null;
   },
 
   async getAgentVersions(): Promise<AgentVersion[]> {

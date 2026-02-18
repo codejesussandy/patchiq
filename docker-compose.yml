@@ -234,6 +234,9 @@ services:
     environment:
       - NODE_ENV=development
       - VITE_API_BASE_URL=/v1
+      - PUBLIC_HOST=${PUBLIC_HOST:-localhost}
+      - PUBLIC_PORT=${PUBLIC_PORT:-3500}
+      - HMR_HOST=${PUBLIC_HOST:-localhost}
     # Port exposed via nginx reverse proxy
     depends_on:
       - backend

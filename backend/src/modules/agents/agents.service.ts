@@ -519,7 +519,7 @@ export class AgentsService {
     }
 
     const commands = await prisma.agentCommand.findMany({
-      where: { agentId },
+      where: { agentId, NOT: { type: 'log_upload' } },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -532,6 +532,103 @@ export class AgentsService {
       executedAt: cmd.executedAt?.toISOString() ?? null,
       result: cmd.result,
     }));
+  }
+
+  /**
+   * Get failed agent commands and heartbeat errors (error dashboard)
+   *
+   * Note: The Agent model does not have an `errorMessage` field. Heartbeat errors are
+   * reflected as agents with status='ERROR'. These are included as synthetic error entries
+   * with type='heartbeat_error' alongside failed AgentCommand records.
+   */
+  async getAgentErrors(filters: {
+    agentId?: string;
+    commandType?: string;
+    from?: string;
+    to?: string;
+    page: number;
+    limit: number;
+  }) {
+    // Exclude log_upload type from failed command errors (they are always COMPLETED)
+    const where: Record<string, unknown> = {
+      status: 'FAILED',
+      NOT: { type: 'log_upload' },
+    };
+
+    if (filters.agentId) {
+      where.agentId = filters.agentId;
+    }
+
+    if (filters.commandType) {
+      where.type = filters.commandType;
+    }
+
+    if (filters.from || filters.to) {
+      const createdAt: Record<string, unknown> = {};
+      if (filters.from) createdAt.gte = new Date(filters.from);
+      if (filters.to) createdAt.lte = new Date(filters.to);
+      where.createdAt = createdAt;
+    }
+
+    const skip = (filters.page - 1) * filters.limit;
+
+    const [commandData, commandTotal] = await Promise.all([
+      prisma.agentCommand.findMany({
+        where,
+        include: {
+          agent: {
+            select: { hostname: true, os: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: filters.limit,
+      }),
+      prisma.agentCommand.count({ where }),
+    ]);
+
+    // Also fetch agents currently in ERROR status as heartbeat error entries
+    const heartbeatWhere: Record<string, unknown> = { status: 'ERROR' };
+    if (filters.agentId) {
+      heartbeatWhere.id = filters.agentId;
+    }
+    if (filters.from || filters.to) {
+      const updatedAt: Record<string, unknown> = {};
+      if (filters.from) updatedAt.gte = new Date(filters.from);
+      if (filters.to) updatedAt.lte = new Date(filters.to);
+      heartbeatWhere.updatedAt = updatedAt;
+    }
+
+    // Only include heartbeat errors when not filtering by commandType or filtering for heartbeat_error
+    const includeHeartbeatErrors = !filters.commandType || filters.commandType === 'heartbeat_error';
+    const errorAgents = includeHeartbeatErrors
+      ? await prisma.agent.findMany({
+          where: heartbeatWhere,
+          select: { id: true, hostname: true, os: true, updatedAt: true },
+          orderBy: { updatedAt: 'desc' },
+        })
+      : [];
+
+    // Build synthetic heartbeat error entries to match the AgentCommand shape
+    const heartbeatErrors = errorAgents.map((agent) => ({
+      id: `heartbeat-${agent.id}`,
+      agentId: agent.id,
+      type: 'heartbeat_error',
+      status: 'FAILED',
+      result: null,
+      errorMessage: 'Agent is reporting error status via heartbeat',
+      payload: null,
+      scheduledAt: null,
+      executedAt: agent.updatedAt,
+      completedAt: null,
+      createdAt: agent.updatedAt,
+      agent: { hostname: agent.hostname, os: agent.os },
+    }));
+
+    const data = [...commandData, ...heartbeatErrors];
+    const total = commandTotal + heartbeatErrors.length;
+
+    return { data, total, page: filters.page, limit: filters.limit };
   }
 
   /**
@@ -696,6 +793,130 @@ export class AgentsService {
     });
 
     return { commandId: command.id, status: 'QUEUED' };
+  }
+
+  /**
+   * Bulk update all connected agents to the latest (or specific) version
+   */
+  async bulkUpdateAgents(versionId?: string): Promise<{ agentsQueued: number; warnings?: string[] }> {
+    const { env } = await import('@config/env');
+    const baseUrl = env.BACKEND_PUBLIC_URL || `http://localhost:${env.PORT}`;
+
+    // Fetch all connected agents
+    const agents = await prisma.agent.findMany({
+      where: { status: 'CONNECTED' },
+      select: { id: true, os: true, architecture: true },
+    });
+
+    if (agents.length === 0) {
+      return { agentsQueued: 0 };
+    }
+
+    // Group agents by platform/architecture
+    const groups = new Map<string, { os: string; architecture: string; agentIds: string[] }>();
+    for (const agent of agents) {
+      const key = `${agent.os}|${agent.architecture}`;
+      if (!groups.has(key)) {
+        groups.set(key, { os: agent.os || '', architecture: agent.architecture || '', agentIds: [] });
+      }
+      groups.get(key)!.agentIds.push(agent.id);
+    }
+
+    const commands: Array<{ agentId: string; type: string; payload: Record<string, unknown> }> = [];
+    const warnings: string[] = [];
+
+    for (const group of groups.values()) {
+      const platform = (group.os || '').toLowerCase();
+      const arch = group.architecture || 'unknown';
+
+      let targetVersion;
+      if (versionId) {
+        try {
+          targetVersion = await this.getAgentVersionById(versionId);
+        } catch {
+          warnings.push(`No agent version found with id '${versionId}' for platform '${platform}/${arch}' — skipped ${group.agentIds.length} agent(s)`);
+          continue;
+        }
+      } else {
+        targetVersion = await prisma.agentVersion.findFirst({
+          where: {
+            platform,
+            architecture: group.architecture || undefined,
+            isDeprecated: false,
+            filePath: { not: null },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+      }
+
+      if (!targetVersion || !targetVersion.filePath) {
+        warnings.push(`No binary available for platform '${platform}/${arch}' — skipped ${group.agentIds.length} agent(s)`);
+        continue;
+      }
+
+      const downloadUrl = `${baseUrl}/api/agent/update/binary/${targetVersion.id}`;
+      const checksum = targetVersion.checksum || '';
+      const version = targetVersion.version;
+
+      for (const agentId of group.agentIds) {
+        commands.push({
+          agentId,
+          type: 'agent_update',
+          payload: { downloadUrl, checksum, version },
+        });
+      }
+    }
+
+    if (commands.length === 0) {
+      return { agentsQueued: 0, ...(warnings.length > 0 ? { warnings } : {}) };
+    }
+
+    await this.createBatchCommands(commands);
+
+    return { agentsQueued: commands.length, ...(warnings.length > 0 ? { warnings } : {}) };
+  }
+
+  /**
+   * Update agent metadata by merging new fields into existing metadata JSON
+   */
+  /**
+   * Store agent log snapshot. Uses a dedicated AgentCommand with type 'log_upload'
+   * to avoid corrupting the capabilities JSON array field.
+   */
+  async storeAgentLogs(agentId: string, logData: Record<string, unknown>): Promise<void> {
+    // Upsert: delete any previous log_upload command, then create a new one.
+    // This keeps only the latest log snapshot per agent.
+    await prisma.agentCommand.deleteMany({
+      where: { agentId, type: 'log_upload' },
+    });
+    await prisma.agentCommand.create({
+      data: {
+        agentId,
+        type: 'log_upload',
+        status: 'COMPLETED',
+        result: JSON.stringify(logData),
+        executedAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Get agent logs (latest log_upload command result)
+   */
+  async getAgentLogs(agentId: string): Promise<unknown> {
+    const agent = await prisma.agent.findUnique({ where: { id: agentId } });
+    if (!agent) throw new NotFoundError('Agent not found');
+
+    const logCommand = await prisma.agentCommand.findFirst({
+      where: { agentId, type: 'log_upload' },
+      orderBy: { executedAt: 'desc' },
+    });
+    if (!logCommand?.result) return null;
+    try {
+      return JSON.parse(logCommand.result as string);
+    } catch {
+      return logCommand.result;
+    }
   }
 
   /**

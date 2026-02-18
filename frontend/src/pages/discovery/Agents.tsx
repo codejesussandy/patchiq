@@ -17,16 +17,20 @@ import {
   Space,
   Typography,
   Card,
-  Modal } from 'antd';
+  Modal,
+  Tabs,
+  Select,
+  Empty } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
 import { AgentDetailsDrawer } from '../../components/agents/AgentDetailsDrawer';
 import { ConfirmModal } from '../../components/shared/ConfirmModal';
 import { DataTable } from '../../components/shared/DataTable';
 import { NoAgentsEmptyState, NoSearchResultsEmptyState } from '../../components/shared/EmptyState';
-import { useAgents, useAgentDownloads, useDeleteAgent } from '../../hooks/useAgents';
+import { useAgents, useAgentDownloads, useDeleteAgent, useAgentErrors } from '../../hooks/useAgents';
 import { useModal } from '../../hooks/useModal';
 import type { Agent } from '../../types/agent.types';
+import type { AgentError } from '../../services/agent.service';
 
 const { Title, Text } = Typography;
 
@@ -35,6 +39,101 @@ type AgentDownload = {
   version: string;
   releaseDate: string;
   downloadUrl: string;
+};
+
+const ErrorsTab = () => {
+  const [agentFilter, setAgentFilter] = useState<string | undefined>();
+  const [typeFilter, setTypeFilter] = useState<string | undefined>();
+  const { data: agents = [] } = useAgents();
+  const { data: errorsResult, isLoading } = useAgentErrors({
+    agentId: agentFilter,
+    commandType: typeFilter,
+  });
+
+  const errorColumns: ColumnsType<AgentError> = [
+    {
+      title: 'Timestamp',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      width: 180,
+      render: (date: string) => new Date(date).toLocaleString(),
+      sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      defaultSortOrder: 'descend' },
+    {
+      title: 'Agent',
+      dataIndex: ['agent', 'name'],
+      key: 'agentName',
+      width: 150,
+      render: (_: unknown, record: AgentError) => record.agent?.name || '—' },
+    {
+      title: 'Hostname',
+      dataIndex: ['agent', 'hostname'],
+      key: 'hostname',
+      width: 150,
+      render: (_: unknown, record: AgentError) => record.agent?.hostname || '—' },
+    {
+      title: 'Command Type',
+      dataIndex: 'type',
+      key: 'type',
+      width: 140,
+      render: (type: string) => <Tag>{type}</Tag> },
+    {
+      title: 'Error Message',
+      dataIndex: 'errorMessage',
+      key: 'errorMessage',
+      ellipsis: true,
+      render: (msg: string) => <Text type="danger">{msg || '—'}</Text> },
+    {
+      title: 'Command ID',
+      dataIndex: 'id',
+      key: 'id',
+      width: 120,
+      render: (id: string) => <Text copyable={{ text: id }}>{id.slice(0, 8)}...</Text> },
+  ];
+
+  return (
+    <div>
+      <Space style={{ marginBottom: 16 }}>
+        <Select
+          placeholder="Filter by agent"
+          allowClear
+          style={{ width: 200 }}
+          value={agentFilter}
+          onChange={setAgentFilter}
+          options={agents.map((a) => ({ label: a.name, value: a.id }))}
+        />
+        <Select
+          placeholder="Filter by type"
+          allowClear
+          style={{ width: 200 }}
+          value={typeFilter}
+          onChange={setTypeFilter}
+          options={[
+            { label: 'Agent Update', value: 'agent_update' },
+            { label: 'Inventory', value: 'inventory_full' },
+            { label: 'Patch Install', value: 'patch_install' },
+            { label: 'Software Install', value: 'software_install' },
+            { label: 'Script Bundle', value: 'script_bundle' },
+            { label: 'Config Update', value: 'config_update' },
+          ]}
+        />
+      </Space>
+      <DataTable
+        size="middle"
+        columns={errorColumns}
+        data={errorsResult?.data || []}
+        rowKey="id"
+        loading={isLoading}
+        pagination={false}
+        locale={{ emptyText: <Empty description="No errors found" /> }}
+      />
+      {errorsResult && (
+        <Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
+          Total {errorsResult.total} error{errorsResult.total !== 1 ? 's' : ''}
+        </Text>
+      )}
+    </div>
+  );
 };
 
 export const Agents = () => {
@@ -223,20 +322,11 @@ export const Agents = () => {
   const getOSIcon = (os: string) => {
     if (os === 'Windows 11') return <WindowsOutlined style={{ fontSize: 32, color: '#1890ff' }} />;
     if (os === 'MacOS') return <AppleOutlined style={{ fontSize: 32, color: '#000' }} />;
-    return <div style={{ fontSize: 32 }}>🐧</div>;
+    return <div style={{ fontSize: 32 }}>&#x1F427;</div>;
   };
 
-  return (
-    <div>
-      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Agents
-        </Title>
-        <Button onClick={() => setDownloadModalVisible(true)}>
-          Download Agent
-        </Button>
-      </div>
-
+  const agentsTabContent = (
+    <>
       <div style={{ marginBottom: '16px' }}>
         <Input
           placeholder="Search"
@@ -267,6 +357,35 @@ export const Agents = () => {
       <Text type="secondary">
         Total {filteredAgents.length} agent{filteredAgents.length !== 1 ? 's' : ''} found
       </Text>
+    </>
+  );
+
+  return (
+    <div>
+      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Title level={3} style={{ margin: 0 }}>
+          Agents
+        </Title>
+        <Button onClick={() => setDownloadModalVisible(true)}>
+          Download Agent
+        </Button>
+      </div>
+
+      <Tabs
+        defaultActiveKey="agents"
+        items={[
+          {
+            key: 'agents',
+            label: 'Agents',
+            children: agentsTabContent,
+          },
+          {
+            key: 'errors',
+            label: 'Errors',
+            children: <ErrorsTab />,
+          },
+        ]}
+      />
 
       {/* Download Agents Modal */}
       <Modal

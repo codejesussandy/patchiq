@@ -109,10 +109,11 @@ func runSetupWizard() {
 	// Prompt for server URL with validation
 	for {
 		defaultURL := cfg.ServerURL
-		if defaultURL == "" {
-			defaultURL = "http://dev.skenzeriq.com:5173/api"
+		if defaultURL != "" {
+			fmt.Printf("Enter PatchIQ Server URL [%s]: ", defaultURL)
+		} else {
+			fmt.Print("Enter PatchIQ Server URL (e.g., http://your-server:3500/api): ")
 		}
-		fmt.Printf("Enter PatchIQ Server URL [%s]: ", defaultURL)
 		serverURL := readLine(reader)
 		if serverURL == "" {
 			serverURL = defaultURL

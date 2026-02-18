@@ -11,11 +11,11 @@
   - Provides silent install capability
 
   Build with:
-    candle -arch x64 patchiq-agent.wxs -dVersion=1.0.0 -dBuildDir=build -ext WixUtilExtension -o build/
-    light -ext WixUIExtension -ext WixUtilExtension build/patchiq-agent.wixobj -o dist/PatchIQAgent-1.0.0-amd64.msi
+    candle -arch x64 patchiq-agent.wxs -dVersion=0.1.0 -dBuildDir=build -ext WixUtilExtension -o build/
+    light -ext WixUIExtension -ext WixUtilExtension build/patchiq-agent.wixobj -o dist/PatchIQAgent-0.1.0-amd64.msi
 
   Or use the build-msi.ps1 script:
-    .\build-msi.ps1 -Version "1.0.0"
+    .\build-msi.ps1 -Version "0.1.0"
 -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
      xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
