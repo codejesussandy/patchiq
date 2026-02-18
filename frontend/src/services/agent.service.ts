@@ -33,8 +33,7 @@ export const agentService = {
 
   async getAgentVersions(): Promise<AgentVersion[]> {
     const response = await api.get('/agent-versions');
-    // Paginated response: interceptor returns { data: T[], ...meta }
-    return response.data.data || [];
+    return response.data || [];
   },
 
   /**

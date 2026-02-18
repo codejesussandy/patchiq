@@ -318,7 +318,7 @@ agent-release:
 	@TOKEN=$$(curl -sf $(PUBLIC_URL)/v1/auth/login \
 		-H 'Content-Type: application/json' \
 		-d '{"email":"admin@patchiq.io","password":"admin123"}' \
-		| python3 -c "import sys,json; print(json.load(sys.stdin)['accessToken'])"); \
+		| python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',d).get('accessToken',d.get('accessToken','')))"); \
 	if [ -z "$$TOKEN" ]; then \
 		echo "$(RED)Failed to get auth token. Is the backend running?$(NC)"; \
 		exit 1; \
@@ -326,7 +326,7 @@ agent-release:
 	VERSIONS=$$(curl -sf $(PUBLIC_URL)/v1/agent-versions -H "Authorization: Bearer $$TOKEN"); \
 	upload() { \
 		PLATFORM=$$1; ARCH=$$2; FILE=$$3; \
-		VID=$$(echo "$$VERSIONS" | python3 -c "import sys,json; vs=json.load(sys.stdin); print(next((v['id'] for v in vs if v['platform']=='$$PLATFORM' and v['architecture']=='$$ARCH'),''))"); \
+		VID=$$(echo "$$VERSIONS" | python3 -c "import sys,json; r=json.load(sys.stdin); vs=r.get('data',r) if isinstance(r.get('data'),list) else r; vs=vs if isinstance(vs,list) else vs.get('data',[]); print(next((v['id'] for v in vs if v['platform']=='$$PLATFORM' and v['architecture']=='$$ARCH'),''))"); \
 		if [ -z "$$VID" ]; then \
 			echo "  $(YELLOW)No DB record for $$PLATFORM/$$ARCH — skipping$(NC)"; \
 			return; \

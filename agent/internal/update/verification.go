@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -68,27 +67,8 @@ func PreUpdateChecks() VerificationResult {
 	return result
 }
 
-// checkDiskSpace checks if there's enough disk space for the update
-func checkDiskSpace() (bool, float64) {
-	executable, err := os.Executable()
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to get executable path for disk space check")
-		return true, 0 // Don't block update
-	}
-
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs(executable, &stat); err != nil {
-		log.Warn().Err(err).Msg("Failed to get disk stats")
-		return true, 0 // Don't block update
-	}
-
-	// Available space in GB
-	availableGB := float64(stat.Bavail*uint64(stat.Bsize)) / (1024 * 1024 * 1024)
-
-	// Require at least 500MB
-	minRequiredGB := 0.5
-	return availableGB >= minRequiredGB, availableGB
-}
+// checkDiskSpace is defined in platform-specific files:
+// verification_unix.go (linux, darwin) and verification_windows.go
 
 // checkNetworkConnectivity checks if we can reach the internet
 func checkNetworkConnectivity() bool {

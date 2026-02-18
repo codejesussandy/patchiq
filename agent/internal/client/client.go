@@ -56,9 +56,9 @@ type Client struct {
 // all HTTP requests will be routed through that proxy.
 // TLS is always enforced - the ServerURL must use HTTPS.
 func New(baseURL string, agentVersion string, proxyConfig *ProxyConfig) (*Client, error) {
-	// Enforce HTTPS for all connections
-	if !strings.HasPrefix(baseURL, "https://") {
-		return nil, fmt.Errorf("server URL must use HTTPS (got: %s)", baseURL)
+	// Validate URL scheme
+	if !strings.HasPrefix(baseURL, "http://") && !strings.HasPrefix(baseURL, "https://") {
+		return nil, fmt.Errorf("server URL must use HTTP or HTTPS (got: %s)", baseURL)
 	}
 
 	transport, err := buildTransport(proxyConfig)
@@ -202,10 +202,15 @@ func (c *Client) Register(req *RegisterRequest) (*RegisterResponse, error) {
 		return nil, fmt.Errorf("registration failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	var result RegisterResponse
-	if err := json.Unmarshal(respBody, &result); err != nil {
+	// Backend wraps responses in { success: true, data: {...} } envelope
+	var envelope struct {
+		Success bool             `json:"success"`
+		Data    RegisterResponse `json:"data"`
+	}
+	if err := json.Unmarshal(respBody, &envelope); err != nil {
 		return nil, fmt.Errorf("failed to parse registration response: %w", err)
 	}
+	result := envelope.Data
 
 	// Store credentials
 	c.SetCredentials(result.AgentID, result.AccessToken, result.RefreshToken)

@@ -170,6 +170,26 @@ func LogToSyslog(priority, message string) error {
 	return nil
 }
 
+// IsWindowsService always returns false on Linux.
+func IsWindowsService() (bool, error) {
+	return false, nil
+}
+
+// RunAsService is a no-op on Linux.
+func RunAsService(startFunc func() error, stopFunc func()) error {
+	return nil
+}
+
+// InstallService is handled by systemd on Linux.
+func InstallService() error {
+	return nil
+}
+
+// UninstallService is handled by systemd on Linux.
+func UninstallService() error {
+	return nil
+}
+
 // contains checks if a string contains a substring
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && indexOf(s, substr) >= 0

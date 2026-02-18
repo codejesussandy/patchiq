@@ -1473,7 +1473,7 @@ func formatDuration(d time.Duration) string {
 func getOSInfo() (string, string) {
 	switch runtime.GOOS {
 	case "darwin":
-		osName := "MacOS"
+		osName := "MACOS"
 		osVersion := ""
 		if out, err := exec.Command("sw_vers", "-productVersion").Output(); err == nil {
 			osVersion = strings.TrimSpace(string(out))
@@ -1481,7 +1481,7 @@ func getOSInfo() (string, string) {
 		return osName, osVersion
 
 	case "linux":
-		osName := "Linux"
+		osName := "LINUX"
 		osVersion := ""
 		if data, err := os.ReadFile("/etc/os-release"); err == nil {
 			lines := strings.Split(string(data), "\n")
@@ -1494,7 +1494,7 @@ func getOSInfo() (string, string) {
 		return osName, osVersion
 
 	case "windows":
-		return "Windows", ""
+		return "WINDOWS", ""
 
 	default:
 		return runtime.GOOS, ""

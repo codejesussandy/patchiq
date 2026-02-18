@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	serviceName           = "PatchIQAgent"
 	restartTimeoutSeconds = 120 // 2 minutes
 )
 

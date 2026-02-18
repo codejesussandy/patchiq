@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { WHITELIST_SOURCES } from '../../modules/patch-repository/whitelist-sources.seed';
 import { seedCpeMappings } from './seeds/cpe-mappings.seed';
+import { seedHubPackages } from './seeds/seed-hub-packages';
 
 const prisma = new PrismaClient();
 
@@ -142,7 +143,7 @@ async function main() {
         settings: { view: false, add: false, edit: false, delete: false },
         deployments: { view: true, add: false, edit: false, delete: false },
         notifications: { view: true, add: false, edit: false, delete: false },
-        hub: { view: false, add: false, edit: false, delete: false },
+        hub: { view: true, add: false, edit: false, delete: false },
         'patch-repository': { view: true, add: false, edit: false, delete: false },
         'patch-templates': { view: true, add: false, edit: false, delete: false },
         ai: { view: true, add: false, edit: false, delete: false },
@@ -535,7 +536,7 @@ async function main() {
       platform: 'Windows',
       architecture: 'amd64',
       version: '1.0.0',
-      filePath: 'agents/patchiq-agent-windows-amd64-1.0.0.exe',
+      filePath: 'windows/amd64/1.0.0/patchiq-agent.exe',
       fileSize: BigInt(15728640), // ~15 MB
       checksum: 'sha256:a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6', // Placeholder
     },
@@ -543,7 +544,7 @@ async function main() {
       platform: 'Linux',
       architecture: 'amd64',
       version: '1.0.0',
-      filePath: 'agents/patchiq-agent-linux-amd64-1.0.0',
+      filePath: 'linux/amd64/1.0.0/patchiq-agent',
       fileSize: BigInt(12582912), // ~12 MB
       checksum: 'sha256:b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1', // Placeholder
     },
@@ -551,7 +552,7 @@ async function main() {
       platform: 'Linux',
       architecture: 'arm64',
       version: '1.0.0',
-      filePath: 'agents/patchiq-agent-linux-arm64-1.0.0',
+      filePath: 'linux/arm64/1.0.0/patchiq-agent',
       fileSize: BigInt(11534336), // ~11 MB
       checksum: 'sha256:c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2', // Placeholder
     },
@@ -559,7 +560,7 @@ async function main() {
       platform: 'Mac',
       architecture: 'amd64',
       version: '1.0.0',
-      filePath: 'agents/patchiq-agent-darwin-amd64-1.0.0',
+      filePath: 'mac/amd64/1.0.0/patchiq-agent',
       fileSize: BigInt(14680064), // ~14 MB
       checksum: 'sha256:d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2c3', // Placeholder
     },
@@ -567,7 +568,7 @@ async function main() {
       platform: 'Mac',
       architecture: 'arm64',
       version: '1.0.0',
-      filePath: 'agents/patchiq-agent-darwin-arm64-1.0.0',
+      filePath: 'mac/arm64/1.0.0/patchiq-agent',
       fileSize: BigInt(13631488), // ~13 MB
       checksum: 'sha256:e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2c3d4', // Placeholder
     },
@@ -1647,6 +1648,13 @@ async function main() {
 
   // Asset alerts are now created by the real-time alert evaluation engine
   // (see backend/src/modules/alerts/alert-evaluation.service.ts)
+
+  // ============================================
+  // Hub Software Packages
+  // ============================================
+
+  const hubPackagesCreated = await seedHubPackages(prisma);
+  console.log('Created', hubPackagesCreated, 'hub software packages');
 
   console.log('\nDatabase seed completed successfully!');
   console.log('\n=== Login Credentials ===');
