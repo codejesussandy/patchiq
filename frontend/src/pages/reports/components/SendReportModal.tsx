@@ -83,7 +83,7 @@ export const SendReportModal = ({
       confirmLoading={sendReport.isPending}
       okText="Send"
       width={500}
-      destroyOnClose
+      destroyOnHidden
     >
       {report && (
         <Descriptions column={1} size="small" style={{ marginBottom: 16 }}>

@@ -208,7 +208,7 @@ export const CreateReportWizard = ({ open, onClose, onSuccess, mode = 'create', 
   const stepContent = [renderStep1(), renderStep2(), renderStep3()];
 
   return (
-    <Modal title={mode === 'edit' ? 'Edit Report' : 'Create Report'} open={open} onCancel={handleClose} width={800} destroyOnClose
+    <Modal title={mode === 'edit' ? 'Edit Report' : 'Create Report'} open={open} onCancel={handleClose} width={800} destroyOnHidden
       footer={[
         <Button key="cancel" onClick={handleClose}>Cancel</Button>,
         currentStep > 0 && <Button key="back" onClick={() => setCurrentStep(currentStep - 1)}>Back</Button>,

@@ -480,7 +480,7 @@ export const EndpointDetailsDrawer = ({
       styles={{ wrapper: { width: 600 } }}
       open={open}
       onClose={onClose}
-      destroyOnClose
+      destroyOnHidden
     >
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 50 }}>

@@ -150,7 +150,7 @@ export const ScheduleReportModal = ({
       confirmLoading={createSchedule.isPending}
       okText="Save"
       width={500}
-      destroyOnClose
+      destroyOnHidden
     >
       {report && (
         <Descriptions column={1} size="small" style={{ marginBottom: 16 }}>

@@ -37,7 +37,7 @@ export const PasswordPolicies = () => {
       const passwordPolicy = (policies as Policy[]).find((p) => p.type === 'Password') || (policies as Policy[])[0];
       if (passwordPolicy) {
         setCurrentPolicy(passwordPolicy);
-        const formData = policyToFormData(passwordPolicy.configuration);
+        const formData = policyToFormData(passwordPolicy.configuration ?? {} as PolicyConfiguration);
         form.setFieldsValue(formData);
         setOriginalFormValues(formData);
       }

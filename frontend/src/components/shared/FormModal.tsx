@@ -76,7 +76,7 @@ export function FormModal({
       open={open}
       onCancel={onClose}
       width={width}
-      destroyOnClose
+      destroyOnHidden
       data-testid="form-modal"
       footer={[
         <Button key="cancel" onClick={onClose} data-testid="form-modal-cancel">

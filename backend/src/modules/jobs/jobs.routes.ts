@@ -6,6 +6,7 @@ import { validateBody, validateQuery, validateParams } from '@middleware/validat
 import * as controller from './jobs.controller';
 import {
   idParamSchema,
+  idOrPolicyIdParamSchema,
   patchJobListQuerySchema,
   createPatchJobSchema,
   vulnerabilityJobListQuerySchema,
@@ -335,7 +336,7 @@ deploymentPoliciesRouter.get(
   '/:id',
   authenticate,
   checkPermission('jobs', 'view'),
-  validateParams(idParamSchema),
+  validateParams(idOrPolicyIdParamSchema),
   controller.getDeploymentPolicy
 );
 
@@ -343,7 +344,7 @@ deploymentPoliciesRouter.put(
   '/:id',
   authenticate,
   checkPermission('jobs', 'edit'),
-  validateParams(idParamSchema),
+  validateParams(idOrPolicyIdParamSchema),
   validateBody(updateDeploymentPolicySchema),
   audit({ action: AuditAction.UPDATE, resource: AuditResource.DEPLOYMENT_POLICY, getResourceId: (req) => req.params.id }),
   controller.updateDeploymentPolicy
@@ -353,7 +354,7 @@ deploymentPoliciesRouter.delete(
   '/:id',
   authenticate,
   checkPermission('jobs', 'delete'),
-  validateParams(idParamSchema),
+  validateParams(idOrPolicyIdParamSchema),
   audit({ action: AuditAction.DELETE, resource: AuditResource.DEPLOYMENT_POLICY, getResourceId: (req) => req.params.id }),
   controller.deleteDeploymentPolicy
 );

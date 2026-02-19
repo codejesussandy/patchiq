@@ -1,3 +1,4 @@
+import 'express-async-errors';
 import fs from 'fs';
 import path from 'path';
 import { auditLoggerMiddleware } from '@middleware/audit-logger';

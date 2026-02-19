@@ -110,7 +110,7 @@ export const PlatformLicense = () => {
                   <Form layout="vertical">
                     <Form.Item label="License Type">
                       <Tag color={getLicenseTypeColor(license.licenseType)}>
-                        {license.licenseType.toUpperCase()}
+                        {(license.licenseType ?? 'unknown').toUpperCase()}
                       </Tag>
                     </Form.Item>
                     <Form.Item label="PO Number">
