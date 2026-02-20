@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -587,7 +588,7 @@ func (c *Client) DownloadPatchFile(info PatchDownloadInfo, destDir string) (stri
 	if err := ensureDir(destDir); err != nil {
 		return "", fmt.Errorf("failed to create destination directory: %w", err)
 	}
-	destPath := destDir + "/" + info.FileName
+	destPath := filepath.Join(destDir, info.FileName)
 
 	transport, err := buildTransport(c.proxyConfig)
 	if err != nil {

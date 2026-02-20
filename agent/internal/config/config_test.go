@@ -11,7 +11,15 @@ import (
 )
 
 func TestDefaultConfig_Defaults(t *testing.T) {
-	t.Parallel()
+	// Clear env vars that override defaults
+	t.Setenv("PATCHIQ_SERVER_URL", "")
+	t.Setenv("PATCHIQ_WEBUI_PORT", "")
+	t.Setenv("PATCHIQ_LOG_LEVEL", "")
+	t.Setenv("PATCHIQ_LOG_FORMAT", "")
+	t.Setenv("PATCHIQ_DATA_DIR", "")
+	t.Setenv("PATCHIQ_PROXY_URL", "")
+	t.Setenv("HTTPS_PROXY", "")
+	t.Setenv("HTTP_PROXY", "")
 	cfg := DefaultConfig()
 	assert.Equal(t, 60, cfg.HeartbeatInterval)
 	assert.Equal(t, 3006, cfg.WebUIPort)
@@ -66,12 +74,12 @@ func TestDefaultConfig_ProxyFallback(t *testing.T) {
 func TestDefaultConfig_InvalidWebUIPort(t *testing.T) {
 	t.Setenv("PATCHIQ_WEBUI_PORT", "not-a-number")
 	cfg := DefaultConfig()
-	// Invalid port falls back to default
+	// Invalid port keeps the hardcoded default
 	assert.Equal(t, 3006, cfg.WebUIPort)
 }
 
 func TestLoad_NonExistentReturnsDefaults(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PATCHIQ_WEBUI_PORT", "")
 	cfg, err := Load("/nonexistent/path/config.json")
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
