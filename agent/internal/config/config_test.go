@@ -10,18 +10,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// clearConfigEnv unsets all environment variables that DefaultConfig reads.
+// configEnvKeys lists all environment variables that DefaultConfig reads.
+var configEnvKeys = []string{
+	"PATCHIQ_SERVER_URL", "PATCHIQ_WEBUI_PORT", "PATCHIQ_LOG_LEVEL",
+	"PATCHIQ_LOG_FORMAT", "PATCHIQ_DATA_DIR", "PATCHIQ_PROXY_URL",
+	"PATCHIQ_PROXY_USER", "PATCHIQ_PROXY_PASSWORD",
+	"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY",
+}
+
+// clearConfigEnv unsets all environment variables that DefaultConfig reads,
+// and restores them when the test completes.
 func clearConfigEnv(t *testing.T) {
 	t.Helper()
-	for _, key := range []string{
-		"PATCHIQ_SERVER_URL", "PATCHIQ_WEBUI_PORT", "PATCHIQ_LOG_LEVEL",
-		"PATCHIQ_LOG_FORMAT", "PATCHIQ_DATA_DIR", "PATCHIQ_PROXY_URL",
-		"PATCHIQ_PROXY_USER", "PATCHIQ_PROXY_PASSWORD",
-		"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY",
-	} {
-		t.Setenv(key, "unset-placeholder")
+	saved := make(map[string]string)
+	for _, key := range configEnvKeys {
+		if val, ok := os.LookupEnv(key); ok {
+			saved[key] = val
+		}
 		os.Unsetenv(key)
 	}
+	t.Cleanup(func() {
+		for key, val := range saved {
+			os.Setenv(key, val)
+		}
+	})
 }
 
 func TestDefaultConfig_Defaults(t *testing.T) {

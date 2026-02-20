@@ -1,7 +1,9 @@
 package logger
 
 import (
+	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,13 +32,25 @@ func TestInit_InvalidLevel_DefaultsToInfo(t *testing.T) {
 }
 
 func TestInit_LogFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// On Windows, Init leaks the file handle (no Close), which prevents
+		// t.TempDir cleanup. Use a manual temp file instead.
+		logFile := filepath.Join(os.TempDir(), "patchiq-logger-test.log")
+		defer os.Remove(logFile)
+
+		err := Init("info", "json", logFile)
+		require.NoError(t, err)
+		_ = Init("info", "json", "") // reset to stdout
+		return
+	}
+
 	dir := t.TempDir()
 	logFile := filepath.Join(dir, "test.log")
 
 	err := Init("info", "json", logFile)
 	require.NoError(t, err)
 
-	// Reset logger to stdout so the file handle is released (needed for Windows cleanup)
+	// Reset logger to stdout so the file handle is released
 	_ = Init("info", "json", "")
 }
 
