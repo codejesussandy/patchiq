@@ -91,8 +91,7 @@ func runSetupWizard() {
 	fmt.Println(`
 ╔═══════════════════════════════════════════════════╗
 ║         Patchify Agent Setup Wizard               ║
-╚═══════════════════════════════════════════════════╝
-`)
+╚═══════════════════════════════════════════════════╝`)
 
 	homeDir, _ := os.UserHomeDir()
 	configPath := filepath.Join(homeDir, ".patchify-agent", "config.json")
@@ -224,5 +223,5 @@ func runSetupWizard() {
 	fmt.Println("\nTo start the agent, run:")
 	fmt.Println("  ./patchify-agent")
 	fmt.Println("\nOr to start with a different server:")
-	fmt.Println("  ./patchify-agent --server http://your-server:5001/api")
+	fmt.Println("  ./patchify-agent --server http://your-server:3001/api")
 }

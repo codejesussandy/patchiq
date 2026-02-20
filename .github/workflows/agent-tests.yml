@@ -1,0 +1,90 @@
+name: Agent Tests
+
+on:
+  push:
+    paths:
+      - 'agent/**'
+      - '.github/workflows/agent-tests.yml'
+
+jobs:
+  unit-tests:
+    name: Unit Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: agent/go.sum
+
+      - name: Run unit tests
+        working-directory: agent
+        run: go test ./... -count=1 -timeout 5m
+
+  integration-tests:
+    name: Integration Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: agent/go.sum
+
+      - name: Run integration tests
+        working-directory: agent
+        run: go test -tags integration ./tests/integration/ -count=1 -timeout 5m
+
+  build:
+    name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: agent/go.sum
+
+      - name: Build agent binary
+        working-directory: agent
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          ext=""
+          if [ "${{ matrix.goos }}" = "windows" ]; then ext=".exe"; fi
+          go build -o patchiq-agent-${{ matrix.goos }}-${{ matrix.goarch }}${ext} ./cmd/agent/
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: patchiq-agent-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: agent/patchiq-agent-*

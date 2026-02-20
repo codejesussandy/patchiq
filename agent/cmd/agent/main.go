@@ -72,7 +72,7 @@ func main() {
 
 	// Parse command line flags
 	configPath := flag.String("config", "", "Path to config file")
-	port := flag.Int("port", 4504, "Web UI port")
+	port := flag.Int("port", 3006, "Web UI port")
 	// Server URL priority: env var → ldflags value (set at build time) → must be provided via --server flag
 	envServerURL := os.Getenv("PATCHIQ_SERVER_URL")
 	if envServerURL != "" {
@@ -375,8 +375,7 @@ func showAgentStatus() {
 	fmt.Println(`
 ╔═══════════════════════════════════════════════════╗
 ║         Patchify Agent Status                     ║
-╚═══════════════════════════════════════════════════╝
-`)
+╚═══════════════════════════════════════════════════╝`)
 
 	homeDir, _ := os.UserHomeDir()
 	dataDir := filepath.Join(homeDir, ".patchify-agent")
@@ -574,8 +573,7 @@ func listAvailableRollbacks() {
 	fmt.Println(`
 ╔═══════════════════════════════════════════════════╗
 ║      Available Agent Rollback Versions            ║
-╚═══════════════════════════════════════════════════╝
-`)
+╚═══════════════════════════════════════════════════╝`)
 
 	// Get current binary directory
 	currentBinary, err := os.Executable()
@@ -625,8 +623,7 @@ func runRollback(targetVersion string, force bool) {
 	fmt.Println(`
 ╔═══════════════════════════════════════════════════╗
 ║         Agent Version Rollback                    ║
-╚═══════════════════════════════════════════════════╝
-`)
+╚═══════════════════════════════════════════════════╝`)
 
 	// Load rollback state if available
 	homeDir, _ := os.UserHomeDir()
