@@ -77,7 +77,7 @@ type Config struct {
 // DefaultConfig returns the default configuration with sensible defaults.
 // Environment variables take precedence over defaults:
 //   - PATCHIQ_SERVER_URL: backend server URL
-//   - PATCHIQ_WEBUI_PORT: web UI port (default: 4504)
+//   - PATCHIQ_WEBUI_PORT: web UI port (default: 3006)
 //   - PATCHIQ_LOG_LEVEL: log verbosity (default: "info")
 //   - PATCHIQ_DATA_DIR: data storage directory
 //   - HTTP_PROXY/HTTPS_PROXY: proxy configuration
@@ -87,7 +87,7 @@ func DefaultConfig() *Config {
 
 	cfg := &Config{
 		ServerURL:             "",
-		WebUIPort:             4504,
+		WebUIPort:             3006,
 		EnableWebUI:           true,
 		HeartbeatInterval:     60,
 		InventoryInterval:     21600, // 6 hours
