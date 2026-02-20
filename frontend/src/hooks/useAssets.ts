@@ -80,6 +80,7 @@ export function useAssetsList(params: {
   operationalStatus?: string;
   categoryId?: string;
   subCategoryId?: string;
+  os?: string;
 }) {
   return useQuery({
     queryKey: [...assetKeys.lists(), params],
@@ -94,6 +95,7 @@ export function useAssetsList(params: {
         operationalStatus: params.operationalStatus || undefined,
         categoryId: params.categoryId || undefined,
         subCategoryId: params.subCategoryId || undefined,
+        os: params.os || undefined,
       }),
     placeholderData: (prev) => prev,
   });

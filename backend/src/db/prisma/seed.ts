@@ -535,40 +535,40 @@ async function main() {
     {
       platform: 'Windows',
       architecture: 'amd64',
-      version: '1.0.0',
-      filePath: 'windows/amd64/1.0.0/patchiq-agent.exe',
+      version: '0.1.0',
+      filePath: 'windows/amd64/0.1.0/patchiq-agent.exe',
       fileSize: BigInt(15728640), // ~15 MB
       checksum: 'sha256:a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6', // Placeholder
     },
     {
       platform: 'Linux',
       architecture: 'amd64',
-      version: '1.0.0',
-      filePath: 'linux/amd64/1.0.0/patchiq-agent',
+      version: '0.1.0',
+      filePath: 'linux/amd64/0.1.0/patchiq-agent',
       fileSize: BigInt(12582912), // ~12 MB
       checksum: 'sha256:b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1', // Placeholder
     },
     {
       platform: 'Linux',
       architecture: 'arm64',
-      version: '1.0.0',
-      filePath: 'linux/arm64/1.0.0/patchiq-agent',
+      version: '0.1.0',
+      filePath: 'linux/arm64/0.1.0/patchiq-agent',
       fileSize: BigInt(11534336), // ~11 MB
       checksum: 'sha256:c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2', // Placeholder
     },
     {
       platform: 'Mac',
       architecture: 'amd64',
-      version: '1.0.0',
-      filePath: 'mac/amd64/1.0.0/patchiq-agent',
+      version: '0.1.0',
+      filePath: 'mac/amd64/0.1.0/patchiq-agent',
       fileSize: BigInt(14680064), // ~14 MB
       checksum: 'sha256:d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2c3', // Placeholder
     },
     {
       platform: 'Mac',
       architecture: 'arm64',
-      version: '1.0.0',
-      filePath: 'mac/arm64/1.0.0/patchiq-agent',
+      version: '0.1.0',
+      filePath: 'mac/arm64/0.1.0/patchiq-agent',
       fileSize: BigInt(13631488), // ~13 MB
       checksum: 'sha256:e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2c3d4', // Placeholder
     },
@@ -598,6 +598,53 @@ async function main() {
   console.log('Created', agentVersions.length, 'agent versions');
   console.log('⚠️  Agent binaries not included in seed. Run `make agent-release` to build, then upload to MinIO.');
   console.log('   Expected paths in MinIO bucket: agents/patchiq-agent-{platform}-{arch}-{version}{.exe}');
+
+  // ============================================
+  // Agent Downloads
+  // ============================================
+
+  console.log('\nSeeding agent downloads...');
+
+  // Fetch the created agent versions to build download URLs
+  const createdVersions = await prisma.agentVersion.findMany();
+  const windowsVersion = createdVersions.find((v) => v.platform === 'Windows');
+  const linuxVersion = createdVersions.find((v) => v.platform === 'Linux' && v.architecture === 'amd64');
+  const macVersion = createdVersions.find((v) => v.platform === 'Mac' && v.architecture === 'arm64');
+
+  const agentDownloads = [
+    {
+      os: 'Windows 11',
+      version: '0.1.0',
+      releaseDate: new Date('2025-01-15'),
+      downloadUrl: windowsVersion ? `/v1/agent-versions/${windowsVersion.id}/download` : '/v1/agent-versions/download',
+    },
+    {
+      os: 'Linux',
+      version: '0.1.0',
+      releaseDate: new Date('2025-01-15'),
+      downloadUrl: linuxVersion ? `/v1/agent-versions/${linuxVersion.id}/download` : '/v1/agent-versions/download',
+    },
+    {
+      os: 'MacOS',
+      version: '0.1.0',
+      releaseDate: new Date('2025-01-15'),
+      downloadUrl: macVersion ? `/v1/agent-versions/${macVersion.id}/download` : '/v1/agent-versions/download',
+    },
+  ];
+
+  for (const ad of agentDownloads) {
+    await prisma.agentDownload.upsert({
+      where: {
+        os_version: {
+          os: ad.os,
+          version: ad.version,
+        },
+      },
+      update: { downloadUrl: ad.downloadUrl, releaseDate: ad.releaseDate },
+      create: ad,
+    });
+  }
+  console.log('Created', agentDownloads.length, 'agent downloads');
 
   // ============================================
   // Sample Agents

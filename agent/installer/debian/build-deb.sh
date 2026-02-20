@@ -73,7 +73,7 @@ echo "✓ Created systemd service file"
 cat > "${BUILD_DIR}/etc/patchiq/config.json" <<EOF
 {
   "serverUrl": "",
-  "webUiPort": 4504,
+  "webUiPort": 3006,
   "dataDir": "/var/lib/patchiq-agent",
   "enableDownloadResume": true
 }

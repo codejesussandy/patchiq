@@ -21,15 +21,18 @@ export
 # Derived public URL
 PUBLIC_SCHEME ?= http
 PUBLIC_HOST ?= localhost
-PUBLIC_PORT ?= 3500
+PUBLIC_PORT ?= 3001
 PUBLIC_URL := $(PUBLIC_SCHEME)://$(PUBLIC_HOST):$(PUBLIC_PORT)
 
-# Service ports (must be in 3000-5173 range for firewall forwarding)
-POSTGRES_EXTERNAL_PORT ?= 4500
-REDIS_EXTERNAL_PORT ?= 4501
-PGADMIN_PORT ?= 4502
-PRISMA_STUDIO_PORT ?= 4503
-AGENT_WEBUI_PORT ?= 4504
+# Service ports (standardized to 3001-3010 range)
+POSTGRES_EXTERNAL_PORT ?= 3002
+REDIS_EXTERNAL_PORT ?= 3003
+PGADMIN_PORT ?= 3004
+PRISMA_STUDIO_PORT ?= 3005
+AGENT_WEBUI_PORT ?= 3006
+BACKEND_PORT ?= 3007
+MINIO_PORT ?= 3008
+MINIO_CONSOLE_PORT ?= 3009
 
 # Version (single source of truth for agent builds)
 VERSION ?= 0.1.0
@@ -537,7 +540,7 @@ status: check-health
 minio-console:
 	@echo "$(CYAN)MinIO Console:$(NC)"
 	@echo "  URL:      $(PUBLIC_URL)/minio/"
-	@echo "  Direct:   http://localhost:9001"
+	@echo "  Direct:   http://localhost:$(MINIO_CONSOLE_PORT)"
 	@echo "  Username: patchiq_admin"
 	@echo "  Password: patchiq_secret_key"
 	@echo ""

@@ -186,6 +186,7 @@ export const assetQuerySchema = z.object({
   operationalStatus: operationalStatusSchema.optional(),
   categoryId: uuidSchema.optional(),
   subCategoryId: uuidSchema.optional(),
+  os: z.string().optional(),
   sort: z.string().optional(),
   order: z.enum(['asc', 'desc']).optional().default('desc'),
 });

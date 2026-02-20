@@ -62,7 +62,7 @@ describe('AI API - /v1/ai', () => {
       expect(res.body.success).toBe(false);
     });
 
-    it('accepts valid request shape (may fail on AI key)', async () => {
+    it('returns fallback response when AI is not configured', async () => {
       const res = await agent
         .post('/v1/ai/chat')
         .set('Authorization', `Bearer ${adminToken}`)
@@ -70,12 +70,14 @@ describe('AI API - /v1/ai', () => {
           message: 'What is PatchIQ?',
           conversationHistory: [],
         });
-      // Without an AI key the service may return 500/503, but must not be 401/400
-      expect([200, 500, 503]).toContain(res.status);
-      expect(res.body.success !== undefined).toBe(true);
+      expect(res.status).toBe(200);
+      // Without AI key, the service returns a fallback message
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.message).toContain('AI assistant is not configured');
+      expect(res.body.data.model).toBe('fallback');
     });
 
-    it('accepts request with valid conversationHistory', async () => {
+    it('returns fallback response with valid conversationHistory', async () => {
       const res = await agent
         .post('/v1/ai/chat')
         .set('Authorization', `Bearer ${adminToken}`)
@@ -86,8 +88,8 @@ describe('AI API - /v1/ai', () => {
             { role: 'assistant', content: 'Hi there!' },
           ],
         });
-      // Without AI key may be 500/503
-      expect([200, 500, 503]).toContain(res.status);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
     });
   });
 
@@ -98,13 +100,14 @@ describe('AI API - /v1/ai', () => {
       expect(res.body.success).toBe(false);
     });
 
-    it('returns health status for admin', async () => {
+    it('returns not_configured health status when AI key is missing', async () => {
       const res = await agent
         .get('/v1/ai/health')
         .set('Authorization', `Bearer ${adminToken}`);
-      // 200 if AI configured, 500/503 if not, but never 401 for admin
-      expect([200, 500, 503]).toContain(res.status);
-      expect(res.body.success !== undefined).toBe(true);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.status).toBe('not_configured');
+      expect(res.body.data.configured).toBe(false);
     });
   });
 });

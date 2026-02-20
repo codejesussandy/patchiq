@@ -238,7 +238,7 @@ describe('Categories and SubCategories', () => {
     const res = await getAgent()
       .delete(`/v1/subcategories/${subCategoryId}`)
       .set('Authorization', `Bearer ${token}`);
-    expect([200, 204]).toContain(res.status);
+    expect(res.status).toBe(204);
 
     const getRes = await getAgent()
       .get(`/v1/subcategories/${subCategoryId}`)
@@ -258,7 +258,7 @@ describe('Categories and SubCategories', () => {
     const res = await getAgent()
       .delete(`/v1/categories/${categoryId}`)
       .set('Authorization', `Bearer ${token}`);
-    expect([200, 204]).toContain(res.status);
+    expect(res.status).toBe(204);
 
     const getRes = await getAgent()
       .get(`/v1/categories/${categoryId}`)

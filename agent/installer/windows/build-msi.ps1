@@ -11,7 +11,7 @@
 param(
     [string]$Version = "0.1.0",
     [string]$ServerUrl = "http://localhost:3000/api",
-    [int]$WebUIPort = 4504,
+    [int]$WebUIPort = 3006,
     [string]$LogLevel = "info",
     [int]$HeartbeatInterval = 60,
     [string]$OutputDir = ".\dist",
@@ -297,7 +297,7 @@ Write-Host "  Silent install with custom server URL:" -ForegroundColor Yellow
 Write-Host "    msiexec /i `"$msiFile`" SERVERURL=`"https://your-server/api`" /qn"
 Write-Host ""
 Write-Host "  Silent install with all options:" -ForegroundColor Yellow
-Write-Host "    msiexec /i `"$msiFile`" SERVERURL=`"https://your-server/api`" WEBUI_PORT=`"4504`" LOGLEVEL=`"debug`" /qn"
+Write-Host "    msiexec /i `"$msiFile`" SERVERURL=`"https://your-server/api`" WEBUI_PORT=`"3006`" LOGLEVEL=`"debug`" /qn"
 Write-Host ""
 Write-Host "  Uninstall:" -ForegroundColor Yellow
 Write-Host "    msiexec /x `"$msiFile`" /qn"

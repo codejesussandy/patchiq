@@ -62,10 +62,7 @@ describe('Patch Templates API - /v1/patch-templates', () => {
     });
 
     it('returns latest version if templates exist', async () => {
-      if (!firstTemplateId) {
-        console.log('No templates in DB, skipping latest version test');
-        return;
-      }
+      expect(firstTemplateId).toBeDefined();
       const res = await agent
         .get(`/v1/patch-templates/${firstTemplateId}/latest`)
         .set('Authorization', `Bearer ${adminToken}`);
@@ -75,12 +72,11 @@ describe('Patch Templates API - /v1/patch-templates', () => {
     });
 
     it('accepts platform query param', async () => {
-      if (!firstTemplateId) return;
+      expect(firstTemplateId).toBeDefined();
       const res = await agent
         .get(`/v1/patch-templates/${firstTemplateId}/latest?platform=WINDOWS`)
         .set('Authorization', `Bearer ${adminToken}`);
-      // May be 200 or 404 depending on platform availability
-      expect([200, 404]).toContain(res.status);
+      expect(res.status).toBe(200);
     });
   });
 });

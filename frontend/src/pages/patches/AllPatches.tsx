@@ -224,7 +224,7 @@ export const AllPatches = () => {
     const searchLower = searchText.toLowerCase();
     const matchesSearch = (patch.software || '').toLowerCase().includes(searchLower) || (patch.patchId || '').toLowerCase().includes(searchLower);
     if (!matchesSearch) return false;
-    if (osFilter) { if (osFilter === 'LINUX') { if (patch.os !== 'LINUX' && patch.os !== 'UBUNTU') return false; } else if (patch.os !== osFilter) return false; }
+    if (osFilter) { const osUpper = osFilter.toUpperCase(); if (osUpper === 'LINUX') { if (patch.os !== 'LINUX' && patch.os !== 'UBUNTU') return false; } else if (patch.os !== osUpper) return false; }
     if (activeFilters.severity && !activeFilters.severity.includes(patch.severity)) return false;
     if (activeFilters.os && !activeFilters.os.includes(patch.os)) return false;
     if (activeFilters.category && !activeFilters.category.includes(patch.category)) return false;

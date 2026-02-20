@@ -32,7 +32,7 @@ services:
     image: nginx:alpine
     container_name: patchiq_nginx
     ports:
-      - "${PUBLIC_PORT:-5173}:80"
+      - "${PUBLIC_PORT:-3001}:80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
@@ -54,7 +54,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: patchiq_dev
     ports:
-      - "${POSTGRES_EXTERNAL_PORT:-6003}:5432"
+      - "${POSTGRES_EXTERNAL_PORT:-3002}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -70,7 +70,7 @@ services:
     image: redis:7-alpine
     container_name: patchiq_redis
     ports:
-      - "${REDIS_EXTERNAL_PORT:-6004}:6379"
+      - "${REDIS_EXTERNAL_PORT:-3003}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -121,8 +121,8 @@ services:
       MINIO_ROOT_PASSWORD: patchiq_secret_key
     # Ports exposed for validation scripts running on host
     ports:
-      - "${MINIO_PORT:-9000}:9000"    # S3 API — accessible from host for testing
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"  # Web Console
+      - "${MINIO_PORT:-3008}:9000"    # S3 API — accessible from host for testing
+      - "${MINIO_CONSOLE_PORT:-3009}:9001"  # Web Console
     volumes:
       - minio_data:/data
     healthcheck:
@@ -143,7 +143,7 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     ports:
-      - "0.0.0.0:${PGADMIN_PORT:-6005}:80"
+      - "0.0.0.0:${PGADMIN_PORT:-3004}:80"
     depends_on:
       postgres:
         condition: service_healthy
@@ -173,13 +173,13 @@ services:
       - MINIO_USE_SSL=false
       # MinIO public access goes through nginx reverse proxy
       - MINIO_PUBLIC_ENDPOINT=${PUBLIC_HOST:-localhost}
-      - MINIO_PUBLIC_PORT=${PUBLIC_PORT:-5173}
+      - MINIO_PUBLIC_PORT=${PUBLIC_PORT:-3001}
       - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-change-in-production}
       - JWT_ACCESS_TOKEN_EXPIRY=1h
       - JWT_REFRESH_TOKEN_EXPIRY=7d
-      - CORS_ORIGIN=${PUBLIC_SCHEME:-http}://${PUBLIC_HOST:-localhost}:${PUBLIC_PORT:-5173}
+      - CORS_ORIGIN=${PUBLIC_SCHEME:-http}://${PUBLIC_HOST:-localhost}:${PUBLIC_PORT:-3001}
       # Backend public URL - agents use this to reach the backend via nginx
-      - BACKEND_PUBLIC_URL=${PUBLIC_SCHEME:-http}://${PUBLIC_HOST:-localhost}:${PUBLIC_PORT:-5173}
+      - BACKEND_PUBLIC_URL=${PUBLIC_SCHEME:-http}://${PUBLIC_HOST:-localhost}:${PUBLIC_PORT:-3001}
       # Mock services for local development
       - MOCK_NVD=true
       - MOCK_EMAIL=true
@@ -187,7 +187,7 @@ services:
       - MOCK_PATCHES=true
     # Port exposed for validation scripts running on host
     ports:
-      - "${BACKEND_PORT:-3000}:3000"
+      - "${BACKEND_PORT:-3007}:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -214,7 +214,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/patchiq_dev
     command: npx prisma studio --schema src/db/prisma/schema.prisma --port 5555 --browser none
     ports:
-      - "0.0.0.0:${PRISMA_STUDIO_PORT:-6006}:5555"
+      - "0.0.0.0:${PRISMA_STUDIO_PORT:-3005}:5555"
     depends_on:
       postgres:
         condition: service_healthy
@@ -234,8 +234,9 @@ services:
     environment:
       - NODE_ENV=development
       - VITE_API_BASE_URL=/v1
+      - VITE_PORT=5173
       - PUBLIC_HOST=${PUBLIC_HOST:-localhost}
-      - PUBLIC_PORT=${PUBLIC_PORT:-3500}
+      - PUBLIC_PORT=${PUBLIC_PORT:-3001}
       - HMR_HOST=${PUBLIC_HOST:-localhost}
     # Port exposed via nginx reverse proxy
     depends_on:

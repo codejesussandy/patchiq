@@ -198,6 +198,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       return [];
     }
     if (location.pathname.startsWith('/assets')) {
+      if (osFilter && osParamToKey[osFilter]) return [osParamToKey[osFilter]];
       if (categoryId && subCategoryId) return [`cat-${categoryId}-${subCategoryId}`];
       if (categoryId) return [`cat-${categoryId}`];
       return [];

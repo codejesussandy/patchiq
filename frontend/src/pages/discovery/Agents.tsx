@@ -31,6 +31,7 @@ import { useAgents, useAgentDownloads, useDeleteAgent, useAgentErrors } from '..
 import { useModal } from '../../hooks/useModal';
 import type { Agent } from '../../types/agent.types';
 import type { AgentError } from '../../services/agent.service';
+import { api } from '../../services/api.service';
 
 const { Title, Text } = Typography;
 
@@ -172,10 +173,25 @@ export const Agents = () => {
     }
   };
 
-  const handleDownloadAgent = (download: AgentDownload) => {
-    message.success(`Downloading ${download.os} agent...`);
-    // In real implementation, this would trigger a file download
-    window.open(download.downloadUrl, '_blank');
+  const handleDownloadAgent = async (download: AgentDownload) => {
+    message.info(`Downloading ${download.os} agent...`);
+    try {
+      const response = await api.get(download.downloadUrl, { responseType: 'blob' });
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const contentDisposition = response.headers?.['content-disposition'] || '';
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      a.download = filenameMatch?.[1] || `patchiq-agent-${download.os.toLowerCase().replace(/\s+/g, '-')}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      message.success(`${download.os} agent downloaded successfully`);
+    } catch {
+      message.error(`Failed to download ${download.os} agent`);
+    }
   };
 
   const getActionMenuItems = (agent: Agent): MenuProps['items'] => [

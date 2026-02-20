@@ -81,6 +81,7 @@ export const assetService = {
     operationalStatus?: string;
     categoryId?: string;
     subCategoryId?: string;
+    os?: string;
   }): Promise<{ data: Asset[]; total: number; page: number; limit: number; totalPages: number }> {
     const response = await api.get(`/assets`, { params });
     // Interceptor unwraps envelope: { success, data: PaginatedResult } → PaginatedResult

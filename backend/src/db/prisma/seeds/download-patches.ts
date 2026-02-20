@@ -20,7 +20,7 @@ import * as Minio from 'minio';
 
 const mc = new Minio.Client({
   endPoint: process.env.MINIO_ENDPOINT || 'localhost',
-  port: parseInt(process.env.MINIO_PORT || '5001'),
+  port: parseInt(process.env.MINIO_PORT || '3008'),
   useSSL: false,
   accessKey: process.env.MINIO_ACCESS_KEY || 'patchiq_admin',
   secretKey: process.env.MINIO_SECRET_KEY || 'patchiq_secret_key',
@@ -173,7 +173,7 @@ async function existsInMinio(key: string): Promise<boolean> {
 
 async function main() {
   console.log('=== Patch File Downloader ===');
-  console.log(`MinIO: localhost:5001 bucket=${BUCKET}`);
+  console.log(`MinIO: localhost:${process.env.MINIO_PORT || '3008'} bucket=${BUCKET}`);
   console.log(`Downloads: ${DOWNLOADS.length} files\n`);
 
   // Ensure temp dir

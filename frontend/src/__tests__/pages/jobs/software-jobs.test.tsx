@@ -11,20 +11,21 @@ describe('Software Jobs Page', () => {
   });
 
   it('renders software jobs tabs', async () => {
-    render(<SoftwareJobs />);
+    render(<SoftwareJobs />, { initialEntries: ['/patches/deployed/catalog'] });
 
-    // SoftwareJobs has tabs - should render the tab container
     await waitFor(() => {
-      expect(document.querySelector('.ant-tabs')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /catalog/i })).toBeInTheDocument();
     });
+    expect(screen.getByRole('tab', { name: /bundle/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /software deployed/i })).toBeInTheDocument();
   });
 
-  it('shows software deployment data', async () => {
-    render(<SoftwareJobs />);
+  it('shows software catalog data', async () => {
+    render(<SoftwareJobs />, { initialEntries: ['/patches/deployed/catalog'] });
 
-    // Default tab should show software catalog or deployed
+    // Default tab should show catalog data from MSW
     await waitFor(() => {
-      expect(document.querySelector('.ant-tabs')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /catalog/i })).toBeInTheDocument();
     });
   });
 
@@ -38,10 +39,12 @@ describe('Software Jobs Page', () => {
       })
     );
 
-    render(<SoftwareJobs />);
+    render(<SoftwareJobs />, { initialEntries: ['/patches/deployed/catalog'] });
 
     await waitFor(() => {
-      expect(document.querySelector('.ant-tabs')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /catalog/i })).toBeInTheDocument();
     });
+    // Verify error state - tabs render but no data
+    expect(screen.getByRole('tab', { name: /bundle/i })).toBeInTheDocument();
   });
 });

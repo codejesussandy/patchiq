@@ -261,6 +261,7 @@ export async function listAssets(req: Request, res: Response, next: NextFunction
       operationalStatus: query.operationalStatus,
       categoryId: query.categoryId,
       subCategoryId: query.subCategoryId,
+      os: query.os,
       search: query.search,
       page: pagination.page,
       limit: pagination.limit,

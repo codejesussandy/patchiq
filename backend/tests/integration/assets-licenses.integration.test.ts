@@ -23,8 +23,8 @@ describe('Software Licenses', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    const data = res.body.data;
-    const items = Array.isArray(data) ? data : data.data;
+    expect(res.body.data).toBeDefined();
+    const items = res.body.data.data ?? res.body.data;
     expect(Array.isArray(items)).toBe(true);
   });
 
@@ -162,7 +162,7 @@ describe('Software Licenses', () => {
     const res = await getAgent()
       .delete(`/v1/software-licenses/${softwareLicenseId}`)
       .set('Authorization', `Bearer ${token}`);
-    expect([200, 204]).toContain(res.status);
+    expect(res.status).toBe(204);
 
     const getRes = await getAgent()
       .get(`/v1/software-licenses/${softwareLicenseId}`)
@@ -198,8 +198,8 @@ describe('OS Licenses', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    const data = res.body.data;
-    const items = Array.isArray(data) ? data : data.data;
+    expect(res.body.data).toBeDefined();
+    const items = res.body.data.data ?? res.body.data;
     expect(Array.isArray(items)).toBe(true);
   });
 
@@ -310,7 +310,7 @@ describe('OS Licenses', () => {
     const res = await getAgent()
       .delete(`/v1/os-licenses/${osLicenseId}`)
       .set('Authorization', `Bearer ${token}`);
-    expect([200, 204]).toContain(res.status);
+    expect(res.status).toBe(204);
 
     const getRes = await getAgent()
       .get(`/v1/os-licenses/${osLicenseId}`)

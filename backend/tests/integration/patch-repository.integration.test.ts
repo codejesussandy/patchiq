@@ -66,7 +66,7 @@ describe('Patch Repository API - /v1/patch-repository', () => {
           baseUrl: 'https://example.com/patches',
           isEnabled: true,
         });
-      expect([200, 201]).toContain(res.status);
+      expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
       createdSourceId = res.body.data.id;
     });
@@ -116,8 +116,7 @@ describe('Patch Repository API - /v1/patch-repository', () => {
       const res = await agent
         .patch('/v1/patch-repository/sources/00000000-0000-0000-0000-000000000000/toggle')
         .set('Authorization', `Bearer ${adminToken}`);
-      // Toggle doesn't check existence first, may return 404 or 500
-      expect([404, 500]).toContain(res.status);
+      expect(res.status).toBe(404);
       expect(res.body.success).toBe(false);
     });
 
@@ -216,8 +215,8 @@ describe('Patch Repository API - /v1/patch-repository', () => {
         // Request timed out or connection error - acceptable when Redis is unavailable
         return;
       }
-      // Either 200 (Redis available) or 500/503 (Redis unavailable)
-      expect([200, 500, 503]).toContain(res.status);
+      // Either 200 (Redis available) or 503 (Redis unavailable)
+      expect([200, 202]).toContain(res.status);
       if (res.status === 200) {
         expect(res.body.success).toBe(true);
       } else {

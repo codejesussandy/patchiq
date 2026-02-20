@@ -60,7 +60,7 @@
 
     <!-- Public properties for silent install customization -->
     <Property Id="SERVERURL" Value="http://localhost:3000/api" Secure="yes" />
-    <Property Id="WEBUI_PORT" Value="4504" Secure="yes" />
+    <Property Id="WEBUI_PORT" Value="3006" Secure="yes" />
     <Property Id="LOGLEVEL" Value="info" Secure="yes" />
     <Property Id="HEARTBEAT_INTERVAL" Value="60" Secure="yes" />
 

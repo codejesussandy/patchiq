@@ -42,7 +42,8 @@ describe('CVE Sync Module', () => {
         .set('Authorization', `Bearer ${token}`)
         .timeout(35000);
     } catch (err) {
-      // Supertest timeout — Redis unavailable, getCveSyncQueueStats() hung. Acceptable.
+      // Supertest timeout — Redis unavailable, getCveSyncQueueStats() hung.
+      console.warn('Sync status timed out — Redis may be unavailable');
       return;
     }
     expect(res.status).toBe(200);
@@ -57,13 +58,9 @@ describe('CVE Sync Module', () => {
     const res = await getAgent()
       .get('/v1/vulnerabilities/sync/cve/CVE-2021-44228')
       .set('Authorization', `Bearer ${token}`);
-    // Either found (200) or not in local DB and NVD fetch failed (could be 404/500)
-    // But since seed data includes this CVE, it should be 200
-    expect([200, 404, 500]).toContain(res.status);
-    if (res.status === 200) {
-      expect(res.body.success).toBe(true);
-      expect(res.body.data).toBeDefined();
-    }
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/vulnerabilities/sync/cve/:cveId 400 for invalid CVE format', async () => {
@@ -78,12 +75,9 @@ describe('CVE Sync Module', () => {
     const res = await getAgent()
       .get('/v1/vulnerabilities/sync/cve/CVE-9999-99999')
       .set('Authorization', `Bearer ${token}`);
-    // 404 if not in DB and NVD returns nothing, or 500 if NVD unreachable
-    expect([404, 500]).toContain(res.status);
-    if (res.status === 404) {
-      expect(res.body.success).toBe(false);
-      expect(res.body.error.code).toBe('NOT_FOUND');
-    }
+    expect(res.status).toBe(404);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('NOT_FOUND');
   });
 
   // ---- Queue sync endpoints (may fail if Redis/BullMQ unavailable) ----
@@ -96,17 +90,16 @@ describe('CVE Sync Module', () => {
         .set('Authorization', `Bearer ${token}`)
         .timeout(35000);
     } catch (err) {
-      // Supertest timeout — Redis unavailable, request hung. Acceptable.
+      // Supertest timeout — Redis unavailable, request hung.
+      console.warn('Sync POST timed out — Redis may be unavailable');
       return;
     }
-    // 200 if queued, or 5xx if Redis unavailable — both are acceptable
     if (res.status === 200) {
       expect(res.body.success).toBe(true);
       expect(['QUEUED', 'ALREADY_RUNNING']).toContain(res.body.data.status);
       expect(res.body.data.message).toBeDefined();
     } else {
-      // Redis/BullMQ not available — error response should be structured
-      expect(res.status).toBeGreaterThanOrEqual(400);
+      expect([202, 503]).toContain(res.status);
     }
   }, 40000);
 
@@ -118,7 +111,8 @@ describe('CVE Sync Module', () => {
         .set('Authorization', `Bearer ${token}`)
         .timeout(35000);
     } catch (err) {
-      // Supertest timeout — Redis unavailable, request hung. Acceptable.
+      // Supertest timeout — Redis unavailable, request hung.
+      console.warn('Sync/full POST timed out — Redis may be unavailable');
       return;
     }
     if (res.status === 200) {
@@ -126,7 +120,7 @@ describe('CVE Sync Module', () => {
       expect(['QUEUED', 'ALREADY_RUNNING']).toContain(res.body.data.status);
       expect(res.body.data.message).toBeDefined();
     } else {
-      expect(res.status).toBeGreaterThanOrEqual(400);
+      expect([202, 503]).toContain(res.status);
     }
   }, 40000);
 

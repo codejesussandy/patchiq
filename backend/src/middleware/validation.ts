@@ -19,7 +19,7 @@ export function validate<T extends ZodSchema>(
       } else if (target === 'query') {
         Object.assign(req, { query: result });
       } else {
-        req.params = result;
+        Object.assign(req.params, result);
       }
 
       next();

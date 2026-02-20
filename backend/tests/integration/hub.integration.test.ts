@@ -113,8 +113,7 @@ describe('Hub API - /v1/hub', () => {
           installSource: 'url',
           installCommand: 'echo install',
         });
-      // Accept 200 or 201
-      expect([200, 201]).toContain(res.status);
+      expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
       // Use packageId (SWP-XXXX) for URL params, not DB UUID
       createdPackageId = res.body.data.packageId;
@@ -165,9 +164,9 @@ describe('Hub API - /v1/hub', () => {
       const res = await agent
         .get(`/v1/hub/packages/${createdPackageId}/bundle`)
         .set('Authorization', `Bearer ${adminToken}`);
-      // Could be 200, 400 (no bundle), or 404 depending on package type
-      expect([200, 400, 404]).toContain(res.status);
-      expect(res.body.success !== undefined).toBe(true);
+      // Package was created with installSource: 'url' (no bundle), so 400 is expected
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBeDefined();
     });
   });
 
@@ -184,8 +183,8 @@ describe('Hub API - /v1/hub', () => {
       const res = await agent
         .get(`/v1/hub/packages/${createdPackageId}/execution-payload/install`)
         .set('Authorization', `Bearer ${adminToken}`);
-      // 200 or 400 (no scripts/bundle) or 404 depending on package type
-      expect([200, 400, 404]).toContain(res.status);
+      // Package was created with installSource: 'url' (no scripts/bundle), so 400 is expected
+      expect(res.status).toBe(400);
     });
   });
 
@@ -241,7 +240,7 @@ describe('Hub API - /v1/hub', () => {
           description: 'Integration test bundle',
           packageIds: [],
         });
-      expect([200, 201]).toContain(res.status);
+      expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
       createdBundleId = res.body.data.bundleId;
     });

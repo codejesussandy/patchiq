@@ -75,9 +75,10 @@ export function AllAssets() {
     defaultFilters: { status: '', operationalStatus: '', categoryId: '' },
   });
 
-  // URL-driven category/subcategory from sidebar navigation
+  // URL-driven category/subcategory/os from sidebar navigation
   const categoryId = searchParams.get('category') || undefined;
   const subCategoryId = searchParams.get('subcategory') || undefined;
+  const osFilter = searchParams.get('os') || undefined;
 
   // Server-side paginated query
   const { data: paginatedResult, isLoading: loading } = useAssetsList({
@@ -90,6 +91,7 @@ export function AllAssets() {
     operationalStatus: table.filters.operationalStatus || undefined,
     categoryId: categoryId || table.filters.categoryId || undefined,
     subCategoryId: subCategoryId || undefined,
+    os: osFilter || undefined,
   });
 
   const assets = paginatedResult?.data ?? [];
@@ -115,6 +117,7 @@ export function AllAssets() {
   const [columnConfig, setColumnConfig] = useColumnConfig(defaultColumnConfig, STORAGE_KEY);
   const [uploading, setUploading] = useState(false);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [filterForm] = Form.useForm();
   const [downloadAgentModalVisible, setDownloadAgentModalVisible] = useState(false);
 
   const handleCategoryEdit = (asset: Asset) => {
@@ -184,14 +187,21 @@ export function AllAssets() {
   };
 
   const handleApplyFilters = () => {
+    const values = filterForm.getFieldsValue();
+    table.setFilters({
+      status: values.status || '',
+      operationalStatus: values.operationalStatus || '',
+      categoryId: values.categoryId || '',
+    });
     setFilterModalVisible(false);
-    message.success('Filters applied');
   };
 
   const handleClearFilters = () => {
+    filterForm.resetFields();
     table.setFilters({ status: '', operationalStatus: '', categoryId: '' });
-    message.info('Filters cleared');
   };
+
+  const activeFilterCount = [table.filters.status, table.filters.operationalStatus, table.filters.categoryId].filter(Boolean).length;
 
   const visibleColumns = columnConfig.filter((col) => col.visible).sort((a, b) => {
     if (a.pinned && !b.pinned) return -1;
@@ -263,10 +273,10 @@ export function AllAssets() {
   return (
     <div style={{ background: '#fff', height: '100vh', display: 'flex', flexDirection: 'column', padding: '0' }}>
       <Helmet>
-        <title>Assets - PatchIQ</title>
+        <title>{osFilter ? `${osFilter} Assets` : 'Assets'} - PatchIQ</title>
       </Helmet>
       <div style={{ padding: '8px 12px 4px 12px', flexShrink: 0 }}>
-        <Title level={3} style={{ margin: 0 }}>Assets</Title>
+        <Title level={3} style={{ margin: 0 }}>{osFilter ? `${osFilter} Assets` : 'Assets'}</Title>
       </div>
 
       <Row gutter={[12, 12]} style={{ padding: '4px 12px', flexShrink: 0, marginRight: 0 }} align="middle">
@@ -280,7 +290,10 @@ export function AllAssets() {
               allowClear
               onSearch={(value) => table.setSearch(value)}
             />
-            <Button icon={<FilterOutlined />} onClick={() => setFilterModalVisible(true)}>Filter</Button>
+            <Button icon={<FilterOutlined />} onClick={() => { filterForm.setFieldsValue({ status: table.filters.status || undefined, operationalStatus: table.filters.operationalStatus || undefined, categoryId: table.filters.categoryId || undefined }); setFilterModalVisible(true); }}>
+              Filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+            </Button>
+            {activeFilterCount > 0 && <Button type="link" size="small" onClick={handleClearFilters}>Clear filters</Button>}
             <Tooltip title="Column Settings"><Button icon={<TableSettingsIcon />} onClick={() => setColumnSettingsOpen(true)} /></Tooltip>
           </Space>
         </Col>
@@ -359,27 +372,28 @@ export function AllAssets() {
       </Modal>
 
       {/* Filter Modal */}
-      <Modal title="Filter Assets" open={filterModalVisible} onOk={handleApplyFilters}
-        onCancel={() => setFilterModalVisible(false)} width={500} okText="Apply Filters" cancelText="Close">
-        <Form layout="vertical">
-          <Form.Item label="Filter by Category">
-            <Select placeholder="Select a category" value={table.filters.categoryId || null}
-              onChange={(value) => table.setFilters({ categoryId: value || '' })}
+      <Modal title="Filter Assets" open={filterModalVisible} onCancel={() => setFilterModalVisible(false)} width={500}
+        footer={[
+          <Button key="reset" onClick={() => { handleClearFilters(); setFilterModalVisible(false); }}>Reset</Button>,
+          <Button key="cancel" onClick={() => setFilterModalVisible(false)}>Cancel</Button>,
+          <Button key="apply" type="primary" onClick={handleApplyFilters}>Apply Filters</Button>,
+        ]}
+      >
+        <Form form={filterForm} layout="vertical">
+          <Form.Item name="categoryId" label="Category">
+            <Select placeholder="Select a category"
               options={categories.map((cat) => ({ label: cat.name, value: cat.id }))} allowClear />
           </Form.Item>
-          <Form.Item label="Filter by Status">
-            <Select placeholder="Select status" value={table.filters.status || null}
-              onChange={(value) => table.setFilters({ status: value || '' })}
+          <Form.Item name="status" label="Status">
+            <Select placeholder="Select status"
               options={[{ label: 'In Use', value: 'IN_USE' }, { label: 'Available', value: 'AVAILABLE' }, { label: 'Under Maintenance', value: 'UNDER_MAINTENANCE' }, { label: 'Retired', value: 'RETIRED' }]}
               allowClear />
           </Form.Item>
-          <Form.Item label="Filter by Operational Status">
-            <Select placeholder="Select operational status" value={table.filters.operationalStatus || null}
-              onChange={(value) => table.setFilters({ operationalStatus: value || '' })}
+          <Form.Item name="operationalStatus" label="Operational Status">
+            <Select placeholder="Select operational status"
               options={[{ label: 'Connected', value: 'CONNECTED' }, { label: 'Disconnected', value: 'DISCONNECTED' }]}
               allowClear />
           </Form.Item>
-          <Button type="dashed" onClick={handleClearFilters} style={{ width: '100%' }}>Clear All Filters</Button>
         </Form>
       </Modal>
 

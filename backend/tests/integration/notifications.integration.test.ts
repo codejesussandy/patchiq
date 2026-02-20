@@ -94,7 +94,8 @@ describe('Notifications API - /v1/notifications', () => {
         .set('Authorization', `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(typeof res.body.data === 'number' || res.body.data !== undefined).toBe(true);
+      expect(res.body.data).toBeDefined();
+      expect(typeof res.body.data.count).toBe('number');
     });
   });
 
@@ -134,6 +135,11 @@ describe('Notifications API - /v1/notifications', () => {
         .set('Authorization', `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
+      // Verify DB state - the test notification should be marked as read
+      expect(createdNotificationId).toBeDefined();
+      const dbNotif = await prisma.notification.findUnique({ where: { id: createdNotificationId } });
+      expect(dbNotif).not.toBeNull();
+      expect(dbNotif.read).toBe(true);
     });
   });
 
@@ -165,6 +171,10 @@ describe('Notifications API - /v1/notifications', () => {
         .set('Authorization', `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
+      // Verify DB state
+      const dbNotif = await prisma.notification.findUnique({ where: { id: createdNotificationId } });
+      expect(dbNotif).not.toBeNull();
+      expect(dbNotif!.read).toBe(true);
     });
   });
 
@@ -250,7 +260,10 @@ describe('Notifications API - /v1/notifications', () => {
       const res = await agent
         .delete(`/v1/notifications/${createdNotificationId}`)
         .set('Authorization', `Bearer ${adminToken}`);
-      expect([200, 204]).toContain(res.status);
+      expect(res.status).toBe(204);
+      // Verify DB state
+      const dbNotif = await prisma.notification.findUnique({ where: { id: createdNotificationId } });
+      expect(dbNotif).toBeNull();
       createdNotificationId = null;
     });
   });
@@ -297,7 +310,7 @@ describe('Notifications API - /v1/notifications', () => {
       const res = await agent
         .delete('/v1/notifications')
         .set('Authorization', `Bearer ${adminToken}`);
-      expect([200, 204]).toContain(res.status);
+      expect(res.status).toBe(204);
     });
   });
 });

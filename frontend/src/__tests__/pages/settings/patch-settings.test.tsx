@@ -80,14 +80,20 @@ describe('Vulnerability Preference', () => {
   });
 
   it('saves updated preferences', async () => {
+    const user = userEvent.setup();
     render(<VulnerabilityPreference />);
 
     await waitFor(() => {
       expect(screen.getByText('Vulnerability Preference')).toBeInTheDocument();
     });
 
-    // Verify the save button is present
-    expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+    const saveButton = screen.getByRole('button', { name: /save/i });
+    await user.click(saveButton);
+
+    // Verify save succeeded
+    await waitFor(() => {
+      expect(screen.queryByText(/failed/i)).not.toBeInTheDocument();
+    });
   });
 
   it('syncs vulnerability database', async () => {

@@ -80,9 +80,9 @@ describe('Agent Versions API - /v1/agent-versions', () => {
         .get('/v1/agent-versions/latest?platform=linux&architecture=amd64')
         .set('Authorization', `Bearer ${adminToken}`);
 
-      // Could be 200 with data or 404 if no versions exist for that platform
-      expect([200, 404]).toContain(res.status);
-      expect(res.body.success).toBeDefined();
+      // No seed data for agent versions in the test DB, so 404 is expected
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
     });
   });
 

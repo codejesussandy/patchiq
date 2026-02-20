@@ -31,7 +31,6 @@ export const SoftwareInventory = () => {
 
   const [searchText, setSearchText] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [osFilter, setOsFilter] = useState<string>('all-os');
   const [categoryFilter, setCategoryFilter] = useState<string>('all-categories');
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedSoftware, setSelectedSoftware] = useState<SoftwareInventoryType | null>(null);
@@ -102,8 +101,18 @@ export const SoftwareInventory = () => {
 
   const filteredSoftware = software.filter((sw) => {
     // Text search filter
-    const matchesSearch = sw.softwareName.toLowerCase().includes(searchText.toLowerCase());
-    return matchesSearch;
+    const matchesSearch =
+      !searchText ||
+      sw.softwareName.toLowerCase().includes(searchText.toLowerCase()) ||
+      (sw.manufacturer || '').toLowerCase().includes(searchText.toLowerCase()) ||
+      (sw.version || '').toLowerCase().includes(searchText.toLowerCase());
+
+    // Category (softwareType) filter
+    const matchesCategory =
+      categoryFilter === 'all-categories' ||
+      (sw.softwareType || '').toLowerCase() === categoryFilter.toLowerCase();
+
+    return matchesSearch && matchesCategory;
   });
 
   return (
@@ -136,12 +145,6 @@ export const SoftwareInventory = () => {
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
         />
-        <Select value={osFilter} onChange={setOsFilter} style={{ width: 200 }}>
-          <Option value="all-os">All OS</Option>
-          <Option value="windows">Windows</Option>
-          <Option value="macos">MacOS</Option>
-          <Option value="linux">Linux</Option>
-        </Select>
         <Select value={categoryFilter} onChange={setCategoryFilter} style={{ width: 200 }}>
           <Option value="all-categories">All Categories</Option>
           <Option value="application">Application</Option>

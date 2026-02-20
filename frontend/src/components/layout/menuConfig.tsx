@@ -53,7 +53,7 @@ export const assetTabItems: MenuItem[] = [
   { key: 'software-hub', icon: <AppstoreOutlined />, label: 'Software Hub' },
 ];
 
-export const patchOsCategories: MenuItem[] = [
+export const osCategories: MenuItem[] = [
   { key: 'os-windows', icon: <WindowsOutlined />, label: 'Windows' },
   { key: 'os-macos', icon: <AppleOutlined />, label: 'Mac' },
   { key: 'os-linux', icon: <DesktopOutlined />, label: 'Linux' },

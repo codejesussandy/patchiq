@@ -58,7 +58,7 @@ The MSI installer provides:
 Options:
   -Version <string>           Agent version (default: "1.0.0")
   -ServerUrl <string>         Default server URL (default: "http://localhost:3000/api")
-  -WebUIPort <int>            Web UI port (default: 4504)
+  -WebUIPort <int>            Web UI port (default: 3006)
   -LogLevel <string>          Log level (default: "info")
   -HeartbeatInterval <int>    Heartbeat interval in seconds (default: 60)
   -OutputDir <string>         Output directory (default: ".\dist")
@@ -139,7 +139,7 @@ msiexec /i PatchIQAgent-1.0.0-amd64.msi /qn
 ```cmd
 msiexec /i PatchIQAgent-1.0.0-amd64.msi ^
   SERVERURL="https://patchiq.example.com/api" ^
-  WEBUI_PORT="4504" ^
+  WEBUI_PORT="3006" ^
   LOGLEVEL="info" ^
   HEARTBEAT_INTERVAL="60" ^
   /qn
@@ -150,7 +150,7 @@ msiexec /i PatchIQAgent-1.0.0-amd64.msi ^
 | Property | Description | Default |
 |----------|-------------|---------|
 | `SERVERURL` | PatchIQ backend server URL | `http://localhost:3000/api` |
-| `WEBUI_PORT` | Agent Web UI port | `4504` |
+| `WEBUI_PORT` | Agent Web UI port | `3006` |
 | `LOGLEVEL` | Logging level (debug/info/warn/error) | `info` |
 | `HEARTBEAT_INTERVAL` | Heartbeat interval in seconds | `60` |
 

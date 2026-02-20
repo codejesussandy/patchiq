@@ -65,7 +65,7 @@ SYSTEMD
 cat > "$BUILD_DIR/etc/patchiq/config.json" <<'CONFIG'
 {
   "serverUrl": "",
-  "webUiPort": 4504,
+  "webUiPort": 3006,
   "dataDir": "/var/lib/patchiq-agent",
   "enableDownloadResume": true
 }

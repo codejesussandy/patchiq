@@ -6,7 +6,7 @@ export {
   topMenuItems,
   patchesTabItems,
   assetTabItems,
-  patchOsCategories,
+  osCategories,
   vulnerabilityMenuItems,
   settingsMenuItems,
   sideMenuRoutes,

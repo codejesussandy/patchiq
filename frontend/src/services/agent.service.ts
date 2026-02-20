@@ -36,8 +36,8 @@ export const agentService = {
 
   async getAgentDownloads(): Promise<AgentDownload[]> {
     const response = await api.get('/agents/downloads');
-    // Paginated response: interceptor returns { data: T[], ...meta }
-    return response.data.data || [];
+    // Non-paginated response: interceptor unwraps to T directly
+    return response.data || [];
   },
 
   async deleteAgent(id: string): Promise<void> {

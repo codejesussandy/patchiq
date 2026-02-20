@@ -93,7 +93,7 @@ describe('Reports API - /v1/reports', () => {
             description: 'Integration test report',
           },
         });
-      expect([200, 201]).toContain(res.status);
+      expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       // Step 1 returns { reportId, availableColumns, availableFilters }
       createdReportId = res.body.data.reportId;
@@ -109,7 +109,7 @@ describe('Reports API - /v1/reports', () => {
           format: 'PDF',
           description: 'Simple integration test report',
         });
-      expect([200, 201]).toContain(res.status);
+      expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
       // cleanup
       if (res.body.data && res.body.data.id) {
@@ -180,8 +180,8 @@ describe('Reports API - /v1/reports', () => {
       const res = await agent
         .get(`/v1/reports/${createdReportId}/download`)
         .set('Authorization', `Bearer ${adminToken}`);
-      // Report is PENDING so returns 400 (BadRequest), 404 if no file, or 200 if generated
-      expect([200, 302, 400, 404]).toContain(res.status);
+      // Report exists but has no file generated yet, server returns 404
+      expect(res.status).toBe(404);
     });
   });
 
@@ -198,8 +198,7 @@ describe('Reports API - /v1/reports', () => {
       const res = await agent
         .post(`/v1/reports/${createdReportId}/regenerate`)
         .set('Authorization', `Bearer ${adminToken}`);
-      // Returns 200 with updated report, or 400 if already generating
-      expect([200, 202, 400]).toContain(res.status);
+      expect([200, 202]).toContain(res.status);
       if (res.status === 200) {
         expect(res.body.success).toBe(true);
       }
@@ -264,7 +263,7 @@ describe('Reports API - /v1/reports', () => {
           recipients: ['test@example.com'],
           enabled: true,
         });
-      expect([200, 201]).toContain(res.status);
+      expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
       createdScheduleId = res.body.data.id;
     });

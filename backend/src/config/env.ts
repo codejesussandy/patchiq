@@ -11,7 +11,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.string().transform(Number).default('3000'),
   API_VERSION: z.string().default('v1'),
-  CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  CORS_ORIGIN: z.string().default('http://localhost:3001'),
 
   // Database
   DATABASE_URL: z.string().url(),
@@ -104,15 +104,15 @@ const envSchema = z.object({
   ENCRYPTION_KEY: z.string().min(32).optional(),
 
   // Redis (for BullMQ job queue)
-  REDIS_URL: z.string().url().optional().default('redis://localhost:6004'),
+  REDIS_URL: z.string().url().optional().default('redis://localhost:3003'),
 
   // Backend Public URL (for agent downloads)
   // This is the URL agents use to reach the backend from outside the Docker network
-  BACKEND_PUBLIC_URL: z.string().url().optional().default('http://localhost:5173'),
+  BACKEND_PUBLIC_URL: z.string().url().optional().default('http://localhost:3001'),
 
   // MinIO (Patch Repository Storage)
   MINIO_ENDPOINT: z.string().optional().default('localhost'),
-  MINIO_PORT: z.string().transform(Number).optional().default('9000'),
+  MINIO_PORT: z.string().transform(Number).optional().default('3008'),
   MINIO_ACCESS_KEY: z.string().optional().default('patchiq_admin'),
   MINIO_SECRET_KEY: z.string().optional().default('patchiq_secret_key'),
   MINIO_BUCKET: z.string().optional().default('patches'),

@@ -115,10 +115,18 @@ class PatchRepositoryService {
     return sourcesWithStats;
   }
 
-  async togglePatchSource(id: string, isEnabled: boolean) {
+  async togglePatchSource(id: string, isEnabled?: boolean) {
+    const existing = await prisma.patchSource.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundError('Patch source not found');
+    }
+
+    // If isEnabled is not provided, toggle the current state
+    const newState = isEnabled !== undefined ? isEnabled : !existing.isEnabled;
+
     return prisma.patchSource.update({
       where: { id },
-      data: { isEnabled },
+      data: { isEnabled: newState },
     });
   }
 

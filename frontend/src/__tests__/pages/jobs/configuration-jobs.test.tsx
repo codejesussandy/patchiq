@@ -57,9 +57,11 @@ describe('Configuration Jobs Page', () => {
 
     render(<ConfigurationJobs />, { initialEntries: ['/jobs/configuration-jobs/catalog'] });
 
-    // Tabs should still render
+    // Verify tabs still render (page structure intact)
     await waitFor(() => {
-      expect(document.querySelector('.ant-tabs')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /catalog/i })).toBeInTheDocument();
     });
+    // Verify no catalog data is shown (error prevents data load)
+    expect(screen.queryByText('Enable Firewall')).not.toBeInTheDocument();
   });
 });

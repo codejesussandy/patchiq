@@ -14,7 +14,7 @@
     The URL of the PatchIQ backend API (default: http://localhost:3000/api)
 
 .PARAMETER UiPort
-    The port for the local web UI (default: 4504)
+    The port for the local web UI (default: 3006)
 
 .PARAMETER AgentExePath
     Path to the patchiq-agent.exe file (default: same directory as script)
@@ -37,7 +37,7 @@ param(
     [string]$ServerUrl = "http://localhost:3000/api",
 
     [Parameter()]
-    [int]$UiPort = 4504,
+    [int]$UiPort = 3006,
 
     [Parameter()]
     [string]$AgentExePath,

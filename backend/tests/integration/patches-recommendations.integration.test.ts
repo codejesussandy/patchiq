@@ -226,10 +226,7 @@ describe('GET /v1/patch-recommendations', () => {
 
 describe('GET /v1/patch-recommendations/:id', () => {
   it('returns a recommendation by ID', async () => {
-    if (!seededRecommendationId) {
-      console.warn('No seeded recommendation available - skipping get by ID test');
-      return;
-    }
+    expect(seededRecommendationId).toBeDefined();
 
     const token = await getAdminToken();
     const res = await getAgent()
@@ -248,7 +245,8 @@ describe('GET /v1/patch-recommendations/:id', () => {
       .get(`${REC_BASE}/00000000-0000-0000-0000-000000000099`)
       .set('Authorization', `Bearer ${token}`);
 
-    expect(res.status).toBeGreaterThanOrEqual(400);
+    // Controller throws BadRequestError (400) when recommendation is not found
+    expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
   });
 });
@@ -261,7 +259,7 @@ describe('POST /v1/patch-recommendations/:id/accept', () => {
   let acceptRecId: string;
 
   beforeAll(async () => {
-    if (!seededAssetId) return;
+    expect(seededAssetId).toBeDefined();
 
     // Create a fresh vulnerability so we avoid the unique constraint (assetId, vulnerabilityId, patchId)
     const acceptVuln = await prisma.vulnerability.create({
@@ -296,10 +294,7 @@ describe('POST /v1/patch-recommendations/:id/accept', () => {
   });
 
   it('accepts a recommendation', async () => {
-    if (!acceptRecId) {
-      console.warn('No asset available to create recommendation - skipping');
-      return;
-    }
+    expect(acceptRecId).toBeDefined();
 
     const token = await getAdminToken();
     const res = await getAgent()
@@ -310,6 +305,11 @@ describe('POST /v1/patch-recommendations/:id/accept', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.status).toBe('ACCEPTED');
+
+    // Verify DB state
+    const dbRec = await prisma.assetPatchRecommendation.findUnique({ where: { id: acceptRecId } });
+    expect(dbRec).not.toBeNull();
+    expect(dbRec!.status).toBe('ACCEPTED');
   });
 });
 
@@ -321,7 +321,7 @@ describe('POST /v1/patch-recommendations/:id/reject', () => {
   let rejectRecId: string;
 
   beforeAll(async () => {
-    if (!seededAssetId) return;
+    expect(seededAssetId).toBeDefined();
 
     // Create a fresh vulnerability so we avoid the unique constraint (assetId, vulnerabilityId, patchId)
     const rejectVuln = await prisma.vulnerability.create({
@@ -356,10 +356,7 @@ describe('POST /v1/patch-recommendations/:id/reject', () => {
   });
 
   it('rejects a recommendation with a reason', async () => {
-    if (!rejectRecId) {
-      console.warn('No asset available to create recommendation - skipping');
-      return;
-    }
+    expect(rejectRecId).toBeDefined();
 
     const token = await getAdminToken();
     const res = await getAgent()
@@ -370,10 +367,15 @@ describe('POST /v1/patch-recommendations/:id/reject', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.status).toBe('REJECTED');
+
+    // Verify DB state
+    const dbRec = await prisma.assetPatchRecommendation.findUnique({ where: { id: rejectRecId } });
+    expect(dbRec).not.toBeNull();
+    expect(dbRec!.status).toBe('REJECTED');
   });
 
   it('returns 400 when reason is missing', async () => {
-    if (!seededRecommendationId) return;
+    expect(seededRecommendationId).toBeDefined();
 
     const token = await getAdminToken();
     const res = await getAgent()
@@ -392,10 +394,7 @@ describe('POST /v1/patch-recommendations/:id/reject', () => {
 
 describe('POST /v1/patch-recommendations/bulk-accept', () => {
   it('bulk accepts recommendations by IDs', async () => {
-    if (!seededRecommendationId) {
-      console.warn('No seeded recommendation - skipping bulk accept test');
-      return;
-    }
+    expect(seededRecommendationId).toBeDefined();
 
     const token = await getAdminToken();
     const res = await getAgent()
@@ -470,10 +469,8 @@ describe('POST /v1/patch-recommendations/bulk-reject', () => {
   });
 
   it('bulk rejects recommendations by IDs', async () => {
-    if (!seededAssetId || !seededRecommendationId) {
-      console.warn('No asset/recommendation - skipping bulk reject test');
-      return;
-    }
+    expect(seededAssetId).toBeDefined();
+    expect(seededRecommendationId).toBeDefined();
 
     // Reset the seeded recommendation back to RECOMMENDED so we can bulk-reject it
     await prisma.assetPatchRecommendation.update({

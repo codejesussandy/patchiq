@@ -171,7 +171,8 @@ describe('Discovery API - /v1/discovery', () => {
       const result = await Promise.race([scanRequest, timeout]) as any;
       if (result.timedOut) {
         // Redis unavailable — BullMQ connection hangs. Endpoint is reachable but infra-dependent.
-        expect(true).toBe(true);
+        console.warn('Skipped: Redis unavailable (request timed out)');
+        return;
       } else {
         expect(result.status).toBe(202);
         expect(result.body.success).toBe(true);

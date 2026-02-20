@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './tests/e2e',
   fullyParallel: false, // Run tests sequentially for stability
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
@@ -11,7 +11,7 @@ export default defineConfig({
     ['list']
   ],
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:3001',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -30,7 +30,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         // Use authenticated state from setup
-        storageState: './auth.json',
+        storageState: './tests/e2e/auth.json',
       },
       dependencies: ['setup'],
     },
@@ -40,14 +40,14 @@ export default defineConfig({
       use: {
         ...devices['Desktop Safari'],
         // Use authenticated state from setup
-        storageState: './auth.json',
+        storageState: './tests/e2e/auth.json',
       },
       dependencies: ['setup'],
     },
   ],
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5173',
+    url: 'http://localhost:3001',
     reuseExistingServer: true,
     timeout: 120000,
   },

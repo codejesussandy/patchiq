@@ -15,7 +15,7 @@ import {
   Tag,
   Dropdown,
   Form,
-  Segmented,
+  Tabs,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -211,53 +211,67 @@ export const SoftwareLicense = () => {
         </Button>
       </div>
 
-      <Segmented
-        value={activeTab}
-        onChange={(val) => setActiveTab(val as LicenseTab)}
-        options={[
-          { label: 'Application Licenses', value: 'software' },
-          { label: 'OS Licenses', value: 'os' },
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => setActiveTab(key as LicenseTab)}
+        items={[
+          {
+            key: 'software',
+            label: 'Application Licenses',
+            children: (
+              <>
+                <div style={{ marginBottom: '16px', display: 'flex', gap: '16px' }}>
+                  <Input placeholder="Search" prefix={<SearchOutlined />} style={{ width: 320 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+                  <Select value={softwareFilter} onChange={setSoftwareFilter} style={{ width: 200 }}>
+                    <Option value="all-software">All Software</Option>
+                    <Option value="adobe">Adobe</Option>
+                    <Option value="microsoft">Microsoft</Option>
+                  </Select>
+                  <Select value={statusFilter} onChange={setStatusFilter} style={{ width: 200 }}>
+                    <Option value="all-status">All Status</Option>
+                    <Option value="ALLOCATED">Allocated</Option>
+                    <Option value="AVAILABLE">Available</Option>
+                    <Option value="EXPIRED">Expired</Option>
+                  </Select>
+                </div>
+                <DataTable
+                  rowSelection={rowSelection} columns={softwareColumns} data={filteredSoftwareLicenses} rowKey="id"
+                  loading={swLoading} pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} found` }}
+                  onRow={(record) => ({ onClick: () => handleEdit(record), style: { cursor: 'pointer' } })}
+                />
+              </>
+            ),
+          },
+          {
+            key: 'os',
+            label: 'OS Licenses',
+            children: (
+              <>
+                <div style={{ marginBottom: '16px', display: 'flex', gap: '16px' }}>
+                  <Input placeholder="Search" prefix={<SearchOutlined />} style={{ width: 320 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+                  <Select value={osTypeFilter} onChange={setOsTypeFilter} style={{ width: 200 }}>
+                    <Option value="all-os">All OS</Option>
+                    <Option value="windows">Windows</Option>
+                    <Option value="macos">macOS</Option>
+                    <Option value="linux">Linux</Option>
+                  </Select>
+                  <Select value={statusFilter} onChange={setStatusFilter} style={{ width: 200 }}>
+                    <Option value="all-status">All Status</Option>
+                    <Option value="ALLOCATED">Allocated</Option>
+                    <Option value="AVAILABLE">Available</Option>
+                    <Option value="EXPIRED">Expired</Option>
+                  </Select>
+                </div>
+                <DataTable
+                  rowSelection={rowSelection} columns={osColumns} data={filteredOsLicenses} rowKey="id"
+                  loading={osLoading} pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} found` }}
+                  onRow={(record) => ({ onClick: () => handleEdit(record), style: { cursor: 'pointer' } })}
+                />
+              </>
+            ),
+          },
         ]}
-        style={{ marginBottom: 16 }}
       />
-
-      <div style={{ marginBottom: '16px', display: 'flex', gap: '16px' }}>
-        <Input placeholder="Search" prefix={<SearchOutlined />} style={{ width: 320 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-        {activeTab === 'software' ? (
-          <Select value={softwareFilter} onChange={setSoftwareFilter} style={{ width: 200 }}>
-            <Option value="all-software">All Software</Option>
-            <Option value="adobe">Adobe</Option>
-            <Option value="microsoft">Microsoft</Option>
-          </Select>
-        ) : (
-          <Select value={osTypeFilter} onChange={setOsTypeFilter} style={{ width: 200 }}>
-            <Option value="all-os">All OS</Option>
-            <Option value="windows">Windows</Option>
-            <Option value="macos">macOS</Option>
-            <Option value="linux">Linux</Option>
-          </Select>
-        )}
-        <Select value={statusFilter} onChange={setStatusFilter} style={{ width: 200 }}>
-          <Option value="all-status">All Status</Option>
-          <Option value="ALLOCATED">Allocated</Option>
-          <Option value="AVAILABLE">Available</Option>
-          <Option value="EXPIRED">Expired</Option>
-        </Select>
-      </div>
-
-      {activeTab === 'software' ? (
-        <DataTable
-          rowSelection={rowSelection} columns={softwareColumns} data={filteredSoftwareLicenses} rowKey="id"
-          loading={swLoading} pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} found` }}
-          onRow={(record) => ({ onClick: () => handleEdit(record), style: { cursor: 'pointer' } })}
-        />
-      ) : (
-        <DataTable
-          rowSelection={rowSelection} columns={osColumns} data={filteredOsLicenses} rowKey="id"
-          loading={osLoading} pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} found` }}
-          onRow={(record) => ({ onClick: () => handleEdit(record), style: { cursor: 'pointer' } })}
-        />
-      )}
 
       <LicenseFormModal
         title={activeTab === 'software' ? 'Add New Software License' : 'Add New OS License'}

@@ -98,6 +98,13 @@ export const patchIdParamSchema = z.object({
   id: z.string().uuid('Invalid patch ID'),
 });
 
+export const addAffectedProductSchema = z.object({
+  softwareName: z.string().min(1, 'softwareName is required'),
+  version: z.string().optional(),
+  vendor: z.string().optional(),
+  platform: z.string().optional(),
+});
+
 // ============================================
 // Test/Approval Workflow Schemas
 // ============================================

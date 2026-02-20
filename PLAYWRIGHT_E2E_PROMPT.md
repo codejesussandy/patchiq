@@ -4,7 +4,7 @@
 
 PatchIQ is an enterprise patch management platform. The frontend is React + Ant Design + React Router + TanStack Query. Playwright is already installed.
 
-- **Frontend:** `http://localhost:5173` (Vite dev server)
+- **Frontend:** `http://localhost:3010` (Vite dev server)
 - **Backend:** `http://localhost:3000` (proxied via Vite — `/v1` → `http://localhost:3000`)
 - **Auth:** JWT tokens stored in `localStorage` keys `accessToken` and `refreshToken`
 - **Test credentials:** `admin@patchiq.io` / `admin123`

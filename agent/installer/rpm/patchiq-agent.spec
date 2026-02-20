@@ -40,7 +40,7 @@ install -m 755 %{SOURCE0} $RPM_BUILD_ROOT/usr/local/bin/patchiq-agent
 cat > $RPM_BUILD_ROOT/etc/patchiq/config.json <<'EOF'
 {
   "serverUrl": "",
-  "webUiPort": 4504,
+  "webUiPort": 3006,
   "dataDir": "/var/lib/patchiq-agent",
   "enableDownloadResume": true
 }

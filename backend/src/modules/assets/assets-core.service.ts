@@ -25,19 +25,31 @@ export { resolveAssetId } from './assets-helpers';
 // ============================================
 
 export async function listAssets(params: AssetQueryInput & PaginationParams) {
-  const where: Prisma.AssetWhereInput = {};
+  const conditions: Prisma.AssetWhereInput[] = [];
 
-  if (params.status) where.status = params.status;
-  if (params.categoryId) where.categoryId = params.categoryId;
-  if (params.subCategoryId) where.subCategoryId = params.subCategoryId;
-  if (params.search) {
-    where.OR = [
-      { name: { contains: params.search, mode: 'insensitive' } },
-      { serialNumber: { contains: params.search, mode: 'insensitive' } },
-      { assetTag: { contains: params.search, mode: 'insensitive' } },
-      { ipAddress: { contains: params.search, mode: 'insensitive' } },
-    ];
+  if (params.status) conditions.push({ status: params.status });
+  if (params.operationalStatus) {
+    if (params.operationalStatus === 'CONNECTED') {
+      conditions.push({ agent: { status: 'Active' } });
+    } else if (params.operationalStatus === 'DISCONNECTED') {
+      conditions.push({ OR: [{ agent: null }, { agent: { status: { not: 'Active' } } }] });
+    }
   }
+  if (params.categoryId) conditions.push({ categoryId: params.categoryId });
+  if (params.subCategoryId) conditions.push({ subCategoryId: params.subCategoryId });
+  if (params.os) conditions.push({ os: { contains: params.os, mode: 'insensitive' } });
+  if (params.search) {
+    conditions.push({
+      OR: [
+        { name: { contains: params.search, mode: 'insensitive' } },
+        { serialNumber: { contains: params.search, mode: 'insensitive' } },
+        { assetTag: { contains: params.search, mode: 'insensitive' } },
+        { ipAddress: { contains: params.search, mode: 'insensitive' } },
+      ],
+    });
+  }
+
+  const where: Prisma.AssetWhereInput = conditions.length > 0 ? { AND: conditions } : {};
 
   const [assets, total] = await Promise.all([
     prisma.asset.findMany({

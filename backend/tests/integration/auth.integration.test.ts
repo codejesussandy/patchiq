@@ -290,14 +290,17 @@ describe('Auth Integration Tests', () => {
 
       const res = await agent
         .post('/v1/auth/reset-password')
-        .send({ token: rawToken, password: 'demo123' });
+        .send({ token: rawToken, password: 'NewSecure@Password123', confirmPassword: 'NewSecure@Password123' });
 
-      // Should succeed (200) or potentially fail with password policy violation (400)
-      // Either way, should not be 500 and success shape must be present
-      expect([200, 400]).toContain(res.status);
-      expect(res.body).toHaveProperty('success');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
 
-      // Reset cache since the user's refresh tokens were revoked
+      // Restore demo user's original password so subsequent tests work
+      const { hashPassword } = await import('../../src/shared/utils/crypto');
+      const originalHash = await hashPassword('demo123');
+      await prisma.user.update({ where: { email: 'demo@patchiq.io' }, data: { passwordHash: originalHash } });
+
+      // Reset cache in case tokens were revoked
       resetTokenCache();
     });
 
@@ -385,17 +388,12 @@ describe('Auth Integration Tests', () => {
 
       const res = await agent
         .post('/v1/auth/onboard')
-        .send({ token: rawToken, password: 'Onboard@12345', firstName: 'Test', lastName: 'User' });
+        .send({ token: rawToken, password: 'OnboardSecure@12345', firstName: 'Test', lastName: 'User' });
 
-      expect([200, 400]).toContain(res.status);
-      if (res.status === 200) {
-        expect(res.body.success).toBe(true);
-        expect(res.body.data.accessToken).toBeDefined();
-        expect(res.body.data.user.email).toBe(inviteEmail);
-      } else {
-        // password policy violation
-        expect(res.body.success).toBe(false);
-      }
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(typeof res.body.data.accessToken).toBe('string');
+      expect(res.body.data.user.email).toBe(inviteEmail);
 
       // Cleanup
       await prisma.passwordResetToken.deleteMany({ where: { userId: newUser.id } });
@@ -523,11 +521,10 @@ describe('Auth Integration Tests', () => {
       const res = await agent
         .post('/v1/auth/complete-onboarding')
         .set('Authorization', `Bearer ${tokens.accessToken}`)
-        .send({ name: 'Test User', contactNumber: '+1234567890', password: 'NewOnboard@12345', confirmPassword: 'NewOnboard@12345' });
+        .send({ name: 'Test User', contactNumber: '+1234567890', password: 'NewOnboardSecure@12345', confirmPassword: 'NewOnboardSecure@12345' });
 
-      // May succeed or hit password policy - either is valid
-      expect([200, 400]).toContain(res.status);
-      expect(res.body).toHaveProperty('success');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
 
       // Cleanup
       await prisma.refreshToken.deleteMany({ where: { userId: newUser.id } });

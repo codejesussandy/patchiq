@@ -44,13 +44,28 @@ describe('AllAssets Page', () => {
     expect(searchInput).toHaveValue('Server');
   });
 
+  it('renders asset data from API', async () => {
+    render(<AllAssets />, { initialEntries: ['/assets'] });
+    // The table renders hostname (not name) as the identity column
+    await waitFor(() => {
+      expect(screen.getByText('srv-01.local')).toBeInTheDocument();
+    }, { timeout: 5000 });
+    expect(screen.getByText('ws-01.local')).toBeInTheDocument();
+  });
+
   it('opens add asset modal when Add Assets clicked', async () => {
     const user = userEvent.setup();
     render(<AllAssets />, { initialEntries: ['/assets'] });
     const addBtn = await screen.findByRole('button', { name: /add assets/i });
+
+    // Verify modal is NOT open before click
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
     await user.click(addBtn);
+
+    // Verify modal IS open after click
     await waitFor(() => {
-      expect(screen.getByText(/add asset/i)).toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
   });
 

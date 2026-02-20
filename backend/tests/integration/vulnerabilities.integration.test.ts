@@ -419,7 +419,8 @@ describe('Vulnerabilities Module', () => {
       .post('/v1/vulnerabilities/scan')
       .set('Authorization', `Bearer ${token}`)
       .send({ scope: 'ALL' });
-    expect([200, 202]).toContain(res.status);
+    // Server returns 202 Accepted for async scan operations
+    expect(res.status).toBe(202);
     expect(res.body.success).toBe(true);
   });
 

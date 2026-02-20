@@ -37,9 +37,10 @@ describe('Jobs - Software, Config Catalog, Config Bundle, Config Deployment', ()
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     // Paginated responses are double-nested: { success, data: { data: [...], total, ... } }
-    const items = Array.isArray(res.body.data) ? res.body.data : res.body.data?.data || [];
+    const items = res.body.data?.data ?? res.body.data;
     expect(Array.isArray(items)).toBe(true);
-    const total = res.body.meta?.total ?? res.body.data?.total ?? res.body.data?.meta?.total;
+    // Use res.body.data?.total as the canonical pagination total field
+    const total = res.body.data?.total;
     expect(typeof total).toBe('number');
   });
 
@@ -106,7 +107,7 @@ describe('Jobs - Software, Config Catalog, Config Bundle, Config Deployment', ()
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     // Tasks are returned as { data: { data: [...] } }
-    const items = Array.isArray(res.body.data) ? res.body.data : res.body.data?.data || [];
+    const items = res.body.data?.data ?? res.body.data;
     expect(Array.isArray(items)).toBe(true);
   });
 
@@ -141,10 +142,11 @@ describe('Jobs - Software, Config Catalog, Config Bundle, Config Deployment', ()
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    const items = Array.isArray(res.body.data) ? res.body.data : res.body.data?.data || [];
+    const items = res.body.data?.data ?? res.body.data;
     expect(Array.isArray(items)).toBe(true);
-    const hasMeta = res.body.meta !== undefined || res.body.data?.total !== undefined;
-    expect(hasMeta).toBe(true);
+    // The response exposes pagination info either at res.body.meta or res.body.data.total;
+    // both shapes are valid — assert at least one is present.
+    expect(res.body.meta !== undefined || res.body.data?.total !== undefined).toBe(true);
   });
 
   it('POST /v1/jobs/config/catalog creates catalog item', async () => {
@@ -229,10 +231,11 @@ describe('Jobs - Software, Config Catalog, Config Bundle, Config Deployment', ()
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    const items = Array.isArray(res.body.data) ? res.body.data : res.body.data?.data || [];
+    const items = res.body.data?.data ?? res.body.data;
     expect(Array.isArray(items)).toBe(true);
-    const hasMeta = res.body.meta !== undefined || res.body.data?.total !== undefined;
-    expect(hasMeta).toBe(true);
+    // The response exposes pagination info either at res.body.meta or res.body.data.total;
+    // both shapes are valid — assert at least one is present.
+    expect(res.body.meta !== undefined || res.body.data?.total !== undefined).toBe(true);
   });
 
   it('POST /v1/jobs/config/bundles creates config bundle', async () => {
@@ -312,10 +315,11 @@ describe('Jobs - Software, Config Catalog, Config Bundle, Config Deployment', ()
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    const items = Array.isArray(res.body.data) ? res.body.data : res.body.data?.data || [];
+    const items = res.body.data?.data ?? res.body.data;
     expect(Array.isArray(items)).toBe(true);
-    const hasMeta = res.body.meta !== undefined || res.body.data?.total !== undefined;
-    expect(hasMeta).toBe(true);
+    // The response exposes pagination info either at res.body.meta or res.body.data.total;
+    // both shapes are valid — assert at least one is present.
+    expect(res.body.meta !== undefined || res.body.data?.total !== undefined).toBe(true);
   });
 
   it('POST /v1/jobs/config/deployed creates config deployment', async () => {
@@ -352,7 +356,7 @@ describe('Jobs - Software, Config Catalog, Config Bundle, Config Deployment', ()
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    const items = Array.isArray(res.body.data) ? res.body.data : res.body.data?.data || [];
+    const items = res.body.data?.data ?? res.body.data;
     expect(Array.isArray(items)).toBe(true);
   });
 

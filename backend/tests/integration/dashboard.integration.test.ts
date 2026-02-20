@@ -43,6 +43,8 @@ describe('Dashboard API - /v1/dashboard', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data).toBeDefined();
+      expect(res.body.data).not.toBeNull();
+      expect(typeof res.body.data).toBe('object');
     });
   });
 
@@ -59,6 +61,8 @@ describe('Dashboard API - /v1/dashboard', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data).toBeDefined();
+      expect(res.body.data).not.toBeNull();
+      expect(typeof res.body.data).toBe('object');
     });
   });
 
@@ -74,7 +78,7 @@ describe('Dashboard API - /v1/dashboard', () => {
         .set('Authorization', `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(Array.isArray(res.body.data) || res.body.data !== undefined).toBe(true);
+      expect(res.body.data).toBeDefined();
     });
 
     it('accepts limit query param', async () => {
@@ -162,7 +166,7 @@ describe('Dashboard API - /v1/dashboard', () => {
         .set('Authorization', `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(Array.isArray(res.body.data) || res.body.data !== undefined).toBe(true);
+      expect(res.body.data).toBeDefined();
     });
 
     it('accepts limit query param', async () => {

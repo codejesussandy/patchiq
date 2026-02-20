@@ -964,21 +964,15 @@ describe('Settings - RedHat Nominations', () => {
   });
 
   it('POST /v1/settings/redhat-nominations returns 400 or 404 for non-RHEL agent', async () => {
-    if (!agentId) {
-      return; // skip if no agents in db
-    }
+    expect(agentId).toBeDefined();
     const agent = getAgent();
     const token = await getAdminToken();
     const res = await agent
       .post('/v1/settings/redhat-nominations')
       .set('Authorization', `Bearer ${token}`)
       .send({ agentId, name: 'INTTEST-Nomination-1' });
-    // Seed agents typically have non-RHEL OS, so expect 400 (bad request for OS mismatch)
-    // OR 201 if the seed agent happens to be RHEL
-    expect([400, 409, 201]).toContain(res.status);
-    if (res.status === 201) {
-      createdNominationId = res.body.data.id;
-    }
+    // The test agent in the DB is not a RHEL agent, so the server rejects with 400
+    expect(res.status).toBe(400);
   });
 
   it('POST /v1/settings/redhat-nominations returns 400 with invalid agentId', async () => {

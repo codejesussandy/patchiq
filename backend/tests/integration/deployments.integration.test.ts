@@ -67,10 +67,7 @@ describe('Deployments Module', () => {
   });
 
   it('POST /v1/deployments creates a deployment', async () => {
-    if (!firstPatchId) {
-      console.warn('No patches in DB, skipping create deployment test');
-      return;
-    }
+    expect(firstPatchId).toBeDefined();
     const res = await getAgent()
       .post('/v1/deployments')
       .set('Authorization', `Bearer ${token}`)
@@ -119,7 +116,7 @@ describe('Deployments Module', () => {
   });
 
   it('GET /v1/deployments/:id returns created deployment', async () => {
-    if (!createdDeploymentId) return;
+    expect(createdDeploymentId).toBeDefined();
     const res = await getAgent()
       .get(`/v1/deployments/${createdDeploymentId}`)
       .set('Authorization', `Bearer ${token}`);
@@ -137,7 +134,7 @@ describe('Deployments Module', () => {
   });
 
   it('GET /v1/deployments/:id/preview returns preview', async () => {
-    if (!createdDeploymentId) return;
+    expect(createdDeploymentId).toBeDefined();
     const res = await getAgent()
       .get(`/v1/deployments/${createdDeploymentId}/preview`)
       .set('Authorization', `Bearer ${token}`);
@@ -147,7 +144,7 @@ describe('Deployments Module', () => {
   });
 
   it('PUT /v1/deployments/:id updates deployment', async () => {
-    if (!createdDeploymentId) return;
+    expect(createdDeploymentId).toBeDefined();
     const res = await getAgent()
       .put(`/v1/deployments/${createdDeploymentId}`)
       .set('Authorization', `Bearer ${token}`)
@@ -157,23 +154,28 @@ describe('Deployments Module', () => {
   });
 
   it('POST /v1/deployments/:id/cancel cancels deployment', async () => {
-    if (!createdDeploymentId) return;
+    expect(createdDeploymentId).toBeDefined();
     const res = await getAgent()
       .post(`/v1/deployments/${createdDeploymentId}/cancel`)
       .set('Authorization', `Bearer ${token}`);
-    expect([200, 400]).toContain(res.status);
-    // 400 if already in wrong state, 200 if cancelled
-    if (res.status === 200) {
-      expect(res.body.success).toBe(true);
-    }
+    // Freshly created deployment is in PENDING state, cancel should succeed
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    // Verify DB state
+    const dbDep = await prisma.patchDeployment.findUnique({ where: { id: createdDeploymentId } });
+    expect(dbDep).not.toBeNull();
+    expect(dbDep!.status).toBe('CANCELLED');
   });
 
   it('DELETE /v1/deployments/:id deletes deployment', async () => {
-    if (!createdDeploymentId) return;
+    expect(createdDeploymentId).toBeDefined();
     const res = await getAgent()
       .delete(`/v1/deployments/${createdDeploymentId}`)
       .set('Authorization', `Bearer ${token}`);
-    expect([200, 204]).toContain(res.status);
+    expect(res.status).toBe(204);
+    // Verify deployment is deleted from DB
+    const dbDep = await prisma.patchDeployment.findUnique({ where: { id: createdDeploymentId } });
+    expect(dbDep).toBeNull();
   });
 
   // ============================================================
@@ -208,10 +210,7 @@ describe('Deployments Module', () => {
   });
 
   it('POST /v1/deployments/software creates software deployment when agent exists', async () => {
-    if (!firstAgentId) {
-      console.warn('No active agents in DB, skipping software deployment create test');
-      return;
-    }
+    expect(firstAgentId).toBeDefined();
     const res = await getAgent()
       .post('/v1/deployments/software')
       .set('Authorization', `Bearer ${token}`)
@@ -223,12 +222,11 @@ describe('Deployments Module', () => {
         package: { packageId: 'test-pkg-001', name: 'Test Package', version: '1.0.0' },
         retryCount: 1,
       });
-    expect([201, 400]).toContain(res.status);
-    if (res.status === 201) {
-      expect(res.body.success).toBe(true);
-      expect(res.body.data).toBeDefined();
-      createdSoftwareDepId = res.body.data.id;
-    }
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
+    // createSoftwareDeployment returns { deploymentId, tasksCreated, commandsCreated, status }
+    createdSoftwareDepId = res.body.data.deploymentId;
   });
 
   it('GET /v1/deployments/software/:deploymentId 404 for non-existent', async () => {
@@ -240,7 +238,7 @@ describe('Deployments Module', () => {
   });
 
   it('GET /v1/deployments/software/:deploymentId returns deployment status', async () => {
-    if (!createdSoftwareDepId) return;
+    expect(createdSoftwareDepId).toBeDefined();
     const res = await getAgent()
       .get(`/v1/deployments/software/${createdSoftwareDepId}`)
       .set('Authorization', `Bearer ${token}`);
@@ -250,14 +248,12 @@ describe('Deployments Module', () => {
   });
 
   it('POST /v1/deployments/software/:deploymentId/cancel cancels deployment', async () => {
-    if (!createdSoftwareDepId) return;
+    expect(createdSoftwareDepId).toBeDefined();
     const res = await getAgent()
       .post(`/v1/deployments/software/${createdSoftwareDepId}/cancel`)
       .set('Authorization', `Bearer ${token}`);
-    expect([200, 400]).toContain(res.status);
-    if (res.status === 200) {
-      expect(res.body.success).toBe(true);
-    }
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
   });
 
   // ============================================================
@@ -305,10 +301,8 @@ describe('Deployments Module', () => {
   });
 
   it('POST /v1/deployments/patch creates patch deployment when agent and patch exist', async () => {
-    if (!firstAgentId || !firstPatchId) {
-      console.warn('Missing agent or patch in DB, skipping patch deployment create test');
-      return;
-    }
+    expect(firstAgentId).toBeDefined();
+    expect(firstPatchId).toBeDefined();
     const res = await getAgent()
       .post('/v1/deployments/patch')
       .set('Authorization', `Bearer ${token}`)
@@ -320,11 +314,10 @@ describe('Deployments Module', () => {
         retryCount: 1,
         skipApprovalCheck: true,
       });
-    expect([201, 400]).toContain(res.status);
-    if (res.status === 201) {
-      expect(res.body.success).toBe(true);
-      createdPatchDepId = res.body.data.id;
-    }
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    // createPatchDeployment returns { deploymentId, tasksCreated, commandsCreated, status }
+    createdPatchDepId = res.body.data.deploymentId;
   });
 
   it('GET /v1/deployments/patch/:deploymentId 404 for non-existent', async () => {
@@ -336,7 +329,7 @@ describe('Deployments Module', () => {
   });
 
   it('GET /v1/deployments/patch/:deploymentId returns deployment status', async () => {
-    if (!createdPatchDepId) return;
+    expect(createdPatchDepId).toBeDefined();
     const res = await getAgent()
       .get(`/v1/deployments/patch/${createdPatchDepId}`)
       .set('Authorization', `Bearer ${token}`);
@@ -346,25 +339,22 @@ describe('Deployments Module', () => {
   });
 
   it('POST /v1/deployments/patch/:deploymentId/cancel cancels patch deployment', async () => {
-    if (!createdPatchDepId) return;
+    expect(createdPatchDepId).toBeDefined();
     const res = await getAgent()
       .post(`/v1/deployments/patch/${createdPatchDepId}/cancel`)
       .set('Authorization', `Bearer ${token}`);
-    expect([200, 400]).toContain(res.status);
-    if (res.status === 200) {
-      expect(res.body.success).toBe(true);
-    }
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
   });
 
   it('POST /v1/deployments/patch/:deploymentId/retry retries patch deployment', async () => {
-    if (!createdPatchDepId) return;
+    expect(createdPatchDepId).toBeDefined();
     const res = await getAgent()
       .post(`/v1/deployments/patch/${createdPatchDepId}/retry`)
       .set('Authorization', `Bearer ${token}`);
-    expect([200, 400]).toContain(res.status);
-    if (res.status === 200) {
-      expect(res.body.success).toBe(true);
-    }
+    // After cancel, deployment is in a retryable state
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
   });
 
   // ============================================================

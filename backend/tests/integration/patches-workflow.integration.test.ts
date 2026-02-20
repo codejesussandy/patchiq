@@ -63,6 +63,11 @@ describe('POST /v1/patches/:id/test', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.testStatus).toBe('TESTED');
     expect(res.body.data.testResult).toBe('PASSED');
+
+    // Verify DB state
+    const dbPatch = await prisma.patch.findUnique({ where: { id: patchIdA } });
+    expect(dbPatch).not.toBeNull();
+    expect(dbPatch!.testStatus).toBe('TESTED');
   });
 
   it('marks patch as test failed (FAILED)', async () => {
@@ -129,6 +134,11 @@ describe('POST /v1/patches/:id/approve', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.approvalStatus).toBe('APPROVED');
+
+    // Verify DB state
+    const dbPatch = await prisma.patch.findUnique({ where: { id: patchIdA } });
+    expect(dbPatch).not.toBeNull();
+    expect(dbPatch!.approvalStatus).toBe('APPROVED');
   });
 
   it('returns 400 when trying to approve an untested patch', async () => {
@@ -166,6 +176,11 @@ describe('POST /v1/patches/:id/reject', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.approvalStatus).toBe('REJECTED');
+
+    // Verify DB state
+    const dbPatch = await prisma.patch.findUnique({ where: { id: rejectPatchId } });
+    expect(dbPatch).not.toBeNull();
+    expect(dbPatch!.approvalStatus).toBe('REJECTED');
   });
 
   it('returns 400 when reason is missing', async () => {
@@ -277,6 +292,24 @@ describe('Supersedence GET endpoints', () => {
 });
 
 // ============================================
+// Supersede POST endpoint
+// ============================================
+
+describe('POST /v1/patches/:id/supersede/:targetId', () => {
+  it('returns 200 for a valid supersede operation', async () => {
+    const token = await getAdminToken();
+    const supersedeFrom = await createTestPatch('SUP-FROM');
+    const supersedeTo = await createTestPatch('SUP-TO');
+
+    const res = await getAgent()
+      .post(`${BASE}/${supersedeFrom}/supersede/${supersedeTo}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+  });
+});
+
+// ============================================
 // Affected Software: GET/POST endpoints
 // Note: DELETE /:id/affected-softwares/:productId has the same validateParams
 // issue where productId is stripped. We test GET and POST, plus use direct
@@ -358,8 +391,8 @@ describe('Affected Software', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ version: '1.0', vendor: 'X' });
 
-    // softwareName is required at the DB level - either 400 or 500 depending on DB constraint
-    expect(res.status).toBeGreaterThanOrEqual(400);
+    // softwareName is required — should return a 400 validation error
+    expect(res.status).toBe(400);
   });
 });
 

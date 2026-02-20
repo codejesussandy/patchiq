@@ -17,6 +17,7 @@ describe('Tags', () => {
       .post('/v1/assets')
       .set('Authorization', `Bearer ${token}`)
       .send({ name: `${PREFIX}-Asset` });
+    expect(res.status).toBe(201);
     assetId = res.body.data.id;
   });
 
@@ -33,8 +34,8 @@ describe('Tags', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     // Tags list may be paginated or plain array — check either way
-    const data = res.body.data;
-    const tags = Array.isArray(data) ? data : data.data;
+    expect(res.body.data).toBeDefined();
+    const tags = res.body.data.data ?? res.body.data;
     expect(Array.isArray(tags)).toBe(true);
     expect(tags.length).toBeGreaterThan(0); // seed has 6 tags
   });
@@ -261,8 +262,7 @@ describe('Tags', () => {
     const res = await getAgent()
       .delete(`/v1/tags/${createdTagId}`)
       .set('Authorization', `Bearer ${token}`);
-    // May return 200 or 204
-    expect([200, 204]).toContain(res.status);
+    expect(res.status).toBe(204);
 
     // Verify it's gone
     const getRes = await getAgent()

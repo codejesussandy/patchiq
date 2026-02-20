@@ -136,6 +136,7 @@ describe('Settings - Branches CRUD', () => {
 
   beforeAll(async () => {
     const org = await prisma.organization.findFirst({ where: { isDefault: true } });
+    expect(org).not.toBeNull();
     defaultOrgId = org.id;
   });
 
@@ -241,6 +242,7 @@ describe('Settings - Departments CRUD', () => {
 
   beforeAll(async () => {
     const branch = await prisma.branch.findFirst({ where: { isDefault: true } });
+    expect(branch).not.toBeNull();
     defaultBranchId = branch.id;
   });
 

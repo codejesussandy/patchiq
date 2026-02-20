@@ -85,6 +85,14 @@ describe('AllPatches Page', () => {
     });
   });
 
+  it('renders patch data from API', async () => {
+    render(<AllPatches />, { initialEntries: ['/patches'] });
+    await waitFor(() => {
+      expect(screen.getByText('Windows 11 Cumulative Update')).toBeInTheDocument();
+    }, { timeout: 5000 });
+    expect(screen.getByText('Ubuntu 22.04 Security Patch')).toBeInTheDocument();
+  });
+
   it('clicking Filter opens filter modal', async () => {
     const user = userEvent.setup();
     render(<AllPatches />, { initialEntries: ['/patches'] });

@@ -33,7 +33,7 @@ describe('Jobs - Patch & Vulnerability', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     // Paginated responses are double-nested: { success, data: { data: [...], total, ... } }
-    const items = Array.isArray(res.body.data) ? res.body.data : res.body.data?.data || [];
+    const items = res.body.data?.data ?? res.body.data;
     expect(Array.isArray(items)).toBe(true);
     const total = res.body.meta?.total ?? res.body.data?.total;
     expect(typeof total).toBe('number');
@@ -45,7 +45,8 @@ describe('Jobs - Patch & Vulnerability', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     // Items are at res.body.data.data when double-nested
-    const items = Array.isArray(res.body.data) ? res.body.data : res.body.data?.data || [];
+    const items = res.body.data?.data ?? res.body.data;
+    expect(Array.isArray(items)).toBe(true);
     expect(items.length).toBeLessThanOrEqual(5);
     const limit = res.body.meta?.limit ?? res.body.data?.limit;
     expect(limit).toBe(5);
@@ -128,10 +129,11 @@ describe('Jobs - Patch & Vulnerability', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    const items = Array.isArray(res.body.data) ? res.body.data : res.body.data?.data || [];
+    const items = res.body.data?.data ?? res.body.data;
     expect(Array.isArray(items)).toBe(true);
-    const hasMeta = res.body.meta !== undefined || res.body.data?.total !== undefined;
-    expect(hasMeta).toBe(true);
+    // The response exposes pagination info either at res.body.meta or res.body.data.total;
+    // both shapes are valid — assert at least one is present.
+    expect(res.body.meta !== undefined || res.body.data?.total !== undefined).toBe(true);
   });
 
   it('POST /v1/jobs/vulnerability creates a vulnerability job', async () => {
@@ -241,8 +243,8 @@ describe('Jobs - Patch & Vulnerability', () => {
       }
       throw err;
     }
-    // If we got a response, validate it
-    expect([200, 202, 500, 503]).toContain(res.status);
+    // If we got a response, only a successful trigger is acceptable
+    expect([200, 202]).toContain(res.status);
     if ([200, 202].includes(res.status)) {
       expect(res.body.success).toBe(true);
     }

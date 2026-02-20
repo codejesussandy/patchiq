@@ -136,5 +136,11 @@ describe('Agent Approvals', () => {
     await waitFor(() => {
       expect(screen.getByText('Agent Approvals')).toBeInTheDocument();
     });
+    // Verify error state - table should be empty or show error
+    await waitFor(() => {
+      const rows = screen.queryAllByRole('row');
+      // With error, table should have at most the header row (no data rows)
+      expect(rows.length).toBeLessThanOrEqual(2);
+    });
   });
 });

@@ -15,6 +15,7 @@ describe('Asset Sub-Resources', () => {
       .post('/v1/assets')
       .set('Authorization', `Bearer ${token}`)
       .send({ name: `${PREFIX}-Asset`, status: 'AVAILABLE' });
+    expect(res.status).toBe(201);
     assetId = res.body.data.id;
   });
 
@@ -31,6 +32,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/assets/:id/hardware 404 for unknown asset', async () => {
@@ -48,6 +50,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/assets/:id/software 404 for unknown asset', async () => {
@@ -65,6 +68,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/assets/:id/security 404 for unknown asset', async () => {
@@ -82,6 +86,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/assets/:id/network 404 for unknown asset', async () => {
@@ -99,6 +104,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/assets/:id/peripherals 404 for unknown asset', async () => {
@@ -116,6 +122,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/assets/:id/telemetry 404 for unknown asset', async () => {
@@ -133,6 +140,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/assets/:id/telemetry/history with period param returns 200', async () => {
@@ -158,6 +166,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/assets/:id/lifecycle 404 for unknown asset', async () => {
@@ -175,6 +184,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/assets/:id/errors 404 for unknown asset', async () => {
@@ -210,6 +220,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/assets/:id/alerts 404 for unknown asset', async () => {
@@ -227,6 +238,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/assets/:id/patches 404 for unknown asset', async () => {
@@ -244,6 +256,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/assets/:id/vulnerabilities 404 for unknown asset', async () => {
@@ -261,6 +274,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('GET /v1/assets/:id/deployments 404 for unknown asset', async () => {
@@ -278,6 +292,7 @@ describe('Asset Sub-Resources', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it('401 on sub-resource without token', async () => {

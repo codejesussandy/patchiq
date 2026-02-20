@@ -252,19 +252,44 @@ export class AgentsCrudService {
   }
 
   /**
-   * Get agent downloads
+   * Get agent downloads - dynamically built from the latest AgentVersion per platform
    */
   async getAgentDownloads(): Promise<AgentDownloadResponse[]> {
-    const downloads = await prisma.agentDownload.findMany({
-      orderBy: { releaseDate: 'desc' },
+    // Get the latest version per platform (prefer amd64 for broadest compatibility)
+    const versions = await prisma.agentVersion.findMany({
+      where: { isDeprecated: false, filePath: { not: null } },
+      orderBy: [{ version: 'desc' }, { lastUpdatedAt: 'desc' }],
     });
 
-    return downloads.map((d) => ({
-      os: d.os,
-      version: d.version,
-      releaseDate: d.releaseDate.toLocaleDateString('en-GB'),
-      downloadUrl: d.downloadUrl,
-    }));
+    const platformMap: Record<string, { label: string; archPriority: string[] }> = {
+      Windows: { label: 'Windows 11', archPriority: ['amd64', 'arm64'] },
+      Linux: { label: 'Linux', archPriority: ['amd64', 'arm64'] },
+      Mac: { label: 'MacOS', archPriority: ['arm64', 'amd64'] },
+    };
+
+    const downloads: AgentDownloadResponse[] = [];
+
+    for (const [platform, config] of Object.entries(platformMap)) {
+      const platformVersions = versions.filter((v) => v.platform === platform);
+      // Pick the best architecture for this platform
+      let best = null;
+      for (const arch of config.archPriority) {
+        best = platformVersions.find((v) => v.architecture === arch) || null;
+        if (best) break;
+      }
+      if (!best) best = platformVersions[0] || null;
+
+      if (best) {
+        downloads.push({
+          os: config.label,
+          version: best.version,
+          releaseDate: best.lastUpdatedAt.toLocaleDateString('en-GB'),
+          downloadUrl: `/v1/agent-versions/${best.id}/download`,
+        });
+      }
+    }
+
+    return downloads;
   }
 
   /**

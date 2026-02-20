@@ -20,6 +20,7 @@ import {
   zeroTouchConfigIdParamSchema,
   zeroTouchConfigListQuerySchema,
   scanEndpointsSchema,
+  addAffectedProductSchema,
 } from './patches.validator';
 
 const router = Router();
@@ -114,6 +115,7 @@ router.post(
   authenticate,
   checkPermission('patches', 'add'),
   validateParams(patchIdParamSchema),
+  validateBody(addAffectedProductSchema),
   audit({ action: AuditAction.CREATE, resource: AuditResource.PATCH, getResourceId: (req) => req.params.id }),
   controller.addAffectedProduct
 );
