@@ -3,6 +3,8 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,6 +22,7 @@ import (
 	"github.com/patchify/agent/internal/config"
 	"github.com/patchify/agent/internal/executors"
 	"github.com/patchify/agent/internal/server"
+	"github.com/patchify/agent/internal/storage"
 )
 
 const serviceName = "PatchIQAgent"
@@ -98,7 +101,7 @@ func (s *patchiqService) initialize() error {
 	cm := collectors.NewCollectorManager()
 
 	// Create shared executor manager
-	em := executors.NewExecutorManager()
+	em := executors.NewExecutorManager(nil)
 
 	// Create local web server
 	srv, err := server.New(cfg)
@@ -112,7 +115,7 @@ func (s *patchiqService) initialize() error {
 
 	// Create and start backend manager (unless server URL is empty)
 	if cfg.ServerURL != "" {
-		s.backendMgr = backend.New(cfg, cm, em)
+		s.backendMgr = backend.New(cfg, cm, em, "1.0.0")
 		// Connect backend to server for status display
 		srv.SetBackendManager(&BackendAdapter{mgr: s.backendMgr})
 	}
@@ -442,8 +445,8 @@ func (a *BackendAdapter) GetAgentID() string {
 	return a.mgr.GetAgentID()
 }
 
-func (a *BackendAdapter) GetStatus() *server.BackendStatusInfo {
-	status := a.mgr.GetStatus()
+func (a *BackendAdapter) GetStatus(ctx context.Context) *server.BackendStatusInfo {
+	status := a.mgr.GetStatus(ctx)
 	if status == nil {
 		return nil
 	}
@@ -465,35 +468,41 @@ func (a *BackendAdapter) GetJobsStatus() *server.JobsStatus {
 		return nil
 	}
 
-	// Convert backend.JobHistoryEntry to server.JobHistoryEntry
-	activeJobs := make([]server.JobHistoryEntry, len(jobsStatus.ActiveJobs))
-	for i, job := range jobsStatus.ActiveJobs {
-		activeJobs[i] = server.JobHistoryEntry{
+	// Convert storage.JobHistoryEntry to server.JobHistoryEntry
+	convertJob := func(job storage.JobHistoryEntry) server.JobHistoryEntry {
+		var completedAt time.Time
+		var duration string
+		if job.CompletedAt != nil {
+			completedAt = *job.CompletedAt
+			duration = job.CompletedAt.Sub(job.StartedAt).String()
+		}
+		var resultStr string
+		if job.Result != nil {
+			if b, err := json.Marshal(job.Result); err == nil {
+				resultStr = string(b)
+			}
+		}
+		return server.JobHistoryEntry{
 			ID:           job.ID,
 			Type:         job.Type,
 			Payload:      job.Payload,
 			Status:       job.Status,
-			Result:       job.Result,
+			Result:       resultStr,
 			ErrorMessage: job.ErrorMessage,
 			StartedAt:    job.StartedAt,
-			CompletedAt:  job.CompletedAt,
-			Duration:     job.Duration,
+			CompletedAt:  completedAt,
+			Duration:     duration,
 		}
+	}
+
+	activeJobs := make([]server.JobHistoryEntry, len(jobsStatus.ActiveJobs))
+	for i, job := range jobsStatus.ActiveJobs {
+		activeJobs[i] = convertJob(job)
 	}
 
 	jobHistory := make([]server.JobHistoryEntry, len(jobsStatus.JobHistory))
 	for i, job := range jobsStatus.JobHistory {
-		jobHistory[i] = server.JobHistoryEntry{
-			ID:           job.ID,
-			Type:         job.Type,
-			Payload:      job.Payload,
-			Status:       job.Status,
-			Result:       job.Result,
-			ErrorMessage: job.ErrorMessage,
-			StartedAt:    job.StartedAt,
-			CompletedAt:  job.CompletedAt,
-			Duration:     job.Duration,
-		}
+		jobHistory[i] = convertJob(job)
 	}
 
 	return &server.JobsStatus{
@@ -504,8 +513,8 @@ func (a *BackendAdapter) GetJobsStatus() *server.JobsStatus {
 	}
 }
 
-func (a *BackendAdapter) GetRollbacks() ([]server.RollbackInfo, error) {
-	rollbacks, err := a.mgr.GetRollbacks()
+func (a *BackendAdapter) GetRollbacks(ctx context.Context) ([]server.RollbackInfo, error) {
+	rollbacks, err := a.mgr.GetRollbacks(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -529,12 +538,33 @@ func (a *BackendAdapter) GetRollbacks() ([]server.RollbackInfo, error) {
 	return result, nil
 }
 
-func (a *BackendAdapter) ExecuteRollback(rollbackID string, force bool) server.ExecutionResult {
-	result := a.mgr.ExecuteRollback(rollbackID, force)
+func (a *BackendAdapter) ExecuteRollback(ctx context.Context, rollbackID string, force bool) server.ExecutionResult {
+	result := a.mgr.ExecuteRollback(ctx, rollbackID, force)
 	return server.ExecutionResult{
 		Success:      result.Success,
 		Message:      result.Message,
 		ErrorMessage: result.ErrorMessage,
 	}
+}
+
+func (a *BackendAdapter) GetDownloadProgress() map[string]*server.DownloadProgress {
+	progress := a.mgr.GetDownloadProgress()
+	if progress == nil {
+		return nil
+	}
+	result := make(map[string]*server.DownloadProgress, len(progress))
+	for k, v := range progress {
+		result[k] = &server.DownloadProgress{
+			ID:              v.ID,
+			FileName:        v.FileName,
+			TotalBytes:      v.TotalBytes,
+			DownloadedBytes: v.DownloadedBytes,
+			Percentage:      v.Percentage,
+			Speed:           v.Speed,
+			StartTime:       v.StartTime,
+			EstimatedTime:   v.EstimatedTime,
+		}
+	}
+	return result
 }
 

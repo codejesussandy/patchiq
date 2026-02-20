@@ -3,6 +3,7 @@ package client
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -60,6 +61,9 @@ func TestSaveCredentials_CreatesDirectory(t *testing.T) {
 }
 
 func TestSaveCredentials_FilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file permissions not enforced on Windows")
+	}
 	t.Parallel()
 	dir := t.TempDir()
 

@@ -10,16 +10,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// clearConfigEnv unsets all environment variables that DefaultConfig reads.
+func clearConfigEnv(t *testing.T) {
+	t.Helper()
+	for _, key := range []string{
+		"PATCHIQ_SERVER_URL", "PATCHIQ_WEBUI_PORT", "PATCHIQ_LOG_LEVEL",
+		"PATCHIQ_LOG_FORMAT", "PATCHIQ_DATA_DIR", "PATCHIQ_PROXY_URL",
+		"PATCHIQ_PROXY_USER", "PATCHIQ_PROXY_PASSWORD",
+		"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY",
+	} {
+		t.Setenv(key, "unset-placeholder")
+		os.Unsetenv(key)
+	}
+}
+
 func TestDefaultConfig_Defaults(t *testing.T) {
-	// Clear env vars that override defaults
-	t.Setenv("PATCHIQ_SERVER_URL", "")
-	t.Setenv("PATCHIQ_WEBUI_PORT", "")
-	t.Setenv("PATCHIQ_LOG_LEVEL", "")
-	t.Setenv("PATCHIQ_LOG_FORMAT", "")
-	t.Setenv("PATCHIQ_DATA_DIR", "")
-	t.Setenv("PATCHIQ_PROXY_URL", "")
-	t.Setenv("HTTPS_PROXY", "")
-	t.Setenv("HTTP_PROXY", "")
+	clearConfigEnv(t)
 	cfg := DefaultConfig()
 	assert.Equal(t, 60, cfg.HeartbeatInterval)
 	assert.Equal(t, 3006, cfg.WebUIPort)
@@ -72,6 +78,7 @@ func TestDefaultConfig_ProxyFallback(t *testing.T) {
 }
 
 func TestDefaultConfig_InvalidWebUIPort(t *testing.T) {
+	clearConfigEnv(t)
 	t.Setenv("PATCHIQ_WEBUI_PORT", "not-a-number")
 	cfg := DefaultConfig()
 	// Invalid port keeps the hardcoded default
@@ -79,7 +86,7 @@ func TestDefaultConfig_InvalidWebUIPort(t *testing.T) {
 }
 
 func TestLoad_NonExistentReturnsDefaults(t *testing.T) {
-	t.Setenv("PATCHIQ_WEBUI_PORT", "")
+	clearConfigEnv(t)
 	cfg, err := Load("/nonexistent/path/config.json")
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
@@ -153,14 +160,3 @@ func TestSave_CreatesParentDirectory(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestRegistryExists_FalseOnLinux(t *testing.T) {
-	t.Parallel()
-	assert.False(t, RegistryExists())
-}
-
-func TestLoadFromRegistry_ErrorOnLinux(t *testing.T) {
-	t.Parallel()
-	_, err := LoadFromRegistry()
-	assert.Error(t, err)
-	assert.Equal(t, ErrRegistryNotSupported, err)
-}

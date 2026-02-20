@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -625,7 +626,7 @@ func TestDownloadPatchFile_Success_SHA256(t *testing.T) {
 
 	path, err := c.DownloadPatchFile(info, destDir)
 	require.NoError(t, err)
-	assert.Equal(t, destDir+"/patch.pkg", path)
+	assert.Equal(t, filepath.Join(destDir, "patch.pkg"), path)
 
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)

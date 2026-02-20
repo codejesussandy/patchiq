@@ -2,6 +2,7 @@ package executors
 
 import (
 	"context"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -75,7 +76,13 @@ func TestExecuteInlineScriptWithEnvVars(t *testing.T) {
 	env := map[string]string{
 		"MY_TEST_VAR": "test_value_123",
 	}
-	result := exec.ExecuteInlineScript(ctx, "echo $MY_TEST_VAR", "install", false, env)
+
+	// PowerShell uses $env:VAR syntax, bash uses $VAR
+	script := "echo $MY_TEST_VAR"
+	if runtime.GOOS == "windows" {
+		script = "Write-Output $env:MY_TEST_VAR"
+	}
+	result := exec.ExecuteInlineScript(ctx, script, "install", false, env)
 
 	assert.True(t, result.Success)
 	assert.Contains(t, result.Output, "test_value_123")

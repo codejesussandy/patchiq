@@ -35,6 +35,9 @@ func TestInit_LogFile(t *testing.T) {
 
 	err := Init("info", "json", logFile)
 	require.NoError(t, err)
+
+	// Reset logger to stdout so the file handle is released (needed for Windows cleanup)
+	_ = Init("info", "json", "")
 }
 
 func TestInit_InvalidLogFilePath(t *testing.T) {

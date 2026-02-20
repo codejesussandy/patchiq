@@ -14,6 +14,8 @@ func withTempHome(t *testing.T) string {
 	t.Helper()
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
+	// On Windows, os.UserHomeDir() uses USERPROFILE, not HOME
+	t.Setenv("USERPROFILE", tmpDir)
 	return tmpDir
 }
 
