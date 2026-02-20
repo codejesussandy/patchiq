@@ -38,7 +38,14 @@ func clearConfigEnv(t *testing.T) {
 
 func TestDefaultConfig_Defaults(t *testing.T) {
 	clearConfigEnv(t)
+	// Debug: check if env var is truly unset
+	if v, ok := os.LookupEnv("PATCHIQ_WEBUI_PORT"); ok {
+		t.Logf("DEBUG: PATCHIQ_WEBUI_PORT still set after clearConfigEnv: %q", v)
+	} else {
+		t.Log("DEBUG: PATCHIQ_WEBUI_PORT is unset (good)")
+	}
 	cfg := DefaultConfig()
+	t.Logf("DEBUG: WebUIPort=%d", cfg.WebUIPort)
 	assert.Equal(t, 60, cfg.HeartbeatInterval)
 	assert.Equal(t, 3006, cfg.WebUIPort)
 	assert.NotEmpty(t, cfg.DataDir)
