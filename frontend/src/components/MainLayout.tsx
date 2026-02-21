@@ -58,6 +58,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const [categoryManagementModalOpen, setCategoryManagementModalOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [categoryPanelCollapsed, setCategoryPanelCollapsed] = useState(false);
 
   // ── Data fetching ──────────────────────────────────────────────
 
@@ -230,7 +231,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const showCategoryPanel = (sidebarConfig?.title === 'Assets' || sidebarConfig?.title === 'Patches') && !isTabletOrSmaller;
   const showMobileDrawer = Boolean(sidebarConfig && isTabletOrSmaller); // Show drawer button on mobile/tablet
   const sidebarWidth = showSidebar ? SIDEBAR_COLLAPSED_WIDTH : 0;
-  const categoryPanelWidth = showCategoryPanel ? CATEGORY_PANEL_WIDTH : 0;
+  const categoryPanelWidth = showCategoryPanel && !categoryPanelCollapsed ? CATEGORY_PANEL_WIDTH : 0;
   const contentMarginLeft = sidebarWidth + categoryPanelWidth;
 
   // ── Render ─────────────────────────────────────────────────────
@@ -271,6 +272,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
             subCategories={subCategories}
             selectedSideMenu={getSelectedSideMenu()}
             expandedAssetSections={expandedAssetSections}
+            collapsed={categoryPanelCollapsed}
+            onToggleCollapse={() => setCategoryPanelCollapsed((prev) => !prev)}
             onSideMenuClick={handleSideMenuClick}
             onExpandedSectionsChange={setExpandedAssetSections}
             onOpenCategoryModal={() => setCategoryManagementModalOpen(true)}
@@ -342,6 +345,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
               subCategories={subCategories}
               selectedSideMenu={getSelectedSideMenu()}
               expandedAssetSections={expandedAssetSections}
+              collapsed={false}
+              onToggleCollapse={() => {}}
               onSideMenuClick={(key) => {
                 handleSideMenuClick(key);
                 setMobileDrawerOpen(false);
