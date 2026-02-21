@@ -16,7 +16,7 @@ import { sanitizeInput } from '../../utils/sanitize';
 import { ColumnFilterModal } from './components/ColumnFilterModal';
 import { ComputerGroupFormModal } from './components/ComputerGroupFormModal';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface FilterState { showName: boolean; showDescription: boolean; showEndpoints: boolean }
 
@@ -150,8 +150,9 @@ export const ComputerGroups = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={2} style={{ margin: 0 }}>Computer Groups</Title>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Computer Groups</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Organize assets into logical groups</Text>
       </div>
 
       <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>

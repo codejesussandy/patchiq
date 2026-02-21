@@ -211,6 +211,12 @@ export const PatchJobs = () => {
 
   return (
     <div>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Patch Jobs</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Manage patch deployment policies and schedules</Text>
+        </div>
+      </div>
       <JobToolbar
         searchText={searchText}
         onSearchChange={setSearchText}

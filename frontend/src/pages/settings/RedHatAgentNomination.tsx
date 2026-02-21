@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { ReloadOutlined, DownloadOutlined, SearchOutlined, EditOutlined } from '@ant-design/icons';
 import { App,
-  Button, Space, Input, Tag, Spin, Modal, Form, Select, Tooltip } from 'antd';
+  Button, Space, Input, Tag, Spin, Modal, Form, Select, Tooltip, Typography } from 'antd';
 import type { ColumnsType} from 'antd/es/table';
 import { DataTable } from '../../components/shared/DataTable';
 import { useRedHatAgentNominations, useUpdateRedHatAgentNomination } from '../../hooks/useSettings';
 import { settingsService } from '../../services/settings.service';
 import type { RedHatAgentNomination as RedHatAgentNominationType } from '../../types/settings.types';
+
+const { Title, Text } = Typography;
 
 const statusColors: Record<string, string> = {
   pending: 'processing',
@@ -154,7 +156,10 @@ export const RedHatAgentNomination = () => {
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0 }}>Red Hat Agent Nomination</h2>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Red Hat Agent Nomination</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Nominate agents for Red Hat patch management</Text>
+        </div>
         <Space>
           <Input
             placeholder="Search"

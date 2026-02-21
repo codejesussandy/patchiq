@@ -113,7 +113,10 @@ export const DeviceCredentials = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}><Title level={2}>Device Credentials</Title></div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Device Credentials</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Manage credentials for device access</Text>
+      </div>
 
       <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <Input placeholder="Search" prefix={<SearchOutlined />} style={{ width: 320 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />

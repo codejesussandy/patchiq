@@ -22,7 +22,7 @@ import type {
 
 dayjs.extend(relativeTime);
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
 const typeOptions = [
@@ -202,7 +202,10 @@ export const Notifications = () => {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>Notification History</Title>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Notification History</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Review past notifications and alerts</Text>
+        </div>
         <Button icon={<ReloadOutlined />} onClick={() => refetch()}>Refresh</Button>
       </div>
 

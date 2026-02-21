@@ -3,7 +3,7 @@ import { App,
   Form, Button, Typography, Radio, Space } from 'antd';
 import { useAgentApprovalSettings, useUpdateAgentApprovalSettings } from '../../hooks/useSettings';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface AgentApprovalSettingsData {
   approvalType: 'auto' | 'manual';
@@ -40,8 +40,9 @@ export const AgentApprovalSettings = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}>
-        <Title level={2}>Agent Approval Settings</Title>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Agent Approval Settings</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Configure agent registration approval workflow</Text>
       </div>
 
       <Form form={form} layout="vertical">

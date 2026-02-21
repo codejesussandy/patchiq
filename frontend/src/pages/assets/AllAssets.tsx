@@ -41,7 +41,7 @@ import { DownloadAgentModal } from './components/allassets/DownloadAgentModal';
 
 const { Search } = Input;
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const defaultColumnConfig: ColumnConfig[] = [
   { key: 'assetId', title: 'Asset ID', visible: true, pinned: false, width: 200, group: 'Basic' },
@@ -277,6 +277,7 @@ export function AllAssets() {
       </Helmet>
       <div style={{ padding: '8px 12px 4px 12px', flexShrink: 0 }}>
         <Title level={3} style={{ margin: 0 }}>{osFilter ? `${osFilter} Assets` : 'Assets'}</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>View and manage all registered assets</Text>
       </div>
 
       <Row gutter={[12, 12]} style={{ padding: '4px 12px', flexShrink: 0, marginRight: 0 }} align="middle">

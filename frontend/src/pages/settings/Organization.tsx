@@ -138,7 +138,10 @@ export const Organization = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}><Title level={2}>Organization</Title></div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Organization</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Manage organization settings</Text>
+      </div>
 
       <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <Input placeholder="Search by name or description" prefix={<SearchOutlined />} style={{ flex: 1, maxWidth: '400px' }} value={searchText}

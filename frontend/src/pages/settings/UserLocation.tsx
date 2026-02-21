@@ -9,7 +9,7 @@ import { useLocations, useCreateLocation, useUpdateLocation, useDeleteLocation, 
 import './styles.css';
 import { ColumnFilterModal } from './components/ColumnFilterModal';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 interface Location { id: string; name: string; description?: string; createdAt?: string; organizationId?: string; organizationName?: string; isDefault?: boolean; usersCount?: number; departmentsCount?: number; }
@@ -142,7 +142,10 @@ export const UserLocation = () => {
 
   return (
     <div className="location-container">
-      <div className="location-header"><Title level={2} style={{ margin: 0 }}>Locations</Title></div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Locations</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Manage office and site locations</Text>
+      </div>
 
       <div className="location-toolbar">
         <div className="toolbar-left">

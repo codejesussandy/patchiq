@@ -12,7 +12,7 @@ import { CreateReportWizard } from './reports/components/CreateReportWizard';
 import { ScheduleReportModal } from './reports/components/ScheduleReportModal';
 import { SendReportModal } from './reports/components/SendReportModal';
 
-const { Text } = Typography;
+const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 const SCHEDULE_LABELS: Record<string, string> = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly' };
 
@@ -115,6 +115,10 @@ export const Reports = () => {
 
   return (
     <div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Reports</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Generate and view compliance reports</Text>
+      </div>
       <div style={{ marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
         <Input placeholder="Search by name, description, or creator..." prefix={<SearchOutlined />} style={{ width: 300 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} allowClear />
         <Select placeholder="Type" style={{ width: 140 }} value={filterType} onChange={setFilterType} allowClear options={Object.entries(REPORT_TYPE_LABELS).map(([value, label]) => ({ value, label }))} />

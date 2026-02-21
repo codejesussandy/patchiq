@@ -80,7 +80,10 @@ export const PatchTestApprove = () => {
 
   const header = (
     <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <Title level={3} style={{ margin: 0 }}>Patch Test and Approve</Title>
+      <div>
+        <Title level={3} style={{ margin: 0 }}>Patch Test and Approve</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Review and approve patches before deployment</Text>
+      </div>
       <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>Create</Button>
     </div>
   );

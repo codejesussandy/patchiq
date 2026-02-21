@@ -267,8 +267,8 @@ export const Hub = () => {
 
   return (
     <div>
-      <Title level={4}>Software Hub</Title>
-      <Text type="secondary">Manage software packages for deployment to agents</Text>
+      <Title level={3} style={{ margin: 0 }}>Software Hub</Title>
+      <Text type="secondary" style={{ fontSize: 14 }}>Manage software packages for deployment to agents</Text>
 
       <Tabs activeKey={activeTab} onChange={setActiveTab} style={{ marginTop: 16 }} items={[
         { key: 'packages', label: 'Packages', children: (

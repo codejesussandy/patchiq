@@ -28,7 +28,7 @@ import { ColumnFilterModal } from './components/ColumnFilterModal';
 import { UserFormModal } from './components/UserFormModal';
 import { UserImportModal } from './components/UserImportModal';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface User {
   id: string;
@@ -316,7 +316,10 @@ export const Users = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}><Title level={2}>Users</Title></div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Users</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Manage user accounts and permissions</Text>
+      </div>
 
       <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <Input placeholder="Search by name, email, phone, organization, role, branch, or department" prefix={<SearchOutlined />} style={{ flex: 1, maxWidth: '400px' }} value={searchText} onChange={(e) => { setSearchText(e.target.value); setPagination({ ...pagination, current: 1 }); }} />

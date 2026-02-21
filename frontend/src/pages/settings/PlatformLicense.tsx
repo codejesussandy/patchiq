@@ -86,7 +86,10 @@ export const PlatformLicense = () => {
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={2} style={{ margin: 0 }}>Platform License</Title>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Platform License</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Manage platform license information</Text>
+        </div>
         <Button
           icon={<ReloadOutlined />}
           onClick={() => refetch()}

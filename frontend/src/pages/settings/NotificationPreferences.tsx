@@ -107,8 +107,8 @@ export const NotificationPreferences = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <Title level={4} style={{ margin: 0 }}>Notification Preferences</Title>
-          <Text type="secondary">Choose how you receive notifications for each category</Text>
+          <Title level={3} style={{ margin: 0 }}>Notification Preferences</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Choose how you receive notifications for each category</Text>
         </div>
         <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={updatePrefsMutation.isPending}>
           Save Preferences

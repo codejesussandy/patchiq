@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { ReloadOutlined, DownloadOutlined, SearchOutlined, FilterOutlined } from '@ant-design/icons';
-import { Button, Select, Input, Space, Tag, Spin } from 'antd';
+import { Button, Select, Input, Space, Tag, Spin, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { Dayjs } from 'dayjs';
 import { DataTable } from '../../components/shared/DataTable';
 import { useAuditLogs, useAuditFilterOptions } from '../../hooks/useSettings';
 import { formatAuditDetail } from './components/AuditDetailFormatter';
 import { AuditTimelineModal, type TimePeriod } from './components/AuditTimelineModal';
+
+const { Title, Text } = Typography;
 
 interface AuditLog {
   id: string;
@@ -104,7 +106,10 @@ export const Audit = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <h1 style={{ marginBottom: '24px', fontSize: '28px', fontWeight: 600 }}>Audit</h1>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Audit</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>View system audit trail and activity logs</Text>
+      </div>
       <div style={{ marginBottom: '24px' }}>
         <div style={{ marginBottom: '12px' }}>
           <Input placeholder="Search..." prefix={<SearchOutlined />} value={searchText} onChange={(e) => setSearchText(e.target.value)} style={{ maxWidth: '400px' }} />

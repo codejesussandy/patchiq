@@ -4,7 +4,7 @@ import { App,
 import { useRiskScore, useUpdateRiskScore } from '../../hooks/useSettings';
 import type { RiskScoreFormData } from '../../types/settings.types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface RiskScoreFormValues {
   applyDefaultSettings: boolean;
@@ -69,6 +69,7 @@ export const RiskScoreSettings = () => {
         <Title level={3} style={{ margin: 0 }}>
           Risk Score Settings
         </Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Customize risk scoring parameters</Text>
       </div>
 
       <Form

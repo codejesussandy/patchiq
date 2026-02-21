@@ -127,7 +127,8 @@ export const Branding = () => {
     <div style={{ padding: '24px' }}>
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
-        <Title level={2}>Branding</Title>
+        <Title level={3} style={{ margin: 0 }}>Branding</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Customize platform appearance and branding</Text>
       </div>
 
       {loading ? (

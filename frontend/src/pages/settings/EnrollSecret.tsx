@@ -23,7 +23,7 @@ import { useModal } from '../../hooks/useModal';
 import { useEnrollSecrets, useCreateEnrollSecret, useDeleteEnrollSecret, useOrganizations, useDepartments } from '../../hooks/useSettings';
 import type { EnrollSecret as EnrollSecretType } from '../../types/settings.types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export const EnrollSecret = () => {
   const { message } = App.useApp();
@@ -207,8 +207,9 @@ export const EnrollSecret = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}>
-        <Title level={2}>Enroll Secret</Title>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Enroll Secret</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Manage agent enrollment secrets</Text>
       </div>
 
       {/* Search and Actions Bar */}

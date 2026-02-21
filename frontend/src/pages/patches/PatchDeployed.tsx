@@ -10,7 +10,7 @@ import { type Deployment } from '../../services/patch.service';
 import { CreateDeploymentModal, PreviewDeploymentModal } from './components/CreateDeploymentModal';
 import { DeploymentTasksModal, type DeploymentTask } from './components/DeploymentTasksModal';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 export const PatchDeployed = () => {
@@ -130,7 +130,10 @@ export const PatchDeployed = () => {
   return (
     <div>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>Patch Deployed</Title>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Patch Deployed</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Track deployment status of applied patches</Text>
+        </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>Create</Button>
       </div>
 

@@ -27,7 +27,7 @@ import { useRoles, useCreateRole, useUpdateRole, useDeleteRole, useOrganizations
 import { ColumnFilterModal } from './components/ColumnFilterModal';
 import { RoleCapabilitiesPicker } from './components/RoleCapabilitiesPicker';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 interface UserRole {
@@ -199,7 +199,10 @@ export const UserRoles = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}><Title level={2}>User Roles</Title></div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>User Roles</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Define and assign user roles</Text>
+      </div>
 
       <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <Input placeholder="Search..." prefix={<SearchOutlined />} style={{ flex: 1, maxWidth: '400px' }} value={searchText}

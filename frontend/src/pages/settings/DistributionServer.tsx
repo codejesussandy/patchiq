@@ -8,7 +8,7 @@ import { useDistributionServers } from '../../hooks/useSettings';
 import { settingsService } from '../../services/settings.service';
 import type { DistributionServer as DistributionServerType } from '../../types/settings.types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export const DistributionServer = () => {
   const { message } = App.useApp();
@@ -122,7 +122,8 @@ export const DistributionServer = () => {
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ marginBottom: '24px' }}>
-        <Title level={3}>Distribution Server</Title>
+        <Title level={3} style={{ margin: 0 }}>Distribution Server</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Configure patch distribution endpoints</Text>
       </div>
 
       <DataTable

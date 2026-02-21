@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { ReloadOutlined, DownloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { App,
-  Button, Space, Input, Tag, Spin } from 'antd';
+  Button, Space, Input, Tag, Spin, Typography } from 'antd';
 import type { ColumnsType} from 'antd/es/table';
 import { DataTable } from '../../components/shared/DataTable';
 import { useAgentApprovals } from '../../hooks/useSettings';
 import { settingsService } from '../../services/settings.service';
 import type { AgentApproval } from '../../types/settings.types';
+
+const { Title, Text } = Typography;
 
 const statusColors: Record<string, string> = {
   Approved: 'success',
@@ -103,7 +105,10 @@ export const AgentApprovals = () => {
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0 }}>Agent Approvals</h2>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Agent Approvals</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Review and approve pending agent registrations</Text>
+        </div>
         <Space>
           <Input
             placeholder="Search"

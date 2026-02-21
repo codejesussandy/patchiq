@@ -23,7 +23,7 @@ import { getErrorMessage } from '../../utils/error';
 import { JobToolbar, DeploymentTasksModal, exportToCsv } from './components';
 import type { TaskItem as SharedTaskItem, DeploymentSummary } from './components';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 type PatchDeploymentItem = {
   id: string;
@@ -251,6 +251,10 @@ export const PatchJobsDeployed = () => {
 
   return (
     <div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Patch Deployments</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Track and manage deployed patch jobs</Text>
+      </div>
       <JobToolbar
         searchText={searchText}
         onSearchChange={setSearchText}

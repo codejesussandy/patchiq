@@ -242,7 +242,10 @@ export const AllPatches = () => {
         <title>{osFilter ? `${osFilter} Patches` : 'Patches'} - PatchIQ</title>
       </Helmet>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>{osFilter ? `${osFilter} Patches` : 'All Patches'}</Title>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>{osFilter ? `${osFilter} Patches` : 'All Patches'}</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Browse, filter, and deploy available patches</Text>
+        </div>
         <Space>
           <Button icon={<ScanOutlined />} loading={discoverPatchesMutation.isPending} onClick={() => {
             discoverPatchesMutation.mutate(undefined, {

@@ -27,7 +27,7 @@ import { useModal } from '../../hooks/useModal';
 import type { OSLicense } from '../../types/asset.types';
 import { OSLicenseFormModal } from './components/OSLicenseFormModal';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 export const OSLicenses = () => {
@@ -170,7 +170,10 @@ export const OSLicenses = () => {
   return (
     <div>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>OS License</Title>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>OS License</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Manage operating system license assignments</Text>
+        </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <Button icon={<SyncOutlined spin={autoFetching} />} onClick={handleAutoFetchLicenses} loading={autoFetching}>
             Auto Fetch

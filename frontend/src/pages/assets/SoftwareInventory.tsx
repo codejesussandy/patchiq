@@ -18,7 +18,7 @@ import { DataTable } from '../../components/shared/DataTable';
 import { useSoftwareInventory } from '../../hooks/useAssets';
 import type { SoftwareInventory as SoftwareInventoryType } from '../../types/asset.types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 export const SoftwareInventory = () => {
@@ -124,9 +124,10 @@ export const SoftwareInventory = () => {
           justifyContent: 'space-between',
           alignItems: 'center' }}
       >
-        <Title level={3} style={{ margin: 0 }}>
-          Software Inventory
-        </Title>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Software Inventory</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Track installed software across your assets</Text>
+        </div>
         <Button icon={<UploadOutlined />} onClick={handleImportCSV}>
           Import from CSV
         </Button>

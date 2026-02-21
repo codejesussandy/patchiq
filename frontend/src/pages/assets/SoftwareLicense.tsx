@@ -31,7 +31,7 @@ import { useModal } from '../../hooks/useModal';
 import type { SoftwareLicense as SoftwareLicenseType, OSLicense } from '../../types/asset.types';
 import { LicenseFormModal } from './components/LicenseFormModal';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 type LicenseTab = 'software' | 'os';
@@ -205,7 +205,10 @@ export const SoftwareLicense = () => {
   return (
     <div>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>Software Licenses</Title>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Software Licenses</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Manage and monitor software license compliance</Text>
+        </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>
           New License
         </Button>
