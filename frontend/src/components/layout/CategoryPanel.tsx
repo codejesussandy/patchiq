@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  PlusOutlined,
   WindowsOutlined,
   AppleOutlined,
   DesktopOutlined,
@@ -8,7 +7,7 @@ import {
   RightOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
-import { Menu, Button, Tooltip, theme } from 'antd';
+import { Menu, Button, theme } from 'antd';
 import type { Category, SubCategory } from '../../types/asset.types';
 import {
   CATEGORY_PANEL_WIDTH,
@@ -28,7 +27,6 @@ interface CategoryPanelProps {
   onToggleCollapse: () => void;
   onSideMenuClick: (key: string) => void;
   onExpandedSectionsChange: (keys: string[]) => void;
-  onOpenCategoryModal: () => void;
 }
 
 const osItems = [
@@ -48,7 +46,6 @@ export const CategoryPanel = ({
   onToggleCollapse,
   onSideMenuClick,
   onExpandedSectionsChange,
-  onOpenCategoryModal,
 }: CategoryPanelProps) => {
   const { token } = theme.useToken();
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
@@ -133,15 +130,6 @@ export const CategoryPanel = ({
           <span style={{ fontWeight: 600, fontSize: '11px', color: token.colorTextTertiary, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
             Platforms
           </span>
-          {sidebarTitle === 'Assets' && (
-            <div style={{ display: 'flex', gap: 2 }}>
-              <Tooltip title="Add Category">
-                <Button type="text" size="small" icon={<PlusOutlined style={{ fontSize: 11 }} />}
-                  onClick={onOpenCategoryModal}
-                  style={{ width: 22, height: 22, borderRadius: 4, color: token.colorTextTertiary }} />
-              </Tooltip>
-            </div>
-          )}
         </div>
 
         {/* OS Category Cards */}

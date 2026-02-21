@@ -137,7 +137,7 @@ export function DataTable<T = any>({
     return cols;
   }, [columns, rowActions]);
 
-  const rowSelection = customRowSelection || (selectable
+  const baseRowSelection = customRowSelection || (selectable
     ? {
         selectedRowKeys: selectedRowKeys || [],
         onChange: (keys: React.Key[], rows: T[]) => {
@@ -145,6 +145,10 @@ export function DataTable<T = any>({
         },
       }
     : undefined);
+
+  const rowSelection = baseRowSelection
+    ? { ...baseRowSelection, columnWidth: 32 }
+    : undefined;
 
   const tablePagination =
     pagination === false

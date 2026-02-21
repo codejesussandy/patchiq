@@ -228,7 +228,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const sidebarConfig = getSidebarConfig();
   const isTabletOrSmaller = !screens.lg;
   const showSidebar = sidebarConfig && !isTabletOrSmaller;
-  const showCategoryPanel = (sidebarConfig?.title === 'Assets' || sidebarConfig?.title === 'Patches') && !isTabletOrSmaller;
+  const showCategoryPanel = (sidebarConfig?.title === 'Assets' || sidebarConfig?.title === 'Patches') && !isTabletOrSmaller && !location.pathname.startsWith('/assets/software-license') && !location.pathname.startsWith('/assets/hub') && !location.pathname.startsWith('/assets/software-inventory');
   const showMobileDrawer = Boolean(sidebarConfig && isTabletOrSmaller); // Show drawer button on mobile/tablet
   const sidebarWidth = showSidebar ? SIDEBAR_COLLAPSED_WIDTH : 0;
   const categoryPanelWidth = showCategoryPanel && !categoryPanelCollapsed ? CATEGORY_PANEL_WIDTH : 0;
@@ -276,7 +276,6 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
             onToggleCollapse={() => setCategoryPanelCollapsed((prev) => !prev)}
             onSideMenuClick={handleSideMenuClick}
             onExpandedSectionsChange={setExpandedAssetSections}
-            onOpenCategoryModal={() => setCategoryManagementModalOpen(true)}
           />
         )}
 
@@ -352,10 +351,6 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                 setMobileDrawerOpen(false);
               }}
               onExpandedSectionsChange={setExpandedAssetSections}
-              onOpenCategoryModal={() => {
-                setCategoryManagementModalOpen(true);
-                setMobileDrawerOpen(false);
-              }}
             />
           )}
         </div>
