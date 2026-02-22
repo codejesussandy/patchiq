@@ -19,18 +19,23 @@ OUTPUT_DIR="$SCRIPT_DIR/output"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR" "$OUTPUT_DIR"
 
-# Build agent binary
-echo "Building agent binary..."
-cd "$PROJECT_ROOT"
-
 # Map architecture names for Go
 GOARCH="$ARCH"
 if [ "$ARCH" = "x86_64" ]; then GOARCH=amd64; fi
 
-GOOS=linux GOARCH=$GOARCH go build \
-    -ldflags "-X main.version=$VERSION -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    -o "$BUILD_DIR/patchiq-agent" \
-    ./cmd/agent
+# Use pre-built binary from dist/ if available, otherwise compile from source
+PREBUILT="$PROJECT_ROOT/dist/patchiq-agent-linux-${GOARCH}"
+if [ -f "$PREBUILT" ]; then
+    echo "Using pre-built binary: $PREBUILT"
+    cp "$PREBUILT" "$BUILD_DIR/patchiq-agent"
+else
+    echo "Building agent binary from source..."
+    cd "$PROJECT_ROOT"
+    GOOS=linux GOARCH=$GOARCH go build \
+        -ldflags "-X main.version=$VERSION -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        -o "$BUILD_DIR/patchiq-agent" \
+        ./cmd/agent
+fi
 
 # Create directory structure
 mkdir -p "$BUILD_DIR/usr/local/bin"
@@ -56,6 +61,7 @@ RestartSec=10
 StandardOutput=journal
 StandardError=journal
 Environment=PATCHIQ_DATA_DIR=/var/lib/patchiq-agent
+Environment=HOME=/root
 
 [Install]
 WantedBy=multi-user.target

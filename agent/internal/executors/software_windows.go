@@ -110,6 +110,78 @@ func (e *WindowsSoftwareExecutor) installWithWinget(ctx context.Context, pkg mod
 	return result
 }
 
+// UpgradeSoftware upgrades an already-installed software package on Windows
+func (e *WindowsSoftwareExecutor) UpgradeSoftware(ctx context.Context, pkg models.SoftwarePackage) models.ExecutionResult {
+	startTime := time.Now()
+
+	switch strings.ToLower(pkg.Source) {
+	case "winget":
+		return e.upgradeWithWinget(ctx, pkg, startTime)
+	case "choco", "chocolatey":
+		// choco upgrade works the same way
+		pkg.Source = "choco"
+		return e.installWithChocolatey(ctx, pkg, startTime) // choco install also upgrades
+	default:
+		// Fall back to install for other sources
+		return e.InstallSoftware(ctx, pkg)
+	}
+}
+
+// upgradeWithWinget upgrades using Windows Package Manager (winget upgrade)
+func (e *WindowsSoftwareExecutor) upgradeWithWinget(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
+	result := models.ExecutionResult{Success: false}
+
+	wingetPath, err := exec.LookPath("winget")
+	if err != nil {
+		result.ErrorMessage = "winget is not installed or not in PATH"
+		result.Message = "Cannot upgrade via winget - winget not found"
+		result.Duration = time.Since(startTime).Milliseconds()
+		return result
+	}
+
+	nameFlag := "--name"
+	if strings.Contains(pkg.Name, ".") {
+		nameFlag = "--id"
+	}
+	args := []string{"upgrade", nameFlag, pkg.Name, "--silent", "--accept-package-agreements", "--accept-source-agreements"}
+
+	if pkg.Version != "" && pkg.Version != "latest" {
+		args = append(args, "--version", pkg.Version)
+	}
+
+	cmd := exec.CommandContext(ctx, wingetPath, args...)
+	output, err := cmd.CombinedOutput()
+
+	result.Duration = time.Since(startTime).Milliseconds()
+	result.Output = string(output)
+
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			result.ExitCode = exitErr.ExitCode()
+			// No applicable update = already up to date
+			if exitErr.ExitCode() == 0x8a15002b {
+				result.Success = true
+				result.Message = fmt.Sprintf("%s is already up to date", pkg.Name)
+				return result
+			}
+		}
+		if ctx.Err() == context.DeadlineExceeded {
+			result.ErrorCode = models.ErrTimeout
+			result.Retryable = true
+			result.ErrorMessage = "Command timeout exceeded"
+		} else {
+			classifySoftwareError(&result, err, string(output))
+		}
+		result.Message = fmt.Sprintf("Failed to upgrade %s via winget", pkg.Name)
+		return result
+	}
+
+	result.Success = true
+	result.ExitCode = 0
+	result.Message = fmt.Sprintf("Successfully upgraded %s via winget", pkg.Name)
+	return result
+}
+
 // installWithChocolatey installs using Chocolatey
 func (e *WindowsSoftwareExecutor) installWithChocolatey(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}

@@ -486,6 +486,104 @@ export const CPE_MAPPINGS: CpeMappingSeed[] = [
 
   // 7-Zip (additional Windows installer variant)
   { agentName: '7-Zip 24.09 (x64)', agentVendor: 'Igor Pavlov', cpeVendor: '7-zip', cpeProduct: '7-zip', platform: 'windows', confidence: 1.0 },
+
+  // ============================================
+  // Object Storage & Infrastructure
+  // ============================================
+
+  // MinIO
+  { agentName: 'minio', cpeVendor: 'minio', cpeProduct: 'minio', platform: 'all', confidence: 1.0 },
+  { agentName: 'MinIO', cpeVendor: 'minio', cpeProduct: 'minio', platform: 'all', confidence: 1.0 },
+
+  // etcd
+  { agentName: 'etcd', cpeVendor: 'etcd', cpeProduct: 'etcd', platform: 'all', confidence: 1.0 },
+
+  // Consul
+  { agentName: 'consul', cpeVendor: 'hashicorp', cpeProduct: 'consul', platform: 'all', confidence: 1.0 },
+
+  // Vault
+  { agentName: 'vault', cpeVendor: 'hashicorp', cpeProduct: 'vault', platform: 'all', confidence: 1.0 },
+
+  // ============================================
+  // Windows System Components
+  // ============================================
+
+  // .NET Framework / Runtime
+  { agentName: 'Microsoft .NET Framework', agentVendor: 'Microsoft Corporation', cpeVendor: 'microsoft', cpeProduct: '.net_framework', platform: 'windows', confidence: 1.0 },
+  { agentName: 'Microsoft .NET Runtime', agentVendor: 'Microsoft Corporation', cpeVendor: 'microsoft', cpeProduct: '.net', platform: 'windows', confidence: 1.0 },
+  { agentName: 'dotnet-runtime', cpeVendor: 'microsoft', cpeProduct: '.net', platform: 'all', confidence: 0.95 },
+  { agentName: 'dotnet-sdk', cpeVendor: 'microsoft', cpeProduct: '.net', platform: 'all', confidence: 0.9 },
+  { agentName: 'aspnetcore-runtime', cpeVendor: 'microsoft', cpeProduct: 'asp.net_core', platform: 'all', confidence: 0.95 },
+
+  // Visual C++ Redistributable
+  { agentName: 'Microsoft Visual C++ Redistributable', agentVendor: 'Microsoft Corporation', cpeVendor: 'microsoft', cpeProduct: 'visual_c++', platform: 'windows', confidence: 0.9 },
+
+  // Windows Defender
+  { agentName: 'Windows Defender', agentVendor: 'Microsoft Corporation', cpeVendor: 'microsoft', cpeProduct: 'windows_defender', platform: 'windows', confidence: 1.0 },
+
+  // PowerShell
+  { agentName: 'PowerShell', agentVendor: 'Microsoft Corporation', cpeVendor: 'microsoft', cpeProduct: 'powershell', platform: 'all', confidence: 1.0 },
+  { agentName: 'powershell', cpeVendor: 'microsoft', cpeProduct: 'powershell', platform: 'all', confidence: 0.95 },
+
+  // ============================================
+  // Additional Enterprise Software
+  // ============================================
+
+  // Nginx Unit
+  { agentName: 'unit', cpeVendor: 'f5', cpeProduct: 'nginx_unit', platform: 'linux', confidence: 0.85 },
+
+  // HAProxy
+  { agentName: 'haproxy', cpeVendor: 'haproxy', cpeProduct: 'haproxy', platform: 'linux', confidence: 1.0 },
+
+  // Traefik
+  { agentName: 'traefik', cpeVendor: 'traefik', cpeProduct: 'traefik', platform: 'all', confidence: 1.0 },
+
+  // Tomcat
+  { agentName: 'tomcat', cpeVendor: 'apache', cpeProduct: 'tomcat', platform: 'all', confidence: 1.0 },
+  { agentName: 'tomcat9', cpeVendor: 'apache', cpeProduct: 'tomcat', platform: 'linux', confidence: 0.95 },
+  { agentName: 'tomcat10', cpeVendor: 'apache', cpeProduct: 'tomcat', platform: 'linux', confidence: 0.95 },
+
+  // Samba
+  { agentName: 'samba', cpeVendor: 'samba', cpeProduct: 'samba', platform: 'linux', confidence: 1.0 },
+  { agentName: 'samba-common', cpeVendor: 'samba', cpeProduct: 'samba', platform: 'linux', packageManager: 'dpkg', confidence: 0.9 },
+
+  // BIND DNS
+  { agentName: 'bind9', cpeVendor: 'isc', cpeProduct: 'bind', platform: 'linux', packageManager: 'dpkg', confidence: 1.0 },
+  { agentName: 'bind', cpeVendor: 'isc', cpeProduct: 'bind', platform: 'linux', packageManager: 'rpm', confidence: 1.0 },
+
+  // Wireshark
+  { agentName: 'Wireshark', agentVendor: 'The Wireshark developers', cpeVendor: 'wireshark', cpeProduct: 'wireshark', platform: 'all', confidence: 1.0 },
+  { agentName: 'wireshark', cpeVendor: 'wireshark', cpeProduct: 'wireshark', platform: 'linux', confidence: 0.95 },
+
+  // Nmap
+  { agentName: 'nmap', cpeVendor: 'nmap', cpeProduct: 'nmap', platform: 'all', confidence: 1.0 },
+
+  // ImageMagick
+  { agentName: 'imagemagick', cpeVendor: 'imagemagick', cpeProduct: 'imagemagick', platform: 'all', confidence: 1.0 },
+  { agentName: 'libmagickcore', cpeVendor: 'imagemagick', cpeProduct: 'imagemagick', platform: 'linux', packageManager: 'dpkg', confidence: 0.9 },
+
+  // FFmpeg
+  { agentName: 'ffmpeg', cpeVendor: 'ffmpeg', cpeProduct: 'ffmpeg', platform: 'all', confidence: 1.0 },
+  { agentName: 'libavcodec', cpeVendor: 'ffmpeg', cpeProduct: 'ffmpeg', platform: 'linux', packageManager: 'dpkg', confidence: 0.85 },
+
+  // GIMP
+  { agentName: 'GIMP', agentVendor: 'The GIMP Team', cpeVendor: 'gimp', cpeProduct: 'gimp', platform: 'all', confidence: 1.0 },
+  { agentName: 'gimp', cpeVendor: 'gimp', cpeProduct: 'gimp', platform: 'linux', confidence: 0.95 },
+
+  // Brave Browser
+  { agentName: 'Brave', agentVendor: 'Brave Software Inc', cpeVendor: 'brave', cpeProduct: 'brave', platform: 'all', confidence: 1.0 },
+  { agentName: 'brave-browser', cpeVendor: 'brave', cpeProduct: 'brave', platform: 'linux', confidence: 0.95 },
+
+  // Signal
+  { agentName: 'Signal', agentVendor: 'Signal Messenger, LLC', cpeVendor: 'signal', cpeProduct: 'signal-desktop', platform: 'all', confidence: 0.8 },
+
+  // Thunderbird
+  { agentName: 'Mozilla Thunderbird', agentVendor: 'Mozilla', cpeVendor: 'mozilla', cpeProduct: 'thunderbird', platform: 'all', confidence: 1.0 },
+  { agentName: 'thunderbird', cpeVendor: 'mozilla', cpeProduct: 'thunderbird', platform: 'linux', confidence: 0.95 },
+
+  // LibreOffice
+  { agentName: 'LibreOffice', agentVendor: 'The Document Foundation', cpeVendor: 'libreoffice', cpeProduct: 'libreoffice', platform: 'all', confidence: 1.0 },
+  { agentName: 'libreoffice-core', cpeVendor: 'libreoffice', cpeProduct: 'libreoffice', platform: 'linux', packageManager: 'dpkg', confidence: 0.95 },
 ];
 
 /**

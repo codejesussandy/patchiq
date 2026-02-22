@@ -376,7 +376,7 @@ export type UpdateServerSettingsInput = z.infer<typeof updateServerSettingsSchem
 
 export const updateAgentConfigSchema = z.object({
   allowedBandwidth: z.number().int().min(1).max(10000).optional(),           // 1 Mbps – 10 Gbps
-  agentRefreshCycle: z.number().int().min(60).max(86400).optional(),         // 1 min – 24 hours
+  agentRefreshCycle: z.number().int().min(10).max(86400).optional(),         // 10s – 24 hours
   systemActionRefreshCycle: z.number().int().min(60).max(86400).optional(),
   endpointVlanRefreshCycle: z.number().int().min(300).max(86400).optional(), // 5 min – 24 hours
   patchScanningRefreshCycle: z.number().int().min(300).max(604800).optional(), // 5 min – 7 days
@@ -387,6 +387,16 @@ export const updateAgentConfigSchema = z.object({
   networkRefreshCycle: z.number().int().min(60).max(86400).optional(),
   networkSharesRefreshCycle: z.number().int().min(300).max(604800).optional(),
   riskDetectionRefreshCycle: z.number().int().min(300).max(604800).optional(),
+  // Additional fields from frontend
+  ssdmRefreshCycle: z.number().int().min(60).max(604800).optional(),
+  processRefreshCycle: z.number().int().min(60).max(86400).optional(),
+  certificateRefreshCycle: z.number().int().min(300).max(604800).optional(),
+  startupItemsRefreshCycle: z.number().int().min(300).max(604800).optional(),
+  usersRefreshCycle: z.number().int().min(300).max(604800).optional(),
+  systemResourcesRefreshCycle: z.number().int().min(60).max(86400).optional(),
+  systemServicesRefreshCycle: z.number().int().min(60).max(86400).optional(),
+  fimEventsRefreshCycle: z.number().int().min(60).max(604800).optional(),
+  softwareMeterRefreshCycle: z.number().int().min(300).max(604800).optional(),
 });
 
 export type UpdateAgentConfigInput = z.infer<typeof updateAgentConfigSchema>;

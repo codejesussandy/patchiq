@@ -335,13 +335,16 @@ class CpeMappingService {
   normalizeSoftwareName(name: string): string {
     let normalized = name.toLowerCase().trim();
 
-    // Step 1: Remove trailing version numbers (e.g., libssl3 -> libssl, libjpeg8 -> libjpeg)
-    // Note: Language prefixes (python3-, node-, etc.) are NOT stripped.
-    // python3-openssl is a Python binding, not OpenSSL itself.
-    // python3 -> python still works via trailing version number stripping.
-    normalized = normalized.replace(/[-._]*[0-9]+(\.[0-9]+)*$/, '');
+    // Step 1: Remove parenthetical suffixes — architecture, language, bitness tags
+    // Examples: "(x64 en-US)", "(x86)", "(64-bit)", "(amd64)", "(x64 edition)"
+    normalized = normalized.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
 
-    // Step 2: Remove common suffixes
+    // Step 2: Remove trailing "release X.Y.Z" or standalone version numbers
+    // Examples: "PuTTY release 0.82" -> "PuTTY", "OpenOffice 4.1.11" -> "OpenOffice"
+    normalized = normalized.replace(/\s+release\s+[0-9]+(\.[0-9]+)*/i, '');
+    normalized = normalized.replace(/[-._\s]*[0-9]+(\.[0-9]+)*$/, '');
+
+    // Step 3: Remove common suffixes
     const suffixes = ['-dev', '-bin', '-common', '-data', '-doc', '-utils'];
     for (const suffix of suffixes) {
       if (normalized.endsWith(suffix)) {
@@ -350,7 +353,7 @@ class CpeMappingService {
       }
     }
 
-    // Step 3: Conditionally strip 'lib' prefix — only if the remainder is >= 4 chars
+    // Step 4: Conditionally strip 'lib' prefix — only if the remainder is >= 4 chars
     // This prevents libbsd0 -> "bsd" (3 chars) -> false match to bsd:bsd
     if (normalized.startsWith('lib') && normalized.length > 3) {
       const withoutLib = normalized.substring(3);

@@ -23,6 +23,10 @@ func (m *mockSoftwareExecutor) InstallSoftware(ctx context.Context, pkg models.S
 	return models.ExecutionResult{Success: true, Message: "installed"}
 }
 
+func (m *mockSoftwareExecutor) UpgradeSoftware(ctx context.Context, pkg models.SoftwarePackage) models.ExecutionResult {
+	return m.InstallSoftware(ctx, pkg)
+}
+
 func (m *mockSoftwareExecutor) UninstallSoftware(ctx context.Context, name string) models.ExecutionResult {
 	if m.uninstallErr {
 		return models.ExecutionResult{Success: false, ErrorMessage: "uninstall failed"}

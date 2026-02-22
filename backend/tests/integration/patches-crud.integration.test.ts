@@ -331,3 +331,47 @@ describe('DELETE /v1/patches/:id', () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ============================================
+// Stream Patch Bundle
+// ============================================
+
+describe('GET /v1/patches/:id/bundle/stream', () => {
+  // This endpoint is public (no auth required) — agents download installers without credentials.
+  it('INTTEST - returns 404 without token for non-existent patch (public endpoint)', async () => {
+    const fakeId = '00000000-0000-0000-0000-000000000000';
+    const res = await getAgent().get(`${BASE}/${fakeId}/bundle/stream`);
+    // Public route: no 401 — returns 404 when no bundle record exists
+    expect(res.status).toBe(404);
+  });
+
+  it('INTTEST - returns 404 for non-existent patch ID', async () => {
+    const token = await getAdminToken();
+    const fakeId = '00000000-0000-0000-0000-000000000000';
+    const res = await getAgent()
+      .get(`${BASE}/${fakeId}/bundle/stream`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it('INTTEST - returns 404 when patch exists but has no bundle uploaded', async () => {
+    const token = await getAdminToken();
+
+    // Create a patch with no bundle
+    const createRes = await getAgent()
+      .post(BASE)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ software: `INTTEST-Bundle-${TS}`, title: `INTTEST-Bundle-Title-${TS}` });
+
+    expect(createRes.status).toBe(201);
+    const patchId = createRes.body.data.id;
+
+    const res = await getAgent()
+      .get(`${BASE}/${patchId}/bundle/stream`);
+
+    expect(res.status).toBe(404);
+    // Public endpoint returns { error: '...' } (not the standard { success, data } envelope)
+    expect(res.body.error).toBeDefined();
+  });
+});

@@ -29,9 +29,8 @@ export type AgentError = {
 export const agentService = {
   async getAgents(): Promise<Agent[]> {
     const response = await api.get('/agents');
-    // Backend returns paginated response { data, total, page, limit, totalPages }
-    // Paginated response: interceptor returns { data: T[], ...meta }
-    return response.data.data || [];
+    // Non-paginated: interceptor unwraps { success, data } → data (the array)
+    return Array.isArray(response.data) ? response.data : response.data?.data || [];
   },
 
   async getAgentDownloads(): Promise<AgentDownload[]> {

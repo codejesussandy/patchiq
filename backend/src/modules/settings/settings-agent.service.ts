@@ -48,6 +48,23 @@ export async function updateAgentConfig(input: Record<string, unknown>): Promise
     });
   }
 
+  // Queue config_update command for all connected agents so they pick up the new settings
+  const connectedAgents = await prisma.agent.findMany({
+    where: { status: { in: ['CONNECTED', 'Online'] } },
+    select: { id: true },
+  });
+
+  if (connectedAgents.length > 0) {
+    await prisma.agentCommand.createMany({
+      data: connectedAgents.map((agent) => ({
+        agentId: agent.id,
+        type: 'config_update',
+        payload: {},
+        status: 'PENDING',
+      })),
+    });
+  }
+
   return getAgentConfig();
 }
 

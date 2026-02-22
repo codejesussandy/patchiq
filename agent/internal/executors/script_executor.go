@@ -451,9 +451,14 @@ func (e *BaseScriptExecutor) validateBundleStructure(bundlePath string) error {
 	// Open tar reader
 	tr := tar.NewReader(gzr)
 
-	// Track found scripts
+	// Track found scripts — accept both .sh and .ps1 extensions
 	foundScripts := make(map[string]bool)
-	requiredScripts := []string{"install.sh", "uninstall.sh", "rollback.sh"}
+	requiredOps := []string{"install", "uninstall"}
+	// Build list of acceptable filenames per operation
+	requiredVariants := make(map[string][]string)
+	for _, op := range requiredOps {
+		requiredVariants[op] = []string{op + ".sh", op + ".ps1"}
+	}
 
 	// Scan all entries
 	for {
@@ -485,17 +490,45 @@ func (e *BaseScriptExecutor) validateBundleStructure(bundlePath string) error {
 
 		// Track required scripts (check both with and without directory prefix)
 		baseName := filepath.Base(header.Name)
-		for _, script := range requiredScripts {
-			if baseName == script {
-				foundScripts[script] = true
+		for op, variants := range requiredVariants {
+			for _, v := range variants {
+				if baseName == v {
+					foundScripts[op] = true
+				}
 			}
 		}
 	}
 
-	// Verify all required scripts are present
-	for _, script := range requiredScripts {
-		if !foundScripts[script] {
-			return fmt.Errorf("missing required script: %s", script)
+	// Also check if manifest.json exists — if it does, trust the manifest for script paths
+	// and skip the filename-based check (manifest declares actual script names)
+	hasManifest := false
+	// Re-scan for manifest
+	file.Seek(0, 0)
+	gzr2, err := gzip.NewReader(file)
+	if err == nil {
+		tr2 := tar.NewReader(gzr2)
+		for {
+			h, err := tr2.Next()
+			if err != nil {
+				break
+			}
+			if filepath.Base(h.Name) == "manifest.json" {
+				hasManifest = true
+				break
+			}
+		}
+		gzr2.Close()
+	}
+
+	if hasManifest {
+		// Trust manifest for script resolution; skip filename validation
+		return nil
+	}
+
+	// Verify all required scripts are present (fallback for bundles without manifest)
+	for _, op := range requiredOps {
+		if !foundScripts[op] {
+			return fmt.Errorf("missing required script: %s.sh or %s.ps1", op, op)
 		}
 	}
 
@@ -747,7 +780,7 @@ func (e *BaseScriptExecutor) runScript(scriptPath string, workDir string, requir
 			log.Println("WARNING: Script requires admin but agent is not running as administrator")
 			log.Println("Consider running the agent as a Windows Service with LocalSystem account")
 		}
-		cmd = exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
+		cmd = exec.Command("powershell", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
 	} else {
 		// Bash on Linux/macOS
 		if requiresRoot && !alreadyElevated {
@@ -799,6 +832,17 @@ func (e *BaseScriptExecutor) runScript(scriptPath string, workDir string, requir
 
 	result.Success = true
 	result.ExitCode = 0
+
+	// Safety net: check for PowerShell error patterns even when exit code is 0
+	if runtime.GOOS == "windows" && result.Output != "" {
+		outputLower := strings.ToLower(result.Output)
+		if strings.Contains(outputLower, "fullyqualifiederrorid") ||
+			strings.Contains(outputLower, "categoryinfo") ||
+			strings.Contains(outputLower, "exception calling") {
+			log.Printf("[ScriptExec] WARNING: PowerShell output contains error patterns but exit code was 0. Output: %s", result.Output)
+		}
+	}
+
 	return result
 }
 

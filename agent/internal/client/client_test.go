@@ -245,10 +245,14 @@ func TestHeartbeat_Success(t *testing.T) {
 		assert.Equal(t, "Bearer tok", r.Header.Get("Authorization"))
 		assert.Equal(t, "agent-1", r.Header.Get("X-Agent-Id"))
 
-		resp := HeartbeatResponse{
-			Acknowledged:    true,
-			ServerTime:      "2024-01-01T00:00:00Z",
-			CommandsPending: false,
+		// Backend wraps responses in { success: true, data: {...} } envelope
+		resp := map[string]interface{}{
+			"success": true,
+			"data": HeartbeatResponse{
+				Acknowledged:    true,
+				ServerTime:      "2024-01-01T00:00:00Z",
+				CommandsPending: false,
+			},
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
@@ -261,6 +265,35 @@ func TestHeartbeat_Success(t *testing.T) {
 	result, err := c.Heartbeat(&HeartbeatRequest{Status: "healthy"})
 	require.NoError(t, err)
 	assert.True(t, result.Acknowledged)
+}
+
+func TestHeartbeat_Success_WithConfigUpdated(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]interface{}{
+			"success": true,
+			"data": HeartbeatResponse{
+				Acknowledged:       true,
+				ServerTime:         "2024-01-01T00:00:00Z",
+				CommandsPending:    true,
+				ConfigUpdated:      true,
+				InventoryRequested: true,
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	c.SetCredentials("agent-1", "tok", "refresh")
+
+	result, err := c.Heartbeat(&HeartbeatRequest{Status: "healthy"})
+	require.NoError(t, err)
+	assert.True(t, result.Acknowledged)
+	assert.True(t, result.CommandsPending)
+	assert.True(t, result.ConfigUpdated)
+	assert.True(t, result.InventoryRequested)
 }
 
 func TestHeartbeat_Unauthorized(t *testing.T) {
@@ -316,8 +349,13 @@ func TestGetPendingCommands_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, "/api/agent/commands", r.URL.Path)
+		// Backend wraps responses in { success: true, data: [...] } envelope
+		resp := map[string]interface{}{
+			"success": true,
+			"data":    commands,
+		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(commands)
+		json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -334,7 +372,11 @@ func TestGetPendingCommands_Empty(t *testing.T) {
 	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintln(w, `[]`)
+		resp := map[string]interface{}{
+			"success": true,
+			"data":    []PendingCommand{},
+		}
+		json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -344,6 +386,43 @@ func TestGetPendingCommands_Empty(t *testing.T) {
 	result, err := c.GetPendingCommands()
 	require.NoError(t, err)
 	assert.Empty(t, result)
+}
+
+func TestGetPendingCommands_WithPayload(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]interface{}{
+			"success": true,
+			"data": []map[string]interface{}{
+				{
+					"id":        "cmd-1",
+					"type":      "config_update",
+					"payload":   map[string]interface{}{},
+					"createdAt": "2024-01-01",
+				},
+				{
+					"id":   "cmd-2",
+					"type": "hub_patch_install",
+					"payload": map[string]interface{}{
+						"patchId": "p-123",
+					},
+					"createdAt": "2024-01-01",
+				},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	c.SetCredentials("agent-1", "tok", "refresh")
+
+	result, err := c.GetPendingCommands()
+	require.NoError(t, err)
+	require.Len(t, result, 2)
+	assert.Equal(t, "config_update", result[0].Type)
+	assert.Equal(t, "hub_patch_install", result[1].Type)
 }
 
 // ---- ReportCommandResult ----
@@ -452,14 +531,20 @@ func TestGetConfig_Success(t *testing.T) {
 	t.Parallel()
 	cfg := AgentConfig{
 		HeartbeatIntervalSeconds: 60,
+		TelemetryIntervalSeconds: 30,
 		TelemetryEnabled:         true,
 		LogLevel:                 "info",
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, "/api/agent/config", r.URL.Path)
+		// Backend wraps responses in { success: true, data: {...} } envelope
+		resp := map[string]interface{}{
+			"success": true,
+			"data":    cfg,
+		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(cfg)
+		json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -469,6 +554,7 @@ func TestGetConfig_Success(t *testing.T) {
 	result, err := c.GetConfig()
 	require.NoError(t, err)
 	assert.Equal(t, 60, result.HeartbeatIntervalSeconds)
+	assert.Equal(t, 30, result.TelemetryIntervalSeconds)
 	assert.True(t, result.TelemetryEnabled)
 }
 
@@ -490,9 +576,13 @@ func TestRefreshToken_Success(t *testing.T) {
 		// RefreshToken uses refreshToken in Authorization header
 		assert.Equal(t, "Bearer old-refresh", r.Header.Get("Authorization"))
 
-		resp := TokenRefreshResponse{
-			AccessToken:  "new-access",
-			RefreshToken: "new-refresh",
+		// Backend wraps responses in { success: true, data: {...} } envelope
+		resp := map[string]interface{}{
+			"success": true,
+			"data": TokenRefreshResponse{
+				AccessToken:  "new-access",
+				RefreshToken: "new-refresh",
+			},
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
@@ -707,7 +797,12 @@ func TestSetHeaders_SetsExpectedHeaders(t *testing.T) {
 		assert.Equal(t, "2.0.0", r.Header.Get("X-Agent-Version"))
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, `[]`)
+		// Backend wraps responses in envelope
+		resp := map[string]interface{}{
+			"success": true,
+			"data":    []PendingCommand{},
+		}
+		json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 

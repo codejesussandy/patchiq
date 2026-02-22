@@ -387,6 +387,13 @@ describe('Discovery API - /v1/discovery', () => {
   });
 
   describe('POST /v1/discovery/devices/:id/enroll', () => {
+    it('returns 401 without auth', async () => {
+      const res = await agent
+        .post('/v1/discovery/devices/00000000-0000-0000-0000-000000000000/enroll')
+        .send({});
+      expect(res.status).toBe(401);
+    });
+
     it('returns 404 for non-existent device', async () => {
       const res = await agent
         .post('/v1/discovery/devices/00000000-0000-0000-0000-000000000000/enroll')

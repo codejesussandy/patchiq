@@ -300,6 +300,51 @@ describe('Notifications API - /v1/notifications', () => {
     });
   });
 
+  describe('GET /v1/notifications/stream - SSE stream', () => {
+    it('returns 401 when no token query param is provided', async () => {
+      const res = await agent.get('/v1/notifications/stream');
+      // sseStream handler returns 401 when token is absent or invalid
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 401 for invalid token query param', async () => {
+      const res = await agent
+        .get('/v1/notifications/stream?token=invalid-token')
+        .buffer(true)
+        .parse((res, callback) => {
+          let data = '';
+          res.on('data', (chunk) => { data += chunk.toString(); });
+          setTimeout(() => { res.destroy(); callback(null, data); }, 500);
+        })
+        .catch((err) => err.response || err);
+
+      const status = (res && res.status) ? res.status : (res && res.statusCode) ? res.statusCode : null;
+      expect(status).toBe(401);
+    });
+
+    it('returns 200 with text/event-stream content-type for valid token', async () => {
+      let capturedRes: any = null;
+
+      await new Promise<void>((resolve) => {
+        agent
+          .get(`/v1/notifications/stream?token=${adminToken}`)
+          .buffer(true)
+          .parse((res, callback) => {
+            capturedRes = res;
+            let data = '';
+            res.on('data', (chunk) => { data += chunk.toString(); });
+            setTimeout(() => { res.destroy(); callback(null, data); }, 1500);
+          })
+          .then(() => resolve())
+          .catch(() => resolve());
+      });
+
+      expect(capturedRes).not.toBeNull();
+      expect(capturedRes.statusCode).toBe(200);
+      expect(capturedRes.headers['content-type']).toMatch(/text\/event-stream/);
+    });
+  });
+
   describe('DELETE /v1/notifications (clear all)', () => {
     it('returns 401 without auth', async () => {
       const res = await agent.delete('/v1/notifications');

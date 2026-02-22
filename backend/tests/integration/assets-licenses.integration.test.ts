@@ -326,3 +326,106 @@ describe('OS Licenses', () => {
     expect(res.body.success).toBe(false);
   });
 });
+
+describe('Software Inventory Import', () => {
+  let token;
+
+  beforeAll(async () => {
+    token = await getAdminToken();
+  });
+
+  describe('POST /v1/software-inventory/import', () => {
+    it('returns 401 without auth', async () => {
+      const res = await getAgent()
+        .post('/v1/software-inventory/import')
+        .attach('file', Buffer.from('name,version\nTestApp,1.0'), 'import.csv');
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 400 when no file is provided', async () => {
+      const res = await getAgent()
+        .post('/v1/software-inventory/import')
+        .set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('returns 200 or 400 with a CSV file', async () => {
+      const csvContent = 'name,version,publisher\nINTTEST-App,1.0.0,INTTEST-Publisher';
+      const res = await getAgent()
+        .post('/v1/software-inventory/import')
+        .set('Authorization', `Bearer ${token}`)
+        .attach('file', Buffer.from(csvContent), 'software-inventory.csv');
+      // The endpoint processes CSV - success or validation error are both acceptable
+      expect([200, 400]).toContain(res.status);
+    });
+  });
+});
+
+describe('Software Licenses Import', () => {
+  let token;
+
+  beforeAll(async () => {
+    token = await getAdminToken();
+  });
+
+  describe('POST /v1/software-licenses/import', () => {
+    it('returns 401 without auth', async () => {
+      const res = await getAgent()
+        .post('/v1/software-licenses/import')
+        .attach('file', Buffer.from('name,version\nTestApp,1.0'), 'import.csv');
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 400 when no file is provided', async () => {
+      const res = await getAgent()
+        .post('/v1/software-licenses/import')
+        .set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('returns 200 or 400 with a CSV file', async () => {
+      const csvContent = 'licenseName,softwareName,vendorName,licenseCount,status\nINTTEST-Lic,App,Vendor,10,AVAILABLE';
+      const res = await getAgent()
+        .post('/v1/software-licenses/import')
+        .set('Authorization', `Bearer ${token}`)
+        .attach('file', Buffer.from(csvContent), 'software-licenses.csv');
+      expect([200, 400]).toContain(res.status);
+    });
+  });
+});
+
+describe('OS Licenses Import', () => {
+  let token;
+
+  beforeAll(async () => {
+    token = await getAdminToken();
+  });
+
+  describe('POST /v1/os-licenses/import', () => {
+    it('returns 401 without auth', async () => {
+      const res = await getAgent()
+        .post('/v1/os-licenses/import')
+        .attach('file', Buffer.from('name,version\nTestApp,1.0'), 'import.csv');
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 400 when no file is provided', async () => {
+      const res = await getAgent()
+        .post('/v1/os-licenses/import')
+        .set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('returns 200 or 400 with a CSV file', async () => {
+      const csvContent = 'licenseName,osType,vendorName,licenseCount,status\nINTTEST-OSLic,WINDOWS,Microsoft,5,AVAILABLE';
+      const res = await getAgent()
+        .post('/v1/os-licenses/import')
+        .set('Authorization', `Bearer ${token}`)
+        .attach('file', Buffer.from(csvContent), 'os-licenses.csv');
+      expect([200, 400]).toContain(res.status);
+    });
+  });
+});

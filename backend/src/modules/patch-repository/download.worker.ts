@@ -290,6 +290,39 @@ async function processDownloadJob(job: Job<DownloadJobData, DownloadJobResult>):
       },
     });
 
+    // Update associated PatchBundle if this download is for a patch
+    if (job.data.patchId) {
+      try {
+        const bundle = await prisma.patchBundle.findUnique({
+          where: { patchId: job.data.patchId },
+        });
+        if (bundle) {
+          await prisma.patchBundle.update({
+            where: { id: bundle.id },
+            data: {
+              bundleObjectKey: targetPath,
+              bundleChecksum: checksum,
+              bundleSize: BigInt(buffer.length),
+              downloadStatus: 'COMPLETED',
+              downloadedAt: new Date(),
+              downloadError: null,
+            },
+          });
+        }
+        // Update patch download status and URL
+        await prisma.patch.update({
+          where: { id: job.data.patchId },
+          data: {
+            downloadStatus: 'COMPLETED',
+            downloadUrl: `/v1/patches/${job.data.patchId}/bundle/stream`,
+          },
+        });
+        logger.info({ patchId: job.data.patchId, objectKey: targetPath }, 'Updated PatchBundle with downloaded file');
+      } catch (bundleErr) {
+        logger.error({ err: bundleErr, patchId: job.data.patchId }, 'Failed to update PatchBundle after download');
+      }
+    }
+
     logger.info({ jobId }, 'Download job completed successfully');
 
     return {
@@ -312,6 +345,23 @@ async function processDownloadJob(job: Job<DownloadJobData, DownloadJobResult>):
         retryCount: { increment: 1 },
       },
     });
+
+    // Update associated PatchBundle status on failure
+    if (job.data.patchId) {
+      try {
+        await prisma.patchBundle.updateMany({
+          where: { patchId: job.data.patchId },
+          data: {
+            downloadStatus: 'FAILED',
+            downloadError: errorMessage,
+          },
+        });
+        await prisma.patch.update({
+          where: { id: job.data.patchId },
+          data: { downloadStatus: 'FAILED' },
+        });
+      } catch { /* ignore secondary update failures */ }
+    }
 
     throw error;
   }

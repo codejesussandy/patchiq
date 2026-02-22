@@ -250,7 +250,7 @@ function Install-PatchIQAgent {
     # Create Windows Service using sc.exe (more reliable than PowerShell)
     Write-Step "Installing Windows service..."
     $exePath = "$InstallDir\patchiq-agent.exe"
-    $binPath = "`"$exePath`" -service"
+    $binPath = "`"$exePath`""
 
     # Create service
     $result = sc.exe create $ServiceName binPath= $binPath start= auto DisplayName= "$ServiceDisplayName" 2>&1

@@ -453,6 +453,12 @@ func (e *LinuxSoftwareExecutor) installWithSystemPackageManager(ctx context.Cont
 }
 
 // UninstallSoftware removes software on Linux
+// UpgradeSoftware upgrades an already-installed software package on Linux
+func (e *LinuxSoftwareExecutor) UpgradeSoftware(ctx context.Context, pkg models.SoftwarePackage) models.ExecutionResult {
+	// On Linux, install with package managers typically upgrades if already present
+	return e.InstallSoftware(ctx, pkg)
+}
+
 func (e *LinuxSoftwareExecutor) UninstallSoftware(ctx context.Context, name string) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}

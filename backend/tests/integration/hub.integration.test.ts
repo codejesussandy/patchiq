@@ -188,6 +188,42 @@ describe('Hub API - /v1/hub', () => {
     });
   });
 
+  describe('POST /v1/hub/packages/:packageId/upload', () => {
+    it('returns 401 without auth', async () => {
+      const res = await agent
+        .post(`/v1/hub/packages/${createdPackageId}/upload`)
+        .attach('file', Buffer.from('binary-content'), 'test-package.bin');
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 400 when no file is provided', async () => {
+      const res = await agent
+        .post(`/v1/hub/packages/${createdPackageId}/upload`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('returns 404 for non-existent package', async () => {
+      const res = await agent
+        .post('/v1/hub/packages/00000000-0000-0000-0000-000000000000/upload')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .attach('file', Buffer.from('binary-content'), 'test-package.bin');
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('uploads a file for a package successfully', async () => {
+      const res = await agent
+        .post(`/v1/hub/packages/${createdPackageId}/upload`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .attach('file', Buffer.from('INTTEST-binary-package-content'), 'inttest-package.bin');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.objectKey).toBeDefined();
+    });
+  });
+
   describe('DELETE /v1/hub/packages/:packageId', () => {
     it('returns 404 for non-existent package', async () => {
       const res = await agent

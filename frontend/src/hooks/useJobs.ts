@@ -81,6 +81,7 @@ export function useConfigDeployments() {
   return useQuery({
     queryKey: jobKeys.configDeployments(),
     queryFn: () => jobsService.getConfigDeployments(),
+    refetchInterval: 10000,
   });
 }
 
@@ -100,6 +101,7 @@ export function usePatchJobs() {
   return useQuery({
     queryKey: jobKeys.patchJobs(),
     queryFn: () => jobsService.getPatchJobs(),
+    refetchInterval: 10000,
   });
 }
 
@@ -138,6 +140,7 @@ export function useVulnerabilityJobs() {
   return useQuery({
     queryKey: jobKeys.vulnerabilityJobs(),
     queryFn: () => jobsService.getVulnerabilityJobs(),
+    refetchInterval: 10000,
   });
 }
 
@@ -157,6 +160,7 @@ export function useSoftwareDeployments() {
   return useQuery({
     queryKey: jobKeys.softwareDeployments(),
     queryFn: () => softwareJobsService.listDeployments(),
+    refetchInterval: 10000,
   });
 }
 

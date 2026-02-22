@@ -69,13 +69,24 @@ export const SoftwareTab = ({ assetId, asset }: SoftwareTabProps) => {
   const { data: software, isLoading: loadingSoftware } = useAssetSoftware(assetId);
   const [appVendorFilters, setAppVendorFilters] = useState<string[]>([]);
   const [appPatchStatusFilters, setAppPatchStatusFilters] = useState<string[]>([]);
+  const [appSearch, setAppSearch] = useState('');
+  const [systemAppSearch, setSystemAppSearch] = useState('');
+  const [serviceSearch, setServiceSearch] = useState('');
 
   if (loadingSoftware) return <div>Loading software data...</div>;
   if (!software) return <div>No software data available</div>;
 
   const uniqueVendors = [...new Set(software.applications.map((app) => app.vendor).filter(Boolean))];
+  const filterBySearch = (items: Record<string, unknown>[], search: string, keys = ['name', 'vendor', 'version', 'displayName']) => {
+    if (!search) return items;
+    const lower = search.toLowerCase();
+    return items.filter((item) => keys.some((k) => String(item[k] || '').toLowerCase().includes(lower)));
+  };
+
   const userApps = software.applications.filter((app) => !app.isSystemApp);
   const systemApps = software.applications.filter((app) => app.isSystemApp);
+  const filteredUserApps = filterBySearch(userApps, appSearch);
+  const filteredSystemApps = filterBySearch(systemApps, systemAppSearch);
 
   const applicationColumns = [
     {
@@ -124,6 +135,7 @@ export const SoftwareTab = ({ assetId, asset }: SoftwareTabProps) => {
     state: prog.enabled ? 'Enabled' : 'Disabled', startupType: 'Startup Program', isStartupProgram: true,
   }));
   const allServices = [...software.services, ...startupProgramsAsServices];
+  const filteredServices = filterBySearch(allServices, serviceSearch, ['name', 'displayName', 'state', 'startupType']);
 
   const handleAppTableChange = (_pagination: unknown, filters: Record<string, (string | number | boolean)[] | null>) => {
     setAppVendorFilters((filters.vendor as string[]) || []);
@@ -220,12 +232,12 @@ export const SoftwareTab = ({ assetId, asset }: SoftwareTabProps) => {
         <div>
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
             <Space>
-              <Input.Search placeholder="Search" style={{ width: 300 }} />
+              <Input.Search placeholder="Search" allowClear style={{ width: 300 }} value={appSearch} onChange={(e) => setAppSearch(e.target.value)} onSearch={setAppSearch} />
               {hasActiveFilters && <Button size="small" onClick={clearAppFilters}>Clear Filters</Button>}
             </Space>
             <Tooltip title="Export to CSV"><Button icon={<DownloadOutlined />} onClick={() => exportToCSV(userApps, exportColumns, `${hostname}-applications.csv`, message)} /></Tooltip>
           </div>
-          <DataTable columns={applicationColumns} data={userApps} rowKey="id" onChange={handleAppTableChange} pagination={{ pageSize: 25, showSizeChanger: true, showTotal: (total) => `Total ${total} applications found` }} size="small" />
+          <DataTable columns={applicationColumns} data={filteredUserApps} rowKey="id" onChange={handleAppTableChange} pagination={{ pageSize: 25, showSizeChanger: true, showTotal: (total) => `Total ${total} applications found` }} size="small" />
         </div>
       ),
     },
@@ -234,10 +246,10 @@ export const SoftwareTab = ({ assetId, asset }: SoftwareTabProps) => {
       children: (
         <div>
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-            <Input.Search placeholder="Search" style={{ width: 300 }} />
+            <Input.Search placeholder="Search" allowClear style={{ width: 300 }} value={systemAppSearch} onChange={(e) => setSystemAppSearch(e.target.value)} onSearch={setSystemAppSearch} />
             <Tooltip title="Export to CSV"><Button icon={<DownloadOutlined />} onClick={() => exportToCSV(systemApps, exportColumns, `${hostname}-system-apps.csv`, message)} /></Tooltip>
           </div>
-          <DataTable columns={applicationColumns} data={systemApps} rowKey="id" pagination={{ pageSize: 25, showSizeChanger: true, showTotal: (total) => `Total ${total} system apps found` }} size="small" />
+          <DataTable columns={applicationColumns} data={filteredSystemApps} rowKey="id" pagination={{ pageSize: 25, showSizeChanger: true, showTotal: (total) => `Total ${total} system apps found` }} size="small" />
         </div>
       ),
     },
@@ -246,10 +258,10 @@ export const SoftwareTab = ({ assetId, asset }: SoftwareTabProps) => {
       children: (
         <div>
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-            <Input.Search placeholder="Search" style={{ width: 300 }} />
+            <Input.Search placeholder="Search" allowClear style={{ width: 300 }} value={serviceSearch} onChange={(e) => setServiceSearch(e.target.value)} onSearch={setServiceSearch} />
             <Tooltip title="Export to CSV"><Button icon={<DownloadOutlined />} onClick={() => exportToCSV(allServices, serviceExportColumns, `${hostname}-services.csv`, message)} /></Tooltip>
           </div>
-          <DataTable columns={serviceColumns} data={allServices} rowKey="id" pagination={{ pageSize: 25, showTotal: (total) => `Total ${total} services found` }} size="small" />
+          <DataTable columns={serviceColumns} data={filteredServices} rowKey="id" pagination={{ pageSize: 25, showTotal: (total) => `Total ${total} services found` }} size="small" />
         </div>
       ),
     },

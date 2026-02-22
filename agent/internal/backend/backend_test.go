@@ -145,15 +145,25 @@ func TestRemoveDownloadProgress(t *testing.T) {
 func TestStartAndStop(t *testing.T) {
 	// Not parallel - spawns goroutines
 
-	// Set up a mock registration endpoint
+	// Set up a mock registration endpoint with envelope format
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/api/v1/agent/register":
+		case "/api/agent/register":
 			resp := map[string]interface{}{
-				"agentId":      "test-agent-123",
-				"assetId":      "asset-456",
-				"accessToken":  "tok-abc",
-				"refreshToken": "ref-def",
+				"success": true,
+				"data": map[string]interface{}{
+					"agentId":      "test-agent-123",
+					"assetId":      "asset-456",
+					"accessToken":  "tok-abc",
+					"refreshToken": "ref-def",
+					"tokenExpiresIn": 3600,
+					"config": map[string]interface{}{
+						"heartbeatIntervalSeconds": 60,
+						"telemetryIntervalSeconds": 60,
+						"telemetryEnabled":         true,
+						"logLevel":                 "info",
+					},
+				},
 			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(resp)

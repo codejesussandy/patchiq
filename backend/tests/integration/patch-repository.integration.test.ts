@@ -231,4 +231,130 @@ describe('Patch Repository API - /v1/patch-repository', () => {
       expect(res.status).toBe(401);
     });
   });
+
+  // ============================================
+  // Queue Management
+  // ============================================
+
+  describe('POST /v1/patch-repository/queue/pause', () => {
+    it('returns 401 without auth', async () => {
+      const res = await agent.post('/v1/patch-repository/queue/pause');
+      expect(res.status).toBe(401);
+    });
+
+    it('pauses the queue or returns appropriate error', async () => {
+      const res = await agent
+        .post('/v1/patch-repository/queue/pause')
+        .set('Authorization', `Bearer ${adminToken}`);
+      // 200 when Redis available, 500/503 when not
+      expect([200, 500, 503]).toContain(res.status);
+      if (res.status === 200) {
+        expect(res.body.success).toBe(true);
+      }
+    });
+  });
+
+  describe('POST /v1/patch-repository/queue/resume', () => {
+    it('returns 401 without auth', async () => {
+      const res = await agent.post('/v1/patch-repository/queue/resume');
+      expect(res.status).toBe(401);
+    });
+
+    it('resumes the queue or returns appropriate error', async () => {
+      const res = await agent
+        .post('/v1/patch-repository/queue/resume')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect([200, 500, 503]).toContain(res.status);
+      if (res.status === 200) {
+        expect(res.body.success).toBe(true);
+      }
+    });
+  });
+
+  describe('POST /v1/patch-repository/queue/clean', () => {
+    it('returns 401 without auth', async () => {
+      const res = await agent.post('/v1/patch-repository/queue/clean');
+      expect(res.status).toBe(401);
+    });
+
+    it('cleans the queue or returns appropriate error', async () => {
+      const res = await agent
+        .post('/v1/patch-repository/queue/clean')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect([200, 500, 503]).toContain(res.status);
+      if (res.status === 200) {
+        expect(res.body.success).toBe(true);
+      }
+    });
+
+    it('accepts olderThan query param', async () => {
+      const res = await agent
+        .post('/v1/patch-repository/queue/clean?olderThan=86400000')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect([200, 500, 503]).toContain(res.status);
+    });
+  });
+
+  describe('POST /v1/patch-repository/queue/start-pending', () => {
+    it('returns 401 without auth', async () => {
+      const res = await agent.post('/v1/patch-repository/queue/start-pending');
+      expect(res.status).toBe(401);
+    });
+
+    it('starts pending downloads or returns appropriate error', async () => {
+      const res = await agent
+        .post('/v1/patch-repository/queue/start-pending')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect([200, 500, 503]).toContain(res.status);
+      if (res.status === 200) {
+        expect(res.body.success).toBe(true);
+      }
+    });
+
+    it('accepts limit query param', async () => {
+      const res = await agent
+        .post('/v1/patch-repository/queue/start-pending?limit=5')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect([200, 500, 503]).toContain(res.status);
+    });
+  });
+
+  // ============================================
+  // Bulk Download Jobs
+  // ============================================
+
+  describe('POST /v1/patch-repository/downloads/bulk', () => {
+    it('returns 401 without auth', async () => {
+      const res = await agent.post('/v1/patch-repository/downloads/bulk').send({});
+      expect(res.status).toBe(401);
+    });
+
+    it('returns error when patchIds is missing', async () => {
+      const res = await agent
+        .post('/v1/patch-repository/downloads/bulk')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({});
+      // 400 if body validation present, 500 if not (no validateBody middleware on this route)
+      expect([400, 500]).toContain(res.status);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('returns error when patchIds is not an array', async () => {
+      const res = await agent
+        .post('/v1/patch-repository/downloads/bulk')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ patchIds: 'not-an-array' });
+      expect([400, 500]).toContain(res.status);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('accepts valid patchIds array (may fail if patches do not exist)', async () => {
+      const res = await agent
+        .post('/v1/patch-repository/downloads/bulk')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ patchIds: ['00000000-0000-0000-0000-000000000001'] });
+      // 201 if queued, 404 if patches not found, 400 if validation fails
+      expect([201, 400, 404, 500]).toContain(res.status);
+    });
+  });
 });

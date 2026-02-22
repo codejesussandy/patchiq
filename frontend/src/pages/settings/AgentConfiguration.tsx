@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { App,
-  Form, Input, Button, Space, Typography, Divider, Card, Row, Col } from 'antd';
+  Form, InputNumber, Button, Space, Typography, Divider, Card, Row, Col } from 'antd';
 import { useAgentConfiguration, useUpdateAgentConfiguration } from '../../hooks/useSettings';
 import type { AgentConfigurationFormData } from '../../types/settings.types';
 
@@ -33,69 +33,10 @@ export const AgentConfiguration = () => {
     }
   };
 
-  const renderFieldPair = (
-    label1: string,
-    name1: string,
-    _value1: string | number | undefined,
-    label2: string,
-    name2: string,
-    _value2: string | number | undefined,
-    suffix: string = 'Seconds'
-  ) => (
-    <Row gutter={[32, 24]} style={{ marginBottom: '16px' }}>
-      <Col xs={24} sm={12}>
-        <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '16px', fontWeight: 500 }}>
-            * {label1}
-          </label>
-          <Form.Item
-            name={name1}
-            label={false}
-            rules={[
-              { required: true, message: 'This field is required' },
-              { pattern: /^\d+$/, message: 'Must be a number' },
-            ]}
-            noStyle
-          >
-            <Input
-              type="number"
-              placeholder="0"
-              suffix={suffix}
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-        </div>
-      </Col>
-      <Col xs={24} sm={12}>
-        <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '16px', fontWeight: 500 }}>
-            * {label2}
-          </label>
-          <Form.Item
-            name={name2}
-            label={false}
-            rules={[
-              { required: true, message: 'This field is required' },
-              { pattern: /^\d+$/, message: 'Must be a number' },
-            ]}
-            noStyle
-          >
-            <Input
-              type="number"
-              placeholder="0"
-              suffix={suffix}
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-        </div>
-      </Col>
-    </Row>
-  );
-
   return (
     <div style={{ padding: '24px' }}>
       <Title level={3} style={{ margin: 0 }}>Agent Configuration</Title>
-      <Text type="secondary" style={{ fontSize: 14 }}>Configure agent deployment settings</Text>
+      <Text type="secondary" style={{ fontSize: 14 }}>Configure agent refresh cycles and communication settings</Text>
       <Divider />
 
       <Form
@@ -104,118 +45,110 @@ export const AgentConfiguration = () => {
         onFinish={onFinish}
         autoComplete="off"
       >
-        {/* Allowed Bandwidth */}
-        <Card style={{ marginBottom: '24px' }}>
+        {/* Communication */}
+        <Card title="Communication" style={{ marginBottom: '24px' }}>
           <Row gutter={[32, 24]}>
-            <Col xs={24} sm={12}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '16px', fontWeight: 500 }}>
-                  * Allowed Bandwidth to download Files
-                </label>
-                <Form.Item
-                  name="allowedBandwidth"
-                  label={false}
-                  rules={[
-                    { required: true, message: 'This field is required' },
-                    { pattern: /^\d+$/, message: 'Must be a number' },
-                  ]}
-                  noStyle
-                >
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    suffix="Mbps"
-                    style={{ width: '100%' }}
-                  />
-                </Form.Item>
-              </div>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="agentRefreshCycle"
+                label="Agent Heartbeat Interval"
+                tooltip="How often agents check in with the server"
+              >
+                <InputNumber min={10} max={86400} addonAfter="sec" style={{ width: '100%' }} />
+              </Form.Item>
             </Col>
-            <Col xs={24} sm={12}></Col>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="allowedBandwidth"
+                label="Allowed Bandwidth"
+                tooltip="Max bandwidth for agent file downloads"
+              >
+                <InputNumber min={1} max={10000} addonAfter="Mbps" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
           </Row>
         </Card>
 
-        {/* Agent Refresh Cycle and System Action Refresh Cycle */}
-        <Card style={{ marginBottom: '24px' }}>
-          {renderFieldPair(
-            'Agent Refresh Cycle',
-            'agentRefreshCycle',
-            configuration?.agentRefreshCycle,
-            'System Action Refresh Cycle',
-            'systemActionRefreshCycle',
-            configuration?.systemActionRefreshCycle
-          )}
+        {/* Inventory Refresh Cycles */}
+        <Card title="Inventory Refresh Cycles" style={{ marginBottom: '24px' }}>
+          <Row gutter={[32, 24]}>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="softwareRefreshCycle"
+                label="Software Inventory"
+              >
+                <InputNumber min={300} max={604800} addonAfter="sec" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="hardwareRefreshCycle"
+                label="Hardware Inventory"
+              >
+                <InputNumber min={300} max={604800} addonAfter="sec" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="networkRefreshCycle"
+                label="Network Inventory"
+              >
+                <InputNumber min={60} max={86400} addonAfter="sec" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Card>
 
-        {/* Endpoint Vlan Refresh Cycle and Patch Scanning Refresh Cycle */}
-        <Card style={{ marginBottom: '24px' }}>
-          {renderFieldPair(
-            'Endpoint Vlan Refresh Cycle',
-            'endpointVlanRefreshCycle',
-            configuration?.endpointVlanRefreshCycle,
-            'Patch Scanning Refresh Cycle',
-            'patchScanningRefreshCycle',
-            configuration?.patchScanningRefreshCycle
-          )}
+        {/* Security & Scanning */}
+        <Card title="Security & Scanning" style={{ marginBottom: '24px' }}>
+          <Row gutter={[32, 24]}>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="patchScanningRefreshCycle"
+                label="Patch Scanning"
+              >
+                <InputNumber min={300} max={604800} addonAfter="sec" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="riskDetectionRefreshCycle"
+                label="Risk Detection"
+              >
+                <InputNumber min={300} max={604800} addonAfter="sec" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Card>
 
-        {/* SSDM Refresh Cycle and Process Refresh Cycle */}
-        <Card style={{ marginBottom: '24px' }}>
-          {renderFieldPair(
-            'SSDM Refresh Cycle',
-            'ssdmRefreshCycle',
-            configuration?.ssdmRefreshCycle,
-            'Process Refresh Cycle',
-            'processRefreshCycle',
-            configuration?.processRefreshCycle
-          )}
-        </Card>
-
-        {/* Network Refresh Cycle and Certificate Refresh Cycle */}
-        <Card style={{ marginBottom: '24px' }}>
-          {renderFieldPair(
-            'Network Refresh Cycle',
-            'networkRefreshCycle',
-            configuration?.networkRefreshCycle,
-            'Certificate Refresh Cycle',
-            'certificateRefreshCycle',
-            configuration?.certificateRefreshCycle
-          )}
-        </Card>
-
-        {/* Start-up Items Refresh Cycle and Users Refresh Cycle */}
-        <Card style={{ marginBottom: '24px' }}>
-          {renderFieldPair(
-            'Start-up Items Refresh Cycle',
-            'startupItemsRefreshCycle',
-            configuration?.startupItemsRefreshCycle,
-            'Users Refresh Cycle',
-            'usersRefreshCycle',
-            configuration?.usersRefreshCycle
-          )}
-        </Card>
-
-        {/* System Resources Refresh Cycle and System Services Refresh Cycle */}
-        <Card style={{ marginBottom: '24px' }}>
-          {renderFieldPair(
-            'System Resources Refresh Cycle',
-            'systemResourcesRefreshCycle',
-            configuration?.systemResourcesRefreshCycle,
-            'System Services Refresh Cycle',
-            'systemServicesRefreshCycle',
-            configuration?.systemServicesRefreshCycle
-          )}
-        </Card>
-
-        {/* FIM Events Refresh Cycle and Software Meter Refresh Cycle */}
-        <Card style={{ marginBottom: '24px' }}>
-          {renderFieldPair(
-            'FIM Events Refresh Cycle',
-            'fimEventsRefreshCycle',
-            configuration?.fimEventsRefreshCycle,
-            'Software Meter Refresh Cycle',
-            'softwareMeterRefreshCycle',
-            configuration?.softwareMeterRefreshCycle
-          )}
+        {/* System Monitoring */}
+        <Card title="System Monitoring" style={{ marginBottom: '24px' }}>
+          <Row gutter={[32, 24]}>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="systemProcessRefreshCycle"
+                label="Process Monitoring"
+              >
+                <InputNumber min={60} max={86400} addonAfter="sec" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="systemServiceRefreshCycle"
+                label="Service Monitoring"
+              >
+                <InputNumber min={60} max={86400} addonAfter="sec" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="systemActionRefreshCycle"
+                label="System Actions"
+              >
+                <InputNumber min={60} max={86400} addonAfter="sec" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Card>
 
         {/* Action Buttons */}

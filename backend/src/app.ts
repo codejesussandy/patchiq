@@ -1,11 +1,11 @@
 import 'express-async-errors';
-import fs from 'fs';
-import path from 'path';
+import YAML from 'yaml';
 import { auditLoggerMiddleware } from '@middleware/audit-logger';
 import { apiReference } from '@scalar/express-api-reference';
 import cors from 'cors';
 import express, { Application } from 'express';
 import helmet from 'helmet';
+import { swaggerSpec } from './swagger';
 import { agentsRoutes, agentApiRoutes, agentVersionsRoutes } from '@modules/agents';
 import { assetsRoutes } from '@modules/assets';
 import { authRoutes, userRoutes } from '@modules/auth';
@@ -84,29 +84,24 @@ export function createApp(): Application {
     });
   });
 
-  // OpenAPI spec endpoint - dynamically inject server URL based on request
+  // OpenAPI spec endpoint - auto-generated from route annotations
   app.get('/openapi.yaml', (req, res) => {
-    const specPath = path.join(__dirname, 'openapi.yaml');
-    if (fs.existsSync(specPath)) {
-      // Read the spec file
-      let spec = fs.readFileSync(specPath, 'utf8');
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+    const host = req.headers['x-forwarded-host'] || req.headers.host || `localhost:${config.port}`;
+    const serverUrl = `${protocol}://${host}`;
 
-      // Determine the actual server URL from the request
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-      const host = req.headers['x-forwarded-host'] || req.headers.host || `localhost:${config.port}`;
-      const serverUrl = `${protocol}://${host}`;
+    const spec = { ...swaggerSpec, servers: [{ url: serverUrl, description: 'Current Server' }] };
+    res.type('text/yaml').send(YAML.stringify(spec));
+  });
 
-      // Replace the servers section with the dynamic URL
-      // Match the servers block and replace it
-      spec = spec.replace(
-        /servers:\s*\n\s*- url: http:\/\/localhost:\d+\s*\n\s*description: Local Development\s*\n\s*- url: https:\/\/api\.patchiq\.io\s*\n\s*description: Production/,
-        `servers:\n  - url: ${serverUrl}\n    description: Current Server`
-      );
+  // Also serve as JSON for programmatic access
+  app.get('/openapi.json', (req, res) => {
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+    const host = req.headers['x-forwarded-host'] || req.headers.host || `localhost:${config.port}`;
+    const serverUrl = `${protocol}://${host}`;
 
-      res.type('text/yaml').send(spec);
-    } else {
-      res.status(404).json({ error: 'OpenAPI spec not found' });
-    }
+    const spec = { ...swaggerSpec, servers: [{ url: serverUrl, description: 'Current Server' }] };
+    res.json(spec);
   });
 
   // Scalar API Documentation
@@ -143,6 +138,27 @@ export function createApp(): Application {
 
   // Agent API routes (for agents to communicate)
   app.use('/api/agent', agentApiRoutes);
+
+  // Public package file download proxy (for agents to download exe/msi installers from MinIO)
+  app.get(`/${config.apiVersion}/packages/:packageId/download`, (req, res, next) => {
+    logger.info({ packageId: req.params.packageId }, 'Public package file download request');
+    import('@modules/hub/hub.service').then(({ hubService }) => {
+      const { packageId } = req.params;
+      return hubService.getPackageFileStream(packageId).then(({ stream, fileName, fileSize, checksum }) => {
+        const ext = fileName.split('.').pop()?.toLowerCase() || '';
+        const contentTypes: Record<string, string> = {
+          exe: 'application/x-msdownload', msi: 'application/x-msi',
+          dmg: 'application/x-apple-diskimage', pkg: 'application/x-newton-compatible-pkg',
+          deb: 'application/x-debian-package', rpm: 'application/x-rpm',
+        };
+        res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        if (fileSize) res.setHeader('Content-Length', fileSize.toString());
+        if (checksum) res.setHeader('X-Checksum-SHA256', checksum);
+        stream.pipe(res);
+      });
+    }).catch(next);
+  });
 
   // Public bundle download endpoint (must be before assets routes which have global auth)
   app.get(`/${config.apiVersion}/bundles/:packageId/download`, (req, res, next) => {

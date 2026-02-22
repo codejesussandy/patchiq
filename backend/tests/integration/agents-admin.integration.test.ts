@@ -283,6 +283,109 @@ describe('Agents Admin API - /v1/agents', () => {
     });
   });
 
+  describe('POST /v1/agents/:id/update - trigger agent update', () => {
+    it('returns 401 without auth token', async () => {
+      const res = await agent.post(`/v1/agents/${createdAgentId}/update`).send({});
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 404 for non-existent agent', async () => {
+      const fakeId = '00000000-0000-0000-0000-000000000000';
+      const res = await agent
+        .post(`/v1/agents/${fakeId}/update`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({});
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('returns 404 when no agent binary is available for the platform', async () => {
+      // No agent version binaries exist in test DB, so the endpoint returns 404
+      const res = await agent
+        .post(`/v1/agents/${createdAgentId}/update`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({});
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
+  describe('GET /v1/agents/:id/logs - get agent logs', () => {
+    it('returns 401 without auth token', async () => {
+      const res = await agent.get(`/v1/agents/${createdAgentId}/logs`);
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 404 for non-existent agent', async () => {
+      const fakeId = '00000000-0000-0000-0000-000000000000';
+      const res = await agent
+        .get(`/v1/agents/${fakeId}/logs`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('returns logs for existing agent', async () => {
+      const res = await agent
+        .get(`/v1/agents/${createdAgentId}/logs`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+  });
+
+  describe('GET /v1/agents/:id/telemetry/stream - SSE telemetry stream', () => {
+    it('returns 401 without auth token', async () => {
+      const res = await agent.get(`/v1/agents/${createdAgentId}/telemetry/stream`);
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 404 for non-existent agent', async () => {
+      const fakeId = '00000000-0000-0000-0000-000000000000';
+      const res = await agent
+        .get(`/v1/agents/${fakeId}/telemetry/stream`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .timeout({ response: 3000 })
+        .buffer(true)
+        .parse((res, callback) => {
+          let data = '';
+          res.on('data', (chunk) => { data += chunk.toString(); });
+          setTimeout(() => { res.destroy(); callback(null, data); }, 500);
+        })
+        .catch((err) => err.response || err);
+
+      const status = (res && res.status) ? res.status : (res && res.statusCode) ? res.statusCode : null;
+      expect(status).toBe(404);
+    });
+
+    it('returns 200 with text/event-stream content-type for valid agent', async () => {
+      let capturedRes: any = null;
+
+      await new Promise<void>((resolve) => {
+        agent
+          .get(`/v1/agents/${createdAgentId}/telemetry/stream`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .buffer(true)
+          .parse((res, callback) => {
+            capturedRes = res;
+            let data = '';
+            res.on('data', (chunk) => { data += chunk.toString(); });
+            setTimeout(() => { res.destroy(); callback(null, data); }, 1500);
+          })
+          .then(() => resolve())
+          .catch(() => resolve());
+      });
+
+      expect(capturedRes).not.toBeNull();
+      expect(capturedRes.statusCode).toBe(200);
+      expect(capturedRes.headers['content-type']).toMatch(/text\/event-stream/);
+    });
+  });
+
   describe('DELETE /v1/agents/:id - delete agent', () => {
     it('returns 401 without auth token', async () => {
       const res = await agent.delete(`/v1/agents/${createdAgentId}`);

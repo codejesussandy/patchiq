@@ -17,6 +17,7 @@ export const COMMAND_TYPES = {
   // Legacy software commands (package manager based)
   SOFTWARE_INSTALL: 'software_install',
   SOFTWARE_UNINSTALL: 'software_uninstall',
+  SOFTWARE_UPGRADE: 'software_upgrade',
 
   // Hub-centric commands (script bundle based)
   HUB_INSTALL: 'hub_install',
@@ -26,13 +27,7 @@ export const COMMAND_TYPES = {
   SCRIPT_BUNDLE: 'script_bundle',
   SCRIPT_INLINE: 'script_inline',
 
-  // Patch commands (legacy - direct package manager)
-  PATCH_INSTALL: 'patch_install',
-  PATCH_UNINSTALL: 'patch_uninstall',
-  PATCH_LIST: 'patch_list',
-  PATCH_INSTALL_ALL: 'patch_install_all',
-
-  // Hub-centric patch commands (script bundle based)
+  // Patch commands (bundle-based only — package managers removed)
   HUB_PATCH_INSTALL: 'hub_patch_install',
   HUB_PATCH_ROLLBACK: 'hub_patch_rollback',
   HUB_PATCH_VERIFY: 'hub_patch_verify',

@@ -237,6 +237,51 @@ describe('Agent Versions API - /v1/agent-versions', () => {
     });
   });
 
+  describe('GET /v1/agent-versions/:id/download - download binary', () => {
+    it('returns 401 without auth token', async () => {
+      const res = await agent.get(`/v1/agent-versions/${createdVersionId}/download`);
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 404 for non-existent version', async () => {
+      const fakeId = '00000000-0000-0000-0000-000000000000';
+      const res = await agent
+        .get(`/v1/agent-versions/${fakeId}/download`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('returns 404 when version exists but no binary uploaded', async () => {
+      const res = await agent
+        .get(`/v1/agent-versions/${createdVersionId}/download`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      // No binary has been uploaded, so expect 404
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
+  describe('POST /v1/agent-versions/:id/upload - upload binary', () => {
+    it('returns 401 without auth token', async () => {
+      const res = await agent.post(`/v1/agent-versions/${createdVersionId}/upload`);
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 404 for non-existent version', async () => {
+      const fakeId = '00000000-0000-0000-0000-000000000000';
+      const res = await agent
+        .post(`/v1/agent-versions/${fakeId}/upload`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .set('Content-Type', 'multipart/form-data');
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
   describe('DELETE /v1/agent-versions/:id - delete version', () => {
     it('returns 401 without auth token', async () => {
       const res = await agent.delete(`/v1/agent-versions/${createdVersionId}`);

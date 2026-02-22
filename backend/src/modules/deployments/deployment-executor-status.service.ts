@@ -24,22 +24,20 @@ export class DeploymentExecutorStatusService {
     const { commandId, result } = update;
     let { status, errorMessage, output } = update;
 
-    // Winget "already installed" (0x8a15002b) — treat as success
-    if (status === 'FAILED' && errorMessage?.includes('0x8a15002b')) {
-      status = 'COMPLETED';
-      errorMessage = undefined;
-      output = 'Package is already installed (up to date)';
-    }
-
     const taskStatus = status === 'COMPLETED' ? 'SUCCESS'
       : status === 'FAILED' ? 'FAILED'
       : 'IN_PROGRESS';
+
+    // Store both result message and output in the result JSON field
+    const resultData = output
+      ? { message: result, output }
+      : result;
 
     await prisma.agentCommand.update({
       where: { id: commandId },
       data: {
         status,
-        result: result as Prisma.InputJsonValue | undefined,
+        result: resultData as Prisma.InputJsonValue | undefined,
         errorMessage,
         executedAt: status === 'IN_PROGRESS' ? new Date() : undefined,
         completedAt: ['COMPLETED', 'FAILED'].includes(status) ? new Date() : undefined,

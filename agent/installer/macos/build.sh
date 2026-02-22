@@ -20,17 +20,23 @@ OUTPUT_DIR="$SCRIPT_DIR/output"
 rm -rf "$BUILD_DIR"
 mkdir -p "$PAYLOAD_DIR/usr/local/bin" "$PAYLOAD_DIR/Library/LaunchDaemons" "$SCRIPTS_DIR" "$OUTPUT_DIR"
 
-# Build agent binary
-echo "Building agent binary..."
-cd "$PROJECT_ROOT"
-
+# Resolve Go arch name
 GOARCH=${ARCH}
 if [ "$ARCH" = "x86_64" ]; then GOARCH=amd64; fi
 
-GOOS=darwin GOARCH=$GOARCH go build \
-    -ldflags "-X main.version=$VERSION -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    -o "$PAYLOAD_DIR/usr/local/bin/patchiq-agent" \
-    ./cmd/agent
+# Use pre-built binary from dist/ if available, otherwise compile from source
+PREBUILT="$PROJECT_ROOT/dist/patchiq-agent-darwin-${GOARCH}"
+if [ -f "$PREBUILT" ]; then
+    echo "Using pre-built binary: $PREBUILT"
+    cp "$PREBUILT" "$PAYLOAD_DIR/usr/local/bin/patchiq-agent"
+else
+    echo "Building agent binary from source..."
+    cd "$PROJECT_ROOT"
+    GOOS=darwin GOARCH=$GOARCH go build \
+        -ldflags "-X main.version=$VERSION -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        -o "$PAYLOAD_DIR/usr/local/bin/patchiq-agent" \
+        ./cmd/agent
+fi
 chmod +x "$PAYLOAD_DIR/usr/local/bin/patchiq-agent"
 
 # Create LaunchDaemon plist

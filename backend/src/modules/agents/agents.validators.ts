@@ -44,8 +44,8 @@ export const heartbeatSchema = z.object({
 
 // Command result schema
 export const commandResultSchema = z.object({
-  status: z.enum(['COMPLETED', 'FAILED']),
-  result: z.string().optional(),
+  status: z.string().transform(s => s.toUpperCase()).pipe(z.enum(['COMPLETED', 'FAILED'])),
+  result: z.union([z.string(), z.record(z.unknown())]).optional(),
   errorMessage: z.string().optional(),
   output: z.string().optional(),
 });

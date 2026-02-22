@@ -248,14 +248,32 @@ export class AgentsRegistrationService {
       }).catch(() => {});
     }
 
+    // Requeue stale DELIVERED commands (delivered but never executed, older than 2 minutes)
+    const staleThreshold = new Date(Date.now() - 2 * 60 * 1000);
+    await prisma.agentCommand.updateMany({
+      where: {
+        agentId,
+        status: 'DELIVERED',
+        completedAt: null,
+        createdAt: { lt: staleThreshold },
+      },
+      data: { status: 'PENDING' },
+    });
+
     // Check for pending actions
     const pendingCommands = await prisma.agentCommand.count({
       where: { agentId, status: 'PENDING' },
     });
 
+    // configUpdated is true when there's a pending config_update command for this agent
+    const pendingConfigUpdate = await prisma.agentCommand.count({
+      where: { agentId, type: 'config_update', status: 'PENDING' },
+    });
+    const configUpdated = pendingConfigUpdate > 0;
+
     return {
       commandsPending: pendingCommands > 0,
-      configUpdated: false,
+      configUpdated,
       inventoryRequested: inventoryWasRequested,
     };
   }
@@ -300,7 +318,8 @@ export class AgentsRegistrationService {
   async getDefaultConfig(): Promise<AgentConfig> {
     const { settingsService } = await import('@modules/settings');
     const config = await settingsService.getAgentConfig();
-    const refreshCycle = (config.agentRefreshCycle as number) || 300;
+    // Use heartbeat_interval_seconds from DB settings, fall back to agentRefreshCycle, then default 30s
+    const refreshCycle = (config.heartbeat_interval_seconds as number) || (config.agentRefreshCycle as number) || 30;
 
     return {
       heartbeatIntervalSeconds: refreshCycle,

@@ -316,6 +316,16 @@ describe('Agent API - /api/agent', () => {
     });
   });
 
+  describe('GET /api/agent/update/binary/:versionId - download update binary', () => {
+    it('returns 404 for non-existent versionId (no auth required)', async () => {
+      const fakeId = '00000000-0000-0000-0000-000000000000';
+      const res = await agent.get(`/api/agent/update/binary/${fakeId}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
   describe('POST /api/agent/logs - receive agent logs', () => {
     it('returns 401 without agent token', async () => {
       const res = await agent

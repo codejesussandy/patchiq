@@ -171,10 +171,10 @@ export class VulnerabilitiesService {
    * List zero-day vulnerabilities using dynamic classification
    */
   async listZeroDayVulnerabilities(params: ListZeroDayQuery) {
-    // Use dynamic zero-day classification
+    // Use dynamic zero-day classification — only show zero-days affecting your assets
     const zeroDayCriteria = this.getZeroDayWhereClause();
     const where: Prisma.VulnerabilityWhereInput = {
-      AND: [zeroDayCriteria],
+      AND: [zeroDayCriteria, { affectedAssets: { some: { status: 'Open' } } }],
     };
 
     if (params.search) {
@@ -364,8 +364,10 @@ export class VulnerabilitiesService {
       (baseWhere.AND as Prisma.VulnerabilityWhereInput[]).push({ affectedAssets: { some: { status: 'Open' } } });
     }
 
-    // Use dynamic zero-day classification for count
-    const zeroDayWhere = this.getZeroDayWhereClause();
+    // Use dynamic zero-day classification for count — only count zero-days affecting your assets
+    const zeroDayWhere: Prisma.VulnerabilityWhereInput = {
+      AND: [this.getZeroDayWhereClause(), { affectedAssets: { some: { status: 'Open' } } }],
+    };
 
     const [total, bySeverity, zeroDay, exceptions] = await Promise.all([
       prisma.vulnerability.count({ where: baseWhere }),
@@ -467,8 +469,10 @@ export class VulnerabilitiesService {
    * Get vulnerability type counts using dynamic classification
    */
   async getTypes() {
-    // Use dynamic zero-day classification
-    const zeroDayWhere = this.getZeroDayWhereClause();
+    // Use dynamic zero-day classification — only count zero-days affecting your assets
+    const zeroDayWhere: Prisma.VulnerabilityWhereInput = {
+      AND: [this.getZeroDayWhereClause(), { affectedAssets: { some: { status: 'Open' } } }],
+    };
     const nonZeroDayWhere = this.getNonZeroDayWhereClause();
 
     const [zeroDayCount, knownCount, exploitableCount] = await Promise.all([

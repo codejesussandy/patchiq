@@ -23,7 +23,42 @@ const router = Router();
 // Software Deployment Routes (MUST be before /:id routes)
 // ============================================
 
-// GET /v1/deployments/software - List software deployments
+/**
+ * @openapi
+ * /v1/deployments/software:
+ *   get:
+ *     summary: List software deployments
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Paginated list of software deployments
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get(
   '/software',
   authenticate,
@@ -31,7 +66,51 @@ router.get(
   deploymentController.listSoftwareDeployments.bind(deploymentController)
 );
 
-// POST /v1/deployments/software - Create software deployment
+/**
+ * @openapi
+ * /v1/deployments/software:
+ *   post:
+ *     summary: Create a software deployment
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               softwareId:
+ *                 type: string
+ *               endpointIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               scheduledAt:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       200:
+ *         description: Software deployment created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post(
   '/software',
   authenticate,
@@ -40,7 +119,41 @@ router.post(
   deploymentController.createSoftwareDeployment.bind(deploymentController)
 );
 
-// GET /v1/deployments/software/:deploymentId - Get software deployment status
+/**
+ * @openapi
+ * /v1/deployments/software/{deploymentId}:
+ *   get:
+ *     summary: Get software deployment status
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: deploymentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Software deployment status and details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Deployment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get(
   '/software/:deploymentId',
   authenticate,
@@ -48,7 +161,41 @@ router.get(
   deploymentController.getSoftwareDeploymentStatus.bind(deploymentController)
 );
 
-// POST /v1/deployments/software/:deploymentId/cancel - Cancel software deployment
+/**
+ * @openapi
+ * /v1/deployments/software/{deploymentId}/cancel:
+ *   post:
+ *     summary: Cancel a software deployment
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: deploymentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Software deployment cancelled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Deployment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post(
   '/software/:deploymentId/cancel',
   authenticate,
@@ -57,7 +204,46 @@ router.post(
   deploymentController.cancelSoftwareDeployment.bind(deploymentController)
 );
 
-// POST /v1/deployments/software/:deploymentId/tasks/:taskId/rollback - Trigger rollback
+/**
+ * @openapi
+ * /v1/deployments/software/{deploymentId}/tasks/{taskId}/rollback:
+ *   post:
+ *     summary: Trigger rollback for a specific task in a software deployment
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: deploymentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Rollback triggered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Deployment or task not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post(
   '/software/:deploymentId/tasks/:taskId/rollback',
   authenticate,
@@ -70,7 +256,51 @@ router.post(
 // Patch Deployment Routes
 // ============================================
 
-// POST /v1/deployments/patch - Create patch deployment from UI
+/**
+ * @openapi
+ * /v1/deployments/patch:
+ *   post:
+ *     summary: Create a patch deployment from UI
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               patchId:
+ *                 type: string
+ *               endpointIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               scheduledAt:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       200:
+ *         description: Patch deployment created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post(
   '/patch',
   authenticate,
@@ -80,7 +310,42 @@ router.post(
   patchesController.createPatchDeploymentFromUI
 );
 
-// GET /v1/deployments/patch - List patch deployments (via deployment executor)
+/**
+ * @openapi
+ * /v1/deployments/patch:
+ *   get:
+ *     summary: List patch deployments
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Paginated list of patch deployments
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get(
   '/patch',
   authenticate,
@@ -88,7 +353,41 @@ router.get(
   deploymentController.listPatchDeployments.bind(deploymentController)
 );
 
-// GET /v1/deployments/patch/:deploymentId - Get patch deployment status
+/**
+ * @openapi
+ * /v1/deployments/patch/{deploymentId}:
+ *   get:
+ *     summary: Get patch deployment status
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: deploymentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Patch deployment status and details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Deployment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get(
   '/patch/:deploymentId',
   authenticate,
@@ -96,7 +395,41 @@ router.get(
   deploymentController.getPatchDeploymentStatus.bind(deploymentController)
 );
 
-// POST /v1/deployments/patch/:deploymentId/cancel - Cancel patch deployment
+/**
+ * @openapi
+ * /v1/deployments/patch/{deploymentId}/cancel:
+ *   post:
+ *     summary: Cancel a patch deployment
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: deploymentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Patch deployment cancelled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Deployment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post(
   '/patch/:deploymentId/cancel',
   authenticate,
@@ -105,7 +438,41 @@ router.post(
   deploymentController.cancelPatchDeployment.bind(deploymentController)
 );
 
-// POST /v1/deployments/patch/:deploymentId/retry - Retry a failed patch deployment
+/**
+ * @openapi
+ * /v1/deployments/patch/{deploymentId}/retry:
+ *   post:
+ *     summary: Retry a failed patch deployment
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: deploymentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Patch deployment retry initiated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Deployment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post(
   '/patch/:deploymentId/retry',
   authenticate,
@@ -114,7 +481,51 @@ router.post(
   deploymentController.retryPatchDeployment.bind(deploymentController)
 );
 
-// POST /v1/deployments/config - Create config deployment
+/**
+ * @openapi
+ * /v1/deployments/config:
+ *   post:
+ *     summary: Create a config deployment
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               configId:
+ *                 type: string
+ *               endpointIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               scheduledAt:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       200:
+ *         description: Config deployment created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post(
   '/config',
   authenticate,
@@ -123,7 +534,41 @@ router.post(
   deploymentController.createConfigDeployment.bind(deploymentController)
 );
 
-// GET /v1/deployments/config/:deploymentId - Get config deployment status
+/**
+ * @openapi
+ * /v1/deployments/config/{deploymentId}:
+ *   get:
+ *     summary: Get config deployment status
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: deploymentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Config deployment status and details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Deployment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get(
   '/config/:deploymentId',
   authenticate,
@@ -135,7 +580,46 @@ router.get(
 // Generic Deployment CRUD Routes
 // ============================================
 
-// GET /v1/deployments - List deployments
+/**
+ * @openapi
+ * /v1/deployments:
+ *   get:
+ *     summary: List deployments
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Paginated list of deployments
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get(
   '/',
   authenticate,
@@ -144,7 +628,53 @@ router.get(
   patchesController.listDeployments
 );
 
-// POST /v1/deployments - Create deployment
+/**
+ * @openapi
+ * /v1/deployments:
+ *   post:
+ *     summary: Create a deployment
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *               targetIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               scheduledAt:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       200:
+ *         description: Deployment created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post(
   '/',
   authenticate,
@@ -154,7 +684,41 @@ router.post(
   patchesController.createDeployment
 );
 
-// GET /v1/deployments/:id - Get deployment by ID
+/**
+ * @openapi
+ * /v1/deployments/{id}:
+ *   get:
+ *     summary: Get deployment by ID
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Deployment details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Deployment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get(
   '/:id',
   authenticate,
@@ -163,7 +727,59 @@ router.get(
   patchesController.getDeployment
 );
 
-// PUT /v1/deployments/:id - Update deployment
+/**
+ * @openapi
+ * /v1/deployments/{id}:
+ *   put:
+ *     summary: Update a deployment
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               scheduledAt:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       200:
+ *         description: Deployment updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Deployment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.put(
   '/:id',
   authenticate,
@@ -173,7 +789,41 @@ router.put(
   patchesController.updateDeployment
 );
 
-// POST /v1/deployments/:id/cancel - Cancel deployment
+/**
+ * @openapi
+ * /v1/deployments/{id}/cancel:
+ *   post:
+ *     summary: Cancel a deployment
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Deployment cancelled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Deployment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post(
   '/:id/cancel',
   authenticate,
@@ -183,7 +833,41 @@ router.post(
   patchesController.cancelDeployment
 );
 
-// DELETE /v1/deployments/:id - Delete deployment
+/**
+ * @openapi
+ * /v1/deployments/{id}:
+ *   delete:
+ *     summary: Delete a deployment
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Deployment deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Deployment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.delete(
   '/:id',
   authenticate,
@@ -193,7 +877,41 @@ router.delete(
   patchesController.deleteDeployment
 );
 
-// GET /v1/deployments/:id/preview - Get deployment preview
+/**
+ * @openapi
+ * /v1/deployments/{id}/preview:
+ *   get:
+ *     summary: Get deployment preview
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Deployment preview details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Deployment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get(
   '/:id/preview',
   authenticate,
@@ -202,7 +920,41 @@ router.get(
   patchesController.getDeploymentPreview
 );
 
-// POST /v1/deployments/:id/execute - Execute deployment
+/**
+ * @openapi
+ * /v1/deployments/{id}/execute:
+ *   post:
+ *     summary: Execute a deployment
+ *     tags:
+ *       - Deployments
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Deployment execution initiated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Deployment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post(
   '/:id/execute',
   authenticate,

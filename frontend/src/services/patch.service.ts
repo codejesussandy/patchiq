@@ -143,8 +143,8 @@ export const patchService = {
     status?: string;
   }): Promise<Record<string, unknown>[]> {
     const response = await api.get('/deployments/patch', { params });
-    // Paginated response: interceptor returns { data: T[], ...meta }
-    return response.data.data || [];
+    // Non-paginated: interceptor unwraps { success, data } → data (the array)
+    return Array.isArray(response.data) ? response.data : response.data?.data || [];
   },
 
   async getPatchDeploymentStatus(deploymentId: string): Promise<Record<string, unknown>> {

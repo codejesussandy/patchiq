@@ -141,6 +141,7 @@ export class DeploymentController {
         progress: d._count.tasks > 0
           ? Math.round(((d.succeeded + d.failed) / d._count.tasks) * 100)
           : 0,
+        createdBy: d.createdBy,
         createdAt: d.createdAt,
         updatedAt: d.updatedAt,
       })));

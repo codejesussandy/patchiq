@@ -164,11 +164,16 @@ export class AgentsCommandsService {
       throw new NotFoundError('Command not found');
     }
 
+    // Store both result message and output in the result JSON field
+    const resultData = input.output
+      ? { message: input.result, output: input.output }
+      : input.result;
+
     await prisma.agentCommand.update({
       where: { id: commandId },
       data: {
         status: input.status,
-        result: input.result as Prisma.InputJsonValue | undefined,
+        result: resultData as Prisma.InputJsonValue | undefined,
         errorMessage: input.errorMessage || undefined,
         executedAt: new Date(),
         completedAt: new Date(),

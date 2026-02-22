@@ -74,8 +74,9 @@ export const softwareJobsService = {
 
   async listDeployments(): Promise<SoftwareDeployment[]> {
     const response = await api.get('/deployments/software');
-    // Paginated response: interceptor returns { data: T[], ...meta }
-    return response.data.data || [];
+    // Non-paginated response: interceptor unwraps envelope, response.data is the array
+    const data = response.data;
+    return Array.isArray(data) ? data : (data?.data || []);
   },
 
   async getDeployment(deploymentId: string): Promise<SoftwareDeploymentWithTasks> {

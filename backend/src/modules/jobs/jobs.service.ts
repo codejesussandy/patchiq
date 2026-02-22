@@ -33,31 +33,44 @@ import type {
 // ============================================
 
 async function generatePolicyId(prefix: string, model: string): Promise<string> {
-  let count = 0;
+  // Find the max existing numeric suffix to avoid collisions when records have been deleted
+  let existingIds: string[] = [];
+
   switch (model) {
     case 'patchJob':
-      count = await prisma.patchJob.count();
+      existingIds = (await prisma.patchJob.findMany({ select: { policyId: true } })).map((r) => r.policyId);
       break;
     case 'vulnerabilityJob':
-      count = await prisma.vulnerabilityJob.count();
+      existingIds = (await prisma.vulnerabilityJob.findMany({ select: { jobId: true } })).map((r) => r.jobId);
       break;
     case 'softwareDeployment':
-      count = await prisma.softwareDeployment.count();
+      existingIds = (await prisma.softwareDeployment.findMany({ select: { deploymentId: true } })).map((r) => r.deploymentId);
       break;
     case 'configCatalog':
-      count = await prisma.configCatalog.count();
+      existingIds = (await prisma.configCatalog.findMany({ select: { configurationId: true } })).map((r) => r.configurationId);
       break;
     case 'configBundle':
-      count = await prisma.configBundle.count();
+      existingIds = (await prisma.configBundle.findMany({ select: { bundleId: true } })).map((r) => r.bundleId);
       break;
     case 'configDeployment':
-      count = await prisma.configDeployment.count();
+      existingIds = (await prisma.configDeployment.findMany({ select: { deploymentId: true } })).map((r) => r.deploymentId);
       break;
     case 'deploymentPolicy':
-      count = await prisma.deploymentPolicy.count();
+      existingIds = (await prisma.deploymentPolicy.findMany({ select: { policyId: true } })).map((r) => r.policyId);
       break;
   }
-  return `${prefix}-${String(count + 1).padStart(3, '0')}`;
+
+  const prefixPattern = new RegExp(`^${prefix}-(\\d+)$`);
+  let maxNum = 0;
+  for (const id of existingIds) {
+    const match = id.match(prefixPattern);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxNum) maxNum = num;
+    }
+  }
+
+  return `${prefix}-${String(maxNum + 1).padStart(3, '0')}`;
 }
 
 // ============================================

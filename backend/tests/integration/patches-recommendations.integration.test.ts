@@ -33,12 +33,12 @@ beforeAll(async () => {
     where: { approvalStatus: 'APPROVED' },
   });
 
-  // Use an existing asset
+  // Use an existing asset (any asset, not restricted to org)
   const existingAsset = await prisma.asset.findFirst({
     where: { organizationId: org.id },
-  });
+  }) ?? await prisma.asset.findFirst();
 
-  if (!existingPatch || !existingAsset) {
+  if (!existingPatch) {
     // Create a minimal patch for testing if none exist
     const patch = await prisma.patch.create({
       data: {
@@ -56,7 +56,19 @@ beforeAll(async () => {
     seededPatchId = existingPatch.id;
   }
 
-  if (existingAsset) {
+  if (!existingAsset) {
+    // Create a minimal asset for testing if none exist
+    const asset = await prisma.asset.create({
+      data: {
+        name: `INTTEST-REC-Asset-${TS}`,
+        type: 'Server',
+        status: 'In Use',
+        os: 'Linux',
+        organizationId: org.id,
+      },
+    });
+    seededAssetId = asset.id;
+  } else {
     seededAssetId = existingAsset.id;
   }
 
@@ -104,7 +116,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Cleanup seeded recommendations first (FK constraints), then patches and vulnerabilities
+  // Cleanup seeded recommendations first (FK constraints), then patches, assets, and vulnerabilities
   await prisma.assetPatchRecommendation.deleteMany({
     where: { patchId: seededPatchId, assetId: seededAssetId },
   });
@@ -113,6 +125,9 @@ afterAll(async () => {
   });
   await prisma.vulnerability.deleteMany({
     where: { cveId: { startsWith: 'CVE-INTTEST-' } },
+  });
+  await prisma.asset.deleteMany({
+    where: { name: { startsWith: 'INTTEST-REC-Asset-' } },
   });
 });
 

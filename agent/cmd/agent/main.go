@@ -429,10 +429,11 @@ func parseJSON(data []byte, v interface{}) error {
 }
 
 func runAsWindowsService() {
-	// Load config from standard service locations
+	// Load config from standard service locations (ProgramData + home dir)
 	var cfg *config.Config
 	homeDir, _ := os.UserHomeDir()
 	servicePaths := []string{
+		filepath.Join(os.Getenv("ProgramData"), "PatchIQ", "config.json"),
 		filepath.Join(homeDir, ".patchify-agent", "config.json"),
 	}
 

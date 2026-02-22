@@ -259,12 +259,16 @@ func (c *Client) Heartbeat(req *HeartbeatRequest) (*HeartbeatResponse, error) {
 		return nil, fmt.Errorf("heartbeat failed with status %d", resp.StatusCode)
 	}
 
-	var result HeartbeatResponse
-	if err := json.Unmarshal(respBody, &result); err != nil {
+	// Backend wraps responses in { success: true, data: {...} } envelope
+	var envelope struct {
+		Success bool              `json:"success"`
+		Data    HeartbeatResponse `json:"data"`
+	}
+	if err := json.Unmarshal(respBody, &envelope); err != nil {
 		return nil, fmt.Errorf("failed to parse heartbeat response: %w", err)
 	}
 
-	return &result, nil
+	return &envelope.Data, nil
 }
 
 // GetPendingCommands fetches pending commands from the backend
@@ -295,12 +299,16 @@ func (c *Client) GetPendingCommands() ([]PendingCommand, error) {
 		return nil, fmt.Errorf("get commands failed with status %d", resp.StatusCode)
 	}
 
-	var commands []PendingCommand
-	if err := json.Unmarshal(respBody, &commands); err != nil {
+	// Backend wraps responses in { success: true, data: [...] } envelope
+	var envelope struct {
+		Success bool             `json:"success"`
+		Data    []PendingCommand `json:"data"`
+	}
+	if err := json.Unmarshal(respBody, &envelope); err != nil {
 		return nil, fmt.Errorf("failed to parse commands response: %w", err)
 	}
 
-	return commands, nil
+	return envelope.Data, nil
 }
 
 // ReportCommandResult reports the result of a command execution
@@ -432,12 +440,16 @@ func (c *Client) GetConfig() (*AgentConfig, error) {
 		return nil, fmt.Errorf("get config failed with status %d", resp.StatusCode)
 	}
 
-	var config AgentConfig
-	if err := json.Unmarshal(respBody, &config); err != nil {
+	// Backend wraps responses in { success: true, data: {...} } envelope
+	var envelope struct {
+		Success bool        `json:"success"`
+		Data    AgentConfig `json:"data"`
+	}
+	if err := json.Unmarshal(respBody, &envelope); err != nil {
 		return nil, fmt.Errorf("failed to parse config response: %w", err)
 	}
 
-	return &config, nil
+	return &envelope.Data, nil
 }
 
 // RefreshToken refreshes the access token using the refresh token
@@ -469,13 +481,17 @@ func (c *Client) RefreshToken() error {
 		return fmt.Errorf("token refresh failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	var result TokenRefreshResponse
-	if err := json.Unmarshal(respBody, &result); err != nil {
+	// Backend wraps responses in { success: true, data: {...} } envelope
+	var envelope struct {
+		Success bool                 `json:"success"`
+		Data    TokenRefreshResponse `json:"data"`
+	}
+	if err := json.Unmarshal(respBody, &envelope); err != nil {
 		return fmt.Errorf("failed to parse token refresh response: %w", err)
 	}
 
-	c.accessToken = result.AccessToken
-	c.refreshToken = result.RefreshToken
+	c.accessToken = envelope.Data.AccessToken
+	c.refreshToken = envelope.Data.RefreshToken
 
 	return nil
 }

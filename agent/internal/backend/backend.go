@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"context"
@@ -41,6 +42,7 @@ var commandPriority = map[string]int{
 	"patch_install_all": 3,
 	"software_install": 3,
 	"software_uninstall": 3,
+	"software_upgrade": 3,
 	"script_bundle":    4,
 	"script_inline":    4,
 	"hub_install":      4,
@@ -118,6 +120,9 @@ type Manager struct {
 	downloadProgress map[string]*DownloadProgress
 	progressMutex    sync.RWMutex
 
+	// Atomic flag to prevent concurrent fetchAndExecuteCommands
+	fetchingCommands int32
+
 	// Log upload tracking
 	heartbeatCount int
 }
@@ -171,7 +176,7 @@ func New(cfg *config.Config, cm *collectors.CollectorManager, em *executors.Exec
 		resetTelemetry:        make(chan struct{}, 1),
 		resetInventory:        make(chan struct{}, 1),
 		activeJobs:            make(map[string]*storage.JobHistoryEntry),
-		commandQueue:          make(chan client.PendingCommand, 100), // Buffer size: 100
+		commandQueue:          make(chan client.PendingCommand, 500), // Buffer size: 500
 		workers:               3,                                     // Default: 3 concurrent workers
 		maxRetries:            3,                                     // Default: 3 retry attempts for transient failures
 		backoffDuration:       0,
@@ -582,7 +587,17 @@ func (m *Manager) sendHeartbeat() error {
 
 	// Handle response flags
 	if resp.CommandsPending {
-		go m.fetchAndExecuteCommands()
+		if atomic.CompareAndSwapInt32(&m.fetchingCommands, 0, 1) {
+			go func() {
+				defer atomic.StoreInt32(&m.fetchingCommands, 0)
+				m.fetchAndExecuteCommands()
+			}()
+		}
+	}
+
+	if resp.ConfigUpdated {
+		log.Println("Config update signaled by backend, fetching new config...")
+		go m.fetchAndUpdateConfig()
 	}
 
 	if resp.InventoryRequested {
@@ -590,6 +605,17 @@ func (m *Manager) sendHeartbeat() error {
 	}
 
 	return nil
+}
+
+func (m *Manager) fetchAndUpdateConfig() {
+	cfg, err := m.client.GetConfig()
+	if err != nil {
+		log.Printf("Failed to fetch config update: %v", err)
+		return
+	}
+	m.config.HeartbeatInterval = cfg.HeartbeatIntervalSeconds
+	m.config.TelemetryInterval = cfg.TelemetryIntervalSeconds
+	log.Printf("Config updated: heartbeat=%ds, telemetry=%ds", cfg.HeartbeatIntervalSeconds, cfg.TelemetryIntervalSeconds)
 }
 
 func (m *Manager) uploadLogs() {
@@ -1204,6 +1230,18 @@ func (m *Manager) executeCommandInternal(cmd client.PendingCommand) *client.Comm
 			}
 		}
 
+	case "software_upgrade":
+		var params models.SoftwarePackage
+		if err := parsePayload(cmd.Payload, &params); err != nil {
+			result.Status = "failed"
+			result.ErrorMessage = "Invalid payload: " + err.Error()
+		} else {
+			execResult := m.executors.Software().UpgradeSoftware(ctx, params)
+			result.Status = boolToStatus(execResult.Success)
+			result.Result = execResult.Message
+			result.ErrorMessage = execResult.ErrorMessage
+		}
+
 	case "software_uninstall":
 		var params struct {
 			Name string `json:"name"`
@@ -1368,8 +1406,9 @@ func (m *Manager) executeCommandInternal(cmd client.PendingCommand) *client.Comm
 			if updateResult.Success {
 				result.Status = "completed"
 				result.Result = updateResult.Message
-				// Note: Result will be reported by retry wrapper (if process survives)
-				log.Printf("[Update] Exiting for restart...")
+				// Report result before exiting — os.Exit prevents the retry wrapper from reporting
+				m.reportCommandResult(cmd.ID, result)
+				log.Printf("[Update] Result reported. Exiting for restart...")
 				time.Sleep(1 * time.Second)
 				os.Exit(0)
 				return result // unreachable but satisfies return type

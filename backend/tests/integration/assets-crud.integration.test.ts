@@ -223,3 +223,57 @@ describe('Assets CRUD', () => {
     expect(res.body.success).toBe(false);
   });
 });
+
+describe('Asset Attachments Upload', () => {
+  let token;
+  let assetId;
+
+  beforeAll(async () => {
+    token = await getAdminToken();
+    // Create an asset to attach files to
+    const res = await getAgent()
+      .post('/v1/assets')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'INTTEST-upload-attach-asset', status: 'AVAILABLE' });
+    assetId = res.body.data.id;
+  });
+
+  afterAll(async () => {
+    await prisma.asset.deleteMany({ where: { name: { startsWith: 'INTTEST-upload-attach' } } });
+  });
+
+  describe('POST /v1/assets/:id/attachments', () => {
+    it('returns 401 without auth', async () => {
+      const res = await getAgent()
+        .post(`/v1/assets/${assetId}/attachments`)
+        .attach('file', Buffer.from('test content'), 'test-file.txt');
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 400 when no file is provided', async () => {
+      const res = await getAgent()
+        .post(`/v1/assets/${assetId}/attachments`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('returns 404 for non-existent asset', async () => {
+      const res = await getAgent()
+        .post('/v1/assets/00000000-0000-0000-0000-000000000000/attachments')
+        .set('Authorization', `Bearer ${token}`)
+        .attach('file', Buffer.from('test content'), 'test-file.txt');
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('uploads an attachment successfully', async () => {
+      const res = await getAgent()
+        .post(`/v1/assets/${assetId}/attachments`)
+        .set('Authorization', `Bearer ${token}`)
+        .attach('file', Buffer.from('INTTEST attachment content'), 'inttest-attachment.txt');
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+    });
+  });
+});

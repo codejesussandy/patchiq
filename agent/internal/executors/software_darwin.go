@@ -336,6 +336,44 @@ func (e *DarwinSoftwareExecutor) installFromURL(ctx context.Context, pkg models.
 }
 
 // UninstallSoftware removes software on macOS
+// UpgradeSoftware upgrades an already-installed software package on macOS
+func (e *DarwinSoftwareExecutor) UpgradeSoftware(ctx context.Context, pkg models.SoftwarePackage) models.ExecutionResult {
+	startTime := time.Now()
+
+	switch strings.ToLower(pkg.Source) {
+	case "brew", "homebrew":
+		result := models.ExecutionResult{Success: false}
+		brewPath, err := exec.LookPath("brew")
+		if err != nil {
+			result.ErrorMessage = "Homebrew is not installed"
+			result.Message = "Cannot upgrade via brew - brew not found"
+			result.Duration = time.Since(startTime).Milliseconds()
+			return result
+		}
+		cmd := exec.CommandContext(ctx, brewPath, "upgrade", pkg.Name)
+		output, err := cmd.CombinedOutput()
+		result.Duration = time.Since(startTime).Milliseconds()
+		result.Output = string(output)
+		if err != nil {
+			// "already installed and up-to-date" is not a real error
+			if strings.Contains(string(output), "already installed") {
+				result.Success = true
+				result.Message = fmt.Sprintf("%s is already up to date", pkg.Name)
+				return result
+			}
+			result.ErrorMessage = err.Error()
+			result.Message = fmt.Sprintf("Failed to upgrade %s via brew", pkg.Name)
+			return result
+		}
+		result.Success = true
+		result.Message = fmt.Sprintf("Successfully upgraded %s via brew", pkg.Name)
+		return result
+	default:
+		// Fall back to install for other sources
+		return e.InstallSoftware(ctx, pkg)
+	}
+}
+
 func (e *DarwinSoftwareExecutor) UninstallSoftware(ctx context.Context, name string) models.ExecutionResult {
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}

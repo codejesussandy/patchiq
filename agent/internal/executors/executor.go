@@ -23,6 +23,8 @@ type PatchExecutor interface {
 type SoftwareExecutor interface {
 	// InstallSoftware installs a software package
 	InstallSoftware(ctx context.Context, pkg models.SoftwarePackage) models.ExecutionResult
+	// UpgradeSoftware upgrades an already-installed software package
+	UpgradeSoftware(ctx context.Context, pkg models.SoftwarePackage) models.ExecutionResult
 	// UninstallSoftware removes installed software
 	UninstallSoftware(ctx context.Context, name string) models.ExecutionResult
 	// GetInstalledVersion returns the installed version of software

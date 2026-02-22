@@ -75,6 +75,20 @@ export class DeploymentExecutorPatchService {
       include: { bundle: true },
     });
 
+    // Verify patches are deployable — check that hub patches have actual files in MinIO
+    const unreadyPatches = patchesWithBundles.filter(p => {
+      if (!p.bundle) return false; // native patches don't need bundles
+      if (p.bundle.scriptsIncluded && !p.bundle.bundleObjectKey) return false; // inline scripts are OK
+      if (p.bundle.bundleObjectKey && p.bundle.downloadStatus !== 'COMPLETED') return true;
+      return false;
+    });
+
+    if (unreadyPatches.length > 0) {
+      const names = unreadyPatches.map(p => `${p.patchId} (${p.bundle?.downloadStatus || 'NO_BUNDLE'})`).join(', ');
+      logger.warn({ unreadyPatches: names }, 'Some patches have pending/failed downloads');
+      errors.push(`Patches not ready for deployment (download incomplete): ${names}`);
+    }
+
     const deploymentId = `PD-${uuidv4().slice(0, 8).toUpperCase()}`;
 
     const result = await withTransaction('createPatchDeployment', async (tx) => {
@@ -94,69 +108,68 @@ export class DeploymentExecutorPatchService {
           autoRollback,
           triggerType,
           createdBy,
+          patches: {
+            connect: patchesWithBundles.map(p => ({ id: p.id })),
+          },
         },
       });
+
+      // Verify all patches have bundles (MinIO file or inline scripts)
+      const patchesWithoutBundles = patchesWithBundles.filter(
+        p => !p.bundle || (!p.bundle.bundleObjectKey && !p.bundle.scriptsIncluded)
+      );
+
+      if (patchesWithoutBundles.length > 0) {
+        const names = patchesWithoutBundles.map(p => p.patchId || p.id).join(', ');
+        throw new BadRequestError(`Patches require a bundle for deployment (upload installer to MinIO first): ${names}`);
+      }
 
       let commandsCreated = 0;
 
       for (const agent of agentsWithAssets) {
-        const patchPayloads = [];
-        let useHubCommand = false;
+        const taskCommandIds: string[] = [];
 
         for (const patch of patchesWithBundles) {
-          if (patch.bundle && (patch.bundle.bundleObjectKey || patch.bundle.scriptsIncluded)) {
-            useHubCommand = true;
+          const backendUrl = env.BACKEND_PUBLIC_URL.replace(/\/$/, '');
+          const bundleUrl = patch.bundle!.bundleObjectKey
+            ? `${backendUrl}/v1/patches/${patch.id}/bundle/stream`
+            : undefined;
 
-            const backendUrl = env.BACKEND_PUBLIC_URL.replace(/\/$/, '');
-            const bundleUrl = patch.bundle.bundleObjectKey
-              ? `${backendUrl}/v1/patches/${patch.id}/bundle/stream`
-              : undefined;
+          const payload = {
+            operationType: 'install',
+            packageId: patch.id,
+            packageName: patch.software || patch.patchId,
+            version: patch.kbNumber || patch.patchId || '1.0.0',
+            bundleUrl,
+            bundleChecksum: patch.bundle!.bundleChecksum,
+            manifest: typedJson<ScriptManifest>(patch.bundle!.manifestJson) ?? undefined,
+            script: patch.bundle!.scriptInstall || undefined,
+            requiresRoot: true,
+            patchId: patch.patchId,
+            kbNumber: patch.kbNumber,
+          };
 
-            patchPayloads.push({
-              operationType: 'install',
-              packageId: patch.id,
-              packageName: patch.software || patch.patchId,
-              version: patch.kbNumber || patch.patchId || '1.0.0',
-              bundleUrl,
-              bundleChecksum: patch.bundle.bundleChecksum,
-              manifest: typedJson<ScriptManifest>(patch.bundle.manifestJson) ?? undefined,
-              script: patch.bundle.scriptInstall || undefined,
-              requiresRoot: true,
-              patchId: patch.patchId,
-              kbNumber: patch.kbNumber,
-            });
-          } else {
-            patchPayloads.push({
-              patchId: patch.patchId || patch.id,
-              kbNumber: patch.kbNumber,
-              packageName: patch.software,
-              rebootRequired: patch.rebootRequired,
-            });
-          }
+          const command = await tx.agentCommand.create({
+            data: {
+              agentId: agent.id,
+              type: COMMAND_TYPES.HUB_PATCH_INSTALL,
+              payload: toJsonInput(payload),
+              status: 'PENDING',
+              scheduledAt: new Date(),
+            },
+          });
+
+          taskCommandIds.push(command.id);
+          commandsCreated++;
         }
 
-        const commandType = useHubCommand
-          ? COMMAND_TYPES.HUB_PATCH_INSTALL
-          : COMMAND_TYPES.PATCH_INSTALL;
-
-        const command = await tx.agentCommand.create({
-          data: {
-            agentId: agent.id,
-            type: commandType,
-            payload: useHubCommand
-              ? toJsonInput(patchPayloads.length === 1 ? patchPayloads[0] : { patches: patchPayloads })
-              : toJsonInput({ patches: patchPayloads }),
-            status: 'PENDING',
-            scheduledAt: new Date(),
-          },
-        });
-
+        // Create one task per agent, linked to first command
         const task = await tx.patchDeploymentTask.create({
           data: {
             deploymentId: deployment.id,
             assetId: agent.assetId!,
             status: 'PENDING',
-            commandId: command.id,
+            commandId: taskCommandIds[0] || null,
           },
         });
 
@@ -174,8 +187,6 @@ export class DeploymentExecutorPatchService {
             },
           });
         }
-
-        commandsCreated++;
       }
 
       return {
@@ -280,7 +291,7 @@ export class DeploymentExecutorPatchService {
           select: { tasks: true },
         },
         patches: {
-          select: { patchId: true, title: true, severity: true },
+          select: { patchId: true, title: true, severity: true, software: true },
         },
       },
     });

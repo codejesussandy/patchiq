@@ -963,7 +963,7 @@ model PatchDeploymentTask {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  patchRecommendation AssetPatchRecommendation?
+  patchRecommendations AssetPatchRecommendation[]
 
   @@index([deploymentId, status])
   @@index([commandId])
@@ -1003,7 +1003,7 @@ model AssetPatchRecommendation {
   affectedSoftware String? @map("affected_software") // "openssl 3.0.5"
 
   // Deployment link
-  deploymentTaskId String?              @unique @map("deployment_task_id")
+  deploymentTaskId String?              @map("deployment_task_id")
   deploymentTask   PatchDeploymentTask? @relation(fields: [deploymentTaskId], references: [id])
 
   // Lifecycle timestamps
@@ -1026,6 +1026,7 @@ model AssetPatchRecommendation {
   @@index([status])
   @@index([severity])
   @@index([riskScore(sort: Desc)])
+  @@index([deploymentTaskId])
   @@map("asset_patch_recommendations")
 }
 

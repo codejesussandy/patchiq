@@ -10,6 +10,9 @@ describe('Jobs - Patch & Vulnerability', () => {
 
   beforeAll(async () => {
     token = await getAdminToken();
+    // Clean up any leftover jobs from previous failed runs
+    await prisma.patchJob.deleteMany({ where: { name: { startsWith: PREFIX } } });
+    await prisma.vulnerabilityJob.deleteMany({ where: { name: { startsWith: PREFIX } } });
   });
 
   afterAll(async () => {

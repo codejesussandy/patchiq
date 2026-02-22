@@ -35,7 +35,7 @@ MINIO_PORT ?= 3008
 MINIO_CONSOLE_PORT ?= 3009
 
 # Version (single source of truth for agent builds)
-VERSION ?= 0.1.0
+VERSION ?= 0.1.1
 
 # Agent build configuration (embedded at compile time)
 PATCHIQ_SERVER_URL ?= $(PUBLIC_URL)/api
@@ -331,7 +331,7 @@ agent-release:
 	VERSIONS=$$(curl -sf $(PUBLIC_URL)/v1/agent-versions -H "Authorization: Bearer $$TOKEN"); \
 	upload() { \
 		PLATFORM=$$1; ARCH=$$2; FILE=$$3; \
-		VID=$$(echo "$$VERSIONS" | python3 -c "import sys,json; r=json.load(sys.stdin); vs=r.get('data',r) if isinstance(r.get('data'),list) else r; vs=vs if isinstance(vs,list) else vs.get('data',[]); print(next((v['id'] for v in vs if v['platform']=='$$PLATFORM' and v['architecture']=='$$ARCH'),''))"); \
+		VID=$$(echo "$$VERSIONS" | python3 -c "import sys,json; r=json.load(sys.stdin); vs=r.get('data',r) if isinstance(r.get('data'),list) else r; vs=vs if isinstance(vs,list) else vs.get('data',[]); print(next((v['id'] for v in vs if v['platform'].lower()=='$$PLATFORM'.lower() and v['architecture']=='$$ARCH'),''))"); \
 		if [ -z "$$VID" ]; then \
 			echo "  $(YELLOW)No DB record for $$PLATFORM/$$ARCH — skipping$(NC)"; \
 			return; \
@@ -346,11 +346,11 @@ agent-release:
 			echo "  $(RED)Failed $$PLATFORM/$$ARCH$(NC)"; \
 		fi; \
 	}; \
-	upload Windows amd64 agent/dist/patchiq-agent-windows-amd64.exe; \
-	upload Linux amd64 agent/dist/patchiq-agent-linux-amd64; \
-	upload Linux arm64 agent/dist/patchiq-agent-linux-arm64; \
-	upload Mac amd64 agent/dist/patchiq-agent-darwin-amd64; \
-	upload Mac arm64 agent/dist/patchiq-agent-darwin-arm64
+	upload windows amd64 agent/dist/patchiq-agent-windows-amd64.exe; \
+	upload linux amd64 agent/dist/patchiq-agent-linux-amd64; \
+	upload linux arm64 agent/dist/patchiq-agent-linux-arm64; \
+	upload macos amd64 agent/dist/patchiq-agent-darwin-amd64; \
+	upload macos arm64 agent/dist/patchiq-agent-darwin-arm64
 	@echo ""
 	@echo "$(GREEN)Agent release complete! All binaries uploaded and DB updated.$(NC)"
 

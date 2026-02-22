@@ -22,18 +22,31 @@ else
     echo "Skipping macOS PKG (not on macOS or pkgbuild not available)"
 fi
 
-# Linux DEB
-if command -v fpm &> /dev/null; then
+# Linux DEB (native dpkg-deb — preferred, hardened systemd unit)
+if command -v dpkg-deb &> /dev/null; then
     echo ""
-    echo "=== Building Linux DEB (amd64) ==="
-    "$SCRIPT_DIR/linux/build.sh" "$VERSION" amd64 deb
+    echo "=== Building Linux DEB via dpkg-deb (amd64) ==="
+    "$SCRIPT_DIR/debian/build-deb.sh" "$VERSION" amd64
+else
+    echo ""
+    echo "Skipping native DEB (dpkg-deb not available)"
+fi
 
+# Linux DEB/RPM via fpm (fallback, also builds RPM)
+if command -v fpm &> /dev/null; then
     echo ""
     echo "=== Building Linux RPM (x86_64) ==="
     "$SCRIPT_DIR/linux/build.sh" "$VERSION" x86_64 rpm
+
+    # Build fpm DEB only if dpkg-deb wasn't available
+    if ! command -v dpkg-deb &> /dev/null; then
+        echo ""
+        echo "=== Building Linux DEB via fpm (amd64) ==="
+        "$SCRIPT_DIR/linux/build.sh" "$VERSION" amd64 deb
+    fi
 else
     echo ""
-    echo "Skipping Linux packages (fpm not installed)"
+    echo "Skipping RPM package (fpm not installed)"
     echo "Install with: gem install fpm"
 fi
 

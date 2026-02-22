@@ -34,12 +34,17 @@ export class DeploymentExecutorSoftwareService {
     const {
       name,
       description,
-      deploymentType,
+      deploymentType: rawDeploymentType,
       targetAgentIds,
       package: packageInfo,
       retryCount: retryCountInput = 1,
       createdBy,
     } = options;
+
+    // Normalize: validator accepts lowercase ('update'), code checks uppercase ('UPGRADE')
+    // Also map 'update' → 'UPGRADE' since the UI/API uses 'update' but internal logic uses 'UPGRADE'
+    const dtUpper = (rawDeploymentType || 'install').toUpperCase();
+    const deploymentType = dtUpper === 'UPDATE' ? 'UPGRADE' : dtUpper;
 
     const retryCount = typeof retryCountInput === 'string'
       ? parseInt(retryCountInput, 10) || 1
@@ -81,6 +86,8 @@ export class DeploymentExecutorSoftwareService {
       requiresRoot?: boolean;
     } | null = null;
     let hubInstallCommand: string | null = null;
+    let hubInstallSource: string | null = null;
+    let hubDisplayName: string | null = null;
 
     if (pkgPayload.packageId) {
       try {
@@ -90,6 +97,8 @@ export class DeploymentExecutorSoftwareService {
 
         if (pkg) {
           hubInstallCommand = pkg.installCommand;
+          hubInstallSource = pkg.installSource;
+          hubDisplayName = pkg.displayName;
         }
 
         if (pkg && (pkg.bundleObjectKey || pkg.scriptsIncluded)) {
@@ -115,7 +124,7 @@ export class DeploymentExecutorSoftwareService {
               requiresRoot: pkg.requiresRoot,
             };
           }
-        }
+            }
       } catch (err) {
         logger.info({ packageId: pkgPayload.packageId }, 'Package not found in Hub, using legacy mode');
       }
@@ -153,13 +162,21 @@ export class DeploymentExecutorSoftwareService {
       commandPayload = toJsonInput(bundlePayload);
     } else {
       const pkg = packageInfo as SoftwareInstallPayload & { packageId?: string };
+      // If source not provided in request, use the hub package's installSource
+      if (!pkg.source && hubInstallSource) {
+        (pkg as unknown as Record<string, unknown>).source = hubInstallSource;
+      }
       if ((pkg.source as string) === 'bundle' || !pkg.source) {
         // Will be resolved per-agent below based on agent OS
       }
       commandType = deploymentType === 'UNINSTALL'
         ? COMMAND_TYPES.SOFTWARE_UNINSTALL
-        : COMMAND_TYPES.SOFTWARE_INSTALL;
-      commandPayload = toJsonInput(packageInfo);
+        : deploymentType === 'UPGRADE'
+          ? COMMAND_TYPES.SOFTWARE_UPGRADE
+          : COMMAND_TYPES.SOFTWARE_INSTALL;
+
+      const resolvedName = hubDisplayName || pkg.name;
+      commandPayload = toJsonInput({ name: resolvedName, source: pkg.source, version: pkg.version });
     }
 
     const result = await withTransaction('createSoftwareDeployment', async (tx) => {
@@ -190,8 +207,8 @@ export class DeploymentExecutorSoftwareService {
         const pkgInfo = packageInfo as SoftwareInstallPayload;
         if (!hubPackage?.scriptsIncluded && ((pkgInfo.source as string) === 'bundle' || !pkgInfo.source)) {
           const osSource = getDefaultSourceForOS(agent.os || 'Unknown');
-          const pkgName = hubInstallCommand || pkgInfo.name;
-          agentPayload = toJsonInput({ name: pkgName, source: osSource });
+          const pkgName = hubDisplayName || pkgInfo.name;
+          agentPayload = toJsonInput({ name: pkgName, source: osSource, version: pkgInfo.version });
         }
 
         const command = await tx.agentCommand.create({
