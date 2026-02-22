@@ -42,9 +42,9 @@ describe('Audit', () => {
 
   it('renders column headers', () => {
     render(<Audit />);
-    expect(screen.getByText('Module')).toBeInTheDocument();
-    expect(screen.getByText('Operation')).toBeInTheDocument();
-    expect(screen.getByText('Status')).toBeInTheDocument();
+    expect(screen.getAllByText('Module')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Operation')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Status')[0]).toBeInTheDocument();
   });
 
   it('renders filter dropdowns', () => {

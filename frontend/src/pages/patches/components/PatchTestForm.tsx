@@ -18,15 +18,6 @@ export const PatchTestForm = ({ form, applications, computers, groups }: PatchTe
     <Form.Item name="description" label="Description" rules={[{ required: true, message: 'Please enter description' }]}>
       <TextArea rows={3} placeholder="Enter description" />
     </Form.Item>
-    <Form.Item name="platform" label="Platform" initialValue="ALL">
-      <Select>
-        <Option value="ALL">All Platforms</Option>
-        <Option value="WINDOWS">Windows</Option>
-        <Option value="MACOS">MacOS</Option>
-        <Option value="UBUNTU">Ubuntu</Option>
-        <Option value="LINUX">Linux</Option>
-      </Select>
-    </Form.Item>
     <Form.Item name="applicationType" label="Application Type" rules={[{ required: true, message: 'Please select application type' }]} initialValue="ALL">
       <Radio.Group>
         <Space direction="vertical">
@@ -72,11 +63,9 @@ export const PatchTestForm = ({ form, applications, computers, groups }: PatchTe
     <Form.Item noStyle shouldUpdate={(prev, cur) => prev.scope !== cur.scope}>
       {({ getFieldValue }) =>
         getFieldValue('scope') === 'SPECIFIC_GROUPS' && (
-          <Form.Item name="groups" label="Select Groups" rules={[{ required: true, message: 'Please select at least one group' }]}>
+          <Form.Item name="groups" label="Select Groups" rules={[{ required: true, message: 'Please select groups' }]}>
             <Select mode="multiple" placeholder="Select groups">
-              <Option value="windows_workstations">Windows Workstations</Option>
-              <Option value="macos_devices">macOS Devices</Option>
-              <Option value="linux_servers">Linux Servers</Option>
+              {groups.map((g) => <Option key={g.id} value={g.id}>{g.name}</Option>)}
             </Select>
           </Form.Item>
         )

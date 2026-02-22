@@ -32,15 +32,7 @@ export const AllPatches = () => {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeFilters, setActiveFilters] = useState<{
-    severity?: string[]; os?: string[]; category?: string[];
-    dateRange?: [dayjs.Dayjs, dayjs.Dayjs] | null;
-  }>({});
-  const { data: patchesData, isLoading: loading } = usePatches({
-    severity: activeFilters.severity,
-    os: activeFilters.os,
-    category: activeFilters.category,
-  });
+  const { data: patchesData, isLoading: loading } = usePatches();
   const patches = patchesData?.data || [];
   const discoverPatchesMutation = useDiscoverPatches();
   const deletePatchMutation = useDeletePatch();
@@ -63,6 +55,10 @@ export const AllPatches = () => {
   // Filter
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [filterForm] = Form.useForm();
+  const [activeFilters, setActiveFilters] = useState<{
+    severity?: string[]; os?: string[]; category?: string[];
+    dateRange?: [dayjs.Dayjs, dayjs.Dayjs] | null;
+  }>({});
 
   // Deploy
   const [deployModalVisible, setDeployModalVisible] = useState(false);
@@ -111,63 +107,32 @@ export const AllPatches = () => {
   // Bulk Add
   const handleBulkAddSubmit = async () => {
     if (fileList.length === 0) { message.error('Please upload a file'); return; }
-    const uploadFile = fileList[0];
-    const nativeFile = (uploadFile.originFileObj ?? uploadFile) as unknown as File;
-    if (!nativeFile) { message.error('Could not read file. Please try again.'); return; }
+    const file = fileList[0];
     try {
       const text = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = () => reject(reader.error);
-        reader.readAsText(nativeFile);
+        reader.readAsText(file);
       });
       const lines = text.split('\n').filter((l) => l.trim());
       if (lines.length < 2) { message.error('CSV file must have a header row and at least one data row'); return; }
-      const parseCSVLine = (line: string): string[] => {
-        const result: string[] = [];
-        let current = ''; let inQuotes = false;
-        for (let ci = 0; ci < line.length; ci++) {
-          const ch = line[ci];
-          if (ch === '"') { inQuotes = !inQuotes; }
-          else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
-          else { current += ch; }
-        }
-        result.push(current.trim());
-        return result;
-      };
-      const normalizeOS = (val: string): string => {
-        const v = val.toUpperCase();
-        if (v === 'WINDOWS' || v === 'WIN') return 'WINDOWS';
-        if (v === 'MACOS' || v === 'MAC' || v === 'DARWIN') return 'MACOS';
-        if (v === 'UBUNTU') return 'UBUNTU';
-        if (v === 'LINUX') return 'LINUX';
-        return 'WINDOWS';
-      };
-      const normalizeSeverity = (val: string): string => {
-        const v = val.toUpperCase();
-        if (['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'UNSPECIFIED'].includes(v)) return v;
-        return 'UNSPECIFIED';
-      };
-      const headers = parseCSVLine(lines[0]).map((h) => h.toLowerCase().replace(/^"|"$/g, ''));
+      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
       let successCount = 0; let failCount = 0;
       for (let i = 1; i < lines.length; i++) {
-        const values = parseCSVLine(lines[i]);
+        const values = lines[i].split(',').map((v) => v.trim());
         const row: Record<string, string> = {};
-        headers.forEach((h, idx) => { row[h] = (values[idx] || '').replace(/^"|"$/g, ''); });
+        headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
         try {
           await createPatchMutation.mutateAsync({
-            software: row['software'] || row['name'] || '',
-            os: normalizeOS(row['os'] || row['platform'] || 'Windows'),
-            description: row['description'] || '',
-            category: row['category'] || 'Security Updates',
-            severity: normalizeSeverity(row['severity'] || 'UNSPECIFIED'),
-            bulletinId: row['bulletinid'] || row['bulletin_id'] || '',
+            software: row['software'] || row['name'] || '', platform: row['platform'] || row['os'] || 'Windows',
+            description: row['description'] || '', category: row['category'] || 'Security Updates',
+            severity: row['severity'] || 'Medium', bulletinId: row['bulletinid'] || row['bulletin_id'] || '',
             kbNumber: row['kbnumber'] || row['kb_number'] || row['kb'] || '',
-            releaseDate: row['releasedate'] || row['release_date'] || row['publishedat'] || '',
-            architecture: row['architecture'] || '64 BIT',
+            publishedAt: row['releasedate'] || row['release_date'] || '', architecture: row['architecture'] || '64 BIT',
           });
           successCount++;
-        } catch (err) { console.error(`Row ${i} failed:`, err); failCount++; }
+        } catch { failCount++; }
       }
       if (successCount > 0) message.success(`Successfully imported ${successCount} patch(es)`);
       if (failCount > 0) message.warning(`Failed to import ${failCount} row(s)`);
@@ -260,6 +225,9 @@ export const AllPatches = () => {
     const matchesSearch = (patch.software || '').toLowerCase().includes(searchLower) || (patch.patchId || '').toLowerCase().includes(searchLower);
     if (!matchesSearch) return false;
     if (osFilter) { const osUpper = osFilter.toUpperCase(); if (osUpper === 'LINUX') { if (patch.os !== 'LINUX' && patch.os !== 'UBUNTU') return false; } else if (patch.os !== osUpper) return false; }
+    if (activeFilters.severity && !activeFilters.severity.includes(patch.severity)) return false;
+    if (activeFilters.os && !activeFilters.os.includes(patch.os)) return false;
+    if (activeFilters.category && !activeFilters.category.includes(patch.category)) return false;
     if (activeFilters.dateRange) {
       const [start, end] = activeFilters.dateRange;
       const publishedAt = patch.publishedAt ? dayjs(patch.publishedAt) : null;
@@ -274,7 +242,10 @@ export const AllPatches = () => {
         <title>{osFilter ? `${osFilter} Patches` : 'Patches'} - PatchIQ</title>
       </Helmet>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>{osFilter ? `${osFilter} Patches` : 'All Patches'}</Title>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>{osFilter ? `${osFilter} Patches` : 'All Patches'}</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Browse, filter, and deploy available patches</Text>
+        </div>
         <Space>
           <Button icon={<ScanOutlined />} loading={discoverPatchesMutation.isPending} onClick={() => {
             discoverPatchesMutation.mutate(undefined, {

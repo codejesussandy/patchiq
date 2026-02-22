@@ -48,16 +48,7 @@ export const IntegrationFormModal = ({
       <Row gutter={16}>
         <Col span={12}>
           <Form.Item label="Integration Type" name="type" rules={[{ required: true, message: 'Please select integration type' }]}>
-            <Select placeholder="Select type" disabled={mode === 'view'}
-              options={[
-                { label: 'SIEM', value: 'siem' },
-                { label: 'Ticketing', value: 'ticketing' },
-                { label: 'Notification', value: 'notification' },
-                { label: 'Monitoring', value: 'monitoring' },
-                { label: 'Backup', value: 'backup' },
-                { label: 'Custom', value: 'custom' },
-              ]}
-            />
+            <Input placeholder="Enter type" disabled={mode === 'view'} />
           </Form.Item>
         </Col>
         <Col span={12}>

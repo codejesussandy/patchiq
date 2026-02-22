@@ -42,7 +42,7 @@ export const PatchOverviewTab = ({ patchSummary, patches }: PatchOverviewTabProp
   return (
     <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
       <Col span={8}>
-        <Card size="small">
+        <Card size="small" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
           <Row gutter={16} align="middle">
             <Col span={12}>
               <div style={{ textAlign: 'center' }}>
@@ -75,7 +75,7 @@ export const PatchOverviewTab = ({ patchSummary, patches }: PatchOverviewTabProp
       </Col>
 
       <Col span={8}>
-        <Card size="small" title="Patch Distribution">
+        <Card size="small" title="Patch Distribution" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={150}>
               <PieChart>
@@ -95,7 +95,7 @@ export const PatchOverviewTab = ({ patchSummary, patches }: PatchOverviewTabProp
       </Col>
 
       <Col span={8}>
-        <Card size="small" title="Quick Stats">
+        <Card size="small" title="Quick Stats" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
           <Row gutter={[16, 16]}>
             <Col span={12}>
               <Card size="small" style={{ textAlign: 'center', background: missingPatches.filter((p) => p.severity === 'CRITICAL').length > 0 ? '#fff1f0' : '#f6ffed', border: 'none' }}>

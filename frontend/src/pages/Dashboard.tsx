@@ -76,7 +76,10 @@ export const Dashboard = () => {
         <title>Executive Dashboard - PatchIQ</title>
       </Helmet>
         <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Title level={3} style={{ margin: 0 }}>Executive Dashboard</Title>
+          <div>
+            <Title level={3} style={{ margin: 0 }}>Executive Dashboard</Title>
+            <Text type="secondary" style={{ fontSize: 14 }}>Real-time overview of your patch management environment</Text>
+          </div>
         <Space>
           <Select
             defaultValue="all"

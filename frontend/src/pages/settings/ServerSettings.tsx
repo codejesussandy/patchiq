@@ -4,7 +4,7 @@ import { App,
 import { useServerSettings, useUpdateServerSettings } from '../../hooks/useSettings';
 import type { ServerSettingsFormData } from '../../types/settings.types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export const ServerSettings = () => {
   const { message } = App.useApp();
@@ -49,7 +49,8 @@ export const ServerSettings = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <Title level={2}>Server Settings</Title>
+      <Title level={3} style={{ margin: 0 }}>Server Settings</Title>
+      <Text type="secondary" style={{ fontSize: 14 }}>Configure server connection settings</Text>
       <Divider />
 
       <Form

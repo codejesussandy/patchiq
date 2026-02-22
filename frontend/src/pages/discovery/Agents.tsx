@@ -379,9 +379,10 @@ export const Agents = () => {
   return (
     <div>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Agents
-        </Title>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Agents</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Monitor and manage discovery agents</Text>
+        </div>
         <Button onClick={() => setDownloadModalVisible(true)}>
           Download Agent
         </Button>

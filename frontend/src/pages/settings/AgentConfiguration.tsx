@@ -4,7 +4,7 @@ import { App,
 import { useAgentConfiguration, useUpdateAgentConfiguration } from '../../hooks/useSettings';
 import type { AgentConfigurationFormData } from '../../types/settings.types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export const AgentConfiguration = () => {
   const { message } = App.useApp();
@@ -20,10 +20,7 @@ export const AgentConfiguration = () => {
 
   const onFinish = async (values: AgentConfigurationFormData) => {
     try {
-      const numericValues = Object.fromEntries(
-        Object.entries(values).map(([k, v]) => [k, v !== undefined && v !== '' ? Number(v) : v])
-      ) as AgentConfigurationFormData;
-      await updateConfigMutation.mutateAsync(numericValues);
+      await updateConfigMutation.mutateAsync(values);
       message.success('Agent configuration updated successfully');
     } catch {
       message.error('Failed to update agent configuration');
@@ -97,7 +94,8 @@ export const AgentConfiguration = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <Title level={2}>Agent Configuration</Title>
+      <Title level={3} style={{ margin: 0 }}>Agent Configuration</Title>
+      <Text type="secondary" style={{ fontSize: 14 }}>Configure agent deployment settings</Text>
       <Divider />
 
       <Form

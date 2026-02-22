@@ -18,13 +18,12 @@ describe('Hub Page', () => {
     expect(screen.getByText('Manage software packages for deployment to agents')).toBeInTheDocument();
   });
 
-  it('renders tabs', async () => {
+  it('does not render removed tabs (catalog, bundles, software jobs)', async () => {
     render(<Hub />);
 
-    expect(screen.getByText('Packages')).toBeInTheDocument();
-    expect(screen.getByText('Software Catalog')).toBeInTheDocument();
-    expect(screen.getByText('Bundles')).toBeInTheDocument();
-    expect(screen.getByText('Software Jobs')).toBeInTheDocument();
+    expect(screen.queryByText('Software Catalog')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bundles')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /software jobs/i })).not.toBeInTheDocument();
   });
 
   it('renders stats cards', async () => {

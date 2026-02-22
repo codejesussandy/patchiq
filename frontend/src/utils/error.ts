@@ -4,15 +4,10 @@
  */
 export function getErrorMessage(error: unknown, fallback: string = 'An error occurred'): string {
   if (error && typeof error === 'object') {
-    // Backend shape: { response: { data: { success: false, error: { code, message } } } }
-    const axiosErr = error as { response?: { data?: { message?: string; error?: unknown } }; message?: string };
-    const errField = axiosErr.response?.data?.error;
-    if (errField && typeof errField === 'object') {
-      const nestedMsg = (errField as { message?: string }).message;
-      if (nestedMsg) return nestedMsg;
-    }
+    // Axios error shape: { response: { data: { message?, error? } } }
+    const axiosErr = error as { response?: { data?: { message?: string; error?: string } }; message?: string };
     return axiosErr.response?.data?.message
-      || (typeof errField === 'string' ? errField : undefined)
+      || axiosErr.response?.data?.error
       || axiosErr.message
       || fallback;
   }

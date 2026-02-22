@@ -3,7 +3,7 @@
  * Central repository for managing software packages that can be deployed to agents
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   PlusOutlined,
   SearchOutlined,
@@ -32,10 +32,9 @@ import {
   Statistic,
   Tooltip,
   Typography,
-  Tabs,
   Badge } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { DataTable } from '../../components/shared/DataTable';
 import {
   useHubStats,
@@ -55,9 +54,6 @@ import type {
 import { PLATFORM_OPTIONS, CATEGORY_OPTIONS } from '../../types/hub.types';
 import { getErrorMessage } from '../../utils/error';
 import { sanitizeInput } from '../../utils/sanitize';
-import { SoftwareJobsBundle } from '../jobs/SoftwareJobsBundle';
-import { SoftwareJobsCatalog } from '../jobs/SoftwareJobsCatalog';
-import { SoftwareJobsDeployed as HubDeployments } from '../jobs/SoftwareJobsDeployed';
 import { HubBundleUploadModal } from './components/HubBundleUploadModal';
 import { HubDeployModal } from './components/HubDeployModal';
 import { HubDetailsDrawer } from './components/HubDetailsDrawer';
@@ -93,6 +89,7 @@ const getPlatformIcon = (platform: string) => {
 
 export const Hub = () => {
   const { message } = App.useApp();
+  const navigate = useNavigate();
   const [searchText, setSearchText] = useState('');
   const [filters, setFilters] = useState<PackageListFilters>({ page: 1, limit: 20 });
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -121,15 +118,7 @@ export const Hub = () => {
   const [deployingVersion, setDeployingVersion] = useState('');
   const [deployingInstallSource, setDeployingInstallSource] = useState('');
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState('packages');
-  const location = useLocation();
   const [bundleUploadVisible, setBundleUploadVisible] = useState(false);
-
-  /* eslint-disable react-hooks/set-state-in-effect -- sync navigation state to tab */
-  useEffect(() => {
-    if ((location.state as Record<string, unknown> | null)?.createDeployment) setActiveTab('deployments');
-  }, [location.state]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const getCompatibleAgents = useCallback((platform: string): Agent[] => {
     if (platform === 'cross-platform') return agents;
@@ -173,7 +162,7 @@ export const Hub = () => {
         package: { packageId: deployingPackageId, name: deployingDisplayName, source: deployingInstallSource, version: deployingVersion },
         retryCount: 1, notifyOnComplete: true,
       });
-      message.success(<span>Deployment <strong>{result.deploymentId}</strong> created with {result.tasksCreated} task(s). <a onClick={() => setActiveTab('deployments')}>View in Software Jobs tab</a></span>);
+      message.success(<span>Deployment <strong>{result.deploymentId}</strong> created with {result.tasksCreated} task(s). <a onClick={() => navigate('/assets/software-jobs')}>View in Software Jobs</a></span>);
       setDeployModalVisible(false); setDeployingPackageId(null); setSelectedAgents([]); deployForm.resetFields();
     } catch (error: unknown) {
       message.error(getErrorMessage(error, 'Failed to create deployment'));
@@ -267,45 +256,36 @@ export const Hub = () => {
 
   return (
     <div>
-      <Title level={4}>Software Hub</Title>
-      <Text type="secondary">Manage software packages for deployment to agents</Text>
+      <Title level={3} style={{ margin: 0 }}>Software Hub</Title>
+      <Text type="secondary" style={{ fontSize: 14 }}>Manage software packages for deployment to agents</Text>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab} style={{ marginTop: 16 }} items={[
-        { key: 'packages', label: 'Packages', children: (
-          <div>
-            <Row gutter={16} style={{ marginTop: 24, marginBottom: 24 }}>
-              <Col span={12}><Card><Statistic title="Total Applications" value={stats?.totalApplications || 0} prefix={<AppstoreOutlined />} /></Card></Col>
-              <Col span={12}><Card><Statistic title="Total Size" value={formatBytes(stats?.totalSize || 0)} prefix={<CloudOutlined />} /></Card></Col>
-            </Row>
+      <Row gutter={16} style={{ marginTop: 24, marginBottom: 24 }}>
+        <Col span={12}><Card><Statistic title="Total Applications" value={stats?.totalApplications || 0} prefix={<AppstoreOutlined />} /></Card></Col>
+        <Col span={12}><Card><Statistic title="Total Size" value={formatBytes(stats?.totalSize || 0)} prefix={<CloudOutlined />} /></Card></Col>
+      </Row>
 
-            <Card style={{ marginBottom: 16 }}>
-              <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
-                <Space wrap>
-                  <Input placeholder="Search packages..." prefix={<SearchOutlined />} style={{ width: 250 }} value={searchText}
-                    onChange={(e) => { setSearchText(e.target.value); setFilters({ ...filters, page: 1 }); }} allowClear />
-                  <Select placeholder="Platform" style={{ width: 140 }} allowClear options={PLATFORM_OPTIONS} onChange={(value) => setFilters({ ...filters, platform: value, page: 1 })} />
-                  <Select placeholder="Category" style={{ width: 140 }} allowClear options={CATEGORY_OPTIONS} onChange={(value) => setFilters({ ...filters, category: value, page: 1 })} />
-                  <Button icon={<ReloadOutlined />} onClick={() => refetchPackages()}>Refresh</Button>
-                </Space>
-                <Space>
-                  <Button icon={<UploadOutlined />} onClick={() => setBundleUploadVisible(true)}>Upload Bundle</Button>
-                  <Button icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>Add Package</Button>
-                </Space>
-              </Space>
-            </Card>
+      <Card style={{ marginBottom: 16 }}>
+        <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Space wrap>
+            <Input placeholder="Search packages..." prefix={<SearchOutlined />} style={{ width: 250 }} value={searchText}
+              onChange={(e) => { setSearchText(e.target.value); setFilters({ ...filters, page: 1 }); }} allowClear />
+            <Select placeholder="Platform" style={{ width: 140 }} allowClear options={PLATFORM_OPTIONS} onChange={(value) => setFilters({ ...filters, platform: value, page: 1 })} />
+            <Select placeholder="Category" style={{ width: 140 }} allowClear options={CATEGORY_OPTIONS} onChange={(value) => setFilters({ ...filters, category: value, page: 1 })} />
+            <Button icon={<ReloadOutlined />} onClick={() => refetchPackages()}>Refresh</Button>
+          </Space>
+          <Space>
+            <Button icon={<UploadOutlined />} onClick={() => setBundleUploadVisible(true)}>Upload Bundle</Button>
+            <Button icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>Add Package</Button>
+          </Space>
+        </Space>
+      </Card>
 
-            <Card>
-              <DataTable columns={columns} data={groupedPackages} rowKey={(record) => `${record.name}|||${record.platform}`} loading={loading}
-                pagination={{ current: filters.page, pageSize: filters.limit, total, showSizeChanger: true, showTotal: (total) => `Total ${total} software titles` }}
-                onChange={(pagination: { current?: number; pageSize?: number }) => setFilters({ ...filters, page: pagination.current || 1, limit: pagination.pageSize || 20 })}
-                scroll={{ x: 900 }} />
-            </Card>
-          </div>
-        ) },
-        { key: 'catalog', label: 'Software Catalog', children: <SoftwareJobsCatalog /> },
-        { key: 'bundle', label: 'Bundles', children: <SoftwareJobsBundle /> },
-        { key: 'deployments', label: 'Software Jobs', children: <HubDeployments /> },
-      ]} />
+      <Card>
+        <DataTable columns={columns} data={groupedPackages} rowKey={(record) => `${record.name}|||${record.platform}`} loading={loading}
+          pagination={{ current: filters.page, pageSize: filters.limit, total, showSizeChanger: true, showTotal: (total) => `Total ${total} software titles` }}
+          onChange={(pagination: { current?: number; pageSize?: number }) => setFilters({ ...filters, page: pagination.current || 1, limit: pagination.pageSize || 20 })}
+          scroll={{ x: 900 }} />
+      </Card>
 
       <HubPackageFormModal open={createModalVisible || !!editingPackage} editingPackage={editingPackage} form={form}
         onClose={() => { setCreateModalVisible(false); setEditingPackage(null); form.resetFields(); }}

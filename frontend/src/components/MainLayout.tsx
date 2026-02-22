@@ -21,6 +21,7 @@ import {
   osFilterMap,
   osParamToKey,
   SIDEBAR_COLLAPSED_WIDTH,
+  SIDEBAR_EXPANDED_WIDTH,
   CATEGORY_PANEL_WIDTH,
 } from './layout';
 
@@ -58,6 +59,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const [categoryManagementModalOpen, setCategoryManagementModalOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [categoryPanelCollapsed, setCategoryPanelCollapsed] = useState(false);
+  const [sidebarPinned, setSidebarPinned] = useState(false);
 
   // ── Data fetching ──────────────────────────────────────────────
 
@@ -101,6 +104,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         ? 'software-license'
         : location.pathname === '/assets/hub'
         ? 'software-hub'
+        : location.pathname === '/assets/software-jobs'
+        ? 'software-jobs'
         : 'all-assets';
 
       setSelectedAssetTab(parentKey);
@@ -227,10 +232,12 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const sidebarConfig = getSidebarConfig();
   const isTabletOrSmaller = !screens.lg;
   const showSidebar = sidebarConfig && !isTabletOrSmaller;
-  const showCategoryPanel = (sidebarConfig?.title === 'Assets' || sidebarConfig?.title === 'Patches') && !isTabletOrSmaller;
+  // Hide category panel on asset detail pages (/assets/:id) and known sub-routes
+  const isAssetDetailPage = /^\/assets\/(?!software-license|software-inventory|software-jobs|hub)[^/]+$/.test(location.pathname);
+  const showCategoryPanel = (sidebarConfig?.title === 'Assets' || sidebarConfig?.title === 'Patches') && !isTabletOrSmaller && !isAssetDetailPage && !location.pathname.startsWith('/assets/software-license') && !location.pathname.startsWith('/assets/hub') && !location.pathname.startsWith('/assets/software-inventory') && !location.pathname.startsWith('/assets/software-jobs');
   const showMobileDrawer = Boolean(sidebarConfig && isTabletOrSmaller); // Show drawer button on mobile/tablet
-  const sidebarWidth = showSidebar ? SIDEBAR_COLLAPSED_WIDTH : 0;
-  const categoryPanelWidth = showCategoryPanel ? CATEGORY_PANEL_WIDTH : 0;
+  const sidebarWidth = showSidebar ? (sidebarPinned ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH) : 0;
+  const categoryPanelWidth = showCategoryPanel && !categoryPanelCollapsed ? CATEGORY_PANEL_WIDTH : 0;
   const contentMarginLeft = sidebarWidth + categoryPanelWidth;
 
   // ── Render ─────────────────────────────────────────────────────
@@ -256,6 +263,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
             selectedAssetTab={selectedAssetTab}
             selectedSideMenu={getSelectedSideMenu()}
             expandedMenus={expandedMenus}
+            pinned={sidebarPinned}
+            onPinnedChange={setSidebarPinned}
             onPatchTabChange={handlePatchTabChange}
             onAssetTabChange={handleAssetTabChange}
             onSideMenuClick={handleSideMenuClick}
@@ -271,16 +280,17 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
             subCategories={subCategories}
             selectedSideMenu={getSelectedSideMenu()}
             expandedAssetSections={expandedAssetSections}
+            collapsed={categoryPanelCollapsed}
+            onToggleCollapse={() => setCategoryPanelCollapsed((prev) => !prev)}
             onSideMenuClick={handleSideMenuClick}
             onExpandedSectionsChange={setExpandedAssetSections}
-            onOpenCategoryModal={() => setCategoryManagementModalOpen(true)}
           />
         )}
 
         <Layout
           style={{
             marginLeft: contentMarginLeft,
-            transition: 'margin-left 0.2s',
+            transition: 'margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             background: '#fff',
           }}
         >
@@ -308,8 +318,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         placement="left"
         onClose={() => setMobileDrawerOpen(false)}
         open={mobileDrawerOpen}
-        width={sidebarConfig?.title === 'Assets' || sidebarConfig?.title === 'Patches' ? 560 : 280}
-        styles={{ body: { padding: 0 } }}
+        styles={{ wrapper: { width: sidebarConfig?.title === 'Assets' || sidebarConfig?.title === 'Patches' ? 560 : 280 }, body: { padding: 0 } }}
       >
         <div style={{ display: 'flex', height: '100%' }}>
           {sidebarConfig && (
@@ -342,15 +351,13 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
               subCategories={subCategories}
               selectedSideMenu={getSelectedSideMenu()}
               expandedAssetSections={expandedAssetSections}
+              collapsed={false}
+              onToggleCollapse={() => {}}
               onSideMenuClick={(key) => {
                 handleSideMenuClick(key);
                 setMobileDrawerOpen(false);
               }}
               onExpandedSectionsChange={setExpandedAssetSections}
-              onOpenCategoryModal={() => {
-                setCategoryManagementModalOpen(true);
-                setMobileDrawerOpen(false);
-              }}
             />
           )}
         </div>

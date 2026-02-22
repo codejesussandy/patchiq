@@ -75,14 +75,14 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
       {/* Process Tables */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col span={12}>
-          <Card title={<Space><DashboardOutlined /><span>Top Processes by CPU</span></Space>} size="small">
+          <Card title={<Space><DashboardOutlined /><span>Top Processes by CPU</span></Space>} size="small" styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
             {telemetry.processes?.topByCpu && telemetry.processes.topByCpu.length > 0
               ? <DataTable columns={processColumns} data={telemetry.processes.topByCpu.slice(0, 5)} rowKey="pid" pagination={false} size="small" />
               : <Empty description="No process data" />}
           </Card>
         </Col>
         <Col span={12}>
-          <Card title={<Space><HddOutlined /><span>Top Processes by Memory</span></Space>} size="small">
+          <Card title={<Space><HddOutlined /><span>Top Processes by Memory</span></Space>} size="small" styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
             {telemetry.processes?.topByMemory && telemetry.processes.topByMemory.length > 0
               ? <DataTable columns={processColumns} data={telemetry.processes.topByMemory.slice(0, 5)} rowKey="pid" pagination={false} size="small" />
               : <Empty description="No process data" />}
@@ -92,7 +92,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
 
       {/* Disk I/O */}
       {telemetry.disk?.drives && telemetry.disk.drives.length > 0 && (
-        <Card title={<Space><HddOutlined /><span>Disk I/O</span></Space>} size="small" style={{ marginBottom: 24 }}>
+        <Card title={<Space><HddOutlined /><span>Disk I/O</span></Space>} size="small" style={{ marginBottom: 24 }} styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
           <Row gutter={[16, 16]}>
             {telemetry.disk.drives.map((drive, index) => (
               <Col span={8} key={drive.mountPoint || index}>
@@ -115,7 +115,7 @@ export const TelemetryTab = ({ assetId }: TelemetryTabProps) => {
 
       {/* System Errors */}
       {errors && (
-        <Card title={<Space><BugOutlined /><span>System Errors</span></Space>} size="small">
+        <Card title={<Space><BugOutlined /><span>System Errors</span></Space>} size="small" styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
           <Row gutter={[16, 16]}>
             <Col span={6}>
               <Card size="small" style={{ textAlign: 'center', background: errors.applicationCrashCount24h ? '#fff1f0' : '#f6ffed' }}>

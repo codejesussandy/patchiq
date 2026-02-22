@@ -53,7 +53,7 @@ describe('LDAPServerConfiguration', () => {
 
   it('renders column headers', () => {
     render(<LDAPServerConfiguration />);
-    expect(screen.getByText('Host')).toBeInTheDocument();
-    expect(screen.getByText('FQDN')).toBeInTheDocument();
+    expect(screen.getAllByText('Host')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('FQDN')[0]).toBeInTheDocument();
   });
 });

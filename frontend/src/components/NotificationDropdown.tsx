@@ -7,26 +7,28 @@ import {
   WarningFilled,
   InfoCircleFilled,
   CloseCircleFilled,
+  MoreOutlined,
 } from '@ant-design/icons';
-import { Dropdown, Badge, List, Typography, Button, Empty, Spin, Tag } from 'antd';
+import { Badge, Typography, Button, Empty, Spin, Popover, Segmented } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useNotificationSSE } from '../hooks/useNotificationSSE';
 import { notificationService, type Notification, type NotificationType } from '../services/notification.service';
 
 const { Text } = Typography;
 
-const getIcon = (type: NotificationType) => {
-  const iconStyle = { fontSize: 16 };
-  switch (type) {
-    case 'success':
-      return <CheckCircleFilled style={{ ...iconStyle, color: '#52c41a' }} />;
-    case 'warning':
-      return <WarningFilled style={{ ...iconStyle, color: '#faad14' }} />;
-    case 'error':
-      return <CloseCircleFilled style={{ ...iconStyle, color: '#ff4d4f' }} />;
-    default:
-      return <InfoCircleFilled style={{ ...iconStyle, color: '#1890ff' }} />;
-  }
+const TYPE_CONFIG: Record<NotificationType, { icon: React.ReactNode; color: string; bg: string }> = {
+  success: { icon: <CheckCircleFilled />, color: '#52c41a', bg: '#f6ffed' },
+  warning: { icon: <WarningFilled />, color: '#faad14', bg: '#fffbe6' },
+  error: { icon: <CloseCircleFilled />, color: '#ff4d4f', bg: '#fff2f0' },
+  info: { icon: <InfoCircleFilled />, color: '#1677ff', bg: '#e6f4ff' },
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  agent: 'Agent',
+  deployment: 'Deployment',
+  vulnerability: 'Vulnerability',
+  alert: 'Alert',
+  system: 'System',
 };
 
 const formatTime = (dateString: string) => {
@@ -40,15 +42,14 @@ const formatTime = (dateString: string) => {
   if (minutes < 1) return 'Just now';
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
-  return `${days}d ago`;
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-const categoryColor: Record<string, string> = {
-  agent: 'blue',
-  deployment: 'green',
-  vulnerability: 'red',
-  alert: 'orange',
-  system: 'default',
+const isToday = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  return date.toDateString() === now.toDateString();
 };
 
 export const NotificationDropdown = () => {
@@ -56,7 +57,8 @@ export const NotificationDropdown = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
-
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const pollRef = useRef<ReturnType<typeof setInterval>>(null);
 
@@ -65,7 +67,7 @@ export const NotificationDropdown = () => {
       const count = await notificationService.getUnreadCount();
       setUnreadCount(count);
     } catch {
-      // silently ignore — badge just won't update
+      // silently ignore
     }
   }, []);
 
@@ -77,13 +79,12 @@ export const NotificationDropdown = () => {
       setNotifications(list);
       setUnreadCount(list.filter((n) => !n.read).length);
     } catch {
-      // silently fail — notification list won't update
+      // silently fail
     } finally {
       setLoading(false);
     }
   };
 
-  // SSE real-time updates
   useNotificationSSE({
     onNotification: (sseNotif) => {
       const newNotif: Notification = {
@@ -101,7 +102,6 @@ export const NotificationDropdown = () => {
     },
   });
 
-  // Fetch unread count on mount and poll every 60s (SSE is primary, polling is fallback)
   useEffect(() => {
     fetchUnreadCount();
     pollRef.current = setInterval(fetchUnreadCount, 60_000);
@@ -110,11 +110,8 @@ export const NotificationDropdown = () => {
     };
   }, [fetchUnreadCount]);
 
-  // Fetch full list when dropdown opens
   useEffect(() => {
-    if (open) {
-      fetchNotifications();
-    }
+    if (open) fetchNotifications();
   }, [open]);
 
   const handleMarkAsRead = async (id: string, e: React.MouseEvent) => {
@@ -125,9 +122,7 @@ export const NotificationDropdown = () => {
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
       setUnreadCount((c) => Math.max(0, c - 1));
-    } catch {
-      // silently fail
-    }
+    } catch { /* silently fail */ }
   };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -137,9 +132,7 @@ export const NotificationDropdown = () => {
       await notificationService.deleteNotification(id);
       setNotifications((prev) => prev.filter((n) => n.id !== id));
       if (wasUnread) setUnreadCount((c) => Math.max(0, c - 1));
-    } catch {
-      // silently fail
-    }
+    } catch { /* silently fail */ }
   };
 
   const handleMarkAllAsRead = async () => {
@@ -147,9 +140,7 @@ export const NotificationDropdown = () => {
       await notificationService.markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
-    } catch {
-      // silently fail
-    }
+    } catch { /* silently fail */ }
   };
 
   const handleNotificationClick = async (notification: Notification) => {
@@ -166,113 +157,237 @@ export const NotificationDropdown = () => {
     }
   };
 
+  const filtered = filter === 'unread'
+    ? notifications.filter((n) => !n.read)
+    : notifications;
+
+  // Group into today / earlier
+  const todayItems = filtered.filter((n) => isToday(n.createdAt));
+  const earlierItems = filtered.filter((n) => !isToday(n.createdAt));
+
+  const renderItem = (item: Notification) => {
+    const config = TYPE_CONFIG[item.type] || TYPE_CONFIG.info;
+    const isHovered = hoveredId === item.id;
+
+    return (
+      <div
+        key={item.id}
+        onClick={() => handleNotificationClick(item)}
+        onMouseEnter={() => setHoveredId(item.id)}
+        onMouseLeave={() => setHoveredId(null)}
+        style={{
+          display: 'flex',
+          gap: 12,
+          padding: '12px 16px',
+          cursor: item.link ? 'pointer' : 'default',
+          background: isHovered ? '#fafafa' : 'transparent',
+          transition: 'background 0.15s',
+          position: 'relative',
+        }}
+      >
+        {/* Unread dot */}
+        {!item.read && (
+          <div
+            style={{
+              position: 'absolute',
+              left: 6,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: '#1677ff',
+            }}
+          />
+        )}
+
+        {/* Icon */}
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: config.bg,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 15,
+            color: config.color,
+            flexShrink: 0,
+          }}
+        >
+          {config.icon}
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <Text
+              strong={!item.read}
+              style={{ fontSize: 13, lineHeight: '18px', flex: 1 }}
+              ellipsis
+            >
+              {item.title}
+            </Text>
+            <Text
+              type="secondary"
+              style={{ fontSize: 11, flexShrink: 0, whiteSpace: 'nowrap' }}
+            >
+              {formatTime(item.createdAt)}
+            </Text>
+          </div>
+          <Text
+            type="secondary"
+            style={{ fontSize: 12, lineHeight: '18px', display: 'block', marginTop: 2 }}
+            ellipsis={{ rows: 2 }}
+          >
+            {item.message}
+          </Text>
+          {item.category && (
+            <span
+              style={{
+                display: 'inline-block',
+                marginTop: 4,
+                fontSize: 10,
+                fontWeight: 500,
+                color: '#8c8c8c',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
+              {CATEGORY_LABELS[item.category] || item.category}
+            </span>
+          )}
+        </div>
+
+        {/* Actions on hover */}
+        {isHovered && (
+          <div
+            style={{
+              display: 'flex',
+              gap: 2,
+              flexShrink: 0,
+              alignSelf: 'center',
+            }}
+          >
+            {!item.read && (
+              <Button
+                type="text"
+                size="small"
+                icon={<CheckOutlined style={{ fontSize: 12 }} />}
+                onClick={(e) => handleMarkAsRead(item.id, e)}
+                title="Mark as read"
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 6,
+                  color: '#8c8c8c',
+                }}
+              />
+            )}
+            <Button
+              type="text"
+              size="small"
+              icon={<DeleteOutlined style={{ fontSize: 12 }} />}
+              onClick={(e) => handleDelete(item.id, e)}
+              title="Delete"
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 6,
+                color: '#8c8c8c',
+              }}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderSection = (label: string, items: Notification[]) => {
+    if (items.length === 0) return null;
+    return (
+      <div key={label}>
+        <div
+          style={{
+            padding: '8px 16px 4px',
+            fontSize: 11,
+            fontWeight: 600,
+            color: '#8c8c8c',
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+          }}
+        >
+          {label}
+        </div>
+        {items.map(renderItem)}
+      </div>
+    );
+  };
+
   const dropdownContent = (
     <div
       style={{
-        width: 380,
-        maxHeight: 520,
+        width: 400,
+        maxHeight: 540,
         background: '#fff',
-        borderRadius: 8,
-        boxShadow: '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12)',
+        borderRadius: 12,
+        boxShadow: '0 12px 28px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.06)',
+        overflow: 'hidden',
       }}
     >
       {/* Header */}
       <div
         style={{
-          padding: '12px 16px',
+          padding: '14px 16px 12px',
           borderBottom: '1px solid #f0f0f0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
         }}
       >
-        <Text strong>Notifications</Text>
-        {unreadCount > 0 && (
-          <Button type="link" size="small" onClick={handleMarkAllAsRead} style={{ padding: 0 }}>
-            Mark all as read
-          </Button>
-        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <Text strong style={{ fontSize: 15 }}>Notifications</Text>
+          {unreadCount > 0 && (
+            <Button
+              type="link"
+              size="small"
+              onClick={handleMarkAllAsRead}
+              style={{ padding: 0, fontSize: 12, height: 'auto' }}
+            >
+              Mark all read
+            </Button>
+          )}
+        </div>
+        <Segmented
+          size="small"
+          value={filter}
+          onChange={(v) => setFilter(v as 'all' | 'unread')}
+          options={[
+            { label: 'All', value: 'all' },
+            { label: `Unread${unreadCount > 0 ? ` (${unreadCount})` : ''}`, value: 'unread' },
+          ]}
+          block
+          style={{ fontSize: 12 }}
+        />
       </div>
 
       {/* Content */}
-      <div style={{ maxHeight: 400, overflow: 'auto' }}>
+      <div style={{ maxHeight: 400, overflowY: 'auto' }}>
         {loading ? (
-          <div style={{ padding: 40, textAlign: 'center' }}>
-            <Spin />
+          <div style={{ padding: 48, textAlign: 'center' }}>
+            <Spin size="small" />
           </div>
-        ) : notifications.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="No notifications"
+            description={filter === 'unread' ? 'No unread notifications' : 'No notifications'}
             style={{ padding: '40px 0' }}
           />
         ) : (
-          <List
-            dataSource={notifications}
-            renderItem={(item) => (
-              <div
-                onClick={() => handleNotificationClick(item)}
-                style={{
-                  padding: '12px 16px',
-                  borderBottom: '1px solid #f5f5f5',
-                  cursor: item.link ? 'pointer' : 'default',
-                  background: item.read ? '#fff' : '#f6ffed',
-                  transition: 'background 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  if (item.link) e.currentTarget.style.background = item.read ? '#fafafa' : '#f0ffe0';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = item.read ? '#fff' : '#f6ffed';
-                }}
-              >
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <div style={{ flexShrink: 0, marginTop: 2 }}>{getIcon(item.type)}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Text strong style={{ fontSize: 13 }}>{item.title}</Text>
-                      <Text type="secondary" style={{ fontSize: 11, flexShrink: 0, marginLeft: 8 }}>
-                        {formatTime(item.createdAt)}
-                      </Text>
-                    </div>
-                    <Text type="secondary" style={{ fontSize: 16, display: 'block', marginTop: 2 }}>
-                      {item.message}
-                    </Text>
-                    {item.category && (
-                      <Tag
-                        color={categoryColor[item.category] || 'default'}
-                        style={{ marginTop: 4, fontSize: 10 }}
-                      >
-                        {item.category}
-                      </Tag>
-                    )}
-                  </div>
-                  <div style={{ flexShrink: 0, display: 'flex', gap: 4 }}>
-                    {!item.read && (
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<CheckOutlined style={{ fontSize: 16 }} />}
-                        onClick={(e) => handleMarkAsRead(item.id, e)}
-                        title="Mark as read"
-                        aria-label="Mark as read"
-                        style={{ padding: '0 4px', height: 24, width: 24 }}
-                      />
-                    )}
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                      onClick={(e) => handleDelete(item.id, e)}
-                      title="Delete"
-                      aria-label="Delete notification"
-                      style={{ padding: '0 4px', height: 24, width: 24 }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          />
+          <>
+            {renderSection('Today', todayItems)}
+            {renderSection('Earlier', earlierItems)}
+            {/* If all items are from one group, render without headers */}
+            {todayItems.length === 0 && earlierItems.length === 0 && filtered.map(renderItem)}
+          </>
         )}
       </div>
 
@@ -282,36 +397,50 @@ export const NotificationDropdown = () => {
           padding: '8px 16px',
           borderTop: '1px solid #f0f0f0',
           textAlign: 'center',
+          background: '#fafafa',
         }}
       >
         <Button
           type="link"
           size="small"
           onClick={() => { setOpen(false); navigate('/notifications'); }}
+          style={{ fontSize: 12, color: '#595959' }}
         >
-          View All Notifications
+          View all notifications
         </Button>
       </div>
     </div>
   );
 
   return (
-    <Dropdown
-      popupRender={() => dropdownContent}
-      trigger={['click']}
+    <Popover
+      content={dropdownContent}
+      trigger="click"
       open={open}
       onOpenChange={setOpen}
       placement="bottomRight"
+      arrow={false}
+      overlayInnerStyle={{ padding: 0, borderRadius: 12 }}
     >
-      <Badge count={unreadCount} size="small">
-        <BellOutlined
-          style={{
-            fontSize: 18,
-            cursor: 'pointer',
-            color: '#595959',
-          }}
-        />
-      </Badge>
-    </Dropdown>
+      <div
+        style={{
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          transition: 'background 0.15s',
+          background: open ? '#f0f0f0' : 'transparent',
+        }}
+        onMouseEnter={(e) => { if (!open) e.currentTarget.style.background = '#f5f5f5'; }}
+        onMouseLeave={(e) => { if (!open) e.currentTarget.style.background = 'transparent'; }}
+      >
+        <Badge count={unreadCount} size="small" offset={[-2, 2]}>
+          <BellOutlined style={{ fontSize: 18, color: '#595959' }} />
+        </Badge>
+      </div>
+    </Popover>
   );
 };

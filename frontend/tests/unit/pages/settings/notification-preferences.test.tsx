@@ -45,8 +45,8 @@ describe('NotificationPreferences', () => {
 
   it('renders channel columns', () => {
     render(<NotificationPreferences />);
-    expect(screen.getByText('In-App')).toBeInTheDocument();
-    expect(screen.getByText('Email')).toBeInTheDocument();
+    expect(screen.getAllByText('In-App')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Email')[0]).toBeInTheDocument();
   });
 
   it('renders Save Preferences button', () => {

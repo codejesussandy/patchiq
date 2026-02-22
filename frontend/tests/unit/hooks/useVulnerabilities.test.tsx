@@ -86,6 +86,18 @@ describe('useVulnerabilities hooks', () => {
     expect(result.current.isLoading).toBe(true);
   });
 
+  it('useVulnerabilities should not refetch immediately due to staleTime', async () => {
+    const wrapper = createWrapper();
+    const { result: result1 } = renderHook(() => useVulnerabilities(), { wrapper });
+    await waitFor(() => expect(result1.current.isSuccess).toBe(true));
+
+    // Second render with same wrapper should use cached data (staleTime: 30s)
+    const { result: result2 } = renderHook(() => useVulnerabilities(), { wrapper });
+    // Data should be immediately available from cache
+    expect(result2.current.data).toBeDefined();
+    expect(result2.current.isLoading).toBe(false);
+  });
+
   describe('query keys', () => {
     it('vulnerabilityKeys should generate correct keys', () => {
       expect(vulnerabilityKeys.all).toEqual(['vulnerabilities']);

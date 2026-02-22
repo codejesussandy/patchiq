@@ -7,23 +7,6 @@ import { sanitizeHTML } from '../../../utils/sanitize';
 import { validateAndSanitize } from '../../../utils/validation';
 import { AssetStep1, AssetStep2, AssetStep3 } from './AddAssetModalSteps';
 
-const STATUS_MAP: Record<string, string> = {
-  'In Use': 'IN_USE', 'in use': 'IN_USE', 'in_use': 'IN_USE',
-  'Available': 'AVAILABLE', 'available': 'AVAILABLE',
-  'Under Maintenance': 'UNDER_MAINTENANCE', 'under maintenance': 'UNDER_MAINTENANCE', 'under_maintenance': 'UNDER_MAINTENANCE',
-  'Retired': 'RETIRED', 'retired': 'RETIRED',
-};
-
-const CRITICALITY_MAP: Record<string, string> = {
-  'Critical': 'CRITICAL', 'critical': 'CRITICAL',
-  'High': 'HIGH', 'high': 'HIGH',
-  'Medium': 'MEDIUM', 'medium': 'MEDIUM',
-  'Low': 'LOW', 'low': 'LOW',
-};
-
-const normalizeStatus = (v?: string | null) => v ? (STATUS_MAP[v] ?? v) : undefined;
-const normalizeCriticality = (v?: string | null) => v ? (CRITICALITY_MAP[v] ?? v) : undefined;
-
 interface AddAssetModalProps {
   visible: boolean;
   onClose: () => void;
@@ -37,18 +20,25 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
   const [currentStep, setCurrentStep] = useState(0);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>();
 
   const { data: categoriesData } = useCategories();
   const categories = categoriesData || [];
   const createAssetMutation = useCreateAsset();
   const updateAssetMutation = useUpdateAsset();
 
+  const subCategories = categories.find((c: { id: string; subCategories?: { id: string; name: string }[] }) => c.id === selectedCategoryId)?.subCategories || [];
+
   useEffect(() => {
     if (visible && mode === 'edit' && asset) {
       const assetData = asset as Asset & Record<string, unknown>;
+      if (assetData.categoryId) {
+        setSelectedCategoryId(assetData.categoryId as string);
+      }
       const formValues = {
         assetName: asset.name,
         categoryId: assetData.categoryId,
+        subCategoryId: assetData.subCategoryId,
         os: asset.osType,
         assetTags: assetData.tagIds || [],
         make: asset.manufacturer,
@@ -75,8 +65,8 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
         productId: assetData.productId,
         productKey: assetData.productKey,
         virtualNumber: assetData.virtualNumber,
-        status: normalizeStatus(asset.status),
-        criticality: normalizeCriticality(assetData.criticality),
+        status: asset.status,
+        criticality: assetData.criticality,
         serviceStatus: assetData.serviceStatus,
         operationalStatus: asset.operationalStatus,
         invoiceNo: asset.cost?.invoiceNumber,
@@ -98,10 +88,10 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
         salvageValue: asset.cost?.salvageValue,
         depreciationType: asset.cost?.depreciationType,
       };
-      form.resetFields();
       form.setFieldsValue(formValues);
     } else if (visible && mode === 'add') {
       form.resetFields();
+      setSelectedCategoryId(undefined);
     }
   }, [visible, mode, asset, form]);
 
@@ -119,6 +109,7 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
       setLoading(true);
       const values = form.getFieldsValue(true);
 
+      // Validate critical fields before submission
       if (values.assetName) {
         const nameValidation = validateAndSanitize(values.assetName, 'name');
         if (!nameValidation.isValid) {
@@ -146,9 +137,11 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
         }
       }
 
+      // Sanitize all string inputs to prevent XSS
       const transformedData = {
         name: sanitizeHTML(values.assetName),
         categoryId: values.categoryId || undefined,
+        subCategoryId: values.subCategoryId || undefined,
         osType: sanitizeHTML(values.os || values.osType),
         osVersion: sanitizeHTML(values.osVersion),
         model: sanitizeHTML(values.model),
@@ -157,10 +150,10 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
         manufacturer: sanitizeHTML(values.make),
         tags: values.assetTags || [],
         hostname: sanitizeHTML(values.hostname),
-        ipAddress: values.ipAddress,
+        ipAddress: values.ipAddress, // Already validated at backend
         macAddress: sanitizeHTML(values.macAddress),
         ownerName: sanitizeHTML(values.ownerTechnician),
-        ownerEmail: values.ownerEmail,
+        ownerEmail: values.ownerEmail, // Already validated above
         ownerDepartment: sanitizeHTML(values.ownerDepartment),
         vendor: sanitizeHTML(values.vendor),
         purchaseDate: values.purchaseDate?.toISOString?.() || values.purchaseDate,
@@ -236,7 +229,13 @@ export const AddAssetModal = ({ visible, onClose, onSuccess, mode = 'add', asset
       <Steps current={currentStep} items={stepItems} style={{ marginBottom: 24 }} />
       <Form form={form} layout="vertical" preserve={true} name="addAssetForm">
         <div style={{ display: currentStep === 0 ? 'block' : 'none' }}>
-          <AssetStep1 categories={categories} form={form} />
+          <AssetStep1
+            categories={categories}
+            subCategories={subCategories}
+            selectedCategoryId={selectedCategoryId}
+            onCategoryChange={setSelectedCategoryId}
+            form={form}
+          />
         </div>
         <div style={{ display: currentStep === 1 ? 'block' : 'none' }}><AssetStep2 /></div>
         <div style={{ display: currentStep === 2 ? 'block' : 'none' }}><AssetStep3 /></div>

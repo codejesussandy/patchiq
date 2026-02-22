@@ -33,7 +33,7 @@ export const patchKeys = {
 // Patch Queries
 // ============================================
 
-export function usePatches(params?: { search?: string; limit?: number; includeSuperseded?: boolean; severity?: string[]; os?: string[]; category?: string[] }) {
+export function usePatches(params?: { search?: string; limit?: number; includeSuperseded?: boolean }) {
   return useQuery({
     queryKey: patchKeys.list(params),
     queryFn: () => patchService.getPatches(params),

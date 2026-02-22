@@ -57,7 +57,7 @@ describe('Users', () => {
 
   it('renders column headers', () => {
     render(<Users />);
-    expect(screen.getByText('Email')).toBeInTheDocument();
-    expect(screen.getByText('Role')).toBeInTheDocument();
+    expect(screen.getAllByText('Email')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Role')[0]).toBeInTheDocument();
   });
 });

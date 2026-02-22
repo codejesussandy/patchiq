@@ -31,11 +31,11 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      port: parseInt(env.VITE_PORT || '3015'),
+      port: parseInt(env.VITE_PORT || '3001'),
       host: '0.0.0.0',
       allowedHosts: [env.PUBLIC_HOST, 'localhost'].filter(Boolean),
       hmr: {
-        clientPort: parseInt(env.PUBLIC_PORT || '3015'),
+        clientPort: parseInt(env.PUBLIC_PORT || '3001'),
         host: env.HMR_HOST || 'localhost',
         protocol: 'ws',
       },

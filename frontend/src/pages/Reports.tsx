@@ -12,7 +12,7 @@ import { CreateReportWizard } from './reports/components/CreateReportWizard';
 import { ScheduleReportModal } from './reports/components/ScheduleReportModal';
 import { SendReportModal } from './reports/components/SendReportModal';
 
-const { Text } = Typography;
+const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 const SCHEDULE_LABELS: Record<string, string> = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly' };
 
@@ -115,6 +115,17 @@ export const Reports = () => {
 
   return (
     <div>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Reports</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Generate and view compliance reports</Text>
+        </div>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={async () => { await refetch(); message.success('Data refreshed'); }} loading={loading}>Refresh</Button>
+          <Button icon={<ExportOutlined />} onClick={handleExport}>Export</Button>
+          <Button icon={<PlusOutlined />} type="primary" onClick={() => { setSelectedReport(null); setCreateModalOpen(true); }}>Create</Button>
+        </Space>
+      </div>
       <div style={{ marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
         <Input placeholder="Search by name, description, or creator..." prefix={<SearchOutlined />} style={{ width: 300 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} allowClear />
         <Select placeholder="Type" style={{ width: 140 }} value={filterType} onChange={setFilterType} allowClear options={Object.entries(REPORT_TYPE_LABELS).map(([value, label]) => ({ value, label }))} />
@@ -122,11 +133,6 @@ export const Reports = () => {
         <Select placeholder="Status" style={{ width: 130 }} value={filterStatus} onChange={setFilterStatus} allowClear options={[{ value: 'PENDING', label: 'Pending' }, { value: 'PROCESSING', label: 'Processing' }, { value: 'COMPLETED', label: 'Completed' }, { value: 'FAILED', label: 'Failed' }]} />
         <RangePicker style={{ width: 260 }} value={dateRange} onChange={(dates) => setDateRange(dates)} />
         <Button onClick={() => { setSearchText(''); setFilterType(undefined); setFilterFormat(undefined); setFilterStatus(undefined); setDateRange(null); }}>Clear</Button>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-          <Button icon={<ReloadOutlined />} onClick={async () => { await refetch(); message.success('Data refreshed'); }} loading={loading}>Refresh</Button>
-          <Button icon={<ExportOutlined />} onClick={handleExport}>Export</Button>
-          <Button icon={<PlusOutlined />} type="primary" onClick={() => { setSelectedReport(null); setCreateModalOpen(true); }}>Create</Button>
-        </div>
       </div>
 
       <DataTable columns={columns} data={reports} rowKey="id" loading={loading}

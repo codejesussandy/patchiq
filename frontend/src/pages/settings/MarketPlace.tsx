@@ -11,7 +11,7 @@ import type { Integration } from '../../types/settings.types';
 import { sanitizeInput } from '../../utils/sanitize';
 import { IntegrationFormModal } from './components/IntegrationFormModal';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface IntegrationWithKey extends Integration {
   key: string;
@@ -119,7 +119,10 @@ export const MarketPlace = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}><Title level={2}>Market Place</Title></div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Market Place</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Browse and install extensions</Text>
+      </div>
       <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <Input placeholder="Search..." prefix={<SearchOutlined />} style={{ flex: 1, maxWidth: '400px' }} value={searchText}
           onChange={(e) => { setSearchText(e.target.value); setPagination({ ...pagination, current: 1 }); }} />

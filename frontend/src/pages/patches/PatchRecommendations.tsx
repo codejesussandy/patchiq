@@ -21,7 +21,7 @@ import { getErrorMessage } from '../../utils/error';
 import { buildRecommendationColumns } from './components/recommendations/recommendationColumns';
 import { StatCard } from './components/recommendations/StatCard';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 export const PatchRecommendations = () => {
@@ -196,7 +196,10 @@ export const PatchRecommendations = () => {
   return (
     <div style={{ padding: '24px', background: '#f5f7fa', minHeight: '100vh' }}>
       <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>Patch Recommendations</Title>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Patch Recommendations</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>AI-recommended patches based on your environment</Text>
+        </div>
         <Button icon={<ReloadOutlined spin={refreshing} />} onClick={() => refetch()} loading={refreshing} type="primary">Refresh</Button>
       </div>
 

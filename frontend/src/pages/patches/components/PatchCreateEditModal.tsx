@@ -90,7 +90,7 @@ export const PatchCreateEditModal = ({ open, editingPatch, initialValues, onClos
           vendor: values.vendor ? sanitizeHTML(values.vendor) : undefined, product: values.product ? sanitizeHTML(values.product) : undefined,
           description: values.description ? sanitizeHTML(values.description) : undefined, severity: values.severity, category: values.category,
           bulletinId: values.bulletinId ? sanitizeHTML(values.bulletinId) : undefined, kbNumber: values.kbNumber ? sanitizeHTML(values.kbNumber) : undefined,
-          publishedAt: values.publishedAt?.format('YYYY-MM-DD') || undefined,
+          releaseDate: values.publishedAt?.format('YYYY-MM-DD') || undefined,
           rebootRequired: values.rebootRequired ?? false, supportUninstallation: values.supportUninstallation ?? false,
           architecture: values.architecture || undefined, referenceUrl: values.referenceUrl || undefined,
           languagesSupported: values.languagesSupported || [], tags: values.tags || [], cveNumbers: values.cveNumbers || [],
@@ -112,7 +112,8 @@ export const PatchCreateEditModal = ({ open, editingPatch, initialValues, onClos
         setStep(1);
       } catch (error) {
         if ((error as { errorFields?: unknown }).errorFields) return;
-        message.error('Failed to save patch');
+        const errMsg = (error as { message?: string }).message || 'Failed to save patch';
+        message.error(errMsg);
       } finally {
         setSaving(false);
       }

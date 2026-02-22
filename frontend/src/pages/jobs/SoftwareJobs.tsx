@@ -6,7 +6,7 @@ import { SoftwareJobsBundle } from './SoftwareJobsBundle';
 import { SoftwareJobsCatalog } from './SoftwareJobsCatalog';
 import { SoftwareJobsDeployed } from './SoftwareJobsDeployed';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export const SoftwareJobs = () => {
   const navigate = useNavigate();
@@ -52,7 +52,10 @@ export const SoftwareJobs = () => {
 
   return (
     <div>
-      <Title level={2} style={{ marginBottom: 24 }}>Patches Deployed</Title>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Software Jobs</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Manage software deployment tasks</Text>
+      </div>
       <Tabs
         activeKey={getActiveTab()}
         onChange={handleTabChange}

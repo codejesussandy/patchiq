@@ -14,7 +14,8 @@ describe('CategoryPanel', () => {
     expandedAssetSections: [] as string[],
     onSideMenuClick: vi.fn(),
     onExpandedSectionsChange: vi.fn(),
-    onOpenCategoryModal: vi.fn(),
+    collapsed: false,
+    onToggleCollapse: vi.fn(),
   };
 
   beforeEach(() => {
@@ -62,32 +63,6 @@ describe('CategoryPanel', () => {
     expect(onSideMenuClick).toHaveBeenCalledWith('os-linux');
   });
 
-  it('shows Add Category button (plus icon) when sidebarTitle is Assets', () => {
-    const { container } = render(<CategoryPanel {...defaultProps} sidebarTitle="Assets" />);
-    expect(container.querySelector('.anticon-plus')).toBeInTheDocument();
-  });
-
-  it('shows Manage Categories button (edit icon) when sidebarTitle is Assets', () => {
-    const { container } = render(<CategoryPanel {...defaultProps} sidebarTitle="Assets" />);
-    expect(container.querySelector('.anticon-edit')).toBeInTheDocument();
-  });
-
-  it('does not show category management buttons when sidebarTitle is Patches', () => {
-    const { container } = render(<CategoryPanel {...defaultProps} sidebarTitle="Patches" />);
-    expect(container.querySelector('.anticon-plus')).not.toBeInTheDocument();
-    expect(container.querySelector('.anticon-edit')).not.toBeInTheDocument();
-  });
-
-  it('calls onOpenCategoryModal when Add Category button is clicked', async () => {
-    const onOpenCategoryModal = vi.fn();
-    const { container } = render(
-      <CategoryPanel {...defaultProps} onOpenCategoryModal={onOpenCategoryModal} />,
-    );
-    const plusIcon = container.querySelector('.anticon-plus')!;
-    const button = plusIcon.closest('button')!;
-    await userEvent.click(button);
-    expect(onOpenCategoryModal).toHaveBeenCalledOnce();
-  });
 
   it('renders Custom Groups section when categories exist', () => {
     const categories = [{ id: '1', name: 'Servers' }];

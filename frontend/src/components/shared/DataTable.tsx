@@ -137,7 +137,7 @@ export function DataTable<T = any>({
     return cols;
   }, [columns, rowActions]);
 
-  const rowSelection = customRowSelection || (selectable
+  const baseRowSelection = customRowSelection || (selectable
     ? {
         selectedRowKeys: selectedRowKeys || [],
         onChange: (keys: React.Key[], rows: T[]) => {
@@ -146,19 +146,20 @@ export function DataTable<T = any>({
       }
     : undefined);
 
+  const rowSelection = baseRowSelection
+    ? { ...baseRowSelection, columnWidth: 32 }
+    : undefined;
+
   const tablePagination =
     pagination === false
       ? false
       : pagination
         ? {
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            total: pagination.total,
-            onChange: pagination.onChange,
             showSizeChanger: true,
-            pageSizeOptions: ['10', '20', '50', '100'],
+            pageSizeOptions: ['10', '20', '30', '50', '100'],
             showTotal: (total: number, range: [number, number]) =>
               `showing ${range[0]}-${range[1]} of ${total} items`,
+            ...pagination,
           }
         : undefined;
 
@@ -200,8 +201,7 @@ export function DataTable<T = any>({
         rowKey={rowKey}
         rowSelection={rowSelection}
         pagination={tablePagination}
-        scroll={scroll ?? { x: 'max-content', y: 600 }}
-        virtual
+        scroll={scroll ?? { x: 'max-content' }}
         size={size}
         expandable={expandable}
         onRow={(record, index) => {

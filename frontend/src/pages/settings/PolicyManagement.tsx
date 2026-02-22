@@ -23,7 +23,7 @@ import { useAlertPolicies, useCreateAlertPolicy, useUpdateAlertPolicy, useDelete
 import { sanitizeInput } from '../../utils/sanitize';
 import { PolicyFormModal } from './components/PolicyFormModal';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface AlertConfiguration {
   id: string;
@@ -227,7 +227,10 @@ export const PolicyManagement = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '24px' }}><Title level={2} style={{ margin: 0 }}>Alert Configurations</Title></div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Alert Configurations</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Configure alerting rules and thresholds</Text>
+      </div>
 
       <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <Input placeholder="Search..." prefix={<SearchOutlined />} style={{ maxWidth: '400px' }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />

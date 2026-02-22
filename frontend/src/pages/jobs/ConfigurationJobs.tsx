@@ -5,7 +5,7 @@ import { ConfigurationJobsBundle } from './ConfigurationJobsBundle';
 import { ConfigurationJobsCatalog } from './ConfigurationJobsCatalog';
 import { ConfigurationJobsDeployed } from './ConfigurationJobsDeployed';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export const ConfigurationJobs = () => {
   const navigate = useNavigate();
@@ -47,7 +47,10 @@ export const ConfigurationJobs = () => {
 
   return (
     <div>
-      <Title level={2} style={{ marginBottom: 24 }}>Configuration Jobs</Title>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Configuration Jobs</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Manage configuration deployment tasks</Text>
+      </div>
       <Tabs
         activeKey={getActiveTab()}
         onChange={handleTabChange}

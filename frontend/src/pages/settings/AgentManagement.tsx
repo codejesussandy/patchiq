@@ -56,10 +56,8 @@ export const AgentManagement = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <Title level={2}>Agent Management</Title>
-      <Text type="secondary">
-        Configure agent communication intervals and behavior settings.
-      </Text>
+      <Title level={3} style={{ margin: 0 }}>Agent Management</Title>
+      <Text type="secondary" style={{ fontSize: 14 }}>Configure agent management settings</Text>
       <Divider />
 
       <Form

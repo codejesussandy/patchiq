@@ -5,7 +5,7 @@ import { useMailServerConfig, useUpdateMailServerConfig, useTestMailServerConfig
 import type { MailServerConfig } from '../../types/settings.types';
 import { getErrorMessage } from '../../utils/error';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export const MailServerConfiguration = () => {
   const { message } = App.useApp();
@@ -53,7 +53,8 @@ export const MailServerConfiguration = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <Title level={2}>Mail Server Configurations</Title>
+      <Title level={3} style={{ margin: 0 }}>Mail Server Configurations</Title>
+      <Text type="secondary" style={{ fontSize: 14 }}>Configure email server connections</Text>
       <Divider />
 
       <Form

@@ -29,21 +29,88 @@ code {
     monospace;
 }
 
-/* Always show horizontal scrollbar on tables */
+/* ── shadcn-inspired table styling ────────────────────────────── */
+
+/* Table wrapper — clean border and rounded corners */
+.ant-table-wrapper .ant-table {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+/* Header — subtle muted background like shadcn */
+.ant-table-wrapper .ant-table .ant-table-thead > tr > th,
+.ant-table-wrapper .ant-table .ant-table-thead > tr > td {
+  background: #f9fafb !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  color: #6b7280 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  padding: 10px 12px !important;
+  white-space: nowrap !important;
+}
+
+/* Body rows — clean dividers, tighter padding */
+.ant-table-wrapper .ant-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #f0f0f0 !important;
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  color: #111827 !important;
+  vertical-align: middle !important;
+}
+
+/* Row hover — soft highlight */
+.ant-table-wrapper .ant-table .ant-table-tbody > tr:hover > td {
+  background: #f9fafb !important;
+}
+
+/* Selected row */
+.ant-table-wrapper .ant-table .ant-table-tbody > tr.ant-table-row-selected > td {
+  background: #eff6ff !important;
+}
+
+/* Remove last row bottom border */
+.ant-table-wrapper .ant-table .ant-table-tbody > tr:last-child > td {
+  border-bottom: none !important;
+}
+
+/* Checkbox column — tight width */
+.ant-table-wrapper .ant-table .ant-table-selection-column {
+  width: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  padding-left: 8px !important;
+  padding-right: 4px !important;
+}
+
+/* Make checkbox itself smaller and aligned */
+.ant-table-wrapper .ant-table .ant-table-selection-column .ant-checkbox-wrapper {
+  margin: 0 !important;
+}
+
+/* Pagination — clean bottom area */
+.ant-table-wrapper .ant-pagination {
+  margin-top: 12px !important;
+  font-size: 13px !important;
+}
+
+/* Scrollbar styling */
 .ant-table-wrapper .ant-table .ant-table-container .ant-table-content,
 .ant-table-wrapper .ant-table .ant-table-container .ant-table-body,
 div[class*="ant-table-content"],
 div[class*="ant-table-body"] {
   overflow-x: scroll !important;
-  scrollbar-width: auto !important;
-  scrollbar-color: #bfbfbf #f0f0f0 !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #d1d5db #f3f4f6 !important;
 }
 
 .ant-table-wrapper .ant-table .ant-table-container .ant-table-content::-webkit-scrollbar,
 .ant-table-wrapper .ant-table .ant-table-container .ant-table-body::-webkit-scrollbar,
 div[class*="ant-table-content"]::-webkit-scrollbar,
 div[class*="ant-table-body"]::-webkit-scrollbar {
-  height: 10px !important;
+  height: 6px !important;
   -webkit-appearance: none !important;
   display: block !important;
 }
@@ -52,22 +119,45 @@ div[class*="ant-table-body"]::-webkit-scrollbar {
 .ant-table-wrapper .ant-table .ant-table-container .ant-table-body::-webkit-scrollbar-track,
 div[class*="ant-table-content"]::-webkit-scrollbar-track,
 div[class*="ant-table-body"]::-webkit-scrollbar-track {
-  background: #f0f0f0 !important;
-  border-radius: 5px !important;
+  background: #f3f4f6 !important;
+  border-radius: 3px !important;
 }
 
 .ant-table-wrapper .ant-table .ant-table-container .ant-table-content::-webkit-scrollbar-thumb,
 .ant-table-wrapper .ant-table .ant-table-container .ant-table-body::-webkit-scrollbar-thumb,
 div[class*="ant-table-content"]::-webkit-scrollbar-thumb,
 div[class*="ant-table-body"]::-webkit-scrollbar-thumb {
-  background: #bfbfbf !important;
-  border-radius: 5px !important;
-  border: 2px solid #f0f0f0 !important;
+  background: #d1d5db !important;
+  border-radius: 3px !important;
 }
 
 .ant-table-wrapper .ant-table .ant-table-container .ant-table-content::-webkit-scrollbar-thumb:hover,
 .ant-table-wrapper .ant-table .ant-table-container .ant-table-body::-webkit-scrollbar-thumb:hover,
 div[class*="ant-table-content"]::-webkit-scrollbar-thumb:hover,
 div[class*="ant-table-body"]::-webkit-scrollbar-thumb:hover {
-  background: #999 !important;
+  background: #9ca3af !important;
+}
+
+/* Action column — tight */
+.ant-table-wrapper .ant-table td:last-child,
+.ant-table-wrapper .ant-table th:last-child {
+  padding-right: 12px !important;
+}
+
+/* Sorter icon alignment */
+.ant-table-wrapper .ant-table .ant-table-column-sorters {
+  gap: 4px !important;
+}
+
+/* Filter icon */
+.ant-table-wrapper .ant-table .ant-table-filter-trigger {
+  margin-inline-start: 2px !important;
+}
+
+/* Hide the measure row that creates an empty gap below headers */
+.ant-table-wrapper .ant-table .ant-table-measure-row {
+  height: 0 !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  visibility: collapse !important;
 }

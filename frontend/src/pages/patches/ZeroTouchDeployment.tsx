@@ -92,7 +92,10 @@ export const ZeroTouchDeployment = () => {
 
   const header = (
     <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <Title level={3} style={{ margin: 0 }}>Zero Touch Deployment</Title>
+      <div>
+        <Title level={3} style={{ margin: 0 }}>Zero Touch Deployment</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Configure automated patch deployment policies</Text>
+      </div>
       <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>Create</Button>
     </div>
   );

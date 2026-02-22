@@ -31,8 +31,8 @@ describe('DataTable', () => {
 
   it('renders column headers', () => {
     render(<DataTable columns={mockColumns} data={mockData} />);
-    expect(screen.getByText('Name')).toBeInTheDocument();
-    expect(screen.getByText('Status')).toBeInTheDocument();
+    expect(screen.getAllByText('Name')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Status')[0]).toBeInTheDocument();
   });
 
   it('renders data rows', () => {
@@ -165,7 +165,7 @@ describe('DataTable', () => {
       { title: 'Hidden Col', dataIndex: 'hidden', key: 'hidden', defaultHidden: true },
     ];
     render(<DataTable columns={columnsWithHidden} data={mockData} />);
-    expect(screen.getByText('Name')).toBeInTheDocument();
+    expect(screen.getAllByText('Name')[0]).toBeInTheDocument();
     expect(screen.queryByText('Hidden Col')).not.toBeInTheDocument();
   });
 

@@ -53,7 +53,7 @@ describe('MarketPlace', () => {
 
   it('renders column headers', () => {
     render(<MarketPlace />);
-    expect(screen.getByText('Integration Name')).toBeInTheDocument();
-    expect(screen.getByText('Integration Type')).toBeInTheDocument();
+    expect(screen.getAllByText('Integration Name')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Integration Type')[0]).toBeInTheDocument();
   });
 });

@@ -40,88 +40,81 @@ export const HardwareTab = ({ assetId, osType, manufacturer, model }: HardwareTa
   const isMac = osType?.toLowerCase().includes('mac') || osType?.toLowerCase().includes('darwin');
   const isLinux = osType?.toLowerCase().includes('linux');
 
+  const cardBase = { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 16 } as const;
+  const cardHeadStyle = { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' };
+  const sectionTitle = (main: string, sub: string) => (
+    <div><div style={{ fontWeight: 600, fontSize: 14, color: '#111827' }}>{main}</div><div style={{ fontSize: 12, color: '#6b7280', fontWeight: 400 }}>{sub}</div></div>
+  );
+
   return (
     <div>
       {/* Device Header */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '24px', background: '#f5f5f5', borderRadius: '8px', marginBottom: 24 }}>
-          <div style={{ fontSize: '80px', color: isMac ? '#000' : isLinux ? '#E95420' : '#1890ff', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '120px' }}>
-            {isMac ? <AppleOutlined /> : isLinux ? <DesktopOutlined style={{ color: '#E95420' }} /> : <WindowsOutlined />}
-          </div>
-          <div>
-            <Title level={2} style={{ margin: 0, marginBottom: 8 }}>
-              {model || hardware.bios?.name || 'Unknown Device'}
-            </Title>
-            <Text type="secondary" style={{ fontSize: '14px' }}>
-              {manufacturer || hardware.bios?.manufacturer || 'Unknown Manufacturer'}
-            </Text>
-          </div>
+      <div style={{ ...cardBase, display: 'flex', alignItems: 'center', gap: 24, padding: '20px 24px', marginBottom: 20 }}>
+        <div style={{ fontSize: '64px', color: isMac ? '#000' : isLinux ? '#E95420' : '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '80px' }}>
+          {isMac ? <AppleOutlined /> : isLinux ? <DesktopOutlined style={{ color: '#E95420' }} /> : <WindowsOutlined />}
+        </div>
+        <div>
+          <Title level={3} style={{ margin: 0, marginBottom: 4, color: '#111827' }}>
+            {model || hardware.bios?.name || 'Unknown Device'}
+          </Title>
+          <Text type="secondary" style={{ fontSize: '13px' }}>
+            {manufacturer || hardware.bios?.manufacturer || 'Unknown Manufacturer'}
+          </Text>
         </div>
       </div>
 
       {/* BIOS Details */}
-      <Card title="BIOS Information" size="small" style={{ marginBottom: 16 }}>
-        <Row gutter={16}>
-          <Col span={6}><Text type="secondary">Install Date</Text><div>{hardware.bios?.installDate ?? 'N/A'}</div></Col>
-          <Col span={6}><Text type="secondary">BIOS Version</Text><div>{hardware.bios?.biosVersion ?? 'N/A'}</div></Col>
-          <Col span={6}><Text type="secondary">Manufacturer</Text><div>{hardware.bios?.manufacturer ?? 'N/A'}</div></Col>
-          <Col span={6}><Text type="secondary">Description</Text><div>{hardware.bios?.description ?? 'N/A'}</div></Col>
+      <Card title="BIOS Information" size="small" style={cardBase} styles={{ header: cardHeadStyle }}>
+        <Row gutter={[16, 14]}>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Install Date</Text><div style={{ fontWeight: 500, color: '#111827' }}>{hardware.bios?.installDate ?? 'N/A'}</div></Col>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>BIOS Version</Text><div style={{ fontWeight: 500, color: '#111827' }}>{hardware.bios?.biosVersion ?? 'N/A'}</div></Col>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Manufacturer</Text><div style={{ fontWeight: 500, color: '#111827' }}>{hardware.bios?.manufacturer ?? 'N/A'}</div></Col>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Description</Text><div style={{ fontWeight: 500, color: '#111827' }}>{hardware.bios?.description ?? 'N/A'}</div></Col>
         </Row>
-        <Row gutter={16} style={{ marginTop: 16 }}>
-          <Col span={6}><Text type="secondary">Secure Boot State</Text><div>{hardware.bios?.secureBootState ?? 'N/A'}</div></Col>
-          <Col span={6}><Text type="secondary">Serial Number</Text><div>{hardware.bios?.serialNumber ?? 'N/A'}</div></Col>
+        <Row gutter={[16, 14]} style={{ marginTop: 14 }}>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Secure Boot State</Text><div style={{ fontWeight: 500, color: '#111827' }}>{hardware.bios?.secureBootState ?? 'N/A'}</div></Col>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Serial Number</Text><div style={{ fontWeight: 500, color: '#111827', fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>{hardware.bios?.serialNumber ?? 'N/A'}</div></Col>
         </Row>
       </Card>
 
       {/* Processor */}
-      <Card
-        title={<div><div style={{ fontWeight: 600 }}>{hardware.processor?.name ?? 'Unknown Processor'}</div><Text type="secondary" style={{ fontSize: '16px' }}>PROCESSOR DETAILS</Text></div>}
-        size="small" style={{ marginBottom: 16 }}
-      >
-        <Row gutter={16}>
-          <Col span={6}><Text type="secondary">Logical Processors</Text><div>{hardware.processor?.logicalProcessors ?? 'N/A'}</div></Col>
-          <Col span={6}><Text type="secondary">Manufacturer</Text><div>{hardware.processor?.manufacturer ?? 'N/A'}</div></Col>
-          <Col span={6}><Text type="secondary">Number of Core</Text><div>{hardware.processor?.numberOfCores ?? 'N/A'}</div></Col>
-          <Col span={6}><Text type="secondary">Processor Speed</Text><div>{hardware.processor?.processorSpeed ?? 'N/A'}</div></Col>
+      <Card title={sectionTitle(hardware.processor?.name ?? 'Unknown Processor', 'PROCESSOR DETAILS')} size="small" style={cardBase} styles={{ header: cardHeadStyle }}>
+        <Row gutter={[16, 14]}>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Logical Processors</Text><div style={{ fontWeight: 500, color: '#111827' }}>{hardware.processor?.logicalProcessors ?? 'N/A'}</div></Col>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Manufacturer</Text><div style={{ fontWeight: 500, color: '#111827' }}>{hardware.processor?.manufacturer ?? 'N/A'}</div></Col>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Number of Core</Text><div style={{ fontWeight: 500, color: '#111827' }}>{hardware.processor?.numberOfCores ?? 'N/A'}</div></Col>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Processor Speed</Text><div style={{ fontWeight: 500, color: '#111827' }}>{hardware.processor?.processorSpeed ?? 'N/A'}</div></Col>
         </Row>
-        <Row gutter={16} style={{ marginTop: 16 }}>
-          <Col span={24}><Text type="secondary">Secure Boot State</Text><div style={{ fontSize: '11px', wordBreak: 'break-all' }}>{hardware.processor?.secureBootState ?? 'N/A'}</div></Col>
+        <Row gutter={[16, 14]} style={{ marginTop: 14 }}>
+          <Col span={24}><Text type="secondary" style={{ fontSize: 12 }}>Secure Boot State</Text><div style={{ fontSize: '11px', wordBreak: 'break-all', fontWeight: 500, color: '#111827' }}>{hardware.processor?.secureBootState ?? 'N/A'}</div></Col>
         </Row>
       </Card>
 
       {/* Baseboard */}
-      <Card
-        title={<div><div style={{ fontWeight: 600 }}>{hardware.baseBoard?.name ?? 'Unknown Baseboard'}</div><Text type="secondary" style={{ fontSize: '16px' }}>BASEBOARD DETAILS</Text></div>}
-        size="small" style={{ marginBottom: 16 }}
-      >
-        <Row gutter={16}>
-          <Col span={6}><Text type="secondary">Part Number</Text><div>{hardware.baseBoard?.partNumber ?? 'N/A'}</div></Col>
-          <Col span={6}><Text type="secondary">Product ID</Text><div>{hardware.baseBoard?.productId ?? 'N/A'}</div></Col>
-          <Col span={6}><Text type="secondary">Serial Number</Text><div>{hardware.baseBoard?.serialNumber ?? 'N/A'}</div></Col>
-          <Col span={6}><Text type="secondary">Tag</Text><div>{hardware.baseBoard?.tag ?? 'N/A'}</div></Col>
+      <Card title={sectionTitle(hardware.baseBoard?.name ?? 'Unknown Baseboard', 'BASEBOARD DETAILS')} size="small" style={cardBase} styles={{ header: cardHeadStyle }}>
+        <Row gutter={[16, 14]}>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Part Number</Text><div style={{ fontWeight: 500, color: '#111827' }}>{hardware.baseBoard?.partNumber ?? 'N/A'}</div></Col>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Product ID</Text><div style={{ fontWeight: 500, color: '#111827' }}>{hardware.baseBoard?.productId ?? 'N/A'}</div></Col>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Serial Number</Text><div style={{ fontWeight: 500, color: '#111827', fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>{hardware.baseBoard?.serialNumber ?? 'N/A'}</div></Col>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Tag</Text><div style={{ fontWeight: 500, color: '#111827' }}>{hardware.baseBoard?.tag ?? 'N/A'}</div></Col>
         </Row>
-        <Row gutter={16} style={{ marginTop: 16 }}>
-          <Col span={6}><Text type="secondary">Version</Text><div>{hardware.baseBoard?.version ?? 'N/A'}</div></Col>
+        <Row gutter={[16, 14]} style={{ marginTop: 14 }}>
+          <Col span={6}><Text type="secondary" style={{ fontSize: 12 }}>Version</Text><div style={{ fontWeight: 500, color: '#111827' }}>{hardware.baseBoard?.version ?? 'N/A'}</div></Col>
         </Row>
       </Card>
 
       {/* Storage */}
       <Card
-        title={
-          <div>
-            <div style={{ fontWeight: 600 }}>
-              {(hardware.storage || []).length} Partition -{' '}
-              {(() => {
-                const storage = hardware.storage || [];
-                const mainDrive = storage.find(d => d.mountPoint === '/' || d.mountPoint === '/System/Volumes/Data' || d.name?.toLowerCase().includes('macintosh')) || storage[0];
-                const capacity = parseFloat(mainDrive?.capacity || '0');
-                return capacity >= 1000 ? `${(capacity / 1024).toFixed(1)} TB` : `${Math.round(capacity)} GB`;
-              })()}
-            </div>
-            <Text type="secondary" style={{ fontSize: '16px' }}>STORAGE</Text>
-          </div>
-        }
-        size="small" style={{ marginBottom: 16 }}
+        title={sectionTitle(
+          `${(hardware.storage || []).length} Partition - ${(() => {
+            const storage = hardware.storage || [];
+            const mainDrive = storage.find(d => d.mountPoint === '/' || d.mountPoint === '/System/Volumes/Data' || d.name?.toLowerCase().includes('macintosh')) || storage[0];
+            const capacity = parseFloat(mainDrive?.capacity || '0');
+            return capacity >= 1000 ? `${(capacity / 1024).toFixed(1)} TB` : `${Math.round(capacity)} GB`;
+          })()}`,
+          'STORAGE'
+        )}
+        size="small" style={cardBase} styles={{ header: cardHeadStyle }}
       >
         <Row gutter={[16, 16]}>
           {(hardware.storage || []).map((drive, idx) => {
@@ -131,20 +124,20 @@ export const HardwareTab = ({ assetId, osType, manufacturer, model }: HardwareTa
             const progressColor = usedPercent > 90 ? '#ff4d4f' : usedPercent > 70 ? '#faad14' : '#52c41a';
             return (
               <Col span={12} key={idx}>
-                <Card size="small" style={{ background: '#fafafa' }}>
+                <div style={{ background: '#f9fafb', border: '1px solid #f0f0f0', borderRadius: 6, padding: 12 }}>
                   <Row gutter={8}>
-                    <Col span={12}><Text type="secondary">Drive</Text><div style={{ fontWeight: 600 }}>{drive.drive}</div></Col>
-                    <Col span={12}><Text type="secondary">Capacity</Text><div><span style={{ color: progressColor }}>{drive.used}</span> / {drive.capacity}</div></Col>
+                    <Col span={12}><Text type="secondary" style={{ fontSize: 12 }}>Drive</Text><div style={{ fontWeight: 600, color: '#111827' }}>{drive.drive}</div></Col>
+                    <Col span={12}><Text type="secondary" style={{ fontSize: 12 }}>Capacity</Text><div style={{ fontWeight: 500, color: '#111827' }}><span style={{ color: progressColor }}>{drive.used}</span> / {drive.capacity}</div></Col>
                   </Row>
                   <Row style={{ marginTop: 8 }}>
                     <Col span={24}><Progress percent={usedPercent} strokeColor={progressColor} size="small" format={() => `${usedPercent}% used`} /></Col>
                   </Row>
                   <Row gutter={8} style={{ marginTop: 8 }}>
-                    <Col span={8}><Text type="secondary">Format</Text><div>{drive.format}</div></Col>
-                    <Col span={8}><Text type="secondary">Type</Text><div>{drive.type}</div></Col>
-                    <Col span={8}><Text type="secondary">Serial number</Text><div style={{ fontSize: '11px' }}>{drive.serialNumber}</div></Col>
+                    <Col span={8}><Text type="secondary" style={{ fontSize: 12 }}>Format</Text><div style={{ fontWeight: 500, color: '#111827' }}>{drive.format}</div></Col>
+                    <Col span={8}><Text type="secondary" style={{ fontSize: 12 }}>Type</Text><div style={{ fontWeight: 500, color: '#111827' }}>{drive.type}</div></Col>
+                    <Col span={8}><Text type="secondary" style={{ fontSize: 12 }}>Serial number</Text><div style={{ fontSize: '11px', fontWeight: 500, color: '#111827' }}>{drive.serialNumber}</div></Col>
                   </Row>
-                </Card>
+                </div>
               </Col>
             );
           })}
@@ -156,32 +149,30 @@ export const HardwareTab = ({ assetId, osType, manufacturer, model }: HardwareTa
 
       {/* Memory */}
       <Card
-        title={
-          <div>
-            <div style={{ fontWeight: 600 }}>{(hardware.memory || []).length} Slots - {(hardware.memory || []).reduce((acc, m) => acc + parseFloat(m.capacity || '0'), 0)} GB</div>
-            <Text type="secondary" style={{ fontSize: '16px' }}>MEMORY</Text>
-          </div>
-        }
-        size="small" style={{ marginBottom: 16 }}
+        title={sectionTitle(
+          `${(hardware.memory || []).length} Slots - ${(hardware.memory || []).reduce((acc, m) => acc + parseFloat(m.capacity || '0'), 0)} GB`,
+          'MEMORY'
+        )}
+        size="small" style={cardBase} styles={{ header: cardHeadStyle }}
       >
         <Row gutter={[16, 16]}>
           {(hardware.memory || []).map((mem, idx) => (
             <Col span={12} key={idx}>
-              <Card size="small" style={{ background: '#fafafa' }}>
+              <div style={{ background: '#f9fafb', border: '1px solid #f0f0f0', borderRadius: 6, padding: 12 }}>
                 <Row gutter={8}>
-                  <Col span={12}><Text type="secondary">{mem.slot}</Text><div style={{ fontWeight: 600 }}>{mem.name}</div></Col>
-                  <Col span={12}><Text type="secondary">Capacity</Text><div>{mem.capacity}</div></Col>
+                  <Col span={12}><Text type="secondary" style={{ fontSize: 12 }}>{mem.slot}</Text><div style={{ fontWeight: 600, color: '#111827' }}>{mem.name}</div></Col>
+                  <Col span={12}><Text type="secondary" style={{ fontSize: 12 }}>Capacity</Text><div style={{ fontWeight: 500, color: '#111827' }}>{mem.capacity}</div></Col>
                 </Row>
                 <Row gutter={8} style={{ marginTop: 8 }}>
-                  <Col span={8}><Text type="secondary">Bank Label</Text><div>{mem.bankLabel}</div></Col>
-                  <Col span={8}><Text type="secondary">Locator</Text><div>{mem.locator}</div></Col>
-                  <Col span={8}><Text type="secondary">Memory Type</Text><div>{mem.memoryType}</div></Col>
+                  <Col span={8}><Text type="secondary" style={{ fontSize: 12 }}>Bank Label</Text><div style={{ fontWeight: 500, color: '#111827' }}>{mem.bankLabel}</div></Col>
+                  <Col span={8}><Text type="secondary" style={{ fontSize: 12 }}>Locator</Text><div style={{ fontWeight: 500, color: '#111827' }}>{mem.locator}</div></Col>
+                  <Col span={8}><Text type="secondary" style={{ fontSize: 12 }}>Memory Type</Text><div style={{ fontWeight: 500, color: '#111827' }}>{mem.memoryType}</div></Col>
                 </Row>
                 <Row gutter={8} style={{ marginTop: 8 }}>
-                  <Col span={12}><Text type="secondary">Serial Number</Text><div>{mem.serialNumber}</div></Col>
-                  <Col span={12}><Text type="secondary">Part Number</Text><div style={{ fontSize: '11px' }}>{mem.partNumber}</div></Col>
+                  <Col span={12}><Text type="secondary" style={{ fontSize: 12 }}>Serial Number</Text><div style={{ fontWeight: 500, color: '#111827', fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>{mem.serialNumber}</div></Col>
+                  <Col span={12}><Text type="secondary" style={{ fontSize: 12 }}>Part Number</Text><div style={{ fontSize: '11px', fontWeight: 500, color: '#111827' }}>{mem.partNumber}</div></Col>
                 </Row>
-              </Card>
+              </div>
             </Col>
           ))}
         </Row>
@@ -189,8 +180,10 @@ export const HardwareTab = ({ assetId, osType, manufacturer, model }: HardwareTa
 
       {/* Network Adapters */}
       <Card
-        title={<div><div style={{ fontWeight: 600 }}>{(hardware.networkAdapters || []).length} Network Adapters</div><Text type="secondary" style={{ fontSize: '16px' }}>NETWORK ADAPTERS</Text></div>}
+        title={sectionTitle(`${(hardware.networkAdapters || []).length} Network Adapters`, 'NETWORK ADAPTERS')}
         size="small"
+        style={cardBase}
+        styles={{ header: cardHeadStyle }}
       >
         <DataTable
           columns={networkColumns}

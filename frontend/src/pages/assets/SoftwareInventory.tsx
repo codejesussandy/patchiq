@@ -18,7 +18,7 @@ import { DataTable } from '../../components/shared/DataTable';
 import { useSoftwareInventory } from '../../hooks/useAssets';
 import type { SoftwareInventory as SoftwareInventoryType } from '../../types/asset.types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 export const SoftwareInventory = () => {
@@ -30,6 +30,7 @@ export const SoftwareInventory = () => {
   const software: SoftwareInventoryType[] = softwareData || [];
 
   const [searchText, setSearchText] = useState('');
+  const [pageSize, setPageSize] = useState(10);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>('all-categories');
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -116,17 +117,19 @@ export const SoftwareInventory = () => {
   });
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', padding: '24px' }}>
+    <div style={{ minHeight: '100vh', background: '#fff', padding: '0 12px' }}>
       <div
         style={{
-          marginBottom: '24px',
+          padding: '8px 0 4px 0',
+          marginBottom: '16px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center' }}
       >
-        <Title level={3} style={{ margin: 0 }}>
-          Software Inventory
-        </Title>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Software Inventory</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Track installed software across your assets</Text>
+        </div>
         <Button icon={<UploadOutlined />} onClick={handleImportCSV}>
           Import from CSV
         </Button>
@@ -159,9 +162,10 @@ export const SoftwareInventory = () => {
         rowKey="id"
         loading={loading}
         pagination={{
-          pageSize: 10,
+          pageSize,
           showSizeChanger: true,
-          showTotal: (total) => `Total ${total} found` }}
+          showTotal: (total) => `Total ${total} found`,
+          onChange: (_page, size) => setPageSize(size) }}
         onRow={(record) => ({
           onClick: () => handleRowClick(record),
           style: { cursor: 'pointer' } })}

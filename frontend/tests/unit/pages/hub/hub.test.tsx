@@ -6,7 +6,7 @@ vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
-    useLocation: vi.fn(() => ({ pathname: '/hub', state: null })),
+    useNavigate: vi.fn(() => vi.fn()),
   };
 });
 
@@ -52,10 +52,6 @@ vi.mock('@/types/hub.types', () => ({
   ],
 }));
 
-// Mock child components to avoid deep renders
-vi.mock('@/pages/jobs/SoftwareJobsBundle', () => ({ SoftwareJobsBundle: () => <div>Bundle Tab</div> }));
-vi.mock('@/pages/jobs/SoftwareJobsCatalog', () => ({ SoftwareJobsCatalog: () => <div>Catalog Tab</div> }));
-vi.mock('@/pages/jobs/SoftwareJobsDeployed', () => ({ SoftwareJobsDeployed: () => <div>Deployed Tab</div> }));
 vi.mock('@/pages/hub/components/HubBundleUploadModal', () => ({ HubBundleUploadModal: () => null }));
 vi.mock('@/pages/hub/components/HubDeployModal', () => ({ HubDeployModal: () => null }));
 vi.mock('@/pages/hub/components/HubDetailsDrawer', () => ({ HubDetailsDrawer: () => null }));
@@ -87,11 +83,15 @@ describe('Hub', () => {
     expect(screen.getByPlaceholderText(/search packages/i)).toBeInTheDocument();
   });
 
-  it('renders tab navigation', () => {
+  it('does not render removed tabs (catalog, bundles, software jobs)', () => {
     render(<Hub />);
-    expect(screen.getByText('Packages')).toBeInTheDocument();
-    expect(screen.getByText('Software Catalog')).toBeInTheDocument();
-    expect(screen.getByText('Bundles')).toBeInTheDocument();
-    expect(screen.getByText('Software Jobs')).toBeInTheDocument();
+    expect(screen.queryByText('Software Catalog')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bundles')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /software jobs/i })).not.toBeInTheDocument();
+  });
+
+  it('renders packages content directly without tabs', () => {
+    render(<Hub />);
+    expect(screen.getByText('Mozilla Firefox')).toBeInTheDocument();
   });
 });

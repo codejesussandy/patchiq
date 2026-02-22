@@ -105,6 +105,7 @@ export const PasswordPolicies = () => {
         <Title level={3} style={{ margin: 0 }}>
           Password Policy
         </Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Configure password requirements and rules</Text>
       </div>
 
       <Form

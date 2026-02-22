@@ -3,11 +3,11 @@ import { App,
   Form, Button, Typography, Radio, Space } from 'antd';
 import { useAgentApprovalSettings, useUpdateAgentApprovalSettings } from '../../hooks/useSettings';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface AgentApprovalSettingsData {
-  approvalType: 'AUTO' | 'MANUAL';
-  autoApprovalBasedOn: 'ALL' | 'CRITERIA';
+  approvalType: 'auto' | 'manual';
+  autoApprovalBasedOn: 'all' | 'criteria';
 }
 
 export const AgentApprovalSettings = () => {
@@ -40,8 +40,9 @@ export const AgentApprovalSettings = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}>
-        <Title level={2}>Agent Approval Settings</Title>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Agent Approval Settings</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Configure agent registration approval workflow</Text>
       </div>
 
       <Form form={form} layout="vertical">
@@ -58,8 +59,8 @@ export const AgentApprovalSettings = () => {
         >
           <Radio.Group>
             <Space orientation="horizontal">
-              <Radio value="AUTO">Auto</Radio>
-              <Radio value="MANUAL">Manual</Radio>
+              <Radio value="auto">Auto</Radio>
+              <Radio value="manual">Manual</Radio>
             </Space>
           </Radio.Group>
         </Form.Item>
@@ -77,8 +78,8 @@ export const AgentApprovalSettings = () => {
         >
           <Radio.Group>
             <Space orientation="horizontal">
-              <Radio value="ALL">All</Radio>
-              <Radio value="CRITERIA">Criteria</Radio>
+              <Radio value="all">All</Radio>
+              <Radio value="criteria">Criteria</Radio>
             </Space>
           </Radio.Group>
         </Form.Item>

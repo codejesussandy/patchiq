@@ -94,9 +94,9 @@ export const PatchFormFields = ({ form, tags, cveSuggestions, onCveFocus }: Patc
               if (software) onCveFocus(software, vendor);
             }}
           >
-            {cveSuggestions.map((s) => (
+            {cveSuggestions.filter((s) => s.cveId).map((s) => (
               <Option key={s.cveId} value={s.cveId}>
-                {s.cveId} ({s.severity}) — {s.description.slice(0, 80)}...
+                {s.cveId} ({s.severity || 'N/A'}) — {(s.description || '').slice(0, 80)}
               </Option>
             ))}
           </Select>

@@ -28,7 +28,7 @@ interface SecuritySummaryCardsProps {
 export const SecuritySummaryCards = ({ encryption, firewall, antivirus, secureBootEnabled, uacEnabled }: SecuritySummaryCardsProps) => (
   <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
     <Col span={6}>
-      <Card size="small">
+      <Card size="small" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
         <Space align="center">
           <LockOutlined style={{ fontSize: 24, color: encryption?.driveEncryptionEnabled ? '#52c41a' : '#ff4d4f' }} />
           <div>
@@ -40,7 +40,7 @@ export const SecuritySummaryCards = ({ encryption, firewall, antivirus, secureBo
       </Card>
     </Col>
     <Col span={6}>
-      <Card size="small">
+      <Card size="small" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
         <Space align="center">
           <SafetyOutlined style={{ fontSize: 24, color: firewall?.enabled ? '#52c41a' : '#ff4d4f' }} />
           <div>
@@ -52,7 +52,7 @@ export const SecuritySummaryCards = ({ encryption, firewall, antivirus, secureBo
       </Card>
     </Col>
     <Col span={6}>
-      <Card size="small">
+      <Card size="small" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
         <Space align="center">
           <SecurityScanOutlined style={{ fontSize: 24, color: antivirus?.installed ? '#52c41a' : '#ff4d4f' }} />
           <div>
@@ -64,7 +64,7 @@ export const SecuritySummaryCards = ({ encryption, firewall, antivirus, secureBo
       </Card>
     </Col>
     <Col span={6}>
-      <Card size="small">
+      <Card size="small" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
         <Space align="center">
           <DesktopOutlined style={{ fontSize: 24, color: secureBootEnabled ? '#52c41a' : '#faad14' }} />
           <div>

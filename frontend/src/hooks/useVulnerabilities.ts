@@ -32,6 +32,7 @@ export function useVulnerabilities(params?: { severity?: string; search?: string
   return useQuery({
     queryKey: vulnerabilityKeys.list(params as Record<string, unknown>),
     queryFn: () => vulnerabilityService.getVulnerabilities(params),
+    staleTime: 30_000,
     // Keep previous data while fetching new page for better UX
     placeholderData: (previousData) => previousData,
   });
@@ -63,6 +64,7 @@ export function useVulnerabilityStats(params?: { affectsAssets?: boolean }) {
   return useQuery({
     queryKey: vulnerabilityKeys.stats(params as Record<string, unknown>),
     queryFn: () => vulnerabilityService.getVulnerabilityStats(params),
+    staleTime: 60_000,
   });
 }
 
@@ -171,7 +173,7 @@ export function useDeleteException() {
 export function useTriggerScan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ scope, endpointIds }: { scope?: 'all' | 'selected'; endpointIds?: string[] } = {}) =>
+    mutationFn: ({ scope, endpointIds }: { scope?: 'ALL' | 'SELECTED'; endpointIds?: string[] } = {}) =>
       vulnerabilityService.triggerScan(scope, endpointIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: vulnerabilityKeys.all });

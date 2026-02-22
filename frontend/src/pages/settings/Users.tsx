@@ -22,13 +22,13 @@ import type { ColumnsType } from 'antd/es/table';
 import { ConfirmModal } from '../../components/shared/ConfirmModal';
 import { DataTable } from '../../components/shared/DataTable';
 import { useModal } from '../../hooks/useModal';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useOrganizations, useDepartments, useRoles, useLocations } from '../../hooks/useSettings';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useOrganizations, useDepartments, useRoles, useBranches } from '../../hooks/useSettings';
 import { sanitizeInput } from '../../utils/sanitize';
 import { ColumnFilterModal } from './components/ColumnFilterModal';
 import { UserFormModal } from './components/UserFormModal';
 import { UserImportModal } from './components/UserImportModal';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface User {
   id: string;
@@ -83,7 +83,7 @@ export const Users = () => {
   const { data: rawOrganizations } = useOrganizations();
   const { data: rawDepartments } = useDepartments();
   const { data: rawRoles } = useRoles();
-  const { data: rawBranches } = useLocations();
+  const { data: rawBranches } = useBranches();
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
@@ -100,16 +100,7 @@ export const Users = () => {
   const users: User[] = Array.isArray(rawUsers)
     ? rawUsers.map((user: Record<string, unknown>, index: number) => ({
         ...user,
-        id: (user.id as string) || String(index),
-        // Map backend field names to frontend field names
-        phone: (user.contactNumber as string) || (user.phone as string) || undefined,
-        roleName: (user.role as string) || undefined,
-        roleId: (user.roleId as string) || undefined,
-        organizationName: (user.organization as string) || undefined,
-        departmentName: (user.department as string) || undefined,
-        branchName: (user.location as string) || undefined,
-        branchId: (user.locationId as string) || undefined,
-      } as User))
+        id: (user.id as string) || String(index) } as User))
     : [];
   const organizations = Array.isArray(rawOrganizations) ? rawOrganizations : [];
   const departments = Array.isArray(rawDepartments) ? rawDepartments : [];
@@ -325,7 +316,10 @@ export const Users = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}><Title level={2}>Users</Title></div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Users</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Manage user accounts and permissions</Text>
+      </div>
 
       <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <Input placeholder="Search by name, email, phone, organization, role, branch, or department" prefix={<SearchOutlined />} style={{ flex: 1, maxWidth: '400px' }} value={searchText} onChange={(e) => { setSearchText(e.target.value); setPagination({ ...pagination, current: 1 }); }} />

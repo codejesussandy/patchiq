@@ -108,10 +108,10 @@ export const VulnerabilitiesTab = ({ assetId }: VulnerabilitiesTabProps) => {
           { label: 'Patched', color: '#52c41a', count: vulnerabilities.filter((v) => v.status === 'Patched').length },
         ].map(({ label, color, count }) => (
           <Col span={6} key={label}>
-            <Card size="small">
+            <Card size="small" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', color }}>{count}</div>
-                <Text type="secondary" style={{ fontSize: '16px' }}>{label}</Text>
+                <Text type="secondary" style={{ fontSize: '13px' }}>{label}</Text>
               </div>
             </Card>
           </Col>
@@ -119,7 +119,7 @@ export const VulnerabilitiesTab = ({ assetId }: VulnerabilitiesTabProps) => {
       </Row>
 
       {/* Vulnerabilities Table */}
-      <Card title="Security Vulnerabilities" size="small" style={{ marginBottom: 24 }}>
+      <Card title="Security Vulnerabilities" size="small" style={{ marginBottom: 24, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }} styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
         <DataTable
           columns={columns}
           data={vulnerabilities}

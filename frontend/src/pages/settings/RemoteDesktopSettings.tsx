@@ -71,7 +71,8 @@ export const RemoteDesktopSettings = () => {
     <div style={{ padding: '24px' }}>
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
-        <Title level={2}>Remote Desktop Settings</Title>
+        <Title level={3} style={{ margin: 0 }}>Remote Desktop Settings</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Configure remote desktop access settings</Text>
       </div>
 
       {loading ? (

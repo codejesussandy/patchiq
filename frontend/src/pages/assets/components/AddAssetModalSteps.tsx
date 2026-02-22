@@ -5,14 +5,15 @@ import TagSelector from './TagSelector';
 
 const { Option } = Select;
 
-const ALLOWED_CATEGORIES = ['Laptop', 'Desktop', 'Server'];
-
 interface Step1Props {
   categories: Array<{ id: string; name: string }>;
+  subCategories: Array<{ id: string; name: string }>;
+  selectedCategoryId?: string;
+  onCategoryChange: (value: string) => void;
   form: ReturnType<typeof Form.useForm>[0];
 }
 
-export const AssetStep1 = ({ categories, form }: Step1Props) => {
+export const AssetStep1 = ({ categories, subCategories, selectedCategoryId, onCategoryChange, form }: Step1Props) => {
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
   const [charCounts, setCharCounts] = useState<{ [key: string]: number }>({});
 
@@ -52,22 +53,31 @@ export const AssetStep1 = ({ categories, form }: Step1Props) => {
           </Form.Item>
         </Col>
       <Col span={12}>
-        <Form.Item
-          label="Category"
-          name="categoryId"
-          rules={[{ required: true, message: 'Please select a category' }]}
-        >
-          <Select placeholder="Select category" allowClear>
-            {categories
-              .filter(cat => ALLOWED_CATEGORIES.includes(cat.name))
-              .map(cat => (
-                <Option key={cat.id} value={cat.id}>{cat.name}</Option>
-              ))}
+        <Form.Item label="Category" name="categoryId" rules={[{ required: true }]}>
+          <Select
+            placeholder="Select category"
+            onChange={(value: string) => {
+              onCategoryChange(value);
+              form.setFieldValue('subCategoryId', undefined);
+            }}
+          >
+            {categories.map(cat => (
+              <Option key={cat.id} value={cat.id}>{cat.name}</Option>
+            ))}
           </Select>
         </Form.Item>
       </Col>
     </Row>
     <Row gutter={16}>
+      <Col span={12}>
+        <Form.Item label="Sub Category" name="subCategoryId">
+          <Select placeholder="Select sub category" allowClear disabled={!selectedCategoryId}>
+            {subCategories.map(sub => (
+              <Option key={sub.id} value={sub.id}>{sub.name}</Option>
+            ))}
+          </Select>
+        </Form.Item>
+      </Col>
       <Col span={12}>
         <Form.Item label="OS" name="os" rules={[{ required: true }]}>
           <Select placeholder="Select">
@@ -229,20 +239,20 @@ export const AssetStep3 = () => (
         <Col span={12}>
           <Form.Item label="Status" name="status">
             <Select placeholder="Select">
-              <Option value="IN_USE">In Use</Option>
-              <Option value="AVAILABLE">Available</Option>
-              <Option value="UNDER_MAINTENANCE">Under Maintenance</Option>
-              <Option value="RETIRED">Retired</Option>
+              <Option value="In Use">In Use</Option>
+              <Option value="Available">Available</Option>
+              <Option value="Under Maintenance">Under Maintenance</Option>
+              <Option value="Retired">Retired</Option>
             </Select>
           </Form.Item>
         </Col>
         <Col span={12}>
           <Form.Item label="Criticality" name="criticality">
             <Select placeholder="Select">
-              <Option value="CRITICAL">Critical</Option>
-              <Option value="HIGH">High</Option>
-              <Option value="MEDIUM">Medium</Option>
-              <Option value="LOW">Low</Option>
+              <Option value="Critical">Critical</Option>
+              <Option value="High">High</Option>
+              <Option value="Medium">Medium</Option>
+              <Option value="Low">Low</Option>
             </Select>
           </Form.Item>
         </Col>

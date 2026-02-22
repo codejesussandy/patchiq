@@ -26,7 +26,7 @@ import { getErrorMessage } from '../../utils/error';
 import { ColumnFilterModal } from './components/ColumnFilterModal';
 import { LDAPFormFields } from './components/LDAPFormFields';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const FILTER_COLUMNS = [
   { key: 'showId', label: 'Show ID' },
@@ -58,7 +58,7 @@ const setFormFromConfig = (form: ReturnType<typeof Form.useForm>[0], config: LDA
     host: config.host,
     port: config.port,
     fqdn: config.fqdn,
-    baseDN: (config as Record<string, unknown>).baseDn as string || config.baseDN,
+    baseDN: config.baseDN,
     username: config.username,
     password: config.password,
     groupBase: config.groupBase,
@@ -253,7 +253,10 @@ export const LDAPServerConfiguration = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}><Title level={2}>LDAP Server Configurations</Title></div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>LDAP Server Configurations</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Configure LDAP directory connections</Text>
+      </div>
 
       <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <Input placeholder="Search by name, host, or FQDN" prefix={<SearchOutlined />} style={{ flex: 1, maxWidth: '400px' }} value={searchText}

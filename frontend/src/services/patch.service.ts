@@ -41,20 +41,11 @@ export type EndpointDeployment = AssetDeployment;
 
 export const patchService = {
   // Patches
-  async getPatches(params?: {
-    search?: string;
-    limit?: number;
-    includeSuperseded?: boolean;
-    severity?: string[];
-    os?: string[];
-    category?: string[];
-  }): Promise<{ data: Patch[]; total: number }> {
+  async getPatches(params?: { search?: string; limit?: number; includeSuperseded?: boolean }): Promise<{ data: Patch[]; total: number }> {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append('search', params.search);
     if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.severity?.length) queryParams.append('severity', params.severity.join(','));
-    if (params?.os?.length) queryParams.append('os', params.os.join(','));
-    if (params?.category?.length) queryParams.append('category', params.category.join(','));
+    // Note: includeSuperseded is a UI-only filter, backend returns all patches
     const response = await api.get(`/patches${queryParams.toString() ? `?${queryParams.toString()}` : ''}`);
     // Paginated response: interceptor returns { data: T[], total, page, limit, totalPages }
     return { data: response.data.data || [], total: response.data.total || 0 };

@@ -132,7 +132,10 @@ export const VendorLogo = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}><Title level={2}>Vendor Logo</Title></div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Vendor Logo</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Customize vendor branding</Text>
+      </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '12px' }}>
         <Input placeholder="Search..." value={searchText} onChange={(e) => setSearchText(e.target.value)} style={{ maxWidth: '300px' }} prefix={<span style={{ color: '#bfbfbf' }}>&#x1F50D;</span>} />

@@ -126,7 +126,7 @@ export const PatchesTab = ({ assetId, agentId, patchSummary: initialSummary }: P
     <div>
       {patchSummary && <PatchesSummaryCards patchSummary={patchSummary} patches={patches} />}
 
-      <Card title={<Space><SafetyOutlined /><span>All Patches ({patches.length})</span></Space>} size="small" style={{ marginBottom: 16 }}
+      <Card title={<Space><SafetyOutlined /><span>All Patches ({patches.length})</span></Space>} size="small" style={{ marginBottom: 16 }} styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}
         extra={missingPatches.length > 0 && (
           <Button type="primary" icon={<DeploymentUnitOutlined />} disabled={!agentId || deploying} loading={deploying}
             title={!agentId ? 'No agent connected to this asset' : undefined}
@@ -141,14 +141,14 @@ export const PatchesTab = ({ assetId, agentId, patchSummary: initialSummary }: P
 
       <Row gutter={[16, 16]}>
         <Col span={12}>
-          <Card title={<Space><HistoryOutlined /><span>Recent Deployments</span></Space>} size="small">
+          <Card title={<Space><HistoryOutlined /><span>Recent Deployments</span></Space>} size="small" styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
             {deployments.length > 0 ? (
               <DataTable columns={deploymentColumns} data={deployments.slice(0, 5)} rowKey="id" pagination={false} size="small" />
             ) : (<Empty description="No deployment history" />)}
           </Card>
         </Col>
         <Col span={12}>
-          <Card title={<Space><ClockCircleOutlined /><span>Deployment Timeline</span></Space>} size="small">
+          <Card title={<Space><ClockCircleOutlined /><span>Deployment Timeline</span></Space>} size="small" styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
             {deployments.length > 0 ? (
               <Timeline style={{ marginTop: 16, maxHeight: 250, overflowY: 'auto' }}
                 items={deployments.slice(0, 5).map((deployment) => ({

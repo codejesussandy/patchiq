@@ -5,7 +5,7 @@ import { useProxyServerConfig, useUpdateProxyServerConfig, useTestProxyServerCon
 import type { ProxyServerConfig } from '../../types/settings.types';
 import { getErrorMessage } from '../../utils/error';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export const ProxyServerConfiguration = () => {
   const { message } = App.useApp();
@@ -22,13 +22,7 @@ export const ProxyServerConfiguration = () => {
 
   const onFinish = async (values: ProxyServerConfig) => {
     try {
-      const payload = {
-        ...values,
-        port: values.port !== undefined && values.port !== null
-          ? parseInt(String(values.port), 10)
-          : values.port,
-      };
-      await updateConfigMutation.mutateAsync(payload);
+      await updateConfigMutation.mutateAsync(values);
       message.success('Proxy server configuration updated successfully');
     } catch {
       message.error('Failed to update proxy server configuration');
@@ -42,13 +36,7 @@ export const ProxyServerConfiguration = () => {
       return;
     }
     try {
-      const payload = {
-        ...values,
-        port: values.port !== undefined && values.port !== null
-          ? parseInt(String(values.port), 10)
-          : values.port,
-      };
-      await testConfigMutation.mutateAsync(payload);
+      await testConfigMutation.mutateAsync(values);
       message.success('Proxy server connection test successful!');
     } catch (error: unknown) {
       message.error(getErrorMessage(error, 'Proxy server connection test failed'));
@@ -56,7 +44,6 @@ export const ProxyServerConfiguration = () => {
   };
 
   const handleReset = () => {
-    form.resetFields();
     if (config) {
       form.setFieldsValue(config);
     }
@@ -64,7 +51,8 @@ export const ProxyServerConfiguration = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <Title level={2}>Proxy Server Configurations</Title>
+      <Title level={3} style={{ margin: 0 }}>Proxy Server Configurations</Title>
+      <Text type="secondary" style={{ fontSize: 14 }}>Configure proxy server connections</Text>
       <Divider />
 
       <Form

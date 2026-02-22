@@ -10,6 +10,14 @@ export default defineConfig({
     setupFiles: './tests/unit/setup.ts',
     css: true,
     include: ['tests/unit/**/*.test.{ts,tsx}'],
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        maxForks: 3,
+        minForks: 1,
+        memoryLimit: '1.5GB',
+      },
+    },
     exclude: [
       'node_modules',
       'dist',

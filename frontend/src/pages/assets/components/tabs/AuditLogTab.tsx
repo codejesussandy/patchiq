@@ -100,7 +100,7 @@ export const AuditLogTab = ({ assetId }: AuditLogTabProps) => {
 
   return (
     <div>
-      <Card title="Audit Log">
+      <Card title="Audit Log" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }} styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
         <div style={{ marginBottom: 16 }}>
           <Input.Search
             placeholder="Search by user, action, or details..."

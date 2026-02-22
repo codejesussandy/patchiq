@@ -51,6 +51,7 @@ export const assetTabItems: MenuItem[] = [
   { key: 'software-inventory', icon: <FileTextOutlined />, label: 'Software Inventory' },
   { key: 'software-license', icon: <DesktopOutlined />, label: 'Software Licenses' },
   { key: 'software-hub', icon: <AppstoreOutlined />, label: 'Software Hub' },
+  { key: 'software-jobs', icon: <SafetyOutlined />, label: 'Software Jobs' },
 ];
 
 export const osCategories: MenuItem[] = [
@@ -199,6 +200,7 @@ export const assetTabRoutes: Record<string, string> = {
   'software-inventory': '/assets/software-inventory',
   'software-license': '/assets/software-license',
   'software-hub': '/assets/hub',
+  'software-jobs': '/assets/software-jobs',
 };
 
 /** Patch tab → route mapping */

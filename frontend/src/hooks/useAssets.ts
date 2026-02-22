@@ -62,10 +62,11 @@ export const tagKeys = {
 // Asset Queries
 // ============================================
 
-export function useAssets() {
+export function useAssets(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: assetKeys.lists(),
     queryFn: () => assetService.getAssets(),
+    enabled: options?.enabled,
   });
 }
 

@@ -17,7 +17,7 @@ import { useAgentVersions } from '../../hooks/useAgents';
 import { agentService } from '../../services/agent.service';
 import type { AgentVersion } from '../../types/agent.types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface PlatformIconProps {
   platform: string;
@@ -178,8 +178,9 @@ export const AgentVersions = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}>
-        <Title level={2}>Agent Versions</Title>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Agent Versions</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Manage agent software versions</Text>
       </div>
 
       <DataTable

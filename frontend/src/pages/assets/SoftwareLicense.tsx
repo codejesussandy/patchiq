@@ -31,7 +31,7 @@ import { useModal } from '../../hooks/useModal';
 import type { SoftwareLicense as SoftwareLicenseType, OSLicense } from '../../types/asset.types';
 import { LicenseFormModal } from './components/LicenseFormModal';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 type LicenseTab = 'software' | 'os';
@@ -73,22 +73,13 @@ export const SoftwareLicense = () => {
   }, [activeTab]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const transformLicenseValues = (values: Record<string, unknown>) => ({
-    ...values,
-    licenseCount: values.licenseCount !== undefined && values.licenseCount !== '' ? parseInt(String(values.licenseCount), 10) : undefined,
-    cost: values.cost !== undefined && values.cost !== '' ? parseFloat(String(values.cost)) : undefined,
-    purchaseDate: values.purchaseDate ? (values.purchaseDate as { toISOString?: () => string }).toISOString?.() ?? values.purchaseDate : undefined,
-    expiryDate: values.expiryDate ? (values.expiryDate as { toISOString?: () => string }).toISOString?.() ?? values.expiryDate : undefined,
-  });
-
   const handleAddLicense = async () => {
     try {
       const values = await form.validateFields();
-      const payload = transformLicenseValues(values);
       if (activeTab === 'software') {
-        await createSwLicenseMutation.mutateAsync(payload);
+        await createSwLicenseMutation.mutateAsync(values);
       } else {
-        await createOsLicenseMutation.mutateAsync(payload);
+        await createOsLicenseMutation.mutateAsync(values);
       }
       message.success('License added successfully');
       setModalVisible(false);
@@ -111,11 +102,10 @@ export const SoftwareLicense = () => {
   const handleEditSubmit = async () => {
     try {
       const values = await editForm.validateFields();
-      const payload = transformLicenseValues(values);
       if (activeTab === 'software') {
-        await updateSwLicenseMutation.mutateAsync({ id: licenseToEdit!.id, data: payload });
+        await updateSwLicenseMutation.mutateAsync({ id: licenseToEdit!.id, data: values });
       } else {
-        await updateOsLicenseMutation.mutateAsync({ id: licenseToEdit!.id, data: payload });
+        await updateOsLicenseMutation.mutateAsync({ id: licenseToEdit!.id, data: values });
       }
       message.success('License updated successfully');
       setEditModalVisible(false);
@@ -215,7 +205,10 @@ export const SoftwareLicense = () => {
   return (
     <div>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>Software Licenses</Title>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Software Licenses</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Manage and monitor software license compliance</Text>
+        </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>
           New License
         </Button>

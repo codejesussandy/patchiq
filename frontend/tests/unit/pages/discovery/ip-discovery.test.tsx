@@ -53,7 +53,7 @@ describe('IPDiscovery', () => {
 
   it('renders column headers', () => {
     render(<IPDiscovery />);
-    expect(screen.getByText('IP Range')).toBeInTheDocument();
-    expect(screen.getByText('Devices Found')).toBeInTheDocument();
+    expect(screen.getAllByText('IP Range')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Devices Found')[0]).toBeInTheDocument();
   });
 });

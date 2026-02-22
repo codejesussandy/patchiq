@@ -49,7 +49,7 @@ export const TelemetryCharts = ({ history }: TelemetryChartsProps) => {
     <>
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col span={12}>
-          <Card title={<Space><DashboardOutlined /><span>CPU History (24h)</span></Space>} size="small">
+          <Card title={<Space><DashboardOutlined /><span>CPU History (24h)</span></Space>} size="small" styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
             {cpuChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={cpuChartData}>
@@ -66,7 +66,7 @@ export const TelemetryCharts = ({ history }: TelemetryChartsProps) => {
           </Card>
         </Col>
         <Col span={12}>
-          <Card title={<Space><HddOutlined /><span>Memory History (24h)</span></Space>} size="small">
+          <Card title={<Space><HddOutlined /><span>Memory History (24h)</span></Space>} size="small" styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
             {memoryChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={memoryChartData}>
@@ -85,7 +85,7 @@ export const TelemetryCharts = ({ history }: TelemetryChartsProps) => {
       </Row>
 
       {networkChartData.length > 0 && (
-        <Card title={<Space><WifiOutlined /><span>Network I/O History (24h)</span></Space>} size="small" style={{ marginBottom: 24 }}>
+        <Card title={<Space><WifiOutlined /><span>Network I/O History (24h)</span></Space>} size="small" style={{ marginBottom: 24 }} styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={networkChartData}>
               <CartesianGrid strokeDasharray="3 3" />

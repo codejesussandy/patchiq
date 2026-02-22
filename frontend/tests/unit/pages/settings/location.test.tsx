@@ -10,6 +10,6 @@ describe('BranchLocation', () => {
 
   it('renders coming soon message', () => {
     render(<BranchLocation />);
-    expect(screen.getByText(/new pages will be added here soon/i)).toBeInTheDocument();
+    expect(screen.getByText(/configure branch office locations/i)).toBeInTheDocument();
   });
 });

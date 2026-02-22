@@ -1,14 +1,14 @@
-import { useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SearchOutlined, MenuOutlined } from '@ant-design/icons';
-import { Layout, Menu, Input, Avatar, Button, Tooltip, Popover } from 'antd';
+import { Layout, Menu, Avatar, Button, Tooltip, Popover } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { SparklesIcon } from '../chat/SparklesIcon';
 import { Logo } from '../Logo';
 import { NotificationDropdown } from '../NotificationDropdown';
+import { GlobalSearchModal } from './GlobalSearchDropdown';
 import { topMenuItems } from './menuConfig';
 import { ProfileMenu } from './ProfileMenu';
-import { useBrandingSettings } from '../../hooks/useSettings';
 
 const { Header } = Layout;
 
@@ -42,10 +42,20 @@ export const HeaderBar = ({
 }: HeaderBarProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: branding } = useBrandingSettings();
   const [profileOpen, setProfileOpen] = useState(false);
-  const [searchExpanded, setSearchExpanded] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Ctrl+K / Cmd+K shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const getUserInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -73,199 +83,158 @@ export const HeaderBar = ({
   };
 
   return (
-    <Header
-      role="banner"
-      style={{
-        position: 'fixed',
-        top: 0,
-        zIndex: 1000,
-        width: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 24px',
-        background: '#fff',
-        borderBottom: '1px solid #f0f0f0',
-        height: '60px',
-      }}
-    >
-      {showMobileMenu && (
-        <Button
-          type="text"
-          icon={<MenuOutlined style={{ fontSize: 20 }} />}
-          onClick={onMobileMenuToggle}
-          aria-label="Open navigation menu"
-          style={{
-            marginRight: 12,
-            width: 40,
-            height: 40,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        />
-      )}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        marginRight: '32px',
-        flexShrink: 0,
-        minWidth: 150,
-      }}>
-        <Logo size="medium" />
-        <span style={{ fontWeight: 600, fontSize: '16px', color: '#000', whiteSpace: 'nowrap' }}>
-          {(branding?.companyName as string) || 'PatchIQ'}
-        </span>
-      </div>
-
-      <Menu
-        mode="horizontal"
-        selectedKeys={selectedTopMenu}
-        items={topMenuItems}
-        onClick={({ key }) => navigate(key)}
+    <>
+      <Header
+        role="banner"
         style={{
-          flex: 1,
-          minWidth: 400,
-          border: 'none',
-          background: 'transparent',
-          lineHeight: '60px',
+          position: 'fixed',
+          top: 0,
+          zIndex: 1000,
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 24px',
+          background: '#fff',
+          borderBottom: '1px solid #f0f0f0',
+          height: '60px',
         }}
-      />
-
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '20px',
-        flexShrink: 0,
-      }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'hidden',
-            width: searchExpanded ? 240 : 32,
-            height: 32,
-            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.3s ease, border-color 0.3s ease, background 0.3s ease',
-            borderRadius: searchExpanded ? 6 : 16,
-            border: searchExpanded ? '1px solid #d9d9d9' : '1px solid transparent',
-            background: searchExpanded ? '#fff' : 'transparent',
-            cursor: 'pointer',
-            position: 'relative',
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label="Search"
-          onClick={() => {
-            if (!searchExpanded) {
-              setSearchExpanded(true);
-              setTimeout(() => searchInputRef.current?.focus(), 50);
-            }
-          }}
-          onKeyDown={(e) => {
-            if ((e.key === 'Enter' || e.key === ' ') && !searchExpanded) {
-              e.preventDefault();
-              setSearchExpanded(true);
-              setTimeout(() => searchInputRef.current?.focus(), 50);
-            }
-          }}
-        >
-          <SearchOutlined
-            style={{
-              fontSize: 18,
-              color: '#595959',
-              position: 'absolute',
-              opacity: searchExpanded ? 0 : 1,
-              transition: 'opacity 0.2s ease',
-              pointerEvents: 'none',
-            }}
-          />
-          <Input
-            ref={searchInputRef}
-            placeholder="Search..."
-            prefix={<SearchOutlined style={{ color: '#8c8c8c', fontSize: 14 }} />}
-            variant="borderless"
-            style={{
-              width: '100%',
-              opacity: searchExpanded ? 1 : 0,
-              transition: 'opacity 0.2s ease 0.1s',
-            }}
-            onBlur={(e) => {
-              if (!e.target.value) setSearchExpanded(false);
-            }}
-            onPressEnter={(e) => {
-              if (!(e.target as HTMLInputElement).value) setSearchExpanded(false);
-            }}
-          />
-        </div>
-        <NotificationDropdown />
-        <Tooltip title="AI Assistant">
+      >
+        {showMobileMenu && (
           <Button
             type="text"
-            icon={<SparklesIcon style={{ fontSize: 18, color: chatOpen ? '#1677ff' : '#595959' }} />}
-            onClick={onToggleChat}
-            aria-label="Toggle AI Assistant"
+            icon={<MenuOutlined style={{ fontSize: 20 }} />}
+            onClick={onMobileMenuToggle}
+            aria-label="Open navigation menu"
             style={{
-              width: 32,
-              height: 32,
+              marginRight: 12,
+              width: 40,
+              height: 40,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: 8,
-              background: chatOpen ? '#e6f4ff' : 'transparent',
             }}
           />
-        </Tooltip>
-        <Popover
-          content={
-            <ProfileMenu
-              organizations={organizations}
-              selectedOrgId={selectedOrgId}
-              onOrgSwitch={onOrgSwitch}
-              onClose={() => setProfileOpen(false)}
+        )}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginRight: '32px',
+          flexShrink: 0,
+          minWidth: 150,
+        }}>
+          <Logo size="medium" />
+          <span style={{ fontWeight: 600, fontSize: '16px', color: '#000', whiteSpace: 'nowrap' }}>Patch Manager</span>
+        </div>
+
+        <Menu
+          mode="horizontal"
+          selectedKeys={selectedTopMenu}
+          items={topMenuItems}
+          onClick={({ key }) => navigate(key)}
+          style={{
+            flex: 1,
+            minWidth: 400,
+            border: 'none',
+            background: 'transparent',
+            lineHeight: '60px',
+          }}
+        />
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '20px',
+          flexShrink: 0,
+        }}>
+          <Tooltip title="Search (Ctrl+K)">
+            <Button
+              type="text"
+              icon={<SearchOutlined style={{ fontSize: 18, color: '#595959' }} />}
+              onClick={() => setSearchOpen(true)}
+              aria-label="Search"
+              style={{
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 8,
+              }}
             />
-          }
-          trigger="click"
-          open={profileOpen}
-          onOpenChange={setProfileOpen}
-          placement="bottomRight"
-          arrow={false}
-          styles={{ container: { padding: '12px 12px 8px' } }}
-        >
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="User profile menu"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              cursor: 'pointer',
-              padding: '4px 8px',
-              borderRadius: 8,
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f5'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+          </Tooltip>
+
+          <NotificationDropdown />
+          <Tooltip title="AI Assistant">
+            <Button
+              type="text"
+              icon={<SparklesIcon style={{ fontSize: 18, color: chatOpen ? '#1677ff' : '#595959' }} />}
+              onClick={onToggleChat}
+              aria-label="Toggle AI Assistant"
+              style={{
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 8,
+                background: chatOpen ? '#e6f4ff' : 'transparent',
+              }}
+            />
+          </Tooltip>
+          <Popover
+            content={
+              <ProfileMenu
+                organizations={organizations}
+                selectedOrgId={selectedOrgId}
+                onOrgSwitch={onOrgSwitch}
+                onClose={() => setProfileOpen(false)}
+              />
+            }
+            trigger="click"
+            open={profileOpen}
+            onOpenChange={setProfileOpen}
+            placement="bottomRight"
+            arrow={false}
+            styles={{ container: { padding: '12px 12px 8px' } }}
           >
-            <Avatar
-              size={32}
-              style={{ backgroundColor: '#1677ff', fontSize: '13px', fontWeight: 600, flexShrink: 0 }}
-              src={user?.avatar || undefined}
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="User profile menu"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: 8,
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f5'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
-              {getUserInitials()}
-            </Avatar>
-            <div style={{ lineHeight: 1.2, maxWidth: 120, overflow: 'hidden' }}>
-              <div style={{ fontSize: '13px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {getUserDisplayName()}
-              </div>
-              <div style={{ fontSize: '11px', color: '#8c8c8c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {getSelectedOrgName()}
+              <Avatar
+                size={32}
+                style={{ backgroundColor: '#1677ff', fontSize: '13px', fontWeight: 600, flexShrink: 0 }}
+                src={user?.avatar || undefined}
+              >
+                {getUserInitials()}
+              </Avatar>
+              <div style={{ lineHeight: 1.2, maxWidth: 120, overflow: 'hidden' }}>
+                <div style={{ fontSize: '13px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {getUserDisplayName()}
+                </div>
+                <div style={{ fontSize: '11px', color: '#8c8c8c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {getSelectedOrgName()}
+                </div>
               </div>
             </div>
-          </div>
-        </Popover>
-      </div>
-    </Header>
+          </Popover>
+        </div>
+      </Header>
+
+      <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+    </>
   );
 };

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { SearchOutlined, PlusOutlined, MoreOutlined, CheckOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
-import { App, Input, Button, Dropdown, Space, Typography, Modal, Tag, Empty, Form, Select } from 'antd';
+import { App, Input, Button, Dropdown, Space, Typography, Modal, Tag, Empty, Form } from 'antd';
 import type { MenuProps } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ConfirmModal } from '../../components/shared/ConfirmModal';
@@ -23,7 +23,6 @@ export const PatchTestApprove = () => {
   const deleteTestMutation = useDeletePatchTest();
   const deleteModal = useModal<PatchTest>();
   const [searchText, setSearchText] = useState('');
-  const [platformFilter, setPlatformFilter] = useState<string>('ALL');
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [form] = Form.useForm();
   const [viewModalVisible, setViewModalVisible] = useState(false);
@@ -65,7 +64,6 @@ export const PatchTestApprove = () => {
   const columns: ColumnsType<PatchTest> = [
     { title: 'Name', dataIndex: 'name', key: 'name', sorter: (a, b) => a.name.localeCompare(b.name) },
     { title: 'Description', dataIndex: 'description', key: 'description' },
-    { title: 'Platform', dataIndex: 'platform', key: 'platform', render: (p: string) => <Tag color="purple">{p || 'ALL'}</Tag> },
     { title: 'Application Type', dataIndex: 'applicationType', key: 'applicationType', render: (type: string) => <Tag color="blue">{type}</Tag> },
     { title: 'Scope', dataIndex: 'scope', key: 'scope', render: (scope: string) => <Tag color="green">{scope.replace(/_/g, ' ')}</Tag> },
     { title: 'Status', dataIndex: 'status', key: 'status', render: (status: string) => {
@@ -78,14 +76,14 @@ export const PatchTestApprove = () => {
       <Dropdown menu={{ items: getActionMenuItems(record) }} trigger={['click']}><Button type="text" icon={<MoreOutlined />} /></Dropdown>) },
   ];
 
-  const filteredTests = tests.filter((test) =>
-    test.name.toLowerCase().includes(searchText.toLowerCase()) &&
-    (platformFilter === 'ALL' || test.platform === platformFilter)
-  );
+  const filteredTests = tests.filter((test) => test.name.toLowerCase().includes(searchText.toLowerCase()));
 
   const header = (
     <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <Title level={3} style={{ margin: 0 }}>Patch Test and Approve</Title>
+      <div>
+        <Title level={3} style={{ margin: 0 }}>Patch Test and Approve</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Review and approve patches before deployment</Text>
+      </div>
       <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>Create</Button>
     </div>
   );
@@ -123,15 +121,8 @@ export const PatchTestApprove = () => {
   return (
     <div>
       {header}
-      <div style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
+      <div style={{ marginBottom: '16px' }}>
         <Input placeholder="Search tests" prefix={<SearchOutlined />} style={{ width: 320 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-        <Select value={platformFilter} onChange={setPlatformFilter} style={{ width: 180 }}>
-          <Select.Option value="ALL">All Platforms</Select.Option>
-          <Select.Option value="WINDOWS">Windows</Select.Option>
-          <Select.Option value="MACOS">MacOS</Select.Option>
-          <Select.Option value="UBUNTU">Ubuntu</Select.Option>
-          <Select.Option value="LINUX">Linux</Select.Option>
-        </Select>
       </div>
       <DataTable columns={columns} data={filteredTests} rowKey="id" loading={loading}
         pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total) => `Total ${total} tests found` }}

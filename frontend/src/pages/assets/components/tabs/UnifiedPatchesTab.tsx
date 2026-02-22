@@ -175,13 +175,13 @@ export const UnifiedPatchesTab = ({ assetId, agentId, patchSummary: initialSumma
       children: (
         <div>
           <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col span={6}><Card style={{ textAlign: 'center' }}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Total Recommendations</Text><div style={{ fontSize: 24, fontWeight: 700, color: '#1890ff' }}>{recommendations.length}</div></Card></Col>
-            <Col span={4.5}><Card style={{ textAlign: 'center' }}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Critical</Text><div style={{ fontSize: 24, fontWeight: 700, color: '#ff4d4f' }}>{criticalRecs}</div></Card></Col>
-            <Col span={4.5}><Card style={{ textAlign: 'center' }}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>High</Text><div style={{ fontSize: 24, fontWeight: 700, color: '#fa8c16' }}>{highRecs}</div></Card></Col>
-            <Col span={4.5}><Card style={{ textAlign: 'center' }}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Medium</Text><div style={{ fontSize: 24, fontWeight: 700, color: '#faad14' }}>{mediumRecs}</div></Card></Col>
-            <Col span={4.5}><Card style={{ textAlign: 'center' }}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Low</Text><div style={{ fontSize: 24, fontWeight: 700, color: '#52c41a' }}>{lowRecs}</div></Card></Col>
+            <Col span={6}><Card style={{ textAlign: 'center', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Total Recommendations</Text><div style={{ fontSize: 24, fontWeight: 700, color: '#1890ff' }}>{recommendations.length}</div></Card></Col>
+            <Col span={4.5}><Card style={{ textAlign: 'center', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Critical</Text><div style={{ fontSize: 24, fontWeight: 700, color: '#ff4d4f' }}>{criticalRecs}</div></Card></Col>
+            <Col span={4.5}><Card style={{ textAlign: 'center', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>High</Text><div style={{ fontSize: 24, fontWeight: 700, color: '#fa8c16' }}>{highRecs}</div></Card></Col>
+            <Col span={4.5}><Card style={{ textAlign: 'center', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Medium</Text><div style={{ fontSize: 24, fontWeight: 700, color: '#faad14' }}>{mediumRecs}</div></Card></Col>
+            <Col span={4.5}><Card style={{ textAlign: 'center', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}><Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Low</Text><div style={{ fontSize: 24, fontWeight: 700, color: '#52c41a' }}>{lowRecs}</div></Card></Col>
           </Row>
-          <Card title="CVE-Based Patch Recommendations" extra={<Button icon={<ReloadOutlined />} onClick={() => { void fetchRecommendations(); }} loading={recommendationsLoading} size="small">Refresh</Button>}>
+          <Card title="CVE-Based Patch Recommendations" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }} styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }} extra={<Button icon={<ReloadOutlined />} onClick={() => { void fetchRecommendations(); }} loading={recommendationsLoading} size="small">Refresh</Button>}>
             {recommendationsLoading ? <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>
               : recommendations.length > 0 ? <DataTable data={recommendations} columns={recommendationColumns} rowKey="id" pagination={{ pageSize: 20 }} scroll={{ x: 'max-content' }} size="small" />
               : <Empty description="No patch recommendations for this asset" />}
@@ -193,7 +193,7 @@ export const UnifiedPatchesTab = ({ assetId, agentId, patchSummary: initialSumma
       key: 'all-patches',
       label: <span><SafetyOutlined /> All Patches ({patches.length})</span>,
       children: (
-        <Card title={<Space><SafetyOutlined /><span>All Patches ({patches.length})</span></Space>} size="small"
+        <Card title={<Space><SafetyOutlined /><span>All Patches ({patches.length})</span></Space>} size="small" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }} styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}
           extra={missingPatches.length > 0 && (
             <Button type="primary" icon={<DeploymentUnitOutlined />} disabled={!agentId || deploying} loading={deploying}
               title={!agentId ? 'No agent connected to this asset' : undefined}
@@ -213,14 +213,14 @@ export const UnifiedPatchesTab = ({ assetId, agentId, patchSummary: initialSumma
       children: (
         <Row gutter={[16, 16]}>
           <Col span={12}>
-            <Card title={<Space><HistoryOutlined /><span>Recent Deployments</span></Space>} size="small">
+            <Card title={<Space><HistoryOutlined /><span>Recent Deployments</span></Space>} size="small" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }} styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
               {deployments.length > 0
                 ? <DataTable columns={deploymentColumns} data={deployments} rowKey="id" pagination={{ pageSize: 10 }} size="small" />
                 : <Empty description="No deployment history" />}
             </Card>
           </Col>
           <Col span={12}>
-            <Card title={<Space><ClockCircleOutlined /><span>Deployment Timeline</span></Space>} size="small">
+            <Card title={<Space><ClockCircleOutlined /><span>Deployment Timeline</span></Space>} size="small" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }} styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
               {deployments.length > 0 ? (
                 <Timeline style={{ marginTop: 16, maxHeight: 400, overflowY: 'auto' }}
                   items={deployments.slice(0, 10).map((deployment) => ({

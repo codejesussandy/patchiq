@@ -8,6 +8,7 @@ const AssetDetails = lazy(() => import('../pages/assets/components/AssetDetails'
 const SoftwareInventory = lazy(() => import('../pages/assets/SoftwareInventory').then(m => ({ default: m.SoftwareInventory })));
 const SoftwareLicense = lazy(() => import('../pages/assets/SoftwareLicense').then(m => ({ default: m.SoftwareLicense })));
 const Hub = lazy(() => import('../pages/hub/Hub').then(m => ({ default: m.Hub })));
+const SoftwareJobsDeployed = lazy(() => import('../pages/jobs/SoftwareJobsDeployed').then(m => ({ default: m.SoftwareJobsDeployed })));
 
 export const assetsRoutes = (
   <>
@@ -16,8 +17,9 @@ export const assetsRoutes = (
     <Route path="/assets/software-inventory" element={<ProtectedRoute><MainLayout><SoftwareInventory /></MainLayout></ProtectedRoute>} />
     <Route path="/assets/software-license" element={<ProtectedRoute><MainLayout><SoftwareLicense /></MainLayout></ProtectedRoute>} />
     <Route path="/assets/hub" element={<ProtectedRoute><MainLayout><Hub /></MainLayout></ProtectedRoute>} />
+    <Route path="/assets/software-jobs" element={<ProtectedRoute><MainLayout><SoftwareJobsDeployed /></MainLayout></ProtectedRoute>} />
     <Route path="/hub" element={<Navigate to="/assets/hub" replace />} />
-    <Route path="/jobs/software-jobs/*" element={<Navigate to="/hub" replace />} />
-    <Route path="/jobs" element={<Navigate to="/hub" replace />} />
+    <Route path="/jobs/software-jobs/*" element={<Navigate to="/assets/software-jobs" replace />} />
+    <Route path="/jobs" element={<Navigate to="/assets/software-jobs" replace />} />
   </>
 );

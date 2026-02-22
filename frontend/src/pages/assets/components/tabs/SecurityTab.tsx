@@ -62,7 +62,8 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
         <Card
           title={<Space><LockOutlined /><span>Drive Encryption</span></Space>}
           size="small"
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 16, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}
+          styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}
           extra={
             security.encryption.tpmEnabled !== undefined && (
               <Space>
@@ -88,7 +89,8 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
         <Card
           title={<Space><SafetyOutlined /><span>Firewall Status</span></Space>}
           size="small"
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 16, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}
+          styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}
           extra={
             <Space>
               {security.firewall.stealthModeEnabled && <Tag color="blue">Stealth Mode</Tag>}
@@ -123,7 +125,8 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
         <Card
           title={<Space><SecurityScanOutlined /><span>Antivirus & XDR</span></Space>}
           size="small"
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 16, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}
+          styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}
           extra={security.antivirus.xdrInstalled && <Tag color="blue">{security.antivirus.xdrProductName || 'XDR Installed'}</Tag>}
         >
           {security.antivirus.products && security.antivirus.products.length > 0 ? (
@@ -139,7 +142,8 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
         <Card
           title={<Space><UserOutlined /><span>Local User Accounts</span></Space>}
           size="small"
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 16, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}
+          styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}
           extra={
             <Space>
               {security.userAccounts.localAdminCount !== undefined && (
@@ -165,7 +169,8 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
         <Card
           title={<Space><WarningOutlined /><span>Patch Compliance</span></Space>}
           size="small"
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 16, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}
+          styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}
           extra={
             <Space>
               {security.patchStatus.pendingReboot && <Tag color="warning">Pending Reboot</Tag>}
@@ -179,25 +184,25 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
         >
           <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
             <Col span={6}>
-              <Card size="small" style={{ textAlign: 'center', background: '#fff1f0', border: 'none' }}>
+              <Card size="small" style={{ textAlign: 'center', background: '#fff1f0', border: '1px solid #fde8e8', borderRadius: 6 }}>
                 <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff4d4f' }}>{security.patchStatus.criticalUpdates ?? 0}</div>
                 <Text type="secondary">Critical</Text>
               </Card>
             </Col>
             <Col span={6}>
-              <Card size="small" style={{ textAlign: 'center', background: '#fff7e6', border: 'none' }}>
+              <Card size="small" style={{ textAlign: 'center', background: '#fff7e6', border: '1px solid #fde8c8', borderRadius: 6 }}>
                 <div style={{ fontSize: 24, fontWeight: 'bold', color: '#fa8c16' }}>{security.patchStatus.securityUpdates ?? 0}</div>
                 <Text type="secondary">Security</Text>
               </Card>
             </Col>
             <Col span={6}>
-              <Card size="small" style={{ textAlign: 'center', background: '#e6f7ff', border: 'none' }}>
+              <Card size="small" style={{ textAlign: 'center', background: '#e6f7ff', border: '1px solid #d0e8ff', borderRadius: 6 }}>
                 <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1890ff' }}>{security.patchStatus.otherUpdates ?? 0}</div>
                 <Text type="secondary">Other</Text>
               </Card>
             </Col>
             <Col span={6}>
-              <Card size="small" style={{ textAlign: 'center', background: '#f6ffed', border: 'none' }}>
+              <Card size="small" style={{ textAlign: 'center', background: '#f6ffed', border: '1px solid #d9f0d0', borderRadius: 6 }}>
                 <div style={{ fontSize: 24, fontWeight: 'bold', color: '#52c41a' }}>{security.patchStatus.pendingUpdates ?? 0}</div>
                 <Text type="secondary">Pending</Text>
               </Card>
@@ -223,7 +228,7 @@ export const SecurityTab = ({ assetId }: SecurityTabProps) => {
       )}
 
       {/* Additional Security Settings */}
-      <Card title="Additional Security Settings" size="small">
+      <Card title="Additional Security Settings" size="small" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }} styles={{ header: { backgroundColor: '#eef0f4', borderBottom: '1px solid #e5e7eb' } }}>
         <Row gutter={[16, 16]}>
           {security.screenLockEnabled !== undefined && (
             <Col span={6}>

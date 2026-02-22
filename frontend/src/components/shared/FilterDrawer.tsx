@@ -31,7 +31,7 @@ export function FilterDrawer({
       title={drawerTitle}
       open={open}
       onClose={onClose}
-      width={360}
+      styles={{ wrapper: { width: 360 } }}
       footer={
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <Button onClick={onReset}>Reset</Button>

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import {
   WindowsOutlined,
+  AppleOutlined,
   ReloadOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
@@ -8,26 +9,131 @@ import {
   App,
   Tag,
   Button,
-  Space,
-  Typography,
-  Row,
-  Col,
-  Card,
   Progress,
   Upload,
   Spin,
-  Divider,
   Switch,
   Tooltip,
+  Input,
+  Select,
+  DatePicker,
 } from 'antd';
 import type { UploadFile } from 'antd';
-import { useAssetHardware, useAssetTelemetry, useRefreshAssetInventory } from '../../../../hooks/useAssets';
+import dayjs from 'dayjs';
+import { useAssetHardware, useAssetTelemetry, useRefreshAssetInventory, useUpdateAsset } from '../../../../hooks/useAssets';
 import type { Asset } from '../../../../types/asset.types';
 import TagDisplay from '../TagDisplay';
 import TagSelector from '../TagSelector';
 
-const { Title, Text } = Typography;
 const TELEMETRY_POLL_INTERVAL = 30_000;
+
+/* ── Shared shadcn-inspired styles ─────────────────────────── */
+
+const cardStyle: CSSProperties = {
+  border: '1px solid #e5e7eb',
+  borderRadius: 8,
+  backgroundColor: '#fff',
+  marginBottom: 16,
+  overflow: 'hidden',
+};
+
+const cardHeaderStyle: CSSProperties = {
+  padding: '12px 16px',
+  borderBottom: '1px solid #e5e7eb',
+  backgroundColor: '#eef0f4',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+};
+
+const cardTitleStyle: CSSProperties = {
+  fontSize: 14,
+  fontWeight: 600,
+  color: '#111827',
+  margin: 0,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+};
+
+const cardBodyStyle: CSSProperties = {
+  padding: 16,
+};
+
+const labelStyle: CSSProperties = {
+  fontSize: 12,
+  color: '#6b7280',
+  fontWeight: 500,
+  marginBottom: 2,
+  letterSpacing: '0.01em',
+};
+
+const valueStyle: CSSProperties = {
+  fontSize: 13,
+  color: '#111827',
+  fontWeight: 500,
+};
+
+const monoValueStyle: CSSProperties = {
+  ...valueStyle,
+  fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
+  fontSize: 12,
+};
+
+const gridStyle = (cols: number): CSSProperties => ({
+  display: 'grid',
+  gridTemplateColumns: `repeat(${cols}, 1fr)`,
+  gap: '14px 20px',
+});
+
+/* ── OS icon helpers ──────────────────────────────────────── */
+
+function getOSIconStyle(osType?: string): { bg: string; color: string } {
+  const os = (osType || '').toLowerCase();
+  if (os.includes('mac') || os.includes('darwin') || os.includes('apple')) return { bg: '#f5f5f5', color: '#333' };
+  if (os.includes('linux') || os.includes('ubuntu') || os.includes('debian') || os.includes('centos') || os.includes('fedora') || os.includes('rhel')) return { bg: '#fef0ea', color: '#E95420' };
+  return { bg: '#eff6ff', color: '#3b82f6' }; // Windows / default
+}
+
+function getOSIcon(osType?: string) {
+  const os = (osType || '').toLowerCase();
+  const { color } = getOSIconStyle(osType);
+  if (os.includes('mac') || os.includes('darwin') || os.includes('apple')) {
+    return <AppleOutlined style={{ fontSize: 24, color }} />;
+  }
+  if (os.includes('linux') || os.includes('ubuntu') || os.includes('debian') || os.includes('centos') || os.includes('fedora') || os.includes('rhel')) {
+    return <span style={{ fontSize: 22, lineHeight: 1 }}>🐧</span>;
+  }
+  return <WindowsOutlined style={{ fontSize: 24, color }} />;
+}
+
+/* ── Small reusable pieces ─────────────────────────────────── */
+
+const SectionCard = ({ title, extra, children }: { title: ReactNode; extra?: ReactNode; children: ReactNode }) => (
+  <div style={cardStyle}>
+    <div style={cardHeaderStyle}>
+      <div style={cardTitleStyle}>{title}</div>
+      {extra && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{extra}</div>}
+    </div>
+    <div style={cardBodyStyle}>{children}</div>
+  </div>
+);
+
+const Field = ({ label, value, mono }: { label: string; value: ReactNode; mono?: boolean }) => (
+  <div>
+    <div style={labelStyle}>{label}</div>
+    <div style={mono ? monoValueStyle : valueStyle}>{value || 'N/A'}</div>
+  </div>
+);
+
+const StatusDot = ({ connected }: { connected: boolean }) => (
+  <span style={{
+    width: 8, height: 8, borderRadius: '50%', display: 'inline-block',
+    backgroundColor: connected ? '#22c55e' : '#ef4444',
+  }} />
+);
+
+/* ── Component ─────────────────────────────────────────────── */
 
 interface DetailsTabProps {
   asset: Asset;
@@ -47,6 +153,18 @@ export const DetailsTab = ({
   const [locatingAsset, setLocatingAsset] = useState(false);
   const [refreshingInventory, setRefreshingInventory] = useState(false);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [editingCost, setEditingCost] = useState(false);
+  const [costForm, setCostForm] = useState({
+    cost: asset.cost?.cost || '',
+    currency: asset.cost?.currency || '',
+    currentCost: asset.cost?.currentCost || '',
+    depreciationType: asset.cost?.depreciationType || '',
+    invoiceNumber: asset.cost?.invoiceNumber || '',
+    purchaseDate: asset.cost?.purchaseDate || '',
+    salvageValue: asset.cost?.salvageValue || '',
+  });
+  const [savingCost, setSavingCost] = useState(false);
+  const updateAssetMutation = useUpdateAsset();
 
   const { data: hardware } = useAssetHardware(asset.id);
   const { data: telemetry, isLoading: loadingTelemetry, dataUpdatedAt: telemetryUpdatedAt, refetch: refetchTelemetry } = useAssetTelemetry(asset.id, {
@@ -91,200 +209,399 @@ export const DetailsTab = ({
     }
   };
 
+  const handleSaveCost = async () => {
+    setSavingCost(true);
+    try {
+      await updateAssetMutation.mutateAsync({
+        id: asset.id,
+        data: {
+          purchaseCost: costForm.cost && !isNaN(parseFloat(costForm.cost)) ? parseFloat(costForm.cost) : null,
+          currentValue: costForm.currentCost && !isNaN(parseFloat(costForm.currentCost)) ? parseFloat(costForm.currentCost) : null,
+          salvageValue: costForm.salvageValue && !isNaN(parseFloat(costForm.salvageValue)) ? parseFloat(costForm.salvageValue) : null,
+          currency: costForm.currency || null,
+          depreciationType: costForm.depreciationType || null,
+          invoiceNumber: costForm.invoiceNumber || null,
+          purchaseDate: costForm.purchaseDate || null,
+        } as Partial<Asset>,
+      });
+      message.success('Cost properties updated successfully');
+      setEditingCost(false);
+    } catch {
+      message.error('Failed to update cost properties');
+    } finally {
+      setSavingCost(false);
+    }
+  };
+
+  const handleCancelCost = () => {
+    setCostForm({
+      cost: asset.cost?.cost || '',
+      currency: asset.cost?.currency || '',
+      currentCost: asset.cost?.currentCost || '',
+      depreciationType: asset.cost?.depreciationType || '',
+      invoiceNumber: asset.cost?.invoiceNumber || '',
+      purchaseDate: asset.cost?.purchaseDate || '',
+      salvageValue: asset.cost?.salvageValue || '',
+    });
+    setEditingCost(false);
+  };
+
+  const formatUptime = () => {
+    if (telemetry?.systemUptime?.uptimeHuman) return telemetry.systemUptime.uptimeHuman;
+    if (telemetry?.systemUptime?.uptimeSeconds) {
+      const s = telemetry.systemUptime.uptimeSeconds;
+      const d = Math.floor(s / 86400);
+      const h = Math.floor((s % 86400) / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
+      return `${d}d ${h}h ${m}m ${sec}s`;
+    }
+    return asset.performance?.systemUptime ?? 'N/A';
+  };
+
+  const getProgressStatus = (pct: number) => pct > 90 ? 'exception' as const : pct > 70 ? 'active' as const : 'normal' as const;
+
+  const memPct = telemetry?.memory?.usagePercent ?? asset.performance?.memoryUtilization ?? 0;
+  const cpuPct = telemetry?.cpu?.usagePercent ?? asset.performance?.cpuUtilization ?? 0;
+  const diskPct = telemetry?.disk?.drives?.[0]?.usagePercent ?? asset.performance?.diskUtilization ?? 0;
+
+  const diskSize = asset.diskSize || asset.storage?.size || (hardware?.storage?.[0] ? (() => {
+    const mainDrive = hardware.storage.find(d => d.mountPoint === '/' || d.mountPoint === '/System/Volumes/Data' || d.name?.toLowerCase().includes('macintosh')) || hardware.storage[0];
+    const capacity = parseFloat(mainDrive?.capacity || '0');
+    return capacity >= 1000 ? `${(capacity / 1024).toFixed(1)}TB` : `${Math.round(capacity)}GB`;
+  })() : 'N/A');
+
+  const memSize = asset.memorySize || asset.ram?.size || (hardware?.memory?.length
+    ? `${hardware.memory.reduce((acc, m) => acc + parseFloat(m.capacity || '0'), 0).toFixed(0)} GB`
+    : (telemetry?.memory?.totalBytes ? `${(telemetry.memory.totalBytes / (1024 * 1024 * 1024)).toFixed(0)} GB` : 'N/A'));
+
+  const btnSmall: CSSProperties = {
+    borderRadius: 6, border: '1px solid #e5e7eb', color: '#374151',
+    fontSize: 12, fontWeight: 500, height: 28, boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)',
+  };
+
   return (
     <div>
-      {/* Asset Header */}
-      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
-        <WindowsOutlined style={{ fontSize: 48, color: '#1890ff' }} />
+      {/* Asset Identity Header */}
+      <div style={{
+        ...cardStyle,
+        display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px',
+      }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: 10,
+          backgroundColor: getOSIconStyle(asset.osType).bg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          {getOSIcon(asset.osType)}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>{asset.name}</span>
+            <Tag style={{
+              borderRadius: 9999, fontSize: 11, fontWeight: 500, lineHeight: '18px',
+              padding: '0 8px', border: 'none',
+              backgroundColor: asset.operationalStatus === 'CONNECTED' ? '#dcfce7' : '#fee2e2',
+              color: asset.operationalStatus === 'CONNECTED' ? '#166534' : '#991b1b',
+            }}>
+              <StatusDot connected={asset.operationalStatus === 'CONNECTED'} />{' '}
+              {asset.operationalStatus}
+            </Tag>
+          </div>
+          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+            {asset.assetType || 'Endpoint'} &middot; {asset.osType || 'N/A'} &middot; {asset.ipAddress || 'No IP'}
+          </div>
+        </div>
         <div>
-          <Title level={4} style={{ margin: 0 }}>{asset.name}</Title>
-          <Space>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: asset.operationalStatus === 'CONNECTED' ? '#52c41a' : '#ff4d4f', display: 'inline-block' }} />
-            <Text type="secondary">{asset.operationalStatus}</Text>
-          </Space>
+          <Tag color="blue" style={{ borderRadius: 4, fontSize: 12 }}>{asset.status}</Tag>
         </div>
       </div>
 
-      {/* Asset Info Grid */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col span={12}><Text type="secondary">Asset ID</Text><div><Text strong>{asset.assetId || asset.id || 'N/A'}</Text></div></Col>
-        <Col span={12}><Text type="secondary">Asset type</Text><div><Text strong>{asset.assetType || 'Endpoint'}</Text></div></Col>
-        <Col span={12}><Text type="secondary">Host Name</Text><div><Text strong style={{ fontFamily: 'monospace' }}>{asset.hostname || asset.name || 'N/A'}</Text></div></Col>
-        <Col span={12}><Text type="secondary">OS</Text><div><Text strong>{asset.osType || 'N/A'}</Text></div></Col>
-        <Col span={12}><Text type="secondary">IP Address</Text><div><Text strong style={{ fontFamily: 'monospace' }}>{asset.ipAddress || 'N/A'}</Text></div></Col>
-        <Col span={12}><Text type="secondary">MAC Address</Text><div><Text strong style={{ fontFamily: 'monospace' }}>{asset.macAddress || (hardware?.networkAdapters?.[0]?.macAddress) || 'N/A'}</Text></div></Col>
-      </Row>
-
-      {/* Status */}
-      <div style={{ marginBottom: 24 }}>
-        <Text type="secondary">Status</Text>
-        <div><Tag color="blue">{asset.status}</Tag><Button size="small" type="text">Manage</Button></div>
+      {/* Quick Info Grid */}
+      <div style={{ ...cardStyle, padding: 16 }}>
+        <div style={gridStyle(3)}>
+          <Field label="Asset ID" value={asset.assetId || asset.id} mono />
+          <Field label="Host Name" value={asset.hostname || asset.name} mono />
+          <Field label="OS" value={asset.osType} />
+          <Field label="IP Address" value={asset.ipAddress} mono />
+          <Field label="MAC Address" value={asset.macAddress || hardware?.networkAdapters?.[0]?.macAddress} mono />
+          <Field label="Asset Type" value={asset.assetType || 'Endpoint'} />
+        </div>
       </div>
 
       {/* Agent Status */}
       {asset.agent && (
-        <Card
-          title={
-            <Space>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: asset.agent.status === 'CONNECTED' ? '#52c41a' : '#ff4d4f', display: 'inline-block' }} />
-              <span>Agent Status</span>
-              <Tag color={asset.agent.status === 'CONNECTED' ? 'green' : 'red'}>{asset.agent.status}</Tag>
-              {asset.agent.status !== 'CONNECTED' && asset.agent.lastHeartbeatRelative && <Text type="secondary" style={{ fontSize: 16 }}>Last seen: {asset.agent.lastHeartbeatRelative}</Text>}
-            </Space>
+        <SectionCard
+          title={<><StatusDot connected={asset.agent.status === 'CONNECTED'} /> Agent Status</>}
+          extra={
+            <Button
+              icon={<ReloadOutlined spin={refreshingInventory} />}
+              onClick={handleRefreshInventory}
+              loading={refreshingInventory}
+              style={btnSmall}
+            >
+              Refresh Inventory
+            </Button>
           }
-          extra={<Button type="primary" icon={<ReloadOutlined spin={refreshingInventory} />} onClick={handleRefreshInventory} loading={refreshingInventory} size="small">Refresh Inventory</Button>}
-          size="small" style={{ marginBottom: 24 }}
         >
-          <Row gutter={16}>
-            <Col span={6}><Text type="secondary">Agent Version</Text><div><Text strong>{asset.agent.version || 'Unknown'}</Text></div></Col>
-            <Col span={6}><Text type="secondary">Last Heartbeat</Text><div><Text strong>{asset.agent.lastHeartbeatRelative || 'Never'}</Text></div></Col>
-            <Col span={6}><Text type="secondary">Heartbeat Interval</Text><div><Text strong>{asset.agent.heartbeatInterval || 60} seconds</Text></div></Col>
-            <Col span={6}><Text type="secondary">Agent ID</Text><div><Text strong style={{ fontFamily: 'monospace', fontSize: '16px' }}>{asset.agent.id?.substring(0, 8) || 'N/A'}...</Text></div></Col>
-          </Row>
-        </Card>
+          <div style={gridStyle(4)}>
+            <Field label="Status" value={
+              <Tag style={{
+                borderRadius: 9999, fontSize: 11, fontWeight: 500, lineHeight: '18px',
+                padding: '0 8px', border: 'none',
+                backgroundColor: asset.agent.status === 'CONNECTED' ? '#dcfce7' : '#fee2e2',
+                color: asset.agent.status === 'CONNECTED' ? '#166534' : '#991b1b',
+              }}>{asset.agent.status}</Tag>
+            } />
+            <Field label="Agent Version" value={asset.agent.version || 'Unknown'} />
+            <Field label="Last Heartbeat" value={asset.agent.lastHeartbeatRelative || 'Never'} />
+            <Field label="Agent ID" value={`${asset.agent.id?.substring(0, 8) || 'N/A'}...`} mono />
+          </div>
+        </SectionCard>
       )}
 
       {/* Performance */}
-      <Card
-        title={<Space><span>Performance</span>{telemetryLastUpdated && <Text type="secondary" style={{ fontSize: '16px', fontWeight: 'normal' }}>Last updated: {telemetryLastUpdated.toLocaleTimeString()}</Text>}{loadingTelemetry && telemetry && <Spin size="small" />}</Space>}
-        extra={
-          <Space>
-            <Tooltip title={`Auto-refresh every ${TELEMETRY_POLL_INTERVAL / 1000}s`}>
-              <Space><Text type="secondary" style={{ fontSize: '16px' }}>Auto-refresh</Text><Switch size="small" checked={autoRefreshEnabled} onChange={setAutoRefreshEnabled} /></Space>
-            </Tooltip>
-            <Tooltip title="Refresh now"><Button type="text" size="small" icon={<ReloadOutlined spin={loadingTelemetry} />} onClick={() => refetchTelemetry()} disabled={loadingTelemetry} /></Tooltip>
-          </Space>
+      <SectionCard
+        title={
+          <>
+            Performance
+            {telemetryLastUpdated && (
+              <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 400, marginLeft: 8 }}>
+                Updated {telemetryLastUpdated.toLocaleTimeString()}
+              </span>
+            )}
+            {loadingTelemetry && telemetry && <Spin size="small" style={{ marginLeft: 8 }} />}
+          </>
         }
-        size="small" style={{ marginBottom: 24 }}
+        extra={
+          <>
+            <Tooltip title={`Auto-refresh every ${TELEMETRY_POLL_INTERVAL / 1000}s`}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, color: '#6b7280' }}>Auto</span>
+                <Switch size="small" checked={autoRefreshEnabled} onChange={setAutoRefreshEnabled} />
+              </div>
+            </Tooltip>
+            <Tooltip title="Refresh now">
+              <Button type="text" size="small" icon={<ReloadOutlined spin={loadingTelemetry} />} onClick={() => refetchTelemetry()} disabled={loadingTelemetry} style={{ color: '#6b7280' }} />
+            </Tooltip>
+          </>
+        }
       >
         {loadingTelemetry && !telemetry ? (
-          <div style={{ textAlign: 'center', padding: '20px' }}><Spin size="small" /><Text type="secondary" style={{ marginLeft: 8 }}>Fetching telemetry...</Text></div>
+          <div style={{ textAlign: 'center', padding: 20 }}>
+            <Spin size="small" />
+            <span style={{ marginLeft: 8, fontSize: 13, color: '#6b7280' }}>Fetching telemetry...</span>
+          </div>
         ) : (
-          <Row gutter={16}>
-            <Col span={6}>
-              <Text type="secondary">System Uptime</Text>
-              <div><Text strong>{telemetry?.systemUptime?.uptimeHuman ? telemetry.systemUptime.uptimeHuman : telemetry?.systemUptime?.uptimeSeconds ? (() => { const s = telemetry.systemUptime.uptimeSeconds; const d = Math.floor(s / 86400); const h = Math.floor((s % 86400) / 3600); const m = Math.floor((s % 3600) / 60); const sec = s % 60; return `${d} day${d !== 1 ? 's' : ''}, ${h} hr${h !== 1 ? 's' : ''}, ${m} min, ${sec} sec`; })() : asset.performance?.systemUptime ?? 'N/A'}</Text></div>
-            </Col>
-            <Col span={6}>
-              <div><Text type="secondary">Memory Utilization</Text><div><Text strong>{telemetry?.memory?.usagePercent?.toFixed(1) ?? asset.performance?.memoryUtilization ?? 0}%</Text></div>
-                <Progress percent={telemetry?.memory?.usagePercent ?? asset.performance?.memoryUtilization ?? 0} showInfo={false} size="small" status={(telemetry?.memory?.usagePercent ?? 0) > 90 ? 'exception' : (telemetry?.memory?.usagePercent ?? 0) > 70 ? 'active' : 'normal'} /></div>
-            </Col>
-            <Col span={6}>
-              <div><Text type="secondary">CPU Utilization</Text><div><Text strong>{telemetry?.cpu?.usagePercent?.toFixed(1) ?? asset.performance?.cpuUtilization ?? 0}%</Text></div>
-                <Progress percent={telemetry?.cpu?.usagePercent ?? asset.performance?.cpuUtilization ?? 0} showInfo={false} size="small" status={(telemetry?.cpu?.usagePercent ?? 0) > 90 ? 'exception' : (telemetry?.cpu?.usagePercent ?? 0) > 70 ? 'active' : 'normal'} /></div>
-            </Col>
-            <Col span={6}>
-              <div><Text type="secondary">Disk Utilization</Text><div><Text strong>{telemetry?.disk?.drives?.[0]?.usagePercent?.toFixed(1) ?? asset.performance?.diskUtilization ?? 0}%</Text></div>
-                <Progress percent={telemetry?.disk?.drives?.[0]?.usagePercent ?? asset.performance?.diskUtilization ?? 0} showInfo={false} size="small" status={(telemetry?.disk?.drives?.[0]?.usagePercent ?? 0) > 90 ? 'exception' : (telemetry?.disk?.drives?.[0]?.usagePercent ?? 0) > 70 ? 'active' : 'normal'} /></div>
-            </Col>
-          </Row>
+          <div style={gridStyle(4)}>
+            <Field label="System Uptime" value={formatUptime()} />
+            <div>
+              <div style={labelStyle}>Memory</div>
+              <div style={{ ...valueStyle, marginBottom: 4 }}>{typeof memPct === 'number' ? memPct.toFixed(1) : memPct}%</div>
+              <Progress percent={memPct} showInfo={false} size="small" status={getProgressStatus(memPct)} strokeColor={memPct > 90 ? '#ef4444' : memPct > 70 ? '#f59e0b' : '#3b82f6'} trailColor="#f3f4f6" />
+            </div>
+            <div>
+              <div style={labelStyle}>CPU</div>
+              <div style={{ ...valueStyle, marginBottom: 4 }}>{typeof cpuPct === 'number' ? cpuPct.toFixed(1) : cpuPct}%</div>
+              <Progress percent={cpuPct} showInfo={false} size="small" status={getProgressStatus(cpuPct)} strokeColor={cpuPct > 90 ? '#ef4444' : cpuPct > 70 ? '#f59e0b' : '#3b82f6'} trailColor="#f3f4f6" />
+            </div>
+            <div>
+              <div style={labelStyle}>Disk</div>
+              <div style={{ ...valueStyle, marginBottom: 4 }}>{typeof diskPct === 'number' ? diskPct.toFixed(1) : diskPct}%</div>
+              <Progress percent={diskPct} showInfo={false} size="small" status={getProgressStatus(diskPct)} strokeColor={diskPct > 90 ? '#ef4444' : diskPct > 70 ? '#f59e0b' : '#3b82f6'} trailColor="#f3f4f6" />
+            </div>
+          </div>
         )}
-      </Card>
+      </SectionCard>
 
       {/* Allotment */}
-      <Card title="Allotment" size="small" style={{ marginBottom: 24 }}>
-        <Row gutter={16}>
-          <Col span={12}><Text type="secondary">Owner</Text><div><Text strong>{asset.owner?.name ?? 'Not Assigned'}</Text></div><div><Text type="secondary">{asset.owner?.email ?? '-'}</Text></div><div><Text type="secondary">{asset.owner?.phone ?? '-'}</Text></div></Col>
-          <Col span={12}><Text type="secondary">User</Text><div><Text>Not Assigned</Text></div></Col>
-        </Row>
-      </Card>
+      <SectionCard title="Allotment">
+        <div style={gridStyle(2)}>
+          <div>
+            <div style={labelStyle}>Owner</div>
+            <div style={valueStyle}>{asset.owner?.name ?? 'Not Assigned'}</div>
+            {asset.owner?.email && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{asset.owner.email}</div>}
+            {asset.owner?.phone && <div style={{ fontSize: 12, color: '#6b7280' }}>{asset.owner.phone}</div>}
+          </div>
+          <Field label="User" value="Not Assigned" />
+        </div>
+      </SectionCard>
 
       {/* Battery */}
       {hardware?.battery && asset && (asset.assetType === 'Laptop' || asset.assetType === 'Mobile' || asset.assetType === 'Tablet') && (
-        <Card title="Battery" size="small" style={{ marginBottom: 24 }}>
-          <Row gutter={16}>
-            <Col span={6}><Text type="secondary">Battery Health</Text><div><Text strong>{hardware.battery.health}</Text></div></Col>
-            <Col span={6}><Text type="secondary">Cycle Count</Text><div><Text strong>{hardware.battery.cycleCount}</Text></div></Col>
-            <Col span={6}><div><Text type="secondary">Charge Level</Text><div><Text strong>{hardware.battery.chargeLevel}%</Text></div><Progress percent={hardware.battery.chargeLevel} showInfo={false} size="small" status={hardware.battery.chargeLevel < 20 ? 'exception' : undefined} /></div></Col>
-            <Col span={6}><Text type="secondary">Charging Status</Text><div><Tag color={hardware.battery.chargingStatus === 'Charging' ? 'green' : hardware.battery.chargingStatus === 'Discharging' ? 'orange' : 'default'}>{hardware.battery.chargingStatus}</Tag></div></Col>
-          </Row>
+        <SectionCard title="Battery">
+          <div style={gridStyle(4)}>
+            <Field label="Battery Health" value={hardware.battery.health} />
+            <Field label="Cycle Count" value={hardware.battery.cycleCount} />
+            <div>
+              <div style={labelStyle}>Charge Level</div>
+              <div style={{ ...valueStyle, marginBottom: 4 }}>{hardware.battery.chargeLevel}%</div>
+              <Progress percent={hardware.battery.chargeLevel} showInfo={false} size="small" status={hardware.battery.chargeLevel < 20 ? 'exception' : undefined} strokeColor={hardware.battery.chargeLevel < 20 ? '#ef4444' : '#22c55e'} trailColor="#f3f4f6" />
+            </div>
+            <Field label="Charging Status" value={
+              <Tag style={{
+                borderRadius: 9999, fontSize: 11, fontWeight: 500, border: 'none',
+                backgroundColor: hardware.battery.chargingStatus === 'Charging' ? '#dcfce7' : hardware.battery.chargingStatus === 'Discharging' ? '#fef3c7' : '#f3f4f6',
+                color: hardware.battery.chargingStatus === 'Charging' ? '#166534' : hardware.battery.chargingStatus === 'Discharging' ? '#92400e' : '#374151',
+              }}>{hardware.battery.chargingStatus}</Tag>
+            } />
+          </div>
           {(hardware.battery.batteryCapacity || hardware.battery.estimatedRuntime || hardware.battery.temperature) && (
             <>
-              <Divider />
-              <Row gutter={16}>
-                {hardware.battery.batteryCapacity && <Col span={8}><Text type="secondary">Battery Capacity</Text><div><Text strong>{hardware.battery.batteryCapacity}</Text></div></Col>}
-                {hardware.battery.estimatedRuntime && <Col span={8}><Text type="secondary">Estimated Runtime</Text><div><Text strong>{hardware.battery.estimatedRuntime}</Text></div></Col>}
-                {hardware.battery.temperature && <Col span={8}><Text type="secondary">Temperature</Text><div><Text strong>{hardware.battery.temperature}</Text></div></Col>}
-              </Row>
+              <div style={{ borderTop: '1px solid #f0f0f0', margin: '12px 0' }} />
+              <div style={gridStyle(3)}>
+                {hardware.battery.batteryCapacity && <Field label="Battery Capacity" value={hardware.battery.batteryCapacity} />}
+                {hardware.battery.estimatedRuntime && <Field label="Estimated Runtime" value={hardware.battery.estimatedRuntime} />}
+                {hardware.battery.temperature && <Field label="Temperature" value={hardware.battery.temperature} />}
+              </div>
             </>
           )}
-        </Card>
+        </SectionCard>
       )}
 
       {/* Location */}
-      <Card title="Location" size="small" style={{ marginBottom: 24 }} extra={<Button size="small" onClick={handleAutoDetectLocation} loading={locatingAsset}>Auto Detect</Button>}>
-        <Row gutter={16}>
-          <Col span={12}><Text type="secondary">Base Location</Text><div><Text strong>{asset.location?.base?.address ?? 'N/A'}</Text></div><div><Text type="secondary">Latitude: {asset.location?.base?.latitude ?? '-'} Longitude: {asset.location?.base?.longitude ?? '-'}</Text></div></Col>
-          <Col span={12}><Text type="secondary">Installed Location</Text><div><Text strong>{asset.location?.installed?.address ?? 'N/A'}</Text></div><div><Text type="secondary">Latitude: {asset.location?.installed?.latitude ?? '-'} Longitude: {asset.location?.installed?.longitude ?? '-'}</Text></div></Col>
-        </Row>
-      </Card>
+      <SectionCard
+        title="Location"
+        extra={<Button onClick={handleAutoDetectLocation} loading={locatingAsset} style={btnSmall}>Auto Detect</Button>}
+      >
+        <div style={gridStyle(2)}>
+          <div>
+            <div style={labelStyle}>Base Location</div>
+            <div style={valueStyle}>{asset.location?.base?.address ?? 'N/A'}</div>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+              {asset.location?.base?.latitude ?? '-'}, {asset.location?.base?.longitude ?? '-'}
+            </div>
+          </div>
+          <div>
+            <div style={labelStyle}>Installed Location</div>
+            <div style={valueStyle}>{asset.location?.installed?.address ?? 'N/A'}</div>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+              {asset.location?.installed?.latitude ?? '-'}, {asset.location?.installed?.longitude ?? '-'}
+            </div>
+          </div>
+        </div>
+      </SectionCard>
 
       {/* Asset Details */}
-      <Card title="Asset Details" size="small" style={{ marginBottom: 24 }}>
-        <Row gutter={[16, 8]}>
-          <Col span={8}><Text type="secondary">Alias</Text><div>{asset.alias || asset.hostname || 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">Disk Size</Text><div>{asset.diskSize || asset.storage?.size || (hardware?.storage?.[0] ? (() => { const mainDrive = hardware.storage.find(d => d.mountPoint === '/' || d.mountPoint === '/System/Volumes/Data' || d.name?.toLowerCase().includes('macintosh')) || hardware.storage[0]; const capacity = parseFloat(mainDrive?.capacity || '0'); return capacity >= 1000 ? `${(capacity / 1024).toFixed(1)}TB` : `${Math.round(capacity)}GB`; })() : 'N/A')}</div></Col>
-          <Col span={8}><Text type="secondary">IP Version</Text><div>{asset.ipVersion || (asset.ipAddress ? (asset.ipAddress.includes(':') ? 'IPv6' : 'IPv4') : 'N/A')}</div></Col>
-          <Col span={8}><Text type="secondary">MAC</Text><div style={{ fontFamily: 'monospace', fontSize: '13px' }}>{asset.mac || asset.macAddress || (hardware?.networkAdapters?.[0]?.macAddress) || 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">Memory Size</Text><div>{asset.memorySize || asset.ram?.size || (hardware?.memory?.length ? `${hardware.memory.reduce((acc, m) => acc + parseFloat(m.capacity || '0'), 0).toFixed(0)} GB` : (telemetry?.memory?.totalBytes ? `${(telemetry.memory.totalBytes / (1024 * 1024 * 1024)).toFixed(0)} GB` : 'N/A'))}</div></Col>
-          <Col span={8}><Text type="secondary">Model</Text><div>{asset.model || 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">OS Version</Text><div>{asset.osVersion || 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">Serial Number</Text><div style={{ fontFamily: 'monospace', fontSize: '13px' }}>{asset.serialNumber || hardware?.bios?.serialNumber || 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">System SKU</Text><div>{asset.systemSKU || hardware?.baseBoard?.productId || 'N/A'}</div></Col>
-        </Row>
-      </Card>
+      <SectionCard title="Asset Details">
+        <div style={gridStyle(3)}>
+          <Field label="Alias" value={asset.alias || asset.hostname} />
+          <Field label="Disk Size" value={diskSize} />
+          <Field label="IP Version" value={asset.ipVersion || (asset.ipAddress ? (asset.ipAddress.includes(':') ? 'IPv6' : 'IPv4') : 'N/A')} />
+          <Field label="MAC" value={asset.mac || asset.macAddress || hardware?.networkAdapters?.[0]?.macAddress} mono />
+          <Field label="Memory Size" value={memSize} />
+          <Field label="Model" value={asset.model} />
+          <Field label="OS Version" value={asset.osVersion} />
+          <Field label="Serial Number" value={asset.serialNumber || hardware?.bios?.serialNumber} mono />
+          <Field label="System SKU" value={asset.systemSKU || hardware?.baseBoard?.productId} />
+        </div>
+      </SectionCard>
 
       {/* Procurement Properties */}
-      <Card title="Procurement Properties" size="small" style={{ marginBottom: 24 }}>
-        <Row gutter={[16, 8]}>
-          <Col span={8}><Text type="secondary">AMC Cost</Text><div>{asset.procurement?.amcCost ?? 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">AMC Expiry Date</Text><div>{asset.procurement?.amcExpiryDate ?? 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">AMC Vendor</Text><div>{asset.procurement?.amcVendor ?? 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">End Of Life</Text><div>{asset.procurement?.endOfLife ?? 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">Expiry Date</Text><div>{asset.procurement?.expiryDate ?? 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">Warranty Expiry</Text><div>{asset.procurement?.warrantyExpiryDate ?? 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">Warranty Year & Month</Text><div>{asset.procurement?.warrantyYearAndMonth ?? 'N/A'}</div></Col>
-        </Row>
-      </Card>
+      <SectionCard title="Procurement Properties">
+        <div style={gridStyle(3)}>
+          <Field label="AMC Cost" value={asset.procurement?.amcCost} />
+          <Field label="AMC Expiry Date" value={asset.procurement?.amcExpiryDate} />
+          <Field label="AMC Vendor" value={asset.procurement?.amcVendor} />
+          <Field label="End Of Life" value={asset.procurement?.endOfLife} />
+          <Field label="Expiry Date" value={asset.procurement?.expiryDate} />
+          <Field label="Warranty Expiry" value={asset.procurement?.warrantyExpiryDate} />
+          <Field label="Warranty Year & Month" value={asset.procurement?.warrantyYearAndMonth} />
+        </div>
+      </SectionCard>
 
       {/* Cost Properties */}
-      <Card title="Cost Properties" size="small" style={{ marginBottom: 24 }}>
-        <Row gutter={[16, 8]}>
-          <Col span={8}><Text type="secondary">Asset Age</Text><div>{asset.cost?.age ?? 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">Cost</Text><div>{asset.cost?.cost ?? 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">Currency</Text><div>{asset.cost?.currency ?? 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">Current Cost</Text><div>{asset.cost?.currentCost ?? 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">Depreciation Type</Text><div>{asset.cost?.depreciationType ?? 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">Invoice No.</Text><div>{asset.cost?.invoiceNumber ?? 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">Purchase Date</Text><div>{asset.cost?.purchaseDate ?? 'N/A'}</div></Col>
-          <Col span={8}><Text type="secondary">Salvage Value</Text><div>{asset.cost?.salvageValue ?? 'N/A'}</div></Col>
-        </Row>
-      </Card>
+      <SectionCard
+        title="Cost Properties"
+        extra={editingCost ? (
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Button onClick={handleSaveCost} loading={savingCost} style={{ ...btnSmall, backgroundColor: '#111827', color: '#fff', border: 'none' }}>Save</Button>
+            <Button onClick={handleCancelCost} disabled={savingCost} style={btnSmall}>Cancel</Button>
+          </div>
+        ) : (
+          <Button type="text" onClick={() => setEditingCost(true)} style={{ fontSize: 12, color: '#6b7280' }}>Edit</Button>
+        )}
+      >
+        <div style={gridStyle(3)}>
+          <Field label="Asset Age" value={asset.cost?.age} />
+          {editingCost ? (
+            <>
+              <div>
+                <div style={labelStyle}>Cost</div>
+                <Input size="small" type="number" value={costForm.cost} onChange={e => setCostForm(f => ({ ...f, cost: e.target.value }))} />
+              </div>
+              <div>
+                <div style={labelStyle}>Currency</div>
+                <Select size="small" style={{ width: '100%' }} value={costForm.currency || undefined} onChange={v => setCostForm(f => ({ ...f, currency: v }))} placeholder="Select currency" allowClear>
+                  <Select.Option value="USD">USD</Select.Option>
+                  <Select.Option value="INR">INR</Select.Option>
+                  <Select.Option value="EUR">EUR</Select.Option>
+                  <Select.Option value="GBP">GBP</Select.Option>
+                </Select>
+              </div>
+              <div>
+                <div style={labelStyle}>Current Cost</div>
+                <Input size="small" type="number" value={costForm.currentCost} onChange={e => setCostForm(f => ({ ...f, currentCost: e.target.value }))} />
+              </div>
+              <div>
+                <div style={labelStyle}>Depreciation Type</div>
+                <Select size="small" style={{ width: '100%' }} value={costForm.depreciationType || undefined} onChange={v => setCostForm(f => ({ ...f, depreciationType: v }))} placeholder="Select type" allowClear>
+                  <Select.Option value="Straight Line">Straight Line</Select.Option>
+                  <Select.Option value="Double Declining Balance">Double Declining Balance</Select.Option>
+                  <Select.Option value="Sum of Years Digits">Sum of Years Digits</Select.Option>
+                </Select>
+              </div>
+              <div>
+                <div style={labelStyle}>Invoice No.</div>
+                <Input size="small" value={costForm.invoiceNumber} onChange={e => setCostForm(f => ({ ...f, invoiceNumber: e.target.value }))} />
+              </div>
+              <div>
+                <div style={labelStyle}>Purchase Date</div>
+                <DatePicker size="small" style={{ width: '100%' }} value={costForm.purchaseDate ? dayjs(costForm.purchaseDate) : null} onChange={(_, dateStr) => setCostForm(f => ({ ...f, purchaseDate: dateStr as string }))} />
+              </div>
+              <div>
+                <div style={labelStyle}>Salvage Value</div>
+                <Input size="small" type="number" value={costForm.salvageValue} onChange={e => setCostForm(f => ({ ...f, salvageValue: e.target.value }))} />
+              </div>
+            </>
+          ) : (
+            <>
+              <Field label="Cost" value={asset.cost?.cost} />
+              <Field label="Currency" value={asset.cost?.currency} />
+              <Field label="Current Cost" value={asset.cost?.currentCost} />
+              <Field label="Depreciation Type" value={asset.cost?.depreciationType} />
+              <Field label="Invoice No." value={asset.cost?.invoiceNumber} />
+              <Field label="Purchase Date" value={asset.cost?.purchaseDate} />
+              <Field label="Salvage Value" value={asset.cost?.salvageValue} />
+            </>
+          )}
+        </div>
+      </SectionCard>
 
       {/* Attachment */}
-      <Card title="Attachment" size="small" style={{ marginBottom: 24 }}>
+      <SectionCard title="Attachment">
         <Upload fileList={fileList} onChange={({ fileList }) => setFileList(fileList)} customRequest={handleFileUpload} multiple>
-          <Button type="primary" icon={<UploadOutlined />}>Add</Button>
+          <Button icon={<UploadOutlined />} style={btnSmall}>Add</Button>
         </Upload>
-      </Card>
+      </SectionCard>
 
       {/* Tags */}
-      <Card title="Tags" size="small"
+      <SectionCard
+        title="Tags"
         extra={editingTags ? (
-          <Space size="small">
-            <Button size="small" type="primary" onClick={onSaveTags}>Save</Button>
-            <Button size="small" onClick={() => { onEditTagsToggle(false); onSelectedTagsChange(asset.tagIds || []); }}>Cancel</Button>
-          </Space>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Button onClick={onSaveTags} style={{ ...btnSmall, backgroundColor: '#111827', color: '#fff', border: 'none' }}>Save</Button>
+            <Button onClick={() => { onEditTagsToggle(false); onSelectedTagsChange(asset.tagIds || []); }} style={btnSmall}>Cancel</Button>
+          </div>
         ) : (
-          <Button size="small" type="text" onClick={() => onEditTagsToggle(true)}>Edit</Button>
+          <Button type="text" onClick={() => onEditTagsToggle(true)} style={{ fontSize: 12, color: '#6b7280' }}>Edit</Button>
         )}
       >
         {editingTags ? (
           <TagSelector value={selectedTags} onChange={onSelectedTagsChange} placeholder="Select or create tags" showCreateButton />
         ) : (
-          <div>{selectedTags.length > 0 ? <TagDisplay tagIds={selectedTags} maxVisible={10} /> : <Text type="secondary">No tags assigned</Text>}</div>
+          <div>{selectedTags.length > 0 ? <TagDisplay tagIds={selectedTags} maxVisible={10} /> : <span style={{ fontSize: 13, color: '#9ca3af' }}>No tags assigned</span>}</div>
         )}
-      </Card>
+      </SectionCard>
     </div>
   );
 };

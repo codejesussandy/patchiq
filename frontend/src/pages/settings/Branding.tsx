@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { CloudUploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import { App,
   Button, Typography, Space, Card, Spin } from 'antd';
@@ -21,19 +21,19 @@ export const Branding = () => {
   const [dragActive, setDragActive] = useState(false);
   const dragRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [initialized, setInitialized] = useState(false);
   const [brandingData, setBrandingData] = useState<BrandingData>({
     companyName: 'SkenzerIQ',
   });
 
-  // Sync fetched branding to local state; on page load/refresh, restore logo preview from backend
-  useEffect(() => {
-    if (!fetchedBranding) return;
-    setBrandingData(fetchedBranding as BrandingData);
-    // Only restore the backend URL when no local file is selected (e.g. after page refresh)
-    if (!logoFile && fetchedBranding.logoUrl) {
+  // Sync fetched branding to local state once loaded
+  if (fetchedBranding && !initialized) {
+    setBrandingData(fetchedBranding || { companyName: 'SkenzerIQ' });
+    if (fetchedBranding?.logoUrl) {
       setLogoPreview(String(fetchedBranding.logoUrl));
     }
-  }, [fetchedBranding]); // eslint-disable-line react-hooks/exhaustive-deps
+    setInitialized(true);
+  }
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -116,9 +116,8 @@ export const Branding = () => {
 
       await updateBrandingMutation.mutateAsync(formData);
       message.success('Branding settings updated successfully');
-      // Keep logoPreview so the preview stays visible; clear the pending file and reset input
       setLogoFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setInitialized(false);
     } catch {
       message.error('Failed to update branding settings');
     }
@@ -128,7 +127,8 @@ export const Branding = () => {
     <div style={{ padding: '24px' }}>
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
-        <Title level={2}>Branding</Title>
+        <Title level={3} style={{ margin: 0 }}>Branding</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Customize platform appearance and branding</Text>
       </div>
 
       {loading ? (

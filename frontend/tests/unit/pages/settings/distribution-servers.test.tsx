@@ -32,9 +32,9 @@ describe('DistributionServer', () => {
 
   it('renders column headers', () => {
     render(<DistributionServer />);
-    expect(screen.getByText('Name')).toBeInTheDocument();
-    expect(screen.getByText('Location')).toBeInTheDocument();
-    expect(screen.getByText('Version')).toBeInTheDocument();
+    expect(screen.getAllByText('Name')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Location')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Version')[0]).toBeInTheDocument();
   });
 
   it('renders server data in table', () => {

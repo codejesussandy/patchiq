@@ -111,7 +111,6 @@ export const PatchJobs = () => {
   const handlePatchesSelect = () => {
     const selected = allPatches.filter(p => selectedPatchIds.includes(p.id));
     setSelectedPatches(selected);
-    installForm.setFieldValue('patches', selected.length > 0 ? selected : undefined);
     setPatchesModalVisible(false);
     setSelectedPatchIds([]);
     setPatchesSearchText('');
@@ -129,12 +128,7 @@ export const PatchJobs = () => {
         return;
       }
       const patchesPayload = selectedPatches.map(p => ({
-        id: p.id,
-        patchId: p.patchId ?? undefined,
-        name: p.software ?? p.title ?? undefined,
-        description: p.description ?? undefined,
-        severity: p.severity ?? undefined,
-        type: configType,
+        id: p.id, patchId: p.patchId, name: p.software, description: p.description, severity: p.severity, type: configType,
       }));
       createDeploymentMutation.mutate({
         name: values.name, description: values.description, targetAgentIds: values.endpoints,
@@ -148,7 +142,8 @@ export const PatchJobs = () => {
           setSelectedPatchIds([]);
         },
         onError: (error: unknown) => {
-          message.error((error as Error).message || 'Failed to create patch deployment');
+          const axiosErr = error as { response?: { data?: { message?: string } } };
+          message.error(axiosErr.response?.data?.message || 'Failed to create patch deployment');
         },
       });
     } catch {
@@ -216,6 +211,12 @@ export const PatchJobs = () => {
 
   return (
     <div>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Patch Jobs</Title>
+          <Text type="secondary" style={{ fontSize: 14 }}>Manage patch deployment policies and schedules</Text>
+        </div>
+      </div>
       <JobToolbar
         searchText={searchText}
         onSearchChange={setSearchText}
@@ -312,7 +313,7 @@ export const PatchJobs = () => {
                   { title: 'Platform', dataIndex: 'os', key: 'os', sorter: true, render: (os: string) => <OSIcon os={os} /> },
                   { title: 'Category', dataIndex: 'category', key: 'category', sorter: true },
                   { title: 'KBID', dataIndex: 'kbNumber', key: 'kbNumber', sorter: true },
-                  { title: '', key: 'action', width: 50, render: (_: unknown, record: Patch) => <Button type="text" danger icon={<DeleteOutlined />} onClick={() => { const updated = selectedPatches.filter(p => p.id !== record.id); setSelectedPatches(updated); installForm.setFieldValue('patches', updated.length > 0 ? updated : undefined); }} /> },
+                  { title: '', key: 'action', width: 50, render: (_: unknown, record: Patch) => <Button type="text" danger icon={<DeleteOutlined />} onClick={() => setSelectedPatches(selectedPatches.filter(p => p.id !== record.id))} /> },
                 ]}
                 size="small"
               />

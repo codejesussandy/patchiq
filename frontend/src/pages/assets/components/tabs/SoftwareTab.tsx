@@ -258,7 +258,7 @@ export const SoftwareTab = ({ assetId, asset }: SoftwareTabProps) => {
   return (
     <div>
       {/* Operating System Details */}
-      <Collapse defaultActiveKey={['os']} style={{ marginBottom: 16 }}>
+      <Collapse defaultActiveKey={['os']} style={{ marginBottom: 16, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
         <Panel header={<Space>{getOSIcon()}<Text strong>{getOSDisplayName()}</Text></Space>} key="os">
           <Row gutter={[16, 8]}>
             <Col span={6}><Text type="secondary">Operating System</Text><div>{software?.os?.name || asset?.osType || '-'}</div></Col>
@@ -273,7 +273,7 @@ export const SoftwareTab = ({ assetId, asset }: SoftwareTabProps) => {
         </Panel>
       </Collapse>
 
-      <Collapse defaultActiveKey={[]} style={{ marginBottom: 16 }}>
+      <Collapse defaultActiveKey={[]} style={{ marginBottom: 16, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
         <Panel
           header={<Space><Text strong>Software Licenses</Text>{software.os?.licenseStatus && <Tag color="blue">OS: {software.os.licenseStatus}</Tag>}</Space>}
           key="licenses"

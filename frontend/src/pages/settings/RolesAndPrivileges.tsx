@@ -91,6 +91,10 @@ export const RolesAndPrivileges = () => {
 
   return (
     <div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Roles & Privileges</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Configure granular access permissions</Text>
+      </div>
       <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <Select value={branchFilter} onChange={setBranchFilter} style={{ width: 180 }}
           options={[{ value: 'all', label: 'All Branches' }, ...branches.map((b) => ({ value: b, label: b }))]} />

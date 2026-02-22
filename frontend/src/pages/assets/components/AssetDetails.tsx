@@ -9,8 +9,6 @@ import {
   App,
   Tabs,
   Button,
-  Space,
-  Typography,
   Modal,
   Spin,
 } from 'antd';
@@ -28,8 +26,6 @@ import {
   AlertsTab,
   UnifiedPatchesTab,
 } from './tabs';
-
-const { Title } = Typography;
 
 export const AssetDetails = () => {
   const { message } = App.useApp();
@@ -118,55 +114,64 @@ export const AssetDetails = () => {
     return <div>Asset not found</div>;
   }
 
+  const tabContentStyle = {
+    background: '#f8f9fb',
+    borderRadius: 8,
+    padding: '20px',
+    marginTop: 4,
+  };
+
   const tabItems = [
     {
       key: 'details',
       label: 'Details',
       children: (
-        <DetailsTab
-          asset={asset}
-          editingTags={editingTags}
-          selectedTags={selectedTags}
-          onEditTagsToggle={setEditingTags}
-          onSelectedTagsChange={setSelectedTags}
-          onSaveTags={handleSaveTags}
-        />
+        <div style={tabContentStyle}>
+          <DetailsTab
+            asset={asset}
+            editingTags={editingTags}
+            selectedTags={selectedTags}
+            onEditTagsToggle={setEditingTags}
+            onSelectedTagsChange={setSelectedTags}
+            onSaveTags={handleSaveTags}
+          />
+        </div>
       ),
     },
     {
       key: 'lifecycle',
       label: 'Asset Life cycle',
-      children: <LifecycleTab assetId={assetId} onEditFinancialData={() => setEditModalVisible(true)} />,
+      children: <div style={tabContentStyle}><LifecycleTab assetId={assetId} onEditFinancialData={() => setEditModalVisible(true)} /></div>,
     },
     {
       key: 'hardware',
       label: 'Hardware',
-      children: <HardwareTab assetId={assetId} osType={asset.osType} manufacturer={asset.manufacturer} model={asset.model} />,
+      children: <div style={tabContentStyle}><HardwareTab assetId={assetId} osType={asset.osType} manufacturer={asset.manufacturer} model={asset.model} /></div>,
     },
     {
       key: 'software',
       label: 'Software',
-      children: <SoftwareTab assetId={assetId} asset={asset} />,
+      children: <div style={tabContentStyle}><SoftwareTab assetId={assetId} asset={asset} /></div>,
     },
     {
       key: 'audit',
       label: 'Audit Log',
-      children: <AuditLogTab assetId={assetId} />,
+      children: <div style={tabContentStyle}><AuditLogTab assetId={assetId} /></div>,
     },
     {
       key: 'vulnerabilities',
       label: 'Vulnerabilities',
-      children: <VulnerabilitiesTab assetId={assetId} />,
+      children: <div style={tabContentStyle}><VulnerabilitiesTab assetId={assetId} /></div>,
     },
     {
       key: 'patches',
       label: 'Patches',
-      children: <UnifiedPatchesTab assetId={asset.id} agentId={asset?.agent?.id} />,
+      children: <div style={tabContentStyle}><UnifiedPatchesTab assetId={asset.id} agentId={asset?.agent?.id} /></div>,
     },
     {
       key: 'alerts',
       label: 'Alerts',
-      children: <AlertsTab assetId={assetId} />,
+      children: <div style={tabContentStyle}><AlertsTab assetId={assetId} /></div>,
     },
   ];
 
@@ -174,14 +179,38 @@ export const AssetDetails = () => {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/assets')}>Back</Button>
-          <Title level={3} style={{ margin: 0 }}>Asset Details</Title>
-        </Space>
-        <Space>
-          <Button icon={<EditOutlined />} onClick={() => setEditModalVisible(true)}>Edit Asset</Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Button
+            type="text"
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate('/assets')}
+            style={{ color: '#6b7280', padding: '4px 8px' }}
+          />
+          <div>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: '#111827', lineHeight: 1.3 }}>
+              Asset Details
+            </h2>
+            <span style={{ fontSize: 13, color: '#6b7280' }}>{asset.name}</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Button
+            icon={<EditOutlined />}
+            onClick={() => setEditModalVisible(true)}
+            style={{
+              borderRadius: 6,
+              border: '1px solid #e5e7eb',
+              color: '#374151',
+              fontWeight: 500,
+              fontSize: 13,
+              height: 34,
+              boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)',
+            }}
+          >
+            Edit Asset
+          </Button>
           <ActionMenu items={moreMenuItems} />
-        </Space>
+        </div>
       </div>
 
       <Tabs defaultActiveKey="details" items={tabItems} />

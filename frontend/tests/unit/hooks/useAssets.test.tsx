@@ -134,6 +134,15 @@ describe('useAssets hooks', () => {
     expect(result.current.isLoading).toBe(true);
   });
 
+  it('should not fetch when enabled is false', () => {
+    const { result } = renderHook(() => useAssets({ enabled: false }), {
+      wrapper: createWrapper(),
+    });
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.fetchStatus).toBe('idle');
+  });
+
   describe('query keys', () => {
     it('assetKeys should generate correct keys', () => {
       expect(assetKeys.all).toEqual(['assets']);

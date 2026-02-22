@@ -99,7 +99,8 @@ export const PatchPreferences = () => {
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ marginBottom: '32px' }}>
-        <Title level={3}>Patch Preferences</Title>
+        <Title level={3} style={{ margin: 0 }}>Patch Preferences</Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>Configure default patch management behavior</Text>
       </div>
 
       <Form
