@@ -26,17 +26,18 @@ import { softwareLicenseCrudService } from './software-license-crud.service';
 // ============================================
 
 export async function listSoftwareInventory(): Promise<SoftwareInventoryResponse[]> {
-  // Aggregate software across all assets
-  const software = await prisma.assetSoftware.groupBy({
-    by: ['name', 'version', 'vendor'],
+  // Show only hub-managed software (what PatchIQ deploys), not all system packages
+  const managed = await prisma.assetManagedSoftware.groupBy({
+    by: ['name', 'displayName', 'version', 'vendor', 'packageId'],
+    where: { status: 'INSTALLED' },
     _count: { _all: true },
   });
 
-  return software.map((s, i) => ({
+  return managed.map((s, i) => ({
     id: `sw-${i + 1}`,
-    softwareName: s.name,
+    softwareName: s.displayName || s.name,
     version: s.version,
-    softwareType: 'Application',
+    softwareType: 'Managed',
     manufacturer: s.vendor,
     totalInstances: s._count._all,
     createdAt: new Date().toISOString(),

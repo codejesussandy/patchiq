@@ -41,16 +41,35 @@ func RestartService() error {
 	return nil
 }
 
-// getLaunchAgentPlistPath returns the path to the LaunchAgent plist file
+// getLaunchAgentPlistPath returns the path to the plist file for the agent service.
+// The installer deploys to /Library/LaunchDaemons (system-level, runs as root).
+// If not found there, fall back to the per-user LaunchAgents location.
 func getLaunchAgentPlistPath() string {
+	// System LaunchDaemon (installed by build.sh / PKG installer)
+	daemonPath := filepath.Join("/Library", "LaunchDaemons", launchAgentLabel+".plist")
+	if _, err := os.Stat(daemonPath); err == nil {
+		return daemonPath
+	}
+	// Per-user LaunchAgent fallback (dev/manual installs)
 	homeDir, _ := os.UserHomeDir()
 	return filepath.Join(homeDir, "Library", "LaunchAgents", launchAgentLabel+".plist")
 }
 
-// unloadLaunchAgent unloads the LaunchAgent using launchctl
+// launchctlDomain returns the launchctl domain target for the given plist path.
+// System LaunchDaemons use the "system" domain; per-user LaunchAgents use "gui/<uid>".
+func launchctlDomain(plistPath string) string {
+	if contains(plistPath, "/Library/LaunchDaemons/") {
+		return "system"
+	}
+	return fmt.Sprintf("gui/%d", os.Getuid())
+}
+
+// unloadLaunchAgent unloads the LaunchAgent/LaunchDaemon using launchctl
 func unloadLaunchAgent(plistPath string) error {
+	domain := launchctlDomain(plistPath)
+
 	// Try unload with bootout (newer macOS)
-	cmd := exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d", os.Getuid()), plistPath)
+	cmd := exec.Command("launchctl", "bootout", domain, plistPath)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -74,15 +93,17 @@ func unloadLaunchAgent(plistPath string) error {
 	return nil
 }
 
-// loadLaunchAgent loads the LaunchAgent using launchctl
+// loadLaunchAgent loads the LaunchAgent/LaunchDaemon using launchctl
 func loadLaunchAgent(plistPath string) error {
 	// Verify plist exists
 	if _, err := os.Stat(plistPath); os.IsNotExist(err) {
 		return fmt.Errorf("LaunchAgent plist not found: %s", plistPath)
 	}
 
+	domain := launchctlDomain(plistPath)
+
 	// Try load with bootstrap (newer macOS)
-	cmd := exec.Command("launchctl", "bootstrap", fmt.Sprintf("gui/%d", os.Getuid()), plistPath)
+	cmd := exec.Command("launchctl", "bootstrap", domain, plistPath)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {

@@ -394,6 +394,7 @@ model Asset {
   alerts               AssetAlert[]
   patchRecommendations AssetPatchRecommendation[]
   attachments          AssetAttachment[]
+  managedSoftware      AssetManagedSoftware[]
 
   @@index([status])
   @@index([type])
@@ -1666,6 +1667,10 @@ model SoftwarePackage {
   postInstallScript String? @map("post_install_script")
   uninstallCommand  String? @map("uninstall_command")
 
+  // CPE identity for vulnerability correlation
+  cpeVendor  String? @map("cpe_vendor")  // e.g., "nodejs", "google"
+  cpeProduct String? @map("cpe_product") // e.g., "node.js", "chrome"
+
   // Rollback support
   supportsRollback Boolean @default(false) @map("supports_rollback")
   rollbackCommand  String? @map("rollback_command")
@@ -1686,7 +1691,33 @@ model SoftwarePackage {
   @@index([vendor])
   @@index([isActive])
   @@index([scriptsIncluded])
+  @@index([cpeVendor, cpeProduct])
   @@map("software_packages")
+}
+
+// ============================================
+// Asset Managed Software (Hub-deployed software tracking)
+// ============================================
+
+model AssetManagedSoftware {
+  id          String    @id @default(uuid())
+  assetId     String    @map("asset_id")
+  asset       Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  packageId   String    @map("package_id")   // SoftwarePackage.packageId e.g. "SWP-C5AAB082"
+  name        String                         // e.g. "nodejs"
+  displayName String    @map("display_name") // e.g. "Node.js"
+  version     String                         // Currently installed version
+  vendor      String?
+  platform    String
+  status      String    @default("INSTALLED") // INSTALLED | UNINSTALLED
+  installedAt DateTime? @map("installed_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  cpeVendor   String?   @map("cpe_vendor")
+  cpeProduct  String?   @map("cpe_product")
+
+  @@unique([assetId, packageId])
+  @@index([assetId, status])
+  @@map("asset_managed_software")
 }
 
 model HubBundle {

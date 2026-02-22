@@ -51,12 +51,29 @@ func (e *DarwinSoftwareExecutor) InstallSoftware(ctx context.Context, pkg models
 	}
 }
 
+// findBrewPath returns the path to the brew binary, checking known locations
+// because exec.LookPath relies on PATH which may be minimal when running as a
+// LaunchDaemon/LaunchAgent under launchd.
+func findBrewPath() (string, error) {
+	knownPaths := []string{
+		"/opt/homebrew/bin/brew", // Apple Silicon (M1/M2/M3)
+		"/usr/local/bin/brew",    // Intel Macs
+	}
+	for _, p := range knownPaths {
+		if _, err := os.Stat(p); err == nil {
+			return p, nil
+		}
+	}
+	// Fall back to PATH-based lookup as last resort
+	return exec.LookPath("brew")
+}
+
 // installWithBrew installs software using Homebrew
 func (e *DarwinSoftwareExecutor) installWithBrew(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
 	// Check if Homebrew is installed
-	brewPath, err := exec.LookPath("brew")
+	brewPath, err := findBrewPath()
 	if err != nil {
 		result.ErrorMessage = "Homebrew is not installed"
 		result.Message = "Cannot install via Homebrew - Homebrew not found"
@@ -267,13 +284,20 @@ func (e *DarwinSoftwareExecutor) installDMG(ctx context.Context, pkg models.Soft
 func (e *DarwinSoftwareExecutor) installFromAppStore(ctx context.Context, pkg models.SoftwarePackage, startTime time.Time) models.ExecutionResult {
 	result := models.ExecutionResult{Success: false}
 
-	// Check if mas is installed
-	masPath, err := exec.LookPath("mas")
-	if err != nil {
-		result.ErrorMessage = "mas-cli is not installed. Install with: brew install mas"
-		result.Message = "Cannot install from App Store - mas-cli not found"
-		result.Duration = time.Since(startTime).Milliseconds()
-		return result
+	// Check if mas is installed (check known path since launchd PATH may be minimal)
+	masPath := "/opt/homebrew/bin/mas"
+	if _, err := os.Stat(masPath); os.IsNotExist(err) {
+		masPath = "/usr/local/bin/mas"
+		if _, err := os.Stat(masPath); os.IsNotExist(err) {
+			if p, err2 := exec.LookPath("mas"); err2 != nil {
+				result.ErrorMessage = "mas-cli is not installed. Install with: brew install mas"
+				result.Message = "Cannot install from App Store - mas-cli not found"
+				result.Duration = time.Since(startTime).Milliseconds()
+				return result
+			} else {
+				masPath = p
+			}
+		}
 	}
 
 	// Install using mas
@@ -343,7 +367,7 @@ func (e *DarwinSoftwareExecutor) UpgradeSoftware(ctx context.Context, pkg models
 	switch strings.ToLower(pkg.Source) {
 	case "brew", "homebrew":
 		result := models.ExecutionResult{Success: false}
-		brewPath, err := exec.LookPath("brew")
+		brewPath, err := findBrewPath()
 		if err != nil {
 			result.ErrorMessage = "Homebrew is not installed"
 			result.Message = "Cannot upgrade via brew - brew not found"
@@ -379,7 +403,7 @@ func (e *DarwinSoftwareExecutor) UninstallSoftware(ctx context.Context, name str
 	result := models.ExecutionResult{Success: false}
 
 	// Try Homebrew first
-	brewPath, err := exec.LookPath("brew")
+	brewPath, err := findBrewPath()
 	if err == nil {
 		cmd := exec.CommandContext(ctx, brewPath, "uninstall", name)
 		output, err := cmd.CombinedOutput()
@@ -429,7 +453,7 @@ func (e *DarwinSoftwareExecutor) UninstallSoftware(ctx context.Context, name str
 // GetInstalledVersion returns the installed version of software
 func (e *DarwinSoftwareExecutor) GetInstalledVersion(ctx context.Context, name string) (string, error) {
 	// Try Homebrew
-	brewPath, err := exec.LookPath("brew")
+	brewPath, err := findBrewPath()
 	if err == nil {
 		cmd := exec.CommandContext(ctx, brewPath, "list", "--versions", name)
 		output, err := cmd.Output()

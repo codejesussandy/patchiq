@@ -187,7 +187,9 @@ export class DeploymentExecutorSoftwareService {
           description,
           deploymentType,
           selectionType: 'APPLICATION',
-          selectedItems: [(packageInfo as SoftwareInstallPayload).name],
+          // Store packageId (e.g. "SWP-1F3936DC") so trackManagedSoftware can look up
+          // the SoftwarePackage record. Fall back to name for legacy compatibility.
+          selectedItems: [pkgPayload.packageId || (packageInfo as SoftwareInstallPayload).name],
           scope: 'custom',
           endpoints: targetAgentIds,
           retryCount,

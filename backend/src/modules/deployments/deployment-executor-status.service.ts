@@ -8,6 +8,7 @@ import { toJsonInput, typedJson } from '@shared/utils';
 import { createLogger } from '@shared/services/logger';
 import { withTransaction } from '@shared/utils/transaction';
 import { notificationsService } from '@/modules/notifications/notifications.service';
+import { managedSoftwareService } from '@shared/services/managed-software.service';
 import {
   TaskStatusUpdate,
   COMMAND_TYPES,
@@ -110,6 +111,13 @@ export class DeploymentExecutorStatusService {
     if (!task) return;
 
     const previousStatus = task.status;
+
+    // Track managed software on success
+    if (status === 'SUCCESS' && task.assetId) {
+      this.trackManagedSoftware(task).catch((err) => {
+        logger.error({ err, taskId }, 'Failed to track managed software');
+      });
+    }
 
     await withTransaction('updateSoftwareDeploymentTask', async (tx) => {
       await tx.softwareDeploymentTask.update({
@@ -500,6 +508,54 @@ export class DeploymentExecutorStatusService {
         category: 'DEPLOYMENT',
         link: '/patches/deployed/deployed',
       }).catch(() => {});
+    }
+  }
+
+  /**
+   * Track managed software after a successful software deployment task
+   */
+  private async trackManagedSoftware(task: {
+    assetId: string | null;
+    deployment: {
+      deploymentType: string;
+      selectionType: string;
+      selectedItems: string[];
+    };
+  }): Promise<void> {
+    if (!task.assetId) return;
+
+    const { deploymentType, selectedItems } = task.deployment;
+
+    // Find SoftwarePackage records for the deployed items
+    const packages = await prisma.softwarePackage.findMany({
+      where: { packageId: { in: selectedItems } },
+    });
+
+    if (packages.length === 0) {
+      // Try by id if packageId didn't match
+      const packagesById = await prisma.softwarePackage.findMany({
+        where: { id: { in: selectedItems } },
+      });
+      packages.push(...packagesById);
+    }
+
+    for (const pkg of packages) {
+      if (deploymentType === 'UNINSTALL') {
+        await managedSoftwareService.recordUninstall(task.assetId, pkg.packageId);
+      } else {
+        // INSTALL or UPGRADE
+        await managedSoftwareService.recordInstall({
+          assetId: task.assetId,
+          packageId: pkg.packageId,
+          name: pkg.name,
+          displayName: pkg.displayName,
+          version: pkg.version,
+          vendor: pkg.vendor,
+          platform: pkg.platform,
+          cpeVendor: pkg.cpeVendor,
+          cpeProduct: pkg.cpeProduct,
+        });
+      }
     }
   }
 

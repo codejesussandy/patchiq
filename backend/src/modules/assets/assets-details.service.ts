@@ -605,6 +605,7 @@ export async function getAssetSoftware(id: string): Promise<AssetSoftware | null
       appInstalledOn: app.installDate as string | undefined,
       installSource: app.installSource as string | undefined,
       isSystemApp,
+      isManaged: false,
       license,
     };
   });
@@ -634,6 +635,39 @@ export async function getAssetSoftware(id: string): Promise<AssetSoftware | null
 
   // Get OS info from rawPayload or fall back to asset fields
   const rawOS = rawPayload?.operatingSystem as Record<string, unknown> | undefined;
+
+  // Merge hub-managed software into the application list
+  const managedSoftware = await prisma.assetManagedSoftware.findMany({
+    where: { assetId: uuid, status: 'INSTALLED' },
+  });
+
+  // Build a set of managed software names (lowercase) for dedup
+  const managedNameSet = new Set(managedSoftware.map((ms) => ms.name.toLowerCase()));
+
+  // Mark existing apps as managed if they match a managed software entry
+  for (const app of applications) {
+    if (managedNameSet.has(app.name.toLowerCase())) {
+      (app as Record<string, unknown>).isManaged = true;
+      managedNameSet.delete(app.name.toLowerCase());
+    }
+  }
+
+  // Add remaining managed software entries that aren't in the system list
+  for (const ms of managedSoftware) {
+    if (managedNameSet.has(ms.name.toLowerCase())) {
+      applications.push({
+        id: `managed-${ms.id}`,
+        name: ms.displayName || ms.name,
+        vendor: ms.vendor || undefined,
+        version: ms.version,
+        appInstalledOn: ms.installedAt?.toISOString(),
+        installSource: 'hub',
+        isSystemApp: false,
+        license: undefined,
+        isManaged: true,
+      } as typeof applications[0]);
+    }
+  }
 
   return {
     os: {

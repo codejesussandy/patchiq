@@ -10,7 +10,7 @@ RUN npm install
 COPY . .
 RUN npx prisma generate --schema src/db/prisma/schema.prisma
 EXPOSE 4002
-CMD ["npm", "run", "dev"]
+CMD ["sh", "-c", "npx prisma generate --schema src/db/prisma/schema.prisma && npm run dev"]
 
 # Build stage
 FROM base AS builder

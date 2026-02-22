@@ -551,6 +551,7 @@ export type Application = {
   appInstalledOn?: string;
   installSource?: string;
   isSystemApp?: boolean;
+  isManaged?: boolean;
   icon?: string;
   license?: {
     type?: string;

@@ -4,6 +4,7 @@ import {
   AppleOutlined,
   DesktopOutlined,
   DownloadOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import {
   App,
@@ -18,6 +19,8 @@ import {
   Input,
   Tooltip,
   Button,
+  Segmented,
+  Empty,
 } from 'antd';
 import { DataTable } from '../../../../components/shared/DataTable';
 import { useAssetSoftware } from '../../../../hooks/useAssets';
@@ -70,6 +73,7 @@ export const SoftwareTab = ({ assetId, asset }: SoftwareTabProps) => {
   const [appVendorFilters, setAppVendorFilters] = useState<string[]>([]);
   const [appPatchStatusFilters, setAppPatchStatusFilters] = useState<string[]>([]);
   const [appSearch, setAppSearch] = useState('');
+  const [appFilter, setAppFilter] = useState<string>('managed');
   const [systemAppSearch, setSystemAppSearch] = useState('');
   const [serviceSearch, setServiceSearch] = useState('');
 
@@ -83,18 +87,62 @@ export const SoftwareTab = ({ assetId, asset }: SoftwareTabProps) => {
     return items.filter((item) => keys.some((k) => String(item[k] || '').toLowerCase().includes(lower)));
   };
 
+  const managedApps = software.applications.filter((app) => app.isManaged);
   const userApps = software.applications.filter((app) => !app.isSystemApp);
   const systemApps = software.applications.filter((app) => app.isSystemApp);
-  const filteredUserApps = filterBySearch(userApps, appSearch);
+
+  // Filter applications based on segmented control
+  const getFilteredApps = () => {
+    let base = userApps;
+    if (appFilter === 'managed') base = managedApps;
+    else if (appFilter === 'all') base = userApps;
+    return filterBySearch(base, appSearch);
+  };
+  const filteredUserApps = getFilteredApps();
   const filteredSystemApps = filterBySearch(systemApps, systemAppSearch);
 
-  const applicationColumns = [
+  const managedColumns = [
     {
       title: 'Application Name', dataIndex: 'name', key: 'name',
       render: (text: string) => (
         <Space>
-          <div style={{ width: 32, height: 32, background: '#ff0000', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>A</div>
-          <div><div>{text}</div><Text type="secondary" style={{ fontSize: '11px' }}>xxx xxx xxx</Text></div>
+          <div style={{ width: 32, height: 32, background: '#1890ff', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: 14 }}>
+            <SafetyCertificateOutlined />
+          </div>
+          <div>
+            <div>{text}</div>
+            <Text type="secondary" style={{ fontSize: '11px' }}>Hub-deployed</Text>
+          </div>
+        </Space>
+      ),
+    },
+    { title: 'Vendor', dataIndex: 'vendor', key: 'vendor' },
+    { title: 'Version', dataIndex: 'version', key: 'version', render: (v: string) => <Tag>{v}</Tag> },
+    {
+      title: 'Status', key: 'status',
+      render: () => <Tag color="green">Installed</Tag>,
+    },
+    {
+      title: 'Installed On', dataIndex: 'appInstalledOn', key: 'appInstalledOn',
+      render: (date: string) => date ? new Date(date).toLocaleDateString() : '-',
+    },
+  ];
+
+  const applicationColumns = [
+    {
+      title: 'Application Name', dataIndex: 'name', key: 'name',
+      render: (text: string, record: { isManaged?: boolean }) => (
+        <Space>
+          <div style={{ width: 32, height: 32, background: record.isManaged ? '#1890ff' : '#ff0000', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: 14 }}>
+            {record.isManaged ? <SafetyCertificateOutlined /> : 'A'}
+          </div>
+          <div>
+            <div>
+              {text}
+              {record.isManaged && <Tag color="blue" style={{ marginLeft: 8, fontSize: '10px', lineHeight: '16px', padding: '0 4px' }}>Managed</Tag>}
+            </div>
+            <Text type="secondary" style={{ fontSize: '11px' }}>{record.isManaged ? 'Hub-deployed' : ''}</Text>
+          </div>
         </Space>
       ),
     },
@@ -227,17 +275,52 @@ export const SoftwareTab = ({ assetId, asset }: SoftwareTabProps) => {
 
   const softwareSubTabs = [
     {
-      key: 'applications', label: `Applications (${userApps.length})`,
+      key: 'applications', label: <Space size={4}>Applications {managedApps.length > 0 && <Tag color="blue" style={{ marginRight: 0 }}>{managedApps.length} managed</Tag>}</Space>,
       children: (
         <div>
-          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Space>
-              <Input.Search placeholder="Search" allowClear style={{ width: 300 }} value={appSearch} onChange={(e) => setAppSearch(e.target.value)} onSearch={setAppSearch} />
-              {hasActiveFilters && <Button size="small" onClick={clearAppFilters}>Clear Filters</Button>}
+              <Segmented
+                value={appFilter}
+                onChange={(v) => { setAppFilter(v as string); setAppSearch(''); }}
+                options={[
+                  { label: `Managed (${managedApps.length})`, value: 'managed' },
+                  { label: `All (${userApps.length})`, value: 'all' },
+                ]}
+              />
+              <Input.Search placeholder="Search" allowClear style={{ width: 250 }} value={appSearch} onChange={(e) => setAppSearch(e.target.value)} onSearch={setAppSearch} />
+              {hasActiveFilters && appFilter === 'all' && <Button size="small" onClick={clearAppFilters}>Clear Filters</Button>}
             </Space>
-            <Tooltip title="Export to CSV"><Button icon={<DownloadOutlined />} onClick={() => exportToCSV(userApps, exportColumns, `${hostname}-applications.csv`, message)} /></Tooltip>
+            <Tooltip title="Export to CSV">
+              <Button icon={<DownloadOutlined />} onClick={() => exportToCSV(
+                appFilter === 'managed' ? managedApps : userApps,
+                exportColumns,
+                `${hostname}-${appFilter}-applications.csv`,
+                message,
+              )} />
+            </Tooltip>
           </div>
-          <DataTable columns={applicationColumns} data={filteredUserApps} rowKey="id" onChange={handleAppTableChange} pagination={{ pageSize: 25, showSizeChanger: true, showTotal: (total) => `Total ${total} applications found` }} size="small" />
+          {appFilter === 'managed' && managedApps.length === 0 ? (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={
+                <span>
+                  <Text type="secondary">No managed software deployed to this asset yet.</Text>
+                  <br />
+                  <Text type="secondary" style={{ fontSize: 12 }}>Deploy software from the Hub to see it here.</Text>
+                </span>
+              }
+            />
+          ) : (
+            <DataTable
+              columns={appFilter === 'managed' ? managedColumns : applicationColumns}
+              data={filteredUserApps}
+              rowKey="id"
+              onChange={appFilter === 'all' ? handleAppTableChange : undefined}
+              pagination={{ pageSize: 25, showSizeChanger: true, showTotal: (total) => `Total ${total} ${appFilter === 'managed' ? 'managed' : ''} applications found` }}
+              size="small"
+            />
+          )}
         </div>
       ),
     },

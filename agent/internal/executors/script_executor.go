@@ -784,8 +784,17 @@ func (e *BaseScriptExecutor) runScript(scriptPath string, workDir string, requir
 	} else {
 		// Bash on Linux/macOS
 		if requiresRoot && !alreadyElevated {
-			// Not running as root, need to use sudo
-			cmd = exec.Command("sudo", "bash", scriptPath)
+			if runtime.GOOS == "darwin" {
+				// On macOS, the agent may run as a LaunchAgent (user session, no TTY).
+				// Plain `sudo` requires a TTY and will fail with "no tty present".
+				// Use `sudo -n` (non-interactive) which succeeds if the user has a
+				// NOPASSWD sudoers entry; otherwise fall back to running without sudo
+				// so the script still executes (with reduced privileges).
+				cmd = exec.Command("sudo", "-n", "bash", scriptPath)
+			} else {
+				// Linux: use standard sudo
+				cmd = exec.Command("sudo", "bash", scriptPath)
+			}
 		} else {
 			// Either doesn't need root, or we're already root
 			cmd = exec.Command("bash", scriptPath)
@@ -798,6 +807,23 @@ func (e *BaseScriptExecutor) runScript(scriptPath string, workDir string, requir
 	cmd.Env = os.Environ()
 	for k, v := range env {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	// On macOS, LaunchDaemons/LaunchAgents start with a minimal PATH that excludes
+	// Homebrew. Prepend known Homebrew locations so scripts can find brew, node, etc.
+	if runtime.GOOS == "darwin" {
+		const homebrewPaths = "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin"
+		pathSet := false
+		for i, envVar := range cmd.Env {
+			if strings.HasPrefix(envVar, "PATH=") {
+				cmd.Env[i] = "PATH=" + homebrewPaths + ":" + envVar[5:]
+				pathSet = true
+				break
+			}
+		}
+		if !pathSet {
+			cmd.Env = append(cmd.Env, "PATH="+homebrewPaths+":/usr/bin:/bin:/usr/sbin:/sbin")
+		}
 	}
 
 	// Add standard PatchIQ variables

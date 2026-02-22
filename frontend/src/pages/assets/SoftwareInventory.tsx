@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import {
   SearchOutlined,
-  UploadOutlined } from '@ant-design/icons';
+  UploadOutlined,
+  SafetyCertificateOutlined } from '@ant-design/icons';
 import {
   App,
   Input,
   Button,
   Typography,
-  Select,
   Modal,
   Form,
   Row,
-  Col } from 'antd';
+  Col,
+  Tag,
+  Space } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useSearchParams } from 'react-router-dom';
 import { DataTable } from '../../components/shared/DataTable';
@@ -19,7 +21,6 @@ import { useSoftwareInventory } from '../../hooks/useAssets';
 import type { SoftwareInventory as SoftwareInventoryType } from '../../types/asset.types';
 
 const { Title, Text } = Typography;
-const { Option } = Select;
 
 export const SoftwareInventory = () => {
   const { message } = App.useApp();
@@ -31,7 +32,6 @@ export const SoftwareInventory = () => {
 
   const [searchText, setSearchText] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [categoryFilter, setCategoryFilter] = useState<string>('all-categories');
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedSoftware, setSelectedSoftware] = useState<SoftwareInventoryType | null>(null);
   const [detailForm] = Form.useForm();
@@ -65,25 +65,40 @@ export const SoftwareInventory = () => {
       title: 'Software Name',
       dataIndex: 'softwareName',
       key: 'softwareName',
-      sorter: (a, b) => a.softwareName.localeCompare(b.softwareName) },
+      sorter: (a, b) => a.softwareName.localeCompare(b.softwareName),
+      render: (text: string) => (
+        <Space>
+          <div style={{ width: 28, height: 28, background: '#1890ff', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14 }}>
+            <SafetyCertificateOutlined />
+          </div>
+          <span>{text}</span>
+        </Space>
+      ),
+    },
     {
       title: 'Version',
       dataIndex: 'version',
-      key: 'version' },
+      key: 'version',
+      render: (v: string) => v ? <Tag>{v}</Tag> : '-',
+    },
     {
-      title: 'Software Type',
+      title: 'Status',
       dataIndex: 'softwareType',
-      key: 'softwareType' },
+      key: 'softwareType',
+      render: () => <Tag color="green">Managed</Tag>,
+    },
     {
-      title: 'Manufacturer',
+      title: 'Vendor',
       dataIndex: 'manufacturer',
       key: 'manufacturer',
       sorter: (a, b) => (a.manufacturer || '').localeCompare(b.manufacturer || '') },
     {
-      title: 'Total Instances',
+      title: 'Endpoints',
       dataIndex: 'totalInstances',
       key: 'totalInstances',
-      sorter: (a, b) => a.totalInstances - b.totalInstances },
+      sorter: (a, b) => a.totalInstances - b.totalInstances,
+      render: (count: number) => <Tag color="blue">{count} {count === 1 ? 'endpoint' : 'endpoints'}</Tag>,
+    },
   ];
 
   const rowSelection = {
@@ -107,12 +122,7 @@ export const SoftwareInventory = () => {
       (sw.manufacturer || '').toLowerCase().includes(searchText.toLowerCase()) ||
       (sw.version || '').toLowerCase().includes(searchText.toLowerCase());
 
-    // Category (softwareType) filter
-    const matchesCategory =
-      categoryFilter === 'all-categories' ||
-      (sw.softwareType || '').toLowerCase() === categoryFilter.toLowerCase();
-
-    return matchesSearch && matchesCategory;
+    return matchesSearch;
   });
 
   return (
@@ -126,7 +136,7 @@ export const SoftwareInventory = () => {
       >
         <div>
           <Title level={3} style={{ margin: 0 }}>Software Inventory</Title>
-          <Text type="secondary" style={{ fontSize: 14 }}>Track installed software across your assets</Text>
+          <Text type="secondary" style={{ fontSize: 14 }}>Hub-managed software deployed across your endpoints</Text>
         </div>
         <Button icon={<UploadOutlined />} onClick={handleImportCSV}>
           Import from CSV
@@ -146,11 +156,10 @@ export const SoftwareInventory = () => {
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
         />
-        <Select value={categoryFilter} onChange={setCategoryFilter} style={{ width: 200 }}>
-          <Option value="all-categories">All Categories</Option>
-          <Option value="application">Application</Option>
-          <Option value="system">System</Option>
-        </Select>
+        <Tag color="blue" style={{ lineHeight: '30px', fontSize: 13, padding: '0 12px' }}>
+          <SafetyCertificateOutlined style={{ marginRight: 4 }} />
+          Showing managed software only
+        </Tag>
       </div>
 
       <DataTable
