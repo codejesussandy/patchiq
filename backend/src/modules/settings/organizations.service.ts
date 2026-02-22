@@ -1162,6 +1162,7 @@ export class OrganizationsService {
     if (params.search) {
       where.OR = [
         { name: { contains: params.search, mode: 'insensitive' } },
+        { description: { contains: params.search, mode: 'insensitive' } },
         { address: { contains: params.search, mode: 'insensitive' } },
         { city: { contains: params.search, mode: 'insensitive' } },
         { country: { contains: params.search, mode: 'insensitive' } },
@@ -1171,6 +1172,7 @@ export class OrganizationsService {
     const [locations, total] = await Promise.all([
       prisma.location.findMany({
         where,
+        include: { organization: { select: { name: true } } },
         orderBy: { name: 'asc' },
         ...getPaginationParams(params),
       }),
@@ -1184,6 +1186,7 @@ export class OrganizationsService {
   async getLocation(id: string): Promise<LocationResponse> {
     const location = await prisma.location.findUnique({
       where: { id },
+      include: { organization: { select: { name: true } } },
     });
 
     if (!location) {
@@ -1206,11 +1209,14 @@ export class OrganizationsService {
     const location = await prisma.location.create({
       data: {
         name: input.name,
+        description: input.description,
+        organizationId: input.organizationId || null,
         address: input.address,
         city: input.city,
         country: input.country,
         timezone: input.timezone,
       },
+      include: { organization: { select: { name: true } } },
     });
 
     return this.transformLocation(location);
@@ -1239,11 +1245,14 @@ export class OrganizationsService {
       where: { id },
       data: {
         name: input.name,
+        description: input.description,
+        organizationId: input.organizationId !== undefined ? (input.organizationId || null) : undefined,
         address: input.address,
         city: input.city,
         country: input.country,
         timezone: input.timezone,
       },
+      include: { organization: { select: { name: true } } },
     });
 
     return this.transformLocation(updated);
@@ -1313,16 +1322,22 @@ export class OrganizationsService {
   private transformLocation(location: {
     id: string;
     name: string;
+    description?: string | null;
+    organizationId?: string | null;
     address: string | null;
     city: string | null;
     country: string | null;
     timezone: string | null;
     createdAt: Date;
     updatedAt: Date;
+    organization?: { name: string } | null;
   }): LocationResponse {
     return {
       id: location.id,
       name: location.name,
+      description: location.description ?? null,
+      organizationId: location.organizationId ?? null,
+      organizationName: location.organization?.name ?? null,
       address: location.address,
       city: location.city,
       country: location.country,

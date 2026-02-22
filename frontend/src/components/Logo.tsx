@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { CSSProperties } from 'react';
+import { useBrandingSettings } from '../hooks/useSettings';
 
 interface LogoProps {
   style?: CSSProperties;
@@ -6,6 +8,9 @@ interface LogoProps {
 }
 
 export const Logo = ({ style, size = 'medium' }: LogoProps) => {
+  const { data: branding } = useBrandingSettings();
+  const [imgError, setImgError] = useState(false);
+
   const sizes = {
     small: { width: 24, height: 24, fontSize: 16 },
     medium: { width: 32, height: 32, fontSize: 16 },
@@ -13,6 +18,25 @@ export const Logo = ({ style, size = 'medium' }: LogoProps) => {
   };
 
   const { width, height, fontSize } = sizes[size];
+  const logoUrl = branding?.logoUrl as string | undefined;
+
+  if (logoUrl && !imgError) {
+    return (
+      <img
+        src={logoUrl}
+        alt="Company logo"
+        onError={() => setImgError(true)}
+        style={{
+          width,
+          height,
+          objectFit: 'contain',
+          borderRadius: '4px',
+          flexShrink: 0,
+          ...style,
+        }}
+      />
+    );
+  }
 
   return (
     <div

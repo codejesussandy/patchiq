@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { CloudUploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import { App,
   Button, Typography, Space, Card, Spin } from 'antd';
@@ -21,19 +21,19 @@ export const Branding = () => {
   const [dragActive, setDragActive] = useState(false);
   const dragRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [initialized, setInitialized] = useState(false);
   const [brandingData, setBrandingData] = useState<BrandingData>({
     companyName: 'SkenzerIQ',
   });
 
-  // Sync fetched branding to local state once loaded
-  if (fetchedBranding && !initialized) {
-    setBrandingData(fetchedBranding || { companyName: 'SkenzerIQ' });
-    if (fetchedBranding?.logoUrl) {
+  // Sync fetched branding to local state; on page load/refresh, restore logo preview from backend
+  useEffect(() => {
+    if (!fetchedBranding) return;
+    setBrandingData(fetchedBranding as BrandingData);
+    // Only restore the backend URL when no local file is selected (e.g. after page refresh)
+    if (!logoFile && fetchedBranding.logoUrl) {
       setLogoPreview(String(fetchedBranding.logoUrl));
     }
-    setInitialized(true);
-  }
+  }, [fetchedBranding]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -116,8 +116,9 @@ export const Branding = () => {
 
       await updateBrandingMutation.mutateAsync(formData);
       message.success('Branding settings updated successfully');
+      // Keep logoPreview so the preview stays visible; clear the pending file and reset input
       setLogoFile(null);
-      setInitialized(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch {
       message.error('Failed to update branding settings');
     }

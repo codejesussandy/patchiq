@@ -1673,6 +1673,9 @@ export interface DepartmentResponse {
 export interface LocationResponse {
   id: string;
   name: string;
+  description: string | null;
+  organizationId: string | null;
+  organizationName?: string | null;
   address: string | null;
   city: string | null;
   country: string | null;
@@ -1732,8 +1735,12 @@ export interface UserListItem {
   firstName: string | null;
   lastName: string | null;
   contactNumber: string | null;
+  roleId?: string;
   role: string;
   status: 'Active' | 'Suspended' | 'Invite Sent' | 'Deleted';
+  organizationId?: string | null;
+  departmentId?: string | null;
+  locationId?: string | null;
   organization: string | null;
   department: string | null;
   location: string | null;
@@ -1743,6 +1750,7 @@ export interface UserListItem {
 
 export interface UserDetailResponse extends UserListItem {
   isOnboarded: boolean;
+  roleId: string;
   organizationId: string | null;
   departmentId: string | null;
   locationId: string | null;
@@ -1788,6 +1796,8 @@ export interface RoleResponse {
   id: string;
   name: string;
   description: string | null;
+  organizationId: string | null;
+  organizationName?: string | null;
   isSystem: boolean;
   permissions: RolePermissions;
   users: number;
@@ -1822,6 +1832,13 @@ export interface LdapConfigResponse {
   baseDn: string;
   userFilter: string | null;
   isActive: boolean;
+  fqdn: string | null;
+  protocol: string | null;
+  description: string | null;
+  timeout: number | null;
+  enableAutoSync: boolean;
+  autoSyncInterval: string | null;
+  groupBase: string | null;
   createdAt: string;
   updatedAt: string;
 }

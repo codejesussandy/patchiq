@@ -330,17 +330,29 @@ export async function getBranding(): Promise<Record<string, unknown>> {
   return result;
 }
 
-export async function getBrandingLogo(): Promise<string | null> {
-  const setting = await prisma.setting.findUnique({
-    where: { key: 'branding.logoObjectKey' },
-  });
+export async function getBrandingLogo(): Promise<{ objectKey: string; mimeType: string } | null> {
+  const [objectKeySetting, fileNameSetting] = await Promise.all([
+    prisma.setting.findUnique({ where: { key: 'branding.logoObjectKey' } }),
+    prisma.setting.findUnique({ where: { key: 'branding.logoFileName' } }),
+  ]);
 
-  if (!setting?.value) {
+  if (!objectKeySetting?.value) {
     return null;
   }
 
-  const objectKey = setting.value as string;
-  return minioStorage.getPresignedUrl(objectKey, { expirySeconds: 3600 });
+  const objectKey = objectKeySetting.value as string;
+  const fileName = (fileNameSetting?.value as string) || '';
+  const ext = fileName.split('.').pop()?.toLowerCase() || 'png';
+  const mimeTypes: Record<string, string> = {
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    svg: 'image/svg+xml',
+  };
+  const mimeType = mimeTypes[ext] || 'image/png';
+
+  return { objectKey, mimeType };
 }
 
 export async function updateBranding(
@@ -414,9 +426,13 @@ export async function updateBranding(
 // ============================================
 
 export async function listVendorLogos() {
-  return prisma.vendorLogo.findMany({
-    orderBy: { createdAt: 'desc' },
-  });
+  const logos = await prisma.vendorLogo.findMany({ orderBy: { createdAt: 'desc' } });
+  return Promise.all(logos.map(async (logo) => ({
+    ...logo,
+    logoUrl: logo.objectKey
+      ? await minioStorage.getPresignedUrl(logo.objectKey, { expirySeconds: 3600 })
+      : logo.logoUrl,
+  })));
 }
 
 export async function getVendorLogo(id: string) {

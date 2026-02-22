@@ -8,6 +8,7 @@ import { Logo } from '../Logo';
 import { NotificationDropdown } from '../NotificationDropdown';
 import { topMenuItems } from './menuConfig';
 import { ProfileMenu } from './ProfileMenu';
+import { useBrandingSettings } from '../../hooks/useSettings';
 
 const { Header } = Layout;
 
@@ -41,6 +42,7 @@ export const HeaderBar = ({
 }: HeaderBarProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { data: branding } = useBrandingSettings();
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -111,7 +113,9 @@ export const HeaderBar = ({
         minWidth: 150,
       }}>
         <Logo size="medium" />
-        <span style={{ fontWeight: 600, fontSize: '16px', color: '#000', whiteSpace: 'nowrap' }}>Patch Manager</span>
+        <span style={{ fontWeight: 600, fontSize: '16px', color: '#000', whiteSpace: 'nowrap' }}>
+          {(branding?.companyName as string) || 'PatchIQ'}
+        </span>
       </div>
 
       <Menu

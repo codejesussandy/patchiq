@@ -280,7 +280,7 @@ export class SettingsService {
     return infra.getBranding();
   }
 
-  async getBrandingLogo(): Promise<string | null> {
+  async getBrandingLogo(): Promise<{ objectKey: string; mimeType: string } | null> {
     return infra.getBrandingLogo();
   }
 

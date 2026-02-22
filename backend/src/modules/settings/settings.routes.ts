@@ -101,6 +101,9 @@ function handleMulterError(err: Error, _req: Request, res: Response, next: NextF
   next(err);
 }
 
+// Public route — no auth required (logo used as <img> src in browser)
+router.get('/branding/logo', settingsController.getBrandingLogo.bind(settingsController));
+
 // All settings routes require authentication
 router.use(authenticate);
 
@@ -326,7 +329,6 @@ router.delete('/distribution-servers/:id', checkPermission('settings', 'delete')
 // ============================================
 router.get('/branding', checkPermission('settings', 'view'), settingsController.getBranding.bind(settingsController));
 router.post('/branding', checkPermission('settings', 'edit'), upload.single('logo'), handleMulterError, audit({ action: AuditAction.UPDATE, resource: AuditResource.BRANDING }), settingsController.updateBranding.bind(settingsController));
-router.get('/branding/logo', settingsController.getBrandingLogo.bind(settingsController));
 
 // ============================================
 // Vendor Logos

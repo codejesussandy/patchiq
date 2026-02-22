@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { sendSuccess, sendError, typedQuery } from '@shared/utils';
 import { NotFoundError } from '@shared/errors';
+import { minioStorage } from '@shared/services/minio.service';
 import { alertConfigCrudService } from './alert-config-crud.service';
 import { integrationCrudService } from './integration-crud.service';
 import { organizationsService } from './organizations.service';
@@ -1074,14 +1075,17 @@ export class SettingsController {
 
   async getBrandingLogo(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const logoUrl = await settingsService.getBrandingLogo();
+      const logoData = await settingsService.getBrandingLogo();
 
-      if (!logoUrl) {
+      if (!logoData) {
         return next(new NotFoundError('No branding logo configured'));
       }
 
-      // Redirect to the MinIO presigned URL (1-hour expiry)
-      res.redirect(302, logoUrl);
+      // Stream the image directly from MinIO — avoids browser redirect to internal MinIO URL
+      const stream = await minioStorage.downloadStream(logoData.objectKey);
+      res.setHeader('Content-Type', logoData.mimeType);
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      stream.pipe(res);
     } catch (error) {
       next(error);
     }

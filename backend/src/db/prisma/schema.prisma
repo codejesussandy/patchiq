@@ -102,6 +102,8 @@ model Organization {
   branches      Branch[]
   assets        Asset[]
   enrollSecrets EnrollSecret[]
+  locations     Location[]
+  roles         Role[]
 
   @@map("organizations")
 }
@@ -139,17 +141,20 @@ model Department {
 }
 
 model Location {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  address   String?
-  city      String?
-  country   String?
-  timezone  String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id             String        @id @default(uuid())
+  name           String        @unique
+  description    String?
+  organizationId String?       @map("organization_id")
+  address        String?
+  city           String?
+  country        String?
+  timezone       String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  users  User[]
-  assets Asset[]
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  users        User[]
+  assets       Asset[]
 
   @@map("locations")
 }
@@ -159,13 +164,15 @@ model Location {
 // ============================================
 
 model Role {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?
-  isSystem    Boolean  @default(false) @map("is_system")
-  permissions Json     @default("{}")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id             String        @id @default(uuid())
+  name           String        @unique
+  description    String?
+  organizationId String?       @map("organization_id")
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  isSystem       Boolean       @default(false) @map("is_system")
+  permissions    Json          @default("{}")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
   users         User[]
   groupMappings LdapGroupMapping[]
@@ -1385,6 +1392,11 @@ model LdapConfig {
   bindPasswordEnc String   @map("bind_password_enc")
   userFilter      String?  @map("user_filter")
   isActive        Boolean  @default(true) @map("is_active")
+  fqdn            String?
+  protocol        String?  @default("LDAP")
+  description     String?
+  timeoutSeconds  Int?     @map("timeout_seconds")
+  autoSyncInterval String? @map("auto_sync_interval")
 
   userSearchBase       String?   @map("user_search_base")
   groupSearchBase      String?   @map("group_search_base")
