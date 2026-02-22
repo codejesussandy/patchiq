@@ -1703,6 +1703,44 @@ async function main() {
   const hubPackagesCreated = await seedHubPackages(prisma);
   console.log('Created', hubPackagesCreated, 'hub software packages');
 
+  // ============================================
+  // Default Asset Categories
+  // ============================================
+
+  const defaultCategories = [
+    { name: 'Laptop',         color: '#4A90D9', description: 'Portable workstations and notebooks',          subCategories: ['Business Laptop', 'Gaming Laptop', 'Ultrabook'] },
+    { name: 'Desktop',        color: '#7B68EE', description: 'Fixed workstations and desktop computers',     subCategories: ['Workstation', 'All-in-One', 'Mini PC'] },
+    { name: 'Server',         color: '#E8473F', description: 'Physical and rack-mounted servers',            subCategories: ['Rack Server', 'Tower Server', 'Blade Server'] },
+    { name: 'Virtual Machine',color: '#F5A623', description: 'VMs and cloud instances',                      subCategories: ['Windows VM', 'Linux VM', 'Cloud Instance'] },
+    { name: 'Router',         color: '#50C878', description: 'Network routing devices',                      subCategories: ['Core Router', 'Edge Router', 'Wireless Router'] },
+    { name: 'Switch',         color: '#20B2AA', description: 'Network switches and hubs',                    subCategories: ['Managed Switch', 'Unmanaged Switch', 'PoE Switch'] },
+    { name: 'Firewall',       color: '#FF6B6B', description: 'Network security appliances',                  subCategories: ['Next-Gen Firewall', 'UTM Appliance', 'WAF'] },
+    { name: 'Printer',        color: '#9B59B6', description: 'Printers and multifunction devices',           subCategories: ['Laser Printer', 'Inkjet Printer', 'MFP'] },
+    { name: 'Mobile Device',  color: '#3498DB', description: 'Smartphones and tablets',                      subCategories: ['Smartphone', 'Tablet', 'Rugged Device'] },
+    { name: 'Storage',        color: '#E67E22', description: 'NAS, SAN and storage appliances',              subCategories: ['NAS', 'SAN', 'External Drive'] },
+  ];
+
+  let categoriesCreated = 0;
+  for (const cat of defaultCategories) {
+    const existing = await prisma.category.findUnique({ where: { name: cat.name } });
+    if (!existing) {
+      const created = await prisma.category.create({
+        data: {
+          name: cat.name,
+          color: cat.color,
+          description: cat.description,
+          isDefault: true,
+          subCategories: {
+            create: cat.subCategories.map(sub => ({ name: sub })),
+          },
+        },
+      });
+      categoriesCreated++;
+      console.log(`  [OK] Category: ${created.name}`);
+    }
+  }
+  console.log(`Created ${categoriesCreated} default asset categories`);
+
   console.log('\nDatabase seed completed successfully!');
   console.log('\n=== Login Credentials ===');
   console.log('Admin: admin@patchiq.io / admin123');

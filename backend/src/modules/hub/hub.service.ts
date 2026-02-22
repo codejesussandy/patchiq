@@ -403,6 +403,33 @@ class HubService {
   }
 
   /**
+   * Get package file as a stream for proxy download (non-bundle installers: exe, msi)
+   * Used when agents can't directly access MinIO
+   */
+  async getPackageFileStream(packageId: string): Promise<{ stream: NodeJS.ReadableStream; fileName: string; fileSize: bigint | null; checksum: string | null }> {
+    const pkg = await prisma.softwarePackage.findUnique({
+      where: { packageId },
+    });
+
+    if (!pkg) {
+      throw new NotFoundError('Package not found');
+    }
+
+    if (!pkg.minioObjectKey) {
+      throw new BadRequestError('Package does not have a file in MinIO');
+    }
+
+    const stream = await minioStorage.downloadStream(pkg.minioObjectKey, pkg.minioBucket || undefined);
+
+    return {
+      stream,
+      fileName: pkg.fileName || `${pkg.name}-${pkg.version}`,
+      fileSize: pkg.fileSize,
+      checksum: pkg.checksum,
+    };
+  }
+
+  /**
    * Get execution payload for agent - supports both bundle and inline script modes
    */
   async getExecutionPayload(
@@ -614,7 +641,10 @@ class HubService {
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    // Only show packages that have files in MinIO
+    const where: Record<string, unknown> = {
+      minioObjectKey: { not: null },
+    };
 
     if (filters.platform) where.platform = filters.platform;
     if (filters.category) where.category = filters.category;
@@ -663,7 +693,10 @@ class HubService {
     const page = filters.page || 1;
     const limit = filters.limit || 20;
 
-    const where: Record<string, unknown> = {};
+    // Only show packages that have files in MinIO
+    const where: Record<string, unknown> = {
+      minioObjectKey: { not: null },
+    };
 
     if (filters.platform) where.platform = filters.platform;
     if (filters.category) where.category = filters.category;

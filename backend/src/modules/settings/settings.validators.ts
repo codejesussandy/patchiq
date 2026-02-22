@@ -117,6 +117,8 @@ export type UpdateDepartmentInput = z.infer<typeof updateDepartmentSchema>;
 
 export const createLocationSchema = z.object({
   name: z.string().min(1).max(100),
+  description: z.string().max(500).optional().nullable(),
+  organizationId: z.string().optional().nullable(),
   address: z.string().max(500).optional(),
   city: z.string().max(100).optional(),
   country: z.string().max(100).optional(),
@@ -125,6 +127,8 @@ export const createLocationSchema = z.object({
 
 export const updateLocationSchema = z.object({
   name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional().nullable(),
+  organizationId: z.string().optional().nullable(),
   address: z.string().max(500).optional().nullable(),
   city: z.string().max(100).optional().nullable(),
   country: z.string().max(100).optional().nullable(),
@@ -140,22 +144,45 @@ export type UpdateLocationInput = z.infer<typeof updateLocationSchema>;
 
 export const createUserSchema = z.object({
   email: z.string().email(),
-  name: z.string().min(1).max(100),
+  // Accept either split names (frontend) or combined name (API clients)
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  name: z.string().min(1).max(100).optional(),
   password: z.string().min(8).max(128).optional(),
-  role: z.string().default('USER'),
+  // Accept roleId (UUID from frontend) or role (name string from API clients)
+  roleId: z.string().uuid().optional(),
+  role: z.string().optional(),
   organizationId: z.string().uuid().optional(),
   departmentId: z.string().uuid().optional(),
   locationId: z.string().uuid().optional(),
+  branchId: z.string().uuid().optional(), // alias for locationId from frontend
   contactNumber: z.string().max(50).optional(),
+  phone: z.string().max(50).optional(),   // alias for contactNumber from frontend
+  timezone: z.string().max(100).optional(),
+  loginAllowed: z.boolean().optional(),
+  endpointAssignmentAllowed: z.boolean().optional(),
+  confirmPassword: z.string().optional(), // stripped, only used for FE validation
+  avatar: z.string().optional(),
 });
 
 export const updateUserSchema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
   name: z.string().min(1).max(100).optional(),
-  role: z.string().optional(),
+  roleId: z.string().uuid().optional().nullable(),
+  role: z.string().optional().nullable(),
   organizationId: z.string().uuid().optional().nullable(),
   departmentId: z.string().uuid().optional().nullable(),
   locationId: z.string().uuid().optional().nullable(),
+  branchId: z.string().uuid().optional().nullable(),
   contactNumber: z.string().max(50).optional().nullable(),
+  phone: z.string().max(50).optional().nullable(),
+  timezone: z.string().max(100).optional().nullable(),
+  loginAllowed: z.boolean().optional(),
+  endpointAssignmentAllowed: z.boolean().optional(),
+  password: z.string().min(8).max(128).optional(),
+  confirmPassword: z.string().optional(),
+  avatar: z.string().optional(),
 });
 
 export const inviteUserSchema = z.object({
@@ -197,7 +224,8 @@ const modulePermissionsSchema = z.object({
 
 export const createRoleSchema = z.object({
   name: z.string().min(1).max(100),
-  description: z.string().max(500).optional(),
+  description: z.string().max(500).optional().nullable(),
+  organizationId: z.string().optional().nullable(),
   permissions: z.object({
     agents: modulePermissionsSchema.optional(),
     assets: modulePermissionsSchema.optional(),
@@ -214,6 +242,7 @@ export const createRoleSchema = z.object({
 export const updateRoleSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).optional().nullable(),
+  organizationId: z.string().optional().nullable(),
   permissions: z.object({
     agents: modulePermissionsSchema.optional(),
     assets: modulePermissionsSchema.optional(),
@@ -398,7 +427,7 @@ export type UpdateAgentConfigInput = z.infer<typeof updateAgentConfigSchema>;
 export const updateProxyServerSchema = z.object({
   enabled: z.boolean().optional(),
   host: z.string().max(255).optional().nullable(),
-  port: z.number().int().min(1).max(65535).optional().nullable(),
+  port: z.coerce.number().int().min(1).max(65535).optional().nullable(),
   protocol: z.enum(['HTTP', 'HTTPS', 'SOCKS5']).optional().nullable(),
   enableAuthentication: z.boolean().optional(),
   username: z.string().max(100).optional().nullable(),

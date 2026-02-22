@@ -62,9 +62,11 @@ export const ZeroTouchConfigForm = ({ form, applications, computers, groups }: Z
     <Form.Item noStyle shouldUpdate={(prev, cur) => prev.scope !== cur.scope}>
       {({ getFieldValue }) =>
         getFieldValue('scope') === 'SPECIFIC_GROUPS' && (
-          <Form.Item name="groups" label="Select Groups" rules={[{ required: true, message: 'Please select groups' }]}>
+          <Form.Item name="groups" label="Select Groups" rules={[{ required: true, message: 'Please select at least one group' }]}>
             <Select mode="multiple" placeholder="Select groups">
-              {groups.map((g) => <Option key={g.id} value={g.id}>{g.name}</Option>)}
+              <Option value="windows_workstations">Windows Workstations</Option>
+              <Option value="macos_devices">macOS Devices</Option>
+              <Option value="linux_servers">Linux Servers</Option>
             </Select>
           </Form.Item>
         )

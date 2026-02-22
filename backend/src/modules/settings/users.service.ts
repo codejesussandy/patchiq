@@ -179,13 +179,17 @@ export class UsersService {
       throw new ConflictError('Email already exists');
     }
 
-    // Resolve role by name (default to 'user')
-    const roleName = input.role || 'user';
-    const role = await prisma.role.findUnique({
-      where: { name: roleName },
-    });
-    if (!role) {
-      throw new BadRequestError(`Role '${roleName}' not found`);
+    // Resolve role: accept roleId (UUID) from frontend or role name from API clients
+    let resolvedRoleId: string;
+    if (input.roleId) {
+      const role = await prisma.role.findUnique({ where: { id: input.roleId } });
+      if (!role) throw new BadRequestError(`Role not found`);
+      resolvedRoleId = role.id;
+    } else {
+      const roleName = input.role || 'user';
+      const role = await prisma.role.findFirst({ where: { name: { equals: roleName, mode: 'insensitive' } } });
+      if (!role) throw new BadRequestError(`Role '${roleName}' not found`);
+      resolvedRoleId = role.id;
     }
 
     // Validate password against policy if provided
@@ -204,16 +208,26 @@ export class UsersService {
       passwordHash = await hashPassword(generateToken(12));
     }
 
+    // Resolve field aliases: firstName+lastName→name, branchId→locationId, phone→contactNumber
+    const firstName = input.firstName;
+    const lastName = input.lastName;
+    const displayName = input.name || (firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || input.email);
+    const locationId = input.locationId || input.branchId;
+    const contactNumber = input.contactNumber || input.phone;
+
     const user = await prisma.user.create({
       data: {
         email: input.email.toLowerCase(),
         passwordHash,
-        name: input.name,
-        roleId: role.id,
+        name: displayName,
+        firstName: firstName,
+        lastName: lastName,
+        timezone: input.timezone,
+        roleId: resolvedRoleId,
         organizationId: input.organizationId,
         departmentId: input.departmentId,
-        locationId: input.locationId,
-        contactNumber: input.contactNumber,
+        locationId: locationId,
+        contactNumber: contactNumber,
         isActive: true,
         isOnboarded: !!input.password,
       },
@@ -245,17 +259,26 @@ export class UsersService {
       throw new NotFoundError('User not found');
     }
 
-    // Resolve new role if provided
+    // Resolve new role: accept roleId (UUID) or role name
     let newRoleId: string | undefined;
-    if (input.role) {
-      const role = await prisma.role.findUnique({
-        where: { name: input.role },
-      });
-      if (!role) {
-        throw new BadRequestError(`Role '${input.role}' not found`);
-      }
+    if (input.roleId) {
+      const role = await prisma.role.findUnique({ where: { id: input.roleId } });
+      if (!role) throw new BadRequestError(`Role not found`);
+      newRoleId = role.id;
+    } else if (input.role) {
+      const role = await prisma.role.findFirst({ where: { name: { equals: input.role, mode: 'insensitive' } } });
+      if (!role) throw new BadRequestError(`Role '${input.role}' not found`);
       newRoleId = role.id;
     }
+
+    // Resolve field aliases
+    const firstName = input.firstName;
+    const lastName = input.lastName;
+    const displayName = input.name || (firstName !== undefined || lastName !== undefined
+      ? `${firstName ?? user.firstName ?? ''} ${lastName ?? user.lastName ?? ''}`.trim()
+      : undefined);
+    const locationId = input.locationId !== undefined ? input.locationId : input.branchId;
+    const contactNumber = input.contactNumber !== undefined ? input.contactNumber : input.phone;
 
     const oldData = {
       name: user.name,
@@ -268,12 +291,15 @@ export class UsersService {
     const updated = await prisma.user.update({
       where: { id },
       data: {
-        name: input.name,
+        name: displayName,
+        firstName: firstName,
+        lastName: lastName,
+        timezone: input.timezone,
         roleId: newRoleId,
         organizationId: input.organizationId,
         departmentId: input.departmentId,
-        locationId: input.locationId,
-        contactNumber: input.contactNumber,
+        locationId: locationId,
+        contactNumber: contactNumber,
       },
       include: {
         role: { select: { name: true } },
@@ -565,12 +591,16 @@ export class UsersService {
     firstName: string | null;
     lastName: string | null;
     contactNumber: string | null;
+    roleId?: string;
     role: { name: string };
     isActive: boolean;
     isOnboarded: boolean;
     deletedAt: Date | null;
     lastLoginAt: Date | null;
     createdAt: Date;
+    organizationId?: string | null;
+    departmentId?: string | null;
+    locationId?: string | null;
     organization: { name: string } | null;
     department: { name: string } | null;
     location: { name: string } | null;
@@ -596,8 +626,12 @@ export class UsersService {
       firstName: user.firstName,
       lastName: user.lastName,
       contactNumber: user.contactNumber,
+      roleId: user.roleId,
       role: user.role.name,
       status,
+      organizationId: user.organizationId ?? null,
+      departmentId: user.departmentId ?? null,
+      locationId: user.locationId ?? null,
       organization: user.organization?.name ?? null,
       department: user.department?.name ?? null,
       location: user.location?.name ?? null,
@@ -613,6 +647,7 @@ export class UsersService {
     firstName: string | null;
     lastName: string | null;
     contactNumber: string | null;
+    roleId: string;
     role: { name: string };
     isActive: boolean;
     isOnboarded: boolean;
@@ -631,6 +666,7 @@ export class UsersService {
     return {
       ...listItem,
       isOnboarded: user.isOnboarded,
+      roleId: user.roleId,
       organizationId: user.organizationId,
       departmentId: user.departmentId,
       locationId: user.locationId,
@@ -665,7 +701,7 @@ export class UsersService {
   async listRoles(): Promise<RoleResponse[]> {
     const roles = await prisma.role.findMany({
       orderBy: [{ isSystem: 'desc' }, { name: 'asc' }],
-      include: { _count: { select: { users: { where: { deletedAt: null } } } } },
+      include: { organization: true, _count: { select: { users: { where: { deletedAt: null } } } } },
     });
 
     return roles.map(role => this.transformRole(role, role._count.users));
@@ -674,7 +710,7 @@ export class UsersService {
   async getRole(id: string): Promise<RoleResponse> {
     const role = await prisma.role.findUnique({
       where: { id },
-      include: { _count: { select: { users: { where: { deletedAt: null } } } } },
+      include: { organization: true, _count: { select: { users: { where: { deletedAt: null } } } } },
     });
 
     if (!role) {
@@ -698,9 +734,11 @@ export class UsersService {
       data: {
         name: input.name,
         description: input.description,
+        organizationId: input.organizationId,
         isSystem: false,
         permissions: input.permissions ? JSON.parse(JSON.stringify(input.permissions)) : {},
       },
+      include: { organization: true },
     });
 
     return this.transformRole(role, 0);
@@ -741,8 +779,10 @@ export class UsersService {
         data: {
           name: input.name,
           description: input.description,
+          organizationId: input.organizationId,
           permissions: input.permissions ? JSON.parse(JSON.stringify(input.permissions)) : undefined,
         },
+        include: { organization: true },
       });
 
       const userCount = await tx.user.count({
@@ -798,6 +838,8 @@ export class UsersService {
       id: string;
       name: string;
       description: string | null;
+      organizationId?: string | null;
+      organization?: { id: string; name: string } | null;
       isSystem: boolean;
       permissions: unknown;
       createdAt: Date;
@@ -809,6 +851,8 @@ export class UsersService {
       id: role.id,
       name: role.name,
       description: role.description,
+      organizationId: role.organizationId ?? null,
+      organizationName: role.organization?.name ?? null,
       isSystem: role.isSystem,
       permissions: role.permissions as RolePermissions,
       users: userCount,

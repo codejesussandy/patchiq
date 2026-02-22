@@ -81,6 +81,9 @@ export class DeploymentExecutorSoftwareService {
       requiresRoot?: boolean;
     } | null = null;
     let hubInstallCommand: string | null = null;
+    let hubDisplayName: string | null = null;
+    // MinIO file-based deployment info (exe/msi served via proxy)
+    let hubMinioFilePayload: SoftwareInstallPayload | null = null;
 
     if (pkgPayload.packageId) {
       try {
@@ -90,6 +93,7 @@ export class DeploymentExecutorSoftwareService {
 
         if (pkg) {
           hubInstallCommand = pkg.installCommand;
+          hubDisplayName = pkg.displayName;
         }
 
         if (pkg && (pkg.bundleObjectKey || pkg.scriptsIncluded)) {
@@ -115,6 +119,23 @@ export class DeploymentExecutorSoftwareService {
               requiresRoot: pkg.requiresRoot,
             };
           }
+        } else if (pkg && pkg.minioObjectKey && deploymentType !== 'UNINSTALL') {
+          // MinIO file-based deployment: serve the installer (exe/msi) via proxy URL
+          const backendUrl = env.BACKEND_PUBLIC_URL.replace(/\/$/, '');
+          const packageUrl = `${backendUrl}/v1/packages/${pkg.packageId}/download`;
+          const ext = (pkg.fileName || pkg.minioObjectKey).split('.').pop()?.toLowerCase() || 'exe';
+          const source = ext === 'msi' ? 'msi' : 'exe';
+
+          hubMinioFilePayload = {
+            name: pkg.displayName || pkg.name,
+            version: pkg.version,
+            source: source as SoftwareInstallPayload['source'],
+            packageUrl,
+            checksum: pkg.checksum || undefined,
+            checksumType: pkg.checksum ? 'sha256' : undefined,
+            installArgs: pkg.installArgs || undefined,
+            silentInstall: pkg.silentInstall,
+          };
         }
       } catch (err) {
         logger.info({ packageId: pkgPayload.packageId }, 'Package not found in Hub, using legacy mode');
@@ -151,6 +172,13 @@ export class DeploymentExecutorSoftwareService {
       };
 
       commandPayload = toJsonInput(bundlePayload);
+    } else if (hubMinioFilePayload) {
+      // MinIO file-based: agent downloads exe/msi from proxy URL and runs it
+      commandType = deploymentType === 'UPGRADE'
+        ? COMMAND_TYPES.SOFTWARE_UPGRADE
+        : COMMAND_TYPES.SOFTWARE_INSTALL;
+
+      commandPayload = toJsonInput(hubMinioFilePayload);
     } else {
       const pkg = packageInfo as SoftwareInstallPayload & { packageId?: string };
       if ((pkg.source as string) === 'bundle' || !pkg.source) {
@@ -188,9 +216,9 @@ export class DeploymentExecutorSoftwareService {
       for (const agent of agents) {
         let agentPayload = commandPayload;
         const pkgInfo = packageInfo as SoftwareInstallPayload;
-        if (!hubPackage?.scriptsIncluded && ((pkgInfo.source as string) === 'bundle' || !pkgInfo.source)) {
+        if (!hubPackage?.scriptsIncluded && !hubMinioFilePayload && ((pkgInfo.source as string) === 'bundle' || !pkgInfo.source)) {
           const osSource = getDefaultSourceForOS(agent.os || 'Unknown');
-          const pkgName = hubInstallCommand || pkgInfo.name;
+          const pkgName = hubDisplayName || hubInstallCommand || pkgInfo.name;
           agentPayload = toJsonInput({ name: pkgName, source: osSource });
         }
 

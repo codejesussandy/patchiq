@@ -259,6 +259,7 @@ export const UserFormModal = ({
               <Dragger
                 maxCount={1}
                 accept=".png,.jpg,.jpeg,.gif"
+                beforeUpload={() => false}
                 onChange={(info) => {
                   onFileChange(info.fileList.length > 0 ? info.fileList[0] : null);
                 }}

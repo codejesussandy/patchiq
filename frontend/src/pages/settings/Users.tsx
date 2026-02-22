@@ -22,7 +22,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { ConfirmModal } from '../../components/shared/ConfirmModal';
 import { DataTable } from '../../components/shared/DataTable';
 import { useModal } from '../../hooks/useModal';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useOrganizations, useDepartments, useRoles, useBranches } from '../../hooks/useSettings';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useOrganizations, useDepartments, useRoles, useLocations } from '../../hooks/useSettings';
 import { sanitizeInput } from '../../utils/sanitize';
 import { ColumnFilterModal } from './components/ColumnFilterModal';
 import { UserFormModal } from './components/UserFormModal';
@@ -83,7 +83,7 @@ export const Users = () => {
   const { data: rawOrganizations } = useOrganizations();
   const { data: rawDepartments } = useDepartments();
   const { data: rawRoles } = useRoles();
-  const { data: rawBranches } = useBranches();
+  const { data: rawBranches } = useLocations();
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
@@ -100,7 +100,16 @@ export const Users = () => {
   const users: User[] = Array.isArray(rawUsers)
     ? rawUsers.map((user: Record<string, unknown>, index: number) => ({
         ...user,
-        id: (user.id as string) || String(index) } as User))
+        id: (user.id as string) || String(index),
+        // Map backend field names to frontend field names
+        phone: (user.contactNumber as string) || (user.phone as string) || undefined,
+        roleName: (user.role as string) || undefined,
+        roleId: (user.roleId as string) || undefined,
+        organizationName: (user.organization as string) || undefined,
+        departmentName: (user.department as string) || undefined,
+        branchName: (user.location as string) || undefined,
+        branchId: (user.locationId as string) || undefined,
+      } as User))
     : [];
   const organizations = Array.isArray(rawOrganizations) ? rawOrganizations : [];
   const departments = Array.isArray(rawDepartments) ? rawDepartments : [];

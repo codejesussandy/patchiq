@@ -87,7 +87,7 @@ export const DeviceCredentials = () => {
     { title: 'ID', dataIndex: 'id', key: 'id', width: 60, sorter: (a, b) => parseInt(a.id) - parseInt(b.id) },
     { title: 'Name', dataIndex: 'name', key: 'name', sorter: (a, b) => a.name.localeCompare(b.name),
       render: (text: string, record: DeviceCredential) => <a href="#" onClick={(e) => { e.preventDefault(); handleViewItem(record); }}>{text}</a> },
-    { title: 'Type', dataIndex: 'type', key: 'type', width: 100, filters: [{ text: 'SSH', value: 'SSH' }, { text: 'Windows', value: 'Windows' }, { text: 'SNMP', value: 'SNMP' }], onFilter: (value, record) => record.type === value },
+    { title: 'Type', dataIndex: 'type', key: 'type', width: 100, filters: [{ text: 'SSH', value: 'SSH' }, { text: 'Windows', value: 'WINDOWS' }, { text: 'SNMP', value: 'SNMP' }], onFilter: (value, record) => record.type === value },
     { title: 'Username', dataIndex: 'username', key: 'username', render: (text: string) => text || '—' },
     { title: 'Last Used', dataIndex: 'lastUsed', key: 'lastUsed',
       render: (text: string) => text ? new Date(text).toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) : '—' },
@@ -141,7 +141,7 @@ export const DeviceCredentials = () => {
         <Form form={form} layout="vertical" style={{ marginTop: '24px' }}>
           <Form.Item name="name" label="Credential Name" rules={[{ required: true, message: 'Please enter credential name' }]}><Input placeholder="e.g., Windows Admin" /></Form.Item>
           <Form.Item name="type" label="Credential Type" rules={[{ required: true, message: 'Please select credential type' }]}>
-            <Select placeholder="Select type"><Select.Option value="SSH">SSH</Select.Option><Select.Option value="Windows">Windows</Select.Option><Select.Option value="SNMP">SNMP</Select.Option></Select>
+            <Select placeholder="Select type"><Select.Option value="SSH">SSH</Select.Option><Select.Option value="WINDOWS">Windows</Select.Option><Select.Option value="SNMP">SNMP</Select.Option></Select>
           </Form.Item>
           <Form.Item name="username" label="Username" rules={[{ required: true, message: 'Please enter username' }]}><Input placeholder="e.g., admin" /></Form.Item>
           <Form.Item name="password" label="Password" rules={[{ required: true, message: 'Please enter password' }]}><Input.Password placeholder="Enter password" /></Form.Item>
@@ -160,7 +160,7 @@ export const DeviceCredentials = () => {
         <Form form={viewForm} layout="vertical" style={{ marginTop: '24px' }}>
           <Form.Item name="name" label="Credential Name" rules={[{ required: true }]}><Input disabled={!isViewModalEditing} /></Form.Item>
           <Form.Item name="type" label="Credential Type" rules={[{ required: true }]}>
-            <Select disabled={!isViewModalEditing}><Select.Option value="SSH">SSH</Select.Option><Select.Option value="Windows">Windows</Select.Option><Select.Option value="SNMP">SNMP</Select.Option></Select>
+            <Select disabled={!isViewModalEditing}><Select.Option value="SSH">SSH</Select.Option><Select.Option value="WINDOWS">Windows</Select.Option><Select.Option value="SNMP">SNMP</Select.Option></Select>
           </Form.Item>
           <Form.Item name="username" label="Username" rules={[{ required: true }]}><Input disabled={!isViewModalEditing} /></Form.Item>
           <Form.Item name="password" label="Password" rules={[{ required: true }]}>

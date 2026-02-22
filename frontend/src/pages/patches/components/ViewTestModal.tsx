@@ -37,9 +37,15 @@ export const ViewTestModal = ({ open, test, onClose }: ViewTestModalProps) => (
         </Row>
         <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
           <Col span={12}>
+            <Text type="secondary">Platform</Text>
+            <div><Tag color="purple">{test.platform || 'ALL'}</Tag></div>
+          </Col>
+          <Col span={12}>
             <Text type="secondary">Application Type</Text>
             <div><Tag color="blue">{test.applicationType}</Tag></div>
           </Col>
+        </Row>
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
           <Col span={12}>
             <Text type="secondary">Scope</Text>
             <div><Tag color="green">{test.scope?.replace(/_/g, ' ')}</Tag></div>

@@ -115,8 +115,8 @@ export const settingsService = {
   // Role Management APIs
   async getRoles(): Promise<Role[]> {
     const response = await api.get(`/settings/roles`);
-    // Backend returns paginated response { data, total, page, limit, totalPages }
-    return response.data.data || [];
+    // Backend returns a plain array (non-paginated); interceptor unwraps envelope so response.data IS the array
+    return response.data || [];
   },
 
   async getRole(id: string): Promise<Role> {
@@ -340,7 +340,7 @@ export const settingsService = {
   // LDAP Server Configuration APIs
   async getLDAPServerConfigs(): Promise<LDAPServerConfig[]> {
     const response = await api.get(`/settings/ldap-configs`);
-    return response.data.data || [];
+    return response.data || [];
   },
 
   async getLDAPServerConfig(id: string): Promise<LDAPServerConfig> {
@@ -436,14 +436,14 @@ export const settingsService = {
 
   // Agent Approval Settings APIs
   async getAgentApprovalSettings(): Promise<AgentApprovalSettings> {
-    const response = await api.get(`/settings/agent-approval`);
+    const response = await api.get(`/settings/agent-approval-settings`);
     return response.data;
   },
 
   async updateAgentApprovalSettings(
     data: AgentApprovalSettingsFormData
   ): Promise<AgentApprovalSettings> {
-    const response = await api.put(`/settings/agent-approval`, data);
+    const response = await api.put(`/settings/agent-approval-settings`, data);
     return response.data;
   },
 
@@ -502,7 +502,7 @@ export const settingsService = {
   // Enroll Secret APIs
   async getEnrollSecrets(): Promise<EnrollSecret[]> {
     const response = await api.get(`/settings/enroll-secrets`);
-    return response.data.data || [];
+    return response.data || [];
   },
 
   async getEnrollSecret(id: string): Promise<EnrollSecret> {

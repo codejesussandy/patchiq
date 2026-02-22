@@ -73,13 +73,22 @@ export const SoftwareLicense = () => {
   }, [activeTab]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  const transformLicenseValues = (values: Record<string, unknown>) => ({
+    ...values,
+    licenseCount: values.licenseCount !== undefined && values.licenseCount !== '' ? parseInt(String(values.licenseCount), 10) : undefined,
+    cost: values.cost !== undefined && values.cost !== '' ? parseFloat(String(values.cost)) : undefined,
+    purchaseDate: values.purchaseDate ? (values.purchaseDate as { toISOString?: () => string }).toISOString?.() ?? values.purchaseDate : undefined,
+    expiryDate: values.expiryDate ? (values.expiryDate as { toISOString?: () => string }).toISOString?.() ?? values.expiryDate : undefined,
+  });
+
   const handleAddLicense = async () => {
     try {
       const values = await form.validateFields();
+      const payload = transformLicenseValues(values);
       if (activeTab === 'software') {
-        await createSwLicenseMutation.mutateAsync(values);
+        await createSwLicenseMutation.mutateAsync(payload);
       } else {
-        await createOsLicenseMutation.mutateAsync(values);
+        await createOsLicenseMutation.mutateAsync(payload);
       }
       message.success('License added successfully');
       setModalVisible(false);
@@ -102,10 +111,11 @@ export const SoftwareLicense = () => {
   const handleEditSubmit = async () => {
     try {
       const values = await editForm.validateFields();
+      const payload = transformLicenseValues(values);
       if (activeTab === 'software') {
-        await updateSwLicenseMutation.mutateAsync({ id: licenseToEdit!.id, data: values });
+        await updateSwLicenseMutation.mutateAsync({ id: licenseToEdit!.id, data: payload });
       } else {
-        await updateOsLicenseMutation.mutateAsync({ id: licenseToEdit!.id, data: values });
+        await updateOsLicenseMutation.mutateAsync({ id: licenseToEdit!.id, data: payload });
       }
       message.success('License updated successfully');
       setEditModalVisible(false);

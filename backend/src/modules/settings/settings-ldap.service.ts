@@ -20,6 +20,13 @@ export function transformLdapConfig(config: {
   baseDn: string;
   userFilter: string | null;
   isActive: boolean;
+  fqdn?: string | null;
+  protocol?: string | null;
+  description?: string | null;
+  timeoutSeconds?: number | null;
+  autoSyncInterval?: string | null;
+  syncEnabled?: boolean;
+  groupSearchBase?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }): LdapConfigResponse {
@@ -31,6 +38,13 @@ export function transformLdapConfig(config: {
     baseDn: config.baseDn,
     userFilter: config.userFilter,
     isActive: config.isActive,
+    fqdn: config.fqdn ?? null,
+    protocol: config.protocol ?? 'LDAP',
+    description: config.description ?? null,
+    timeout: config.timeoutSeconds ?? null,
+    enableAutoSync: config.syncEnabled ?? false,
+    autoSyncInterval: config.autoSyncInterval ?? null,
+    groupBase: config.groupSearchBase ?? null,
     createdAt: config.createdAt.toISOString(),
     updatedAt: config.updatedAt.toISOString(),
   };
@@ -74,6 +88,13 @@ export async function createLdapConfig(input: CreateLdapConfigInput): Promise<Ld
       bindPasswordEnc,
       userFilter: input.userFilter,
       isActive: input.isActive ?? true,
+      fqdn: input.fqdn,
+      protocol: input.protocol,
+      description: input.description,
+      timeoutSeconds: input.timeout,
+      autoSyncInterval: input.autoSyncInterval,
+      syncEnabled: input.enableAutoSync ?? false,
+      groupSearchBase: input.groupBase,
     },
   });
 
@@ -100,6 +121,13 @@ export async function updateLdapConfig(id: string, input: UpdateLdapConfigInput)
     baseDn: baseDn,
     userFilter: input.userFilter,
     isActive: input.isActive,
+    fqdn: input.fqdn,
+    protocol: input.protocol,
+    description: input.description,
+    timeoutSeconds: input.timeout,
+    autoSyncInterval: input.autoSyncInterval,
+    syncEnabled: input.enableAutoSync,
+    groupSearchBase: input.groupBase,
   };
 
   if (bindDn) {

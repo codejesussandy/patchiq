@@ -6,8 +6,8 @@ import { useAgentApprovalSettings, useUpdateAgentApprovalSettings } from '../../
 const { Title } = Typography;
 
 interface AgentApprovalSettingsData {
-  approvalType: 'auto' | 'manual';
-  autoApprovalBasedOn: 'all' | 'criteria';
+  approvalType: 'AUTO' | 'MANUAL';
+  autoApprovalBasedOn: 'ALL' | 'CRITERIA';
 }
 
 export const AgentApprovalSettings = () => {
@@ -58,8 +58,8 @@ export const AgentApprovalSettings = () => {
         >
           <Radio.Group>
             <Space orientation="horizontal">
-              <Radio value="auto">Auto</Radio>
-              <Radio value="manual">Manual</Radio>
+              <Radio value="AUTO">Auto</Radio>
+              <Radio value="MANUAL">Manual</Radio>
             </Space>
           </Radio.Group>
         </Form.Item>
@@ -77,8 +77,8 @@ export const AgentApprovalSettings = () => {
         >
           <Radio.Group>
             <Space orientation="horizontal">
-              <Radio value="all">All</Radio>
-              <Radio value="criteria">Criteria</Radio>
+              <Radio value="ALL">All</Radio>
+              <Radio value="CRITERIA">Criteria</Radio>
             </Space>
           </Radio.Group>
         </Form.Item>

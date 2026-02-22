@@ -144,6 +144,27 @@ export function createApp(): Application {
   // Agent API routes (for agents to communicate)
   app.use('/api/agent', agentApiRoutes);
 
+  // Public package file download proxy (for agents to download exe/msi installers from MinIO)
+  app.get(`/${config.apiVersion}/packages/:packageId/download`, (req, res, next) => {
+    logger.info({ packageId: req.params.packageId }, 'Public package file download request');
+    import('@modules/hub/hub.service').then(({ hubService }) => {
+      const { packageId } = req.params;
+      return hubService.getPackageFileStream(packageId).then(({ stream, fileName, fileSize, checksum }) => {
+        const ext = fileName.split('.').pop()?.toLowerCase() || '';
+        const contentTypes: Record<string, string> = {
+          exe: 'application/x-msdownload', msi: 'application/x-msi',
+          dmg: 'application/x-apple-diskimage', pkg: 'application/x-newton-compatible-pkg',
+          deb: 'application/x-debian-package', rpm: 'application/x-rpm',
+        };
+        res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        if (fileSize) res.setHeader('Content-Length', fileSize.toString());
+        if (checksum) res.setHeader('X-Checksum-SHA256', checksum);
+        stream.pipe(res);
+      });
+    }).catch(next);
+  });
+
   // Public bundle download endpoint (must be before assets routes which have global auth)
   app.get(`/${config.apiVersion}/bundles/:packageId/download`, (req, res, next) => {
     logger.info({ packageId: req.params.packageId }, 'Public bundle download request');

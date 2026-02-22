@@ -22,7 +22,13 @@ export const ProxyServerConfiguration = () => {
 
   const onFinish = async (values: ProxyServerConfig) => {
     try {
-      await updateConfigMutation.mutateAsync(values);
+      const payload = {
+        ...values,
+        port: values.port !== undefined && values.port !== null
+          ? parseInt(String(values.port), 10)
+          : values.port,
+      };
+      await updateConfigMutation.mutateAsync(payload);
       message.success('Proxy server configuration updated successfully');
     } catch {
       message.error('Failed to update proxy server configuration');
@@ -36,7 +42,13 @@ export const ProxyServerConfiguration = () => {
       return;
     }
     try {
-      await testConfigMutation.mutateAsync(values);
+      const payload = {
+        ...values,
+        port: values.port !== undefined && values.port !== null
+          ? parseInt(String(values.port), 10)
+          : values.port,
+      };
+      await testConfigMutation.mutateAsync(payload);
       message.success('Proxy server connection test successful!');
     } catch (error: unknown) {
       message.error(getErrorMessage(error, 'Proxy server connection test failed'));
@@ -44,6 +56,7 @@ export const ProxyServerConfiguration = () => {
   };
 
   const handleReset = () => {
+    form.resetFields();
     if (config) {
       form.setFieldsValue(config);
     }

@@ -138,6 +138,7 @@ export function transformPatchTest(test: Prisma.PatchTestGetPayload<object>) {
     description: test.description,
     applicationType: test.applicationType,
     applications: test.applications || [],
+    platform: (test as Record<string, unknown>).platform as string || 'ALL',
     scope: test.scope,
     computers: test.computers || [],
     groups: test.groups || [],

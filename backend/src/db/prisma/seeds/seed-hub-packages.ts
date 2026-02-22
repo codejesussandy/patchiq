@@ -33,7 +33,7 @@ interface PackageDef {
   fileSize?: bigint;
 }
 
-const BUCKET = 'patchiq';
+const BUCKET = 'patches';
 
 const PACKAGES: PackageDef[] = [
   // ── 7-Zip (Windows) ──
@@ -46,6 +46,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['archiver', 'compression', 'utility'], silentInstall: true,
     installCommand: '7z2409-x64.exe', installArgs: '/S',
     fileSize: BigInt(1572864),
+
   },
   {
     name: '7-zip', displayName: '7-Zip', version: '24.08', vendor: '7-Zip', category: 'utility',
@@ -56,6 +57,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['archiver', 'compression', 'utility'], silentInstall: true,
     installCommand: '7z2408-x64.exe', installArgs: '/S',
     fileSize: BigInt(1560000),
+
   },
   {
     name: '7-zip', displayName: '7-Zip', version: '24.07', vendor: '7-Zip', category: 'utility',
@@ -66,6 +68,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['archiver', 'compression', 'utility'], silentInstall: true,
     installCommand: '7z2407-x64.exe', installArgs: '/S',
     fileSize: BigInt(1548000),
+
   },
 
   // ── Notepad++ (Windows) ──
@@ -78,6 +81,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['editor', 'text-editor', 'developer-tools'], silentInstall: true,
     installCommand: 'npp.8.7.1.Installer.x64.exe', installArgs: '/S',
     fileSize: BigInt(4800000),
+
   },
   {
     name: 'notepad-plus-plus', displayName: 'Notepad++', version: '8.7', vendor: 'Notepad++', category: 'utility',
@@ -88,6 +92,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['editor', 'text-editor', 'developer-tools'], silentInstall: true,
     installCommand: 'npp.8.7.Installer.x64.exe', installArgs: '/S',
     fileSize: BigInt(4750000),
+
   },
   {
     name: 'notepad-plus-plus', displayName: 'Notepad++', version: '8.6.9', vendor: 'Notepad++', category: 'utility',
@@ -98,6 +103,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['editor', 'text-editor', 'developer-tools'], silentInstall: true,
     installCommand: 'npp.8.6.9.Installer.x64.exe', installArgs: '/S',
     fileSize: BigInt(4700000),
+
   },
 
   // ── VLC (Windows) ──
@@ -110,6 +116,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['media', 'video', 'audio', 'player'], silentInstall: true,
     installCommand: 'vlc-3.0.21-win64.exe', installArgs: '/S',
     fileSize: BigInt(42000000),
+
   },
   {
     name: 'vlc', displayName: 'VLC Media Player', version: '3.0.20', vendor: 'VideoLAN', category: 'utility',
@@ -120,6 +127,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['media', 'video', 'audio', 'player'], silentInstall: true,
     installCommand: 'vlc-3.0.20-win64.exe', installArgs: '/S',
     fileSize: BigInt(41500000),
+
   },
   {
     name: 'vlc', displayName: 'VLC Media Player', version: '3.0.19', vendor: 'VideoLAN', category: 'utility',
@@ -130,6 +138,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['media', 'video', 'audio', 'player'], silentInstall: true,
     installCommand: 'vlc-3.0.19-win64.exe', installArgs: '/S',
     fileSize: BigInt(41000000),
+
   },
 
   // ── VLC (macOS) ──
@@ -141,6 +150,7 @@ const PACKAGES: PackageDef[] = [
     description: 'Free and open-source cross-platform multimedia player',
     tags: ['media', 'video', 'audio', 'player'], silentInstall: false,
     fileSize: BigInt(55000000),
+
   },
   {
     name: 'vlc', displayName: 'VLC Media Player', version: '3.0.20', vendor: 'VideoLAN', category: 'utility',
@@ -150,6 +160,7 @@ const PACKAGES: PackageDef[] = [
     description: 'Free and open-source cross-platform multimedia player',
     tags: ['media', 'video', 'audio', 'player'], silentInstall: false,
     fileSize: BigInt(54500000),
+
   },
   {
     name: 'vlc', displayName: 'VLC Media Player', version: '3.0.19', vendor: 'VideoLAN', category: 'utility',
@@ -159,6 +170,7 @@ const PACKAGES: PackageDef[] = [
     description: 'Free and open-source cross-platform multimedia player',
     tags: ['media', 'video', 'audio', 'player'], silentInstall: false,
     fileSize: BigInt(54000000),
+
   },
 
   // ── Node.js (Windows) ──
@@ -171,6 +183,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['runtime', 'javascript', 'developer-tools', 'nodejs'], silentInstall: true,
     installCommand: 'msiexec', installArgs: '/i node-v22.12.0-x64.msi /quiet /norestart',
     fileSize: BigInt(30000000),
+
   },
   {
     name: 'nodejs', displayName: 'Node.js', version: '22.11.0', vendor: 'OpenJS Foundation', category: 'runtime',
@@ -181,6 +194,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['runtime', 'javascript', 'developer-tools', 'nodejs'], silentInstall: true,
     installCommand: 'msiexec', installArgs: '/i node-v22.11.0-x64.msi /quiet /norestart',
     fileSize: BigInt(29500000),
+
   },
   {
     name: 'nodejs', displayName: 'Node.js', version: '20.18.0', vendor: 'OpenJS Foundation', category: 'runtime',
@@ -191,6 +205,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['runtime', 'javascript', 'developer-tools', 'nodejs'], silentInstall: true,
     installCommand: 'msiexec', installArgs: '/i node-v20.18.0-x64.msi /quiet /norestart',
     fileSize: BigInt(28000000),
+
   },
 
   // ── Node.js (macOS) ──
@@ -202,6 +217,7 @@ const PACKAGES: PackageDef[] = [
     description: 'JavaScript runtime built on Chrome\'s V8 engine',
     tags: ['runtime', 'javascript', 'developer-tools', 'nodejs'], silentInstall: true,
     fileSize: BigInt(32000000),
+
   },
   {
     name: 'nodejs', displayName: 'Node.js', version: '22.11.0', vendor: 'OpenJS Foundation', category: 'runtime',
@@ -211,6 +227,7 @@ const PACKAGES: PackageDef[] = [
     description: 'JavaScript runtime built on Chrome\'s V8 engine',
     tags: ['runtime', 'javascript', 'developer-tools', 'nodejs'], silentInstall: true,
     fileSize: BigInt(31500000),
+
   },
   {
     name: 'nodejs', displayName: 'Node.js', version: '20.18.0', vendor: 'OpenJS Foundation', category: 'runtime',
@@ -220,6 +237,7 @@ const PACKAGES: PackageDef[] = [
     description: 'JavaScript runtime built on Chrome\'s V8 engine',
     tags: ['runtime', 'javascript', 'developer-tools', 'nodejs'], silentInstall: true,
     fileSize: BigInt(30000000),
+
   },
 
   // ── Node.js (Linux) ──
@@ -231,6 +249,7 @@ const PACKAGES: PackageDef[] = [
     description: 'JavaScript runtime built on Chrome\'s V8 engine',
     tags: ['runtime', 'javascript', 'developer-tools', 'nodejs'], silentInstall: true,
     fileSize: BigInt(25000000),
+
   },
   {
     name: 'nodejs', displayName: 'Node.js', version: '22.11.0', vendor: 'OpenJS Foundation', category: 'runtime',
@@ -240,6 +259,7 @@ const PACKAGES: PackageDef[] = [
     description: 'JavaScript runtime built on Chrome\'s V8 engine',
     tags: ['runtime', 'javascript', 'developer-tools', 'nodejs'], silentInstall: true,
     fileSize: BigInt(24500000),
+
   },
   {
     name: 'nodejs', displayName: 'Node.js', version: '20.18.0', vendor: 'OpenJS Foundation', category: 'runtime',
@@ -249,6 +269,7 @@ const PACKAGES: PackageDef[] = [
     description: 'JavaScript runtime built on Chrome\'s V8 engine',
     tags: ['runtime', 'javascript', 'developer-tools', 'nodejs'], silentInstall: true,
     fileSize: BigInt(23000000),
+
   },
 
   // ── Git for Windows ──
@@ -261,6 +282,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['vcs', 'git', 'developer-tools'], silentInstall: true,
     installCommand: 'Git-2.47.1-64-bit.exe', installArgs: '/VERYSILENT /NORESTART',
     fileSize: BigInt(65000000),
+
   },
   {
     name: 'git', displayName: 'Git for Windows', version: '2.47.0', vendor: 'Git', category: 'developer-tools',
@@ -271,6 +293,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['vcs', 'git', 'developer-tools'], silentInstall: true,
     installCommand: 'Git-2.47.0-64-bit.exe', installArgs: '/VERYSILENT /NORESTART',
     fileSize: BigInt(64500000),
+
   },
   {
     name: 'git', displayName: 'Git for Windows', version: '2.46.2', vendor: 'Git', category: 'developer-tools',
@@ -281,6 +304,7 @@ const PACKAGES: PackageDef[] = [
     tags: ['vcs', 'git', 'developer-tools'], silentInstall: true,
     installCommand: 'Git-2.46.2-64-bit.exe', installArgs: '/VERYSILENT /NORESTART',
     fileSize: BigInt(64000000),
+
   },
 ];
 
@@ -326,7 +350,8 @@ export async function seedHubPackages(prismaClient?: PrismaClient): Promise<numb
         downloadUrl: pkg.downloadUrl,
         description: pkg.description,
         tags: pkg.tags,
-        minioObjectKey: pkg.minioKey,
+        // minioObjectKey is set only when files are actually uploaded to MinIO
+        minioObjectKey: null,
         minioBucket: BUCKET,
         fileName: pkg.fileName,
         fileSize: pkg.fileSize || BigInt(0),

@@ -58,7 +58,7 @@ const setFormFromConfig = (form: ReturnType<typeof Form.useForm>[0], config: LDA
     host: config.host,
     port: config.port,
     fqdn: config.fqdn,
-    baseDN: config.baseDN,
+    baseDN: (config as Record<string, unknown>).baseDn as string || config.baseDN,
     username: config.username,
     password: config.password,
     groupBase: config.groupBase,

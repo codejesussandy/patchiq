@@ -139,7 +139,7 @@ export const IPDiscovery = () => {
         footer={[<Button key="cancel" onClick={() => { setModalVisible(false); form.resetFields(); }}>Cancel</Button>, <Button key="submit" type="primary" onClick={handleSubmit}>{editingRange ? 'Update' : 'Create'} IP Range</Button>]}>
         <Form form={form} layout="vertical" style={{ marginTop: '24px' }}>
           <Form.Item name="name" label="Range Name" rules={[{ required: true, message: 'Please enter range name' }]}><Input placeholder="e.g., Corporate Network" /></Form.Item>
-          <Form.Item name="range" label="IP Range (CIDR)" rules={[{ required: true, message: 'Please enter IP range in CIDR notation' }]}><Input placeholder="e.g., 192.168.1.0/24" /></Form.Item>
+          <Form.Item name="range" label="IP Range (CIDR)" rules={[{ required: true, message: 'Please enter IP range in CIDR notation' }, { pattern: /^(\d{1,3}\.){3}\d{1,3}\/(\d{1,2})$/, message: 'Invalid CIDR notation (e.g., 192.168.1.0/24)' }]}><Input placeholder="e.g., 192.168.1.0/24" /></Form.Item>
           <Form.Item name="description" label="Description"><Input.TextArea placeholder="Optional description" rows={3} /></Form.Item>
         </Form>
       </Modal>
@@ -153,7 +153,7 @@ export const IPDiscovery = () => {
         ]}>
         <Form form={viewForm} layout="vertical" style={{ marginTop: '24px' }}>
           <Form.Item name="name" label="Range Name" rules={[{ required: true }]}><Input disabled={!isViewModalEditing} /></Form.Item>
-          <Form.Item name="range" label="IP Range (CIDR)" rules={[{ required: true }]}><Input disabled={!isViewModalEditing} /></Form.Item>
+          <Form.Item name="range" label="IP Range (CIDR)" rules={[{ required: true }, { pattern: /^(\d{1,3}\.){3}\d{1,3}\/(\d{1,2})$/, message: 'Invalid CIDR notation (e.g., 192.168.1.0/24)' }]}><Input disabled={!isViewModalEditing} /></Form.Item>
           <Form.Item name="description" label="Description"><Input.TextArea disabled={!isViewModalEditing} rows={3} /></Form.Item>
           <Form.Item label="Last Scanned"><Text type="secondary">{viewingRange?.lastScanned ? new Date(viewingRange.lastScanned).toLocaleString() : '—'}</Text></Form.Item>
           <Form.Item label="Devices Found"><Text>{viewingRange?.deviceCount || 0}</Text></Form.Item>

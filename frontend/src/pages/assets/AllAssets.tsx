@@ -32,7 +32,7 @@ import type { ColumnConfig } from '../../components/ColumnSettingsDrawer';
 import { TableSettingsIcon } from '../../components/icons/TableSettingsIcon';
 import { ConfirmModal } from '../../components/shared/ConfirmModal';
 import { DataTable } from '../../components/shared/DataTable';
-import { useAssetsList, useCategories, useSubCategories, useUpdateAsset, useDeleteAsset } from '../../hooks/useAssets';
+import { useAssetsList, useCategories, useUpdateAsset, useDeleteAsset } from '../../hooks/useAssets';
 import { useModal } from '../../hooks/useModal';
 import { useTableParams } from '../../hooks/useTableParams';
 import type { Asset } from '../../types/asset.types';
@@ -98,14 +98,13 @@ export function AllAssets() {
   const totalAssets = paginatedResult?.total ?? 0;
 
   const { data: categoriesData } = useCategories();
-  const { data: subCategoriesData } = useSubCategories();
   const updateAssetMutation = useUpdateAsset();
   const deleteAssetMutation = useDeleteAsset();
   const deleteModal = useModal<{ id: string; name?: string }>();
   const bulkDeleteModal = useModal();
 
-  const categories = categoriesData || [];
-  const subCategories = subCategoriesData || [];
+  const allCategories = categoriesData || [];
+  const categories = allCategories.filter((c) => ['Laptop', 'Desktop', 'Server'].includes(c.name));
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -113,7 +112,6 @@ export function AllAssets() {
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [selectedAssetForCategory, setSelectedAssetForCategory] = useState<Asset | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [columnConfig, setColumnConfig] = useColumnConfig(defaultColumnConfig, STORAGE_KEY);
   const [uploading, setUploading] = useState(false);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
@@ -123,7 +121,6 @@ export function AllAssets() {
   const handleCategoryEdit = (asset: Asset) => {
     setSelectedAssetForCategory(asset);
     setSelectedCategory(asset.categoryId || null);
-    setSelectedSubCategory(asset.subCategoryId || null);
     setCategoryModalVisible(true);
   };
 
@@ -132,7 +129,7 @@ export function AllAssets() {
     try {
       await updateAssetMutation.mutateAsync({
         id: selectedAssetForCategory.id,
-        data: { ...selectedAssetForCategory, categoryId: selectedCategory || undefined, subCategoryId: selectedSubCategory || undefined },
+        data: { categoryId: selectedCategory || undefined },
       });
       message.success('Asset category updated successfully');
       setCategoryModalVisible(false);
@@ -236,18 +233,12 @@ export function AllAssets() {
         title: col.title, key: 'category', width: col.width,
         render: (_, record: Asset) => {
           const category = categories.find((c) => c.id === record.categoryId);
-          const subCategory = subCategories.find((s) => s.id === record.subCategoryId);
           return (
             <div onClick={(e) => { e.stopPropagation(); handleCategoryEdit(record); }}
               style={{ cursor: 'pointer', padding: '4px 8px', borderRadius: '4px' }}
               onMouseEnter={(e) => { e.currentTarget.style.background = '#f0f0f0'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
-              {category ? (
-                <div>
-                  <Tag color={category.color || 'blue'}>{category.name}</Tag>
-                  {subCategory && <span style={{ marginLeft: '8px', fontSize: '16px', color: '#666' }}>{'\u2192'} {subCategory.name}</span>}
-                </div>
-              ) : <span style={{ color: '#999' }}>Unassigned</span>}
+              {category ? <Tag color="blue">{category.name}</Tag> : <span style={{ color: '#999' }}>Unassigned</span>}
             </div>
           );
         },
@@ -345,29 +336,12 @@ export function AllAssets() {
       <AddAssetModal visible={addModalVisible} onClose={() => setAddModalVisible(false)} onSuccess={() => setAddModalVisible(false)} />
       <ColumnSettingsDrawer open={columnSettingsOpen} onClose={() => setColumnSettingsOpen(false)} columns={columnConfig} onColumnsChange={setColumnConfig} defaultColumns={defaultColumnConfig} />
 
-      <Modal title={`Assign Category - ${selectedAssetForCategory?.name || ''}`} open={categoryModalVisible} onOk={handleCategorySave} onCancel={() => setCategoryModalVisible(false)} width={500}>
+      <Modal title={`Assign Category - ${selectedAssetForCategory?.name || ''}`} open={categoryModalVisible} onOk={handleCategorySave} onCancel={() => setCategoryModalVisible(false)} width={400}>
         <Form layout="vertical">
           <Form.Item label="Category" required>
-            <Select placeholder="Select a category" value={selectedCategory}
-              onChange={(value) => { setSelectedCategory(value); setSelectedSubCategory(null); }}
-              options={categories.map((cat) => ({ label: <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Tag color={cat.color || 'blue'} /><span>{cat.name}</span></div>, value: cat.id }))}
-              allowClear />
+            <Select placeholder="Select a category" value={selectedCategory} onChange={setSelectedCategory}
+              options={categories.map((cat) => ({ label: cat.name, value: cat.id }))} allowClear />
           </Form.Item>
-          {selectedCategory && (
-            <Form.Item label="Sub-Category">
-              <Select placeholder="Select a sub-category" value={selectedSubCategory} onChange={setSelectedSubCategory}
-                options={subCategories.filter((sub) => sub.categoryId === selectedCategory).map((sub) => ({
-                  label: <div><span>{sub.name}</span>{sub.criticality && <Tag style={{ marginLeft: '8px' }}>{sub.criticality}</Tag>}</div>, value: sub.id,
-                }))} allowClear />
-            </Form.Item>
-          )}
-          {selectedAssetForCategory && selectedCategory && (
-            <div style={{ padding: '12px', background: '#f5f5f5', borderRadius: '4px', marginTop: '12px' }}>
-              <div style={{ fontSize: '16px', marginBottom: '4px' }}><strong>Asset:</strong> {selectedAssetForCategory.name}</div>
-              {selectedCategory && <div style={{ fontSize: '16px', marginBottom: '4px' }}><strong>Category:</strong> {categories.find((c) => c.id === selectedCategory)?.name}</div>}
-              {selectedSubCategory && <div style={{ fontSize: '16px' }}><strong>Sub-Category:</strong> {subCategories.find((s) => s.id === selectedSubCategory)?.name}</div>}
-            </div>
-          )}
         </Form>
       </Modal>
 
@@ -382,7 +356,8 @@ export function AllAssets() {
         <Form form={filterForm} layout="vertical">
           <Form.Item name="categoryId" label="Category">
             <Select placeholder="Select a category"
-              options={categories.map((cat) => ({ label: cat.name, value: cat.id }))} allowClear />
+              options={categories.map((cat) => ({ label: cat.name, value: cat.id }))}
+              allowClear />
           </Form.Item>
           <Form.Item name="status" label="Status">
             <Select placeholder="Select status"

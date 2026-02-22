@@ -72,7 +72,11 @@ export const UserRoles = () => {
   const deleteModal = useModal<UserRole>();
 
   const roles: UserRole[] = Array.isArray(rawRoles)
-    ? rawRoles.map((role: Record<string, unknown>, index: number) => ({ ...role, id: (role.id as string) || String(index) })) as UserRole[]
+    ? rawRoles.map((role: Record<string, unknown>, index: number) => ({
+        ...role,
+        id: (role.id as string) || String(index),
+        usersCount: (role.usersCount as number) ?? (role.users as number) ?? 0,
+      })) as UserRole[]
     : [];
   const organizations = Array.isArray(rawOrganizations) ? rawOrganizations : [];
 

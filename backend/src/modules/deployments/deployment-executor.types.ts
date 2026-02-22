@@ -16,6 +16,7 @@ export type {
 export const COMMAND_TYPES = {
   // Legacy software commands (package manager based)
   SOFTWARE_INSTALL: 'software_install',
+  SOFTWARE_UPGRADE: 'software_upgrade',
   SOFTWARE_UNINSTALL: 'software_uninstall',
 
   // Hub-centric commands (script bundle based)

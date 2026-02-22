@@ -20,7 +20,10 @@ export const AgentConfiguration = () => {
 
   const onFinish = async (values: AgentConfigurationFormData) => {
     try {
-      await updateConfigMutation.mutateAsync(values);
+      const numericValues = Object.fromEntries(
+        Object.entries(values).map(([k, v]) => [k, v !== undefined && v !== '' ? Number(v) : v])
+      ) as AgentConfigurationFormData;
+      await updateConfigMutation.mutateAsync(numericValues);
       message.success('Agent configuration updated successfully');
     } catch {
       message.error('Failed to update agent configuration');

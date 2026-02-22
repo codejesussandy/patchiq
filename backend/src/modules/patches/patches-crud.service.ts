@@ -29,9 +29,9 @@ const logger = createLogger('patches');
 export async function listPatches(params: PatchListQuery) {
   const where: Prisma.PatchWhereInput = {};
 
-  if (params.severity) where.severity = params.severity;
-  if (params.os) where.os = params.os;
-  if (params.category) where.category = params.category;
+  if (params.severity?.length) where.severity = params.severity.length === 1 ? params.severity[0] : { in: params.severity };
+  if (params.os?.length) where.os = params.os.length === 1 ? params.os[0] : { in: params.os };
+  if (params.category?.length) where.category = params.category.length === 1 ? params.category[0] : { in: params.category };
   if (params.testStatus) where.testStatus = params.testStatus;
   if (params.approvalStatus) where.approvalStatus = params.approvalStatus;
 

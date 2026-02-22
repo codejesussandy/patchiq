@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker exec:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(./node_modules/.bin/prisma:*)",
+      "Bash(/home/heramb/skenzeriq/patchiq/intern-dev-0.1.0/backend/node_modules/.bin/prisma:*)",
+      "Bash(sudo npm install:*)",
+      "Bash(sudo -S npm install:*)",
+      "Bash(__NEW_LINE_50941d87560669fa__ docker exec intern_patchiq_db psql -U postgres -d patchiq_dev -c \"DO $$ BEGIN IF NOT EXISTS \\(SELECT 1 FROM information_schema.table_constraints WHERE constraint_name=''locations_organization_id_fkey''\\) THEN ALTER TABLE locations ADD CONSTRAINT locations_organization_id_fkey FOREIGN KEY \\(organization_id\\) REFERENCES organizations\\(id\\) ON DELETE SET NULL ON UPDATE CASCADE; END IF; END $$;\")",
+      "Bash(npx prisma generate)",
+      "Bash(npx prisma generate:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/patchiq_dev\" npx prisma generate:*)"
+    ]
+  }
+}

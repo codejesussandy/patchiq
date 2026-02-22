@@ -170,6 +170,7 @@ export type PatchTest = {
   description: string;
   applicationType: 'ALL' | 'INCLUDE' | 'EXCLUDE';
   applications: string[];
+  platform: 'ALL' | 'WINDOWS' | 'MACOS' | 'UBUNTU' | 'LINUX';
   scope: 'ALL_COMPUTERS' | 'SCOPE' | 'SPECIFIC_GROUPS';
   computers: string[];
   groups: string[];
