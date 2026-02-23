@@ -67,11 +67,13 @@ function detectInstallerType(pkg: { platform: string; fileName: string; installA
   if (pkg.platform === 'macos') {
     if (fn.endsWith('.dmg')) return 'dmg';
     if (fn.endsWith('.pkg')) return 'pkg';
+    if (fn.endsWith('.zip')) return 'zip';
   }
   if (pkg.platform === 'linux') {
     if (fn.endsWith('.deb')) return 'deb';
     if (fn.endsWith('.tar.gz')) return 'targz';
     if (fn.endsWith('.tar.xz')) return 'tarxz';
+    if (fn.endsWith('.zip')) return 'zip';
   }
   return 'unknown';
 }
@@ -212,7 +214,7 @@ echo "${pkg.displayName} ${pkg.version} uninstalled successfully"
     };
   }
 
-  // ── macOS DMG (VLC) ──
+  // ── macOS DMG (VLC, Firefox, GIMP, etc.) ──
   if (pkg.platform === 'macos' && installerType === 'dmg') {
     const installScript = `#!/bin/bash
 # Install ${pkg.displayName} ${pkg.version} (DMG)
@@ -222,16 +224,64 @@ DMG_PATH="$PATCHIQ_DOWNLOAD_PATH"
 MOUNT_POINT=$(mktemp -d)
 
 hdiutil attach "$DMG_PATH" -mountpoint "$MOUNT_POINT" -nobrowse -quiet
-cp -R "$MOUNT_POINT"/VLC.app /Applications/
+
+# Find and copy .app bundle to /Applications
+APP=$(find "$MOUNT_POINT" -name "*.app" -maxdepth 1 | head -1)
+if [ -z "$APP" ]; then
+  echo "No .app found in DMG"
+  hdiutil detach "$MOUNT_POINT" -quiet
+  exit 1
+fi
+
+APP_NAME=$(basename "$APP")
+rm -rf "/Applications/$APP_NAME" 2>/dev/null || true
+cp -R "$APP" /Applications/
 hdiutil detach "$MOUNT_POINT" -quiet
 
-echo "${pkg.displayName} ${pkg.version} installed successfully"
+echo "${pkg.displayName} ${pkg.version} installed to /Applications/$APP_NAME"
+`;
+    // Determine the .app name from the package name
+    const appNameMap: Record<string, string> = {
+      vlc: 'VLC.app', firefox: 'Firefox.app', gimp: 'GIMP-2.10.app',
+    };
+    const appName = appNameMap[pkg.name] || `${pkg.displayName}.app`;
+
+    const uninstallScript = `#!/bin/bash
+# Uninstall ${pkg.displayName}
+set -euo pipefail
+
+rm -rf "/Applications/${appName}"
+
+echo "${pkg.displayName} uninstalled successfully"
+`;
+    return {
+      install: { name: `install${ext}`, content: installScript },
+      update: { name: `update${ext}`, content: installScript },
+      uninstall: { name: `uninstall${ext}`, content: uninstallScript },
+    };
+  }
+
+  // ── Linux/macOS ZIP (Terraform, Vault — single binary) ──
+  if ((pkg.platform === 'linux' || pkg.platform === 'macos') && installerType === 'zip') {
+    const binName = pkg.name; // terraform, vault, etc.
+    const installScript = `#!/bin/bash
+# Install ${pkg.displayName} ${pkg.version} (zip binary)
+set -euo pipefail
+
+ARCHIVE="$PATCHIQ_DOWNLOAD_PATH"
+TMPDIR=$(mktemp -d)
+
+unzip -o "$ARCHIVE" -d "$TMPDIR"
+install -m 0755 "$TMPDIR/${binName}" /usr/local/bin/${binName}
+rm -rf "$TMPDIR"
+
+echo "${pkg.displayName} ${pkg.version} installed to /usr/local/bin/${binName}"
 `;
     const uninstallScript = `#!/bin/bash
 # Uninstall ${pkg.displayName}
 set -euo pipefail
 
-rm -rf /Applications/VLC.app
+rm -f /usr/local/bin/${binName}
 
 echo "${pkg.displayName} uninstalled successfully"
 `;

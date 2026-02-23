@@ -43,12 +43,27 @@ type BaseScriptExecutor struct {
 // NewBaseScriptExecutor creates a new script executor
 func NewBaseScriptExecutor(dataDir string, dlCfg *DownloadConfig) *BaseScriptExecutor {
 	if dataDir == "" {
-		homeDir, _ := os.UserHomeDir()
+		homeDir, err := os.UserHomeDir()
+		if err != nil || homeDir == "" {
+			// Fallback for Windows services running as SYSTEM
+			if runtime.GOOS == "windows" {
+				homeDir = os.Getenv("ProgramData")
+				if homeDir == "" {
+					homeDir = `C:\ProgramData`
+				}
+			} else {
+				homeDir = "/tmp"
+			}
+		}
 		dataDir = filepath.Join(homeDir, ".patchify-agent")
 	}
 
 	bundleDir := filepath.Join(dataDir, "bundles")
-	os.MkdirAll(bundleDir, 0755)
+	if err := os.MkdirAll(bundleDir, 0755); err != nil {
+		// Try fallback to temp directory
+		bundleDir = filepath.Join(os.TempDir(), "patchify-bundles")
+		os.MkdirAll(bundleDir, 0755)
+	}
 
 	return &BaseScriptExecutor{
 		bundleDir:      bundleDir,
@@ -57,8 +72,14 @@ func NewBaseScriptExecutor(dataDir string, dlCfg *DownloadConfig) *BaseScriptExe
 	}
 }
 
+// ensureBundleDir creates the bundle directory if it doesn't exist
+func (e *BaseScriptExecutor) ensureBundleDir() {
+	os.MkdirAll(e.bundleDir, 0755)
+}
+
 // ExecuteBundle downloads a bundle, extracts it, and runs the specified script
 func (e *BaseScriptExecutor) ExecuteBundle(ctx context.Context, request models.ScriptBundleRequest) models.ExecutionResult {
+	e.ensureBundleDir()
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 
@@ -178,6 +199,7 @@ func (e *BaseScriptExecutor) executeFromBundle(request models.ScriptBundleReques
 
 // ExecuteInlineScript runs a script directly without bundle download
 func (e *BaseScriptExecutor) ExecuteInlineScript(ctx context.Context, script string, operationType string, requiresRoot bool, env map[string]string) models.ExecutionResult {
+	e.ensureBundleDir()
 	startTime := time.Now()
 	result := models.ExecutionResult{Success: false}
 
@@ -224,6 +246,7 @@ func (e *BaseScriptExecutor) ExecuteInlineScript(ctx context.Context, script str
 // from the URL (e.g. .exe, .msi, .deb). This is critical on Windows where file extension
 // determines how the OS handles the file.
 func (e *BaseScriptExecutor) downloadInstaller(bundleURL string, expectedChecksum string) (string, error) {
+	e.ensureBundleDir()
 	req, err := http.NewRequest("GET", bundleURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
@@ -299,6 +322,7 @@ func (e *BaseScriptExecutor) downloadInstaller(bundleURL string, expectedChecksu
 // downloadBundle downloads a bundle file with optional resume, rate limiting,
 // progress tracking, and checksum verification.
 func (e *BaseScriptExecutor) downloadBundle(bundleURL string, expectedChecksum string) (string, error) {
+	e.ensureBundleDir()
 	// Create temp file (or reuse existing partial download)
 	tempFile, err := os.CreateTemp(e.bundleDir, "bundle-*.tar.gz")
 	if err != nil {

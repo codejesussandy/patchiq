@@ -263,10 +263,13 @@ export async function getAssetPatches(id: string): Promise<{
   const notInDeployed = deployedPatchIds.length > 0 ? { id: { notIn: deployedPatchIds } } : {};
 
   // Category 1: Patches WITH vendor+product — only include if asset has matching installed software
+  // Only show patches with a complete MinIO bundle (installer + scripts) that have been tested
   const vendorProductPatches = await prisma.patch.findMany({
     where: {
       vendor: { not: null },
       product: { not: null },
+      testResult: 'PASSED',
+      bundle: { scriptsIncluded: true, downloadStatus: 'COMPLETED' },
       ...notInDeployed,
     },
     select: {
@@ -285,10 +288,13 @@ export async function getAssetPatches(id: string): Promise<{
 
   // Category 2: Patches WITHOUT vendor+product but WITH os set (legacy/manual patches)
   // Only include if OS matches — no more os=NULL cross-platform catch-all
+  // Only show patches with a complete MinIO bundle (installer + scripts) that have been tested
   const legacyOsPatches = matchingOsValues.length > 0 ? await prisma.patch.findMany({
     where: {
       OR: [{ vendor: null }, { product: null }],
       os: { in: matchingOsValues },
+      testResult: 'PASSED',
+      bundle: { scriptsIncluded: true, downloadStatus: 'COMPLETED' },
       ...notInDeployed,
     },
     select: {

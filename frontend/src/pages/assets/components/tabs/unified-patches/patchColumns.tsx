@@ -25,7 +25,7 @@ export const createPatchColumns = ({ agentId, deploying, onDeploy }: PatchColumn
     title: 'Patch',
     key: 'patch',
     render: (_, record) => (
-      <Space direction="vertical" size={0}>
+      <Space orientation="vertical" size={0}>
         <Space>
           {getStatusIcon(record.status)}
           <Text strong>{record.name}</Text>

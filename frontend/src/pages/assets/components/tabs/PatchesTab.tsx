@@ -87,7 +87,7 @@ export const PatchesTab = ({ assetId, agentId, patchSummary: initialSummary }: P
 
   const patchColumns: ColumnsType<AssetRelatedPatch> = [
     { title: 'Patch', key: 'patch', render: (_, record) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Space>{getStatusIcon(record.status)}<Text strong>{record.name}</Text></Space>
           {record.kbNumber && <Text type="secondary" style={{ fontSize: '16px', marginLeft: 22 }}>{record.kbNumber}</Text>}
         </Space>
@@ -154,7 +154,7 @@ export const PatchesTab = ({ assetId, agentId, patchSummary: initialSummary }: P
                 items={deployments.slice(0, 5).map((deployment) => ({
                   color: deployment.status === 'COMPLETED' ? 'green' : deployment.status === 'FAILED' ? 'red' : 'blue',
                   children: (
-                    <div><Space direction="vertical" size={0}>
+                    <div><Space orientation="vertical" size={0}>
                       <Space><Text strong>{deployment.patchName}</Text><Tag color={getStatusColor(deployment.status)}>{deployment.status}</Tag></Space>
                       <Text type="secondary" style={{ fontSize: '16px' }}>{new Date(deployment.date).toLocaleString()}</Text>
                     </Space></div>

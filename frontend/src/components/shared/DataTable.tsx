@@ -204,7 +204,10 @@ export function DataTable<T = any>({
         rowKey={rowKey}
         rowSelection={rowSelection}
         pagination={tablePagination}
-        scroll={scroll ?? { x: 'max-content', y: 600 }}
+        scroll={{
+          x: typeof scroll?.x === 'number' ? scroll.x : 1500,
+          y: typeof scroll?.y === 'number' ? scroll.y : 600,
+        }}
         virtual
         size={size}
         expandable={expandable}

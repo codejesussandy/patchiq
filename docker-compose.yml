@@ -30,7 +30,7 @@ services:
   # Nginx - Reverse proxy (single entry point)
   nginx:
     image: nginx:alpine
-    container_name: patchiq_nginx
+    container_name: deviq_nginx
     ports:
       - "${PUBLIC_PORT:-3001}:80"
     volumes:
@@ -42,13 +42,13 @@ services:
       - pgadmin
       - minio
     networks:
-      - patchiq_network
+      - deviq_network
     restart: unless-stopped
 
   # PostgreSQL - Primary database
   postgres:
     image: postgres:16-alpine
-    container_name: patchiq_db
+    container_name: deviq_db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -63,12 +63,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - patchiq_network
+      - deviq_network
 
   # Redis - Job queue (BullMQ)
   redis:
     image: redis:7-alpine
-    container_name: patchiq_redis
+    container_name: deviq_redis
     ports:
       - "${REDIS_EXTERNAL_PORT:-3003}:6379"
     volumes:
@@ -79,12 +79,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - patchiq_network
+      - deviq_network
 
   # OpenLDAP - Directory Services (for LDAP/AD integration testing)
   openldap:
     image: osixia/openldap:1.5.0
-    container_name: patchiq_openldap
+    container_name: deviq_openldap
     environment:
       LDAP_ORGANISATION: "Corp Example"
       LDAP_DOMAIN: "corp.example.com"
@@ -96,8 +96,7 @@ services:
       LDAP_READONLY_USER_PASSWORD: "readonly-password"
       LDAP_TLS: "false"
     ports:
-      - "${LDAP_PORT:-3389}:389"
-      - "${LDAPS_PORT:-6360}:636"
+      - "${LDAP_PORT:-3010}:389"
     volumes:
       - ldap_data:/var/lib/ldap
       - ldap_config:/etc/ldap/slapd.d
@@ -109,12 +108,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - patchiq_network
+      - deviq_network
 
   # MinIO - S3-compatible patch storage
   minio:
     image: minio/minio:RELEASE.2022-05-26T05-48-41Z
-    container_name: patchiq_minio
+    container_name: deviq_minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: patchiq_admin
@@ -131,12 +130,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - patchiq_network
+      - deviq_network
 
   # pgAdmin - Web-based PostgreSQL administration
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: patchiq_pgadmin
+    container_name: deviq_pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@patchiq.io
       PGADMIN_DEFAULT_PASSWORD: admin123
@@ -150,7 +149,7 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     networks:
-      - patchiq_network
+      - deviq_network
     restart: unless-stopped
 
   # Backend - Express API with hot reload via nodemon
@@ -159,7 +158,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: development
-    container_name: patchiq_backend
+    container_name: deviq_backend
     environment:
       - NODE_ENV=development
       - PORT=3000
@@ -200,7 +199,7 @@ services:
       - /app/node_modules
       - /app/dist
     networks:
-      - patchiq_network
+      - deviq_network
     restart: unless-stopped
 
   # Prisma Studio - Database GUI (access directly on port 5555)
@@ -209,7 +208,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: development
-    container_name: patchiq_prisma_studio
+    container_name: deviq_prisma_studio
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/patchiq_dev
     command: npx prisma studio --schema src/db/prisma/schema.prisma --port 5555 --browser none
@@ -222,7 +221,7 @@ services:
       - ./backend:/app
       - /app/node_modules
     networks:
-      - patchiq_network
+      - deviq_network
     restart: unless-stopped
 
   # Frontend - Vite with Hot Module Replacement
@@ -230,7 +229,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    container_name: patchiq_frontend
+    container_name: deviq_frontend
     environment:
       - NODE_ENV=development
       - VITE_API_BASE_URL=/v1
@@ -246,7 +245,7 @@ services:
       - ./shared:/shared
       - /app/node_modules
     networks:
-      - patchiq_network
+      - deviq_network
     restart: unless-stopped
 
 volumes:
@@ -258,5 +257,5 @@ volumes:
   pgadmin_data:
 
 networks:
-  patchiq_network:
+  deviq_network:
     driver: bridge

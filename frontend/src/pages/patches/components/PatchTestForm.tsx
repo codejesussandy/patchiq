@@ -20,7 +20,7 @@ export const PatchTestForm = ({ form, applications, computers, groups }: PatchTe
     </Form.Item>
     <Form.Item name="applicationType" label="Application Type" rules={[{ required: true, message: 'Please select application type' }]} initialValue="ALL">
       <Radio.Group>
-        <Space direction="vertical">
+        <Space orientation="vertical">
           <Radio value="ALL">All Applications</Radio>
           <Radio value="INCLUDE">Include Specific Applications</Radio>
           <Radio value="EXCLUDE">Exclude Specific Applications</Radio>
@@ -42,7 +42,7 @@ export const PatchTestForm = ({ form, applications, computers, groups }: PatchTe
     </Form.Item>
     <Form.Item name="scope" label="Scope" rules={[{ required: true, message: 'Please select scope' }]} initialValue="ALL_COMPUTERS">
       <Radio.Group>
-        <Space direction="vertical">
+        <Space orientation="vertical">
           <Radio value="ALL_COMPUTERS">All Computers</Radio>
           <Radio value="SCOPE">Scope</Radio>
           <Radio value="SPECIFIC_GROUPS">Specific Groups</Radio>

@@ -1005,7 +1005,7 @@ model AssetPatchRecommendation {
 
   // Deployment link
   deploymentTaskId String?              @map("deployment_task_id")
-  deploymentTask   PatchDeploymentTask? @relation(fields: [deploymentTaskId], references: [id])
+  deploymentTask   PatchDeploymentTask? @relation(fields: [deploymentTaskId], references: [id], onDelete: SetNull)
 
   // Lifecycle timestamps
   recommendedAt   DateTime  @default(now()) @map("recommended_at")

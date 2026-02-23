@@ -204,11 +204,18 @@ export class UsersService {
       passwordHash = await hashPassword(generateToken(12));
     }
 
+    // Derive display name and split names
+    const firstName = (input as Record<string, unknown>).firstName as string | undefined;
+    const lastName = (input as Record<string, unknown>).lastName as string | undefined;
+    const displayName = input.name ?? (firstName && lastName ? `${firstName} ${lastName}` : firstName ?? lastName ?? undefined);
+
     const user = await prisma.user.create({
       data: {
         email: input.email.toLowerCase(),
         passwordHash,
-        name: input.name,
+        name: displayName,
+        firstName: firstName ?? null,
+        lastName: lastName ?? null,
         roleId: role.id,
         organizationId: input.organizationId,
         departmentId: input.departmentId,
@@ -265,15 +272,22 @@ export class UsersService {
       locationId: user.locationId,
     };
 
+    const inp = input as Record<string, unknown>;
+    const updFirstName = inp.firstName as string | undefined;
+    const updLastName = inp.lastName as string | undefined;
+    const updDisplayName = input.name ?? (updFirstName && updLastName ? `${updFirstName} ${updLastName}` : input.name);
+
     const updated = await prisma.user.update({
       where: { id },
       data: {
-        name: input.name,
-        roleId: newRoleId,
-        organizationId: input.organizationId,
-        departmentId: input.departmentId,
-        locationId: input.locationId,
-        contactNumber: input.contactNumber,
+        ...(updDisplayName !== undefined && { name: updDisplayName }),
+        ...(updFirstName !== undefined && { firstName: updFirstName }),
+        ...(updLastName !== undefined && { lastName: updLastName }),
+        ...(newRoleId !== undefined && { roleId: newRoleId }),
+        ...(input.organizationId !== undefined && { organizationId: input.organizationId }),
+        ...(input.departmentId !== undefined && { departmentId: input.departmentId }),
+        ...(input.locationId !== undefined && { locationId: input.locationId }),
+        ...(input.contactNumber !== undefined && { contactNumber: input.contactNumber }),
       },
       include: {
         role: { select: { name: true } },

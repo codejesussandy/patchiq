@@ -310,8 +310,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         placement="left"
         onClose={() => setMobileDrawerOpen(false)}
         open={mobileDrawerOpen}
-        width={sidebarConfig?.title === 'Assets' || sidebarConfig?.title === 'Patches' ? 560 : 280}
-        styles={{ body: { padding: 0 } }}
+        styles={{ wrapper: { width: sidebarConfig?.title === 'Assets' || sidebarConfig?.title === 'Patches' ? 560 : 280 }, body: { padding: 0 } }}
       >
         <div style={{ display: 'flex', height: '100%' }}>
           {sidebarConfig && (

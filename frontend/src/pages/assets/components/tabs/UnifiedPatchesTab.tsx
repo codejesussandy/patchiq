@@ -227,7 +227,7 @@ export const UnifiedPatchesTab = ({ assetId, agentId, patchSummary: initialSumma
                     color: deployment.status === 'COMPLETED' ? 'green' : deployment.status === 'FAILED' ? 'red' : 'blue',
                     children: (
                       <div>
-                        <Space direction="vertical" size={0}>
+                        <Space orientation="vertical" size={0}>
                           <Space>
                             <Text strong>{deployment.patchName}</Text>
                             <Tag color={getStatusColor(deployment.status)}>{deployment.status}</Tag>

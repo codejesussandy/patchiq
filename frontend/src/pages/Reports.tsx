@@ -152,7 +152,7 @@ export const Reports = () => {
             <Descriptions.Item label="Format"><Tag color={selectedReport.format === 'PDF' ? 'red' : 'green'}>{selectedReport.format}</Tag></Descriptions.Item>
             <Descriptions.Item label="Status"><Tag color={REPORT_STATUS_CONFIG[selectedReport.status]?.color} icon={selectedReport.status === 'PROCESSING' ? <LoadingOutlined spin /> : undefined}>{REPORT_STATUS_CONFIG[selectedReport.status]?.label}</Tag></Descriptions.Item>
             <Descriptions.Item label="Schedule">{selectedReport.schedule?.enabled ? (
-              <Space direction="vertical" size="small"><Tag color="purple">{SCHEDULE_LABELS[selectedReport.schedule.frequency]}</Tag>{selectedReport.schedule.time && <Text>Time: {selectedReport.schedule.time}</Text>}{selectedReport.schedule.recipients?.length > 0 && <Text>Recipients: {selectedReport.schedule.recipients.join(', ')}</Text>}</Space>
+              <Space orientation="vertical" size="small"><Tag color="purple">{SCHEDULE_LABELS[selectedReport.schedule.frequency]}</Tag>{selectedReport.schedule.time && <Text>Time: {selectedReport.schedule.time}</Text>}{selectedReport.schedule.recipients?.length > 0 && <Text>Recipients: {selectedReport.schedule.recipients.join(', ')}</Text>}</Space>
             ) : <Text type="secondary">Not scheduled</Text>}</Descriptions.Item>
             <Descriptions.Item label="File Size">{formatFileSize(selectedReport.fileSize)}</Descriptions.Item>
             <Descriptions.Item label="Generated At">{selectedReport.generatedAt ? dayjs(selectedReport.generatedAt).format('YYYY-MM-DD HH:mm:ss') : '-'}</Descriptions.Item>

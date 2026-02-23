@@ -65,7 +65,7 @@ export const CreateDeploymentModal = ({
         </div>
         <div style={{ maxHeight: 400, overflowY: 'auto' }}>
           <Checkbox.Group value={selectedPatches} onChange={(v) => onSelectedPatchesChange(v as string[])} style={{ width: '100%' }}>
-            <Space direction="vertical" style={{ width: '100%' }}>
+            <Space orientation="vertical" style={{ width: '100%' }}>
               {patches.map((patch) => (
                 <Card key={patch.id} size="small" style={{ marginBottom: 8 }}>
                   <Checkbox value={patch.id}>

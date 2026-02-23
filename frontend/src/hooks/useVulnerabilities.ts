@@ -171,7 +171,7 @@ export function useDeleteException() {
 export function useTriggerScan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ scope, endpointIds }: { scope?: 'all' | 'selected'; endpointIds?: string[] } = {}) =>
+    mutationFn: ({ scope, endpointIds }: { scope?: 'ALL' | 'SELECTED'; endpointIds?: string[] } = {}) =>
       vulnerabilityService.triggerScan(scope, endpointIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: vulnerabilityKeys.all });

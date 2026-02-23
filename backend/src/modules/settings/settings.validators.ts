@@ -140,17 +140,24 @@ export type UpdateLocationInput = z.infer<typeof updateLocationSchema>;
 
 export const createUserSchema = z.object({
   email: z.string().email(),
-  name: z.string().min(1).max(100),
+  name: z.string().min(1).max(100).optional(),
+  firstName: z.string().min(1).max(50).optional(),
+  lastName: z.string().min(1).max(50).optional(),
   password: z.string().min(8).max(128).optional(),
   role: z.string().default('USER'),
   organizationId: z.string().uuid().optional(),
   departmentId: z.string().uuid().optional(),
   locationId: z.string().uuid().optional(),
   contactNumber: z.string().max(50).optional(),
+}).refine((d) => d.name || (d.firstName && d.lastName), {
+  message: 'Either name or both firstName and lastName are required',
+  path: ['name'],
 });
 
 export const updateUserSchema = z.object({
   name: z.string().min(1).max(100).optional(),
+  firstName: z.string().min(1).max(50).optional(),
+  lastName: z.string().min(1).max(50).optional(),
   role: z.string().optional(),
   organizationId: z.string().uuid().optional().nullable(),
   departmentId: z.string().uuid().optional().nullable(),

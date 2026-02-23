@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { SearchOutlined, ReloadOutlined, DownloadOutlined, FilterOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { SearchOutlined, ReloadOutlined, DownloadOutlined, FilterOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ScanOutlined } from '@ant-design/icons';
 import { App, Input, Button, Modal, Form, Space, Typography, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ConfirmModal } from '../../components/shared/ConfirmModal';
 import { DataTable } from '../../components/shared/DataTable';
-import { useIPRanges, useCreateIPRange, useUpdateIPRange, useDeleteIPRange } from '../../hooks/useDiscovery';
+import { useIPRanges, useCreateIPRange, useUpdateIPRange, useDeleteIPRange, useScanIPRange } from '../../hooks/useDiscovery';
 import { useModal } from '../../hooks/useModal';
 import type { IPRange, IPRangeFilterState } from '../../types/discovery.types';
 import { ColumnFilterModal } from '../settings/components/ColumnFilterModal';
@@ -24,6 +24,7 @@ export const IPDiscovery = () => {
   const createIPRangeMutation = useCreateIPRange();
   const updateIPRangeMutation = useUpdateIPRange();
   const deleteIPRangeMutation = useDeleteIPRange();
+  const scanIPRangeMutation = useScanIPRange();
   const deleteModal = useModal<IPRange>();
 
   const [searchText, setSearchText] = useState('');
@@ -42,6 +43,11 @@ export const IPDiscovery = () => {
   const handleCreate = () => { setEditingRange(null); form.resetFields(); setModalVisible(true); };
   const handleEdit = (range: IPRange) => { setEditingRange(range); form.setFieldsValue(range); setModalVisible(true); };
   const handleViewItem = (range: IPRange) => { setViewingRange(range); setIsViewModalEditing(false); viewForm.setFieldsValue(range); setViewModalVisible(true); };
+
+  const handleScan = async (range: IPRange) => {
+    try { await scanIPRangeMutation.mutateAsync(range.id); message.success(`Scan started for "${range.name}"`); }
+    catch { message.error('Failed to start scan'); }
+  };
 
   const handleDeleteConfirm = async () => {
     if (!deleteModal.selectedItem) return;
@@ -90,9 +96,10 @@ export const IPDiscovery = () => {
     { title: 'Last Scanned', dataIndex: 'lastScanned', key: 'lastScanned',
       render: (text: string) => text ? new Date(text).toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) : '—' },
     { title: 'Devices Found', dataIndex: 'deviceCount', key: 'deviceCount', width: 100, sorter: (a, b) => a.deviceCount - b.deviceCount },
-    { title: 'Actions', key: 'actions', width: 100, align: 'right',
+    { title: 'Actions', key: 'actions', width: 130, align: 'right',
       render: (_, record) => (
         <Space>
+          <Tooltip title="Scan Now"><Button type="text" size="small" icon={<ScanOutlined />} onClick={() => handleScan(record)} loading={scanIPRangeMutation.isPending && scanIPRangeMutation.variables === record.id} /></Tooltip>
           <Tooltip title="Edit"><Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} /></Tooltip>
           <Tooltip title="Delete"><Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => deleteModal.onOpen(record)} /></Tooltip>
         </Space>

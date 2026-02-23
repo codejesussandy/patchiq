@@ -20,7 +20,7 @@ export const ZeroTouchConfigForm = ({ form, applications, computers, groups }: Z
     </Form.Item>
     <Form.Item name="applicationType" label="Application Type" rules={[{ required: true, message: 'Please select application type' }]} initialValue="ALL">
       <Radio.Group>
-        <Space direction="vertical">
+        <Space orientation="vertical">
           <Radio value="ALL">All Applications</Radio>
           <Radio value="INCLUDE">Include Specific Applications</Radio>
           <Radio value="EXCLUDE">Exclude Specific Applications</Radio>
@@ -40,7 +40,7 @@ export const ZeroTouchConfigForm = ({ form, applications, computers, groups }: Z
     </Form.Item>
     <Form.Item name="scope" label="Scope" rules={[{ required: true, message: 'Please select scope' }]} initialValue="ALL_COMPUTERS">
       <Radio.Group>
-        <Space direction="vertical">
+        <Space orientation="vertical">
           <Radio value="ALL_COMPUTERS">All Computers</Radio>
           <Radio value="SCOPE">Scope</Radio>
           <Radio value="SPECIFIC_GROUPS">Specific Groups</Radio>
@@ -74,7 +74,7 @@ export const ZeroTouchConfigForm = ({ form, applications, computers, groups }: Z
       <Form.Item name={['autoDeploymentRules', 'severity']} label="Auto-Deploy for Severity Levels"
         rules={[{ required: true, message: 'Please select at least one severity level' }]}>
         <Checkbox.Group>
-          <Space direction="vertical">
+          <Space orientation="vertical">
             <Checkbox value="CRITICAL">Critical</Checkbox>
             <Checkbox value="HIGH">High</Checkbox>
             <Checkbox value="MEDIUM">Medium</Checkbox>

@@ -123,7 +123,7 @@ export const ZeroTouchDeployment = () => {
         {header}
         <div style={{ textAlign: 'center', padding: '80px 20px' }}>
           <Empty description={
-            <Space direction="vertical" size="large">
+            <Space orientation="vertical" size="large">
               <Text style={{ fontSize: 16, color: '#8c8c8c' }}>No zero-touch configurations set up yet</Text>
               <Button type="primary" icon={<PlusOutlined />} size="large" onClick={() => setCreateModalVisible(true)}>Create Configuration</Button>
             </Space>

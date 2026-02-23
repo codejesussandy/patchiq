@@ -62,7 +62,7 @@ export const PatchOverviewTab = ({ patchSummary, patches }: PatchOverviewTabProp
             </Col>
             <Col span={12}>
               {patchSummary && (
-                <Space direction="vertical" size={4}>
+                <Space orientation="vertical" size={4}>
                   <div><Badge status="success" text={<Text type="secondary">Installed: {patchSummary.installed}</Text>} /></div>
                   <div><Badge status="error" text={<Text type="secondary">Missing: {patchSummary.missing}</Text>} /></div>
                   <div><Badge status="processing" text={<Text type="secondary">Pending: {patchSummary.pending}</Text>} /></div>

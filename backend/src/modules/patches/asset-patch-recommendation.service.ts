@@ -75,11 +75,13 @@ class AssetPatchRecommendationService {
       return [];
     }
 
-    // Find approved patches that fix this CVE
+    // Find approved patches that fix this CVE — only those with a complete MinIO bundle that have been tested
     const fixingPatches = await prisma.patch.findMany({
       where: {
         cveNumbers: { has: vulnerability.cveId },
         approvalStatus: 'Approved',
+        testResult: 'PASSED',
+        bundle: { scriptsIncluded: true, downloadStatus: 'COMPLETED' },
       },
       select: { id: true, patchId: true, supersededBy: true },
     });

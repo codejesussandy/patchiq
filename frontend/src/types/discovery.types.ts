@@ -52,8 +52,8 @@ export type IPRangeFormData = Omit<IPRange, 'id' | 'lastScanned' | 'deviceCount'
 export type DeviceCredential = {
   id: string;
   name: string;
-  type: 'SSH' | 'WINDOWS' | 'SNMP';
-  username: string;
+  type: 'SSH' | 'WINDOWS' | 'WINRM' | 'SNMP';
+  username?: string;
   password?: string;
   description?: string;
   lastUsed?: string;

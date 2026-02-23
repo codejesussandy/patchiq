@@ -39,6 +39,14 @@ export async function listPatches(params: PatchListQuery) {
     where.supersededAt = null;
   }
 
+  // Only show patches that are fully ready: scripts included + tested successfully
+  // bundleObjectKey is optional (package-manager-based scripts don't need a MinIO file)
+  where.bundle = {
+    scriptsIncluded: true,
+    downloadStatus: 'COMPLETED',
+  };
+  where.testResult = 'PASSED';
+
   if (params.search) {
     where.OR = [
       { patchId: { contains: params.search, mode: 'insensitive' } },

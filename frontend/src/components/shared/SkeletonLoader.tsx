@@ -20,7 +20,7 @@ export const TableSkeleton = ({ rows = 5 }: { rows?: number }) => {
  */
 export const CardSkeleton = ({ count = 1 }: { count?: number }) => {
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
       {Array.from({ length: count }).map((_, index) => (
         <Card key={index}>
           <Skeleton active />
@@ -35,7 +35,7 @@ export const CardSkeleton = ({ count = 1 }: { count?: number }) => {
  */
 export const ListSkeleton = ({ items = 5 }: { items?: number }) => {
   return (
-    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="small" style={{ width: '100%' }}>
       {Array.from({ length: items }).map((_, index) => (
         <Skeleton key={index} active avatar paragraph={{ rows: 1 }} />
       ))}
