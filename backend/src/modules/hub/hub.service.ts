@@ -641,13 +641,7 @@ class HubService {
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
 
-    // Only show packages that have bundles uploaded
-    const where: Record<string, unknown> = {
-      OR: [
-        { minioObjectKey: { not: null } },
-        { bundleObjectKey: { not: null } },
-      ],
-    };
+    const where: Record<string, unknown> = { isActive: true };
 
     if (filters.platform) where.platform = filters.platform;
     if (filters.category) where.category = filters.category;
@@ -700,13 +694,7 @@ class HubService {
     const page = filters.page || 1;
     const limit = filters.limit || 20;
 
-    // Only show packages that have bundles uploaded
-    const where: Record<string, unknown> = {
-      OR: [
-        { minioObjectKey: { not: null } },
-        { bundleObjectKey: { not: null } },
-      ],
-    };
+    const where: Record<string, unknown> = { isActive: true };
 
     if (filters.platform) where.platform = filters.platform;
     if (filters.category) where.category = filters.category;
