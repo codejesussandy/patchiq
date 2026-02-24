@@ -116,6 +116,7 @@ export class DeploymentExecutorSoftwareService {
             };
           } else if (pkg.scriptInstall || pkg.scriptUninstall) {
             hubPackage = {
+              bundleUrl: pkg.downloadUrl || undefined,
               scriptsIncluded: true,
               scriptInstall: pkg.scriptInstall || undefined,
               scriptUninstall: pkg.scriptUninstall || undefined,

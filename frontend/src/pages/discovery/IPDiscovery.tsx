@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { SearchOutlined, ReloadOutlined, DownloadOutlined, FilterOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ScanOutlined } from '@ant-design/icons';
-import { App, Input, Button, Modal, Form, Space, Typography, Tooltip } from 'antd';
+import { SearchOutlined, ReloadOutlined, DownloadOutlined, FilterOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ScanOutlined, LoadingOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { App, Input, Button, Modal, Form, Space, Typography, Tooltip, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ConfirmModal } from '../../components/shared/ConfirmModal';
 import { DataTable } from '../../components/shared/DataTable';
-import { useIPRanges, useCreateIPRange, useUpdateIPRange, useDeleteIPRange, useScanIPRange } from '../../hooks/useDiscovery';
+import { useIPRanges, useCreateIPRange, useUpdateIPRange, useDeleteIPRange, useScanIPRange, useScanStatus } from '../../hooks/useDiscovery';
 import { useModal } from '../../hooks/useModal';
 import type { IPRange, IPRangeFilterState } from '../../types/discovery.types';
 import { ColumnFilterModal } from '../settings/components/ColumnFilterModal';
@@ -39,20 +39,35 @@ export const IPDiscovery = () => {
   const [viewForm] = Form.useForm();
   const [filterForm] = Form.useForm();
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
+  const [activeScanId, setActiveScanId] = useState<string | null>(null);
+  const { data: scanStatus } = useScanStatus(activeScanId);
+
+  // Clear scan tracking when scan completes
+  if (scanStatus && (scanStatus.status === 'COMPLETED' || scanStatus.status === 'FAILED') && activeScanId) {
+    setTimeout(() => { setActiveScanId(null); refetch(); }, 3000);
+  }
+
+  const getApiErrorMessage = (err: unknown, fallback: string): string => {
+    const e = err as { response?: { data?: { error?: { message?: string } } }; message?: string };
+    return e?.response?.data?.error?.message || e?.message || fallback;
+  };
 
   const handleCreate = () => { setEditingRange(null); form.resetFields(); setModalVisible(true); };
   const handleEdit = (range: IPRange) => { setEditingRange(range); form.setFieldsValue(range); setModalVisible(true); };
   const handleViewItem = (range: IPRange) => { setViewingRange(range); setIsViewModalEditing(false); viewForm.setFieldsValue(range); setViewModalVisible(true); };
 
   const handleScan = async (range: IPRange) => {
-    try { await scanIPRangeMutation.mutateAsync(range.id); message.success(`Scan started for "${range.name}"`); }
-    catch { message.error('Failed to start scan'); }
+    try {
+      const result = await scanIPRangeMutation.mutateAsync(range.id) as { jobId?: string };
+      if (result?.jobId) setActiveScanId(result.jobId);
+      message.success(`Scan started for "${range.name}"`);
+    } catch (err) { message.error(getApiErrorMessage(err, 'Failed to start scan')); }
   };
 
   const handleDeleteConfirm = async () => {
     if (!deleteModal.selectedItem) return;
     try { await deleteIPRangeMutation.mutateAsync(deleteModal.selectedItem.id); message.success('IP range deleted successfully'); deleteModal.onClose(); }
-    catch { message.error('Failed to delete IP range'); }
+    catch (err) { message.error(getApiErrorMessage(err, 'Failed to delete IP range')); }
   };
 
   const handleSubmit = async () => {
@@ -61,14 +76,14 @@ export const IPDiscovery = () => {
       if (editingRange) { await updateIPRangeMutation.mutateAsync({ id: editingRange.id, data: values }); message.success('IP range updated successfully'); }
       else { await createIPRangeMutation.mutateAsync(values); message.success('IP range created successfully'); }
       setModalVisible(false); form.resetFields();
-    } catch { message.error(`Failed to ${editingRange ? 'update' : 'create'} IP range`); }
+    } catch (err) { message.error(getApiErrorMessage(err, `Failed to ${editingRange ? 'update' : 'create'} IP range`)); }
   };
 
   const handleViewModalSave = async () => {
     try {
       const values = await viewForm.validateFields();
       if (viewingRange) { await updateIPRangeMutation.mutateAsync({ id: viewingRange.id, data: values }); message.success('IP range updated successfully'); setViewModalVisible(false); setViewingRange(null); setIsViewModalEditing(false); viewForm.resetFields(); }
-    } catch { message.error('Failed to update IP range'); }
+    } catch (err) { message.error(getApiErrorMessage(err, 'Failed to update IP range')); }
   };
 
   const handleExport = () => {
@@ -134,6 +149,15 @@ export const IPDiscovery = () => {
         </div>
       </div>
 
+      {scanStatus && activeScanId && (
+        <div style={{ marginBottom: 16, padding: '8px 16px', background: scanStatus.status === 'FAILED' ? '#fff2f0' : scanStatus.status === 'COMPLETED' ? '#f6ffed' : '#e6f7ff', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+          {(scanStatus.status === 'PENDING' || scanStatus.status === 'IN_PROGRESS') && <><LoadingOutlined /> <Text>Scan in progress...</Text></>}
+          {scanStatus.status === 'COMPLETED' && <><CheckCircleOutlined style={{ color: '#52c41a' }} /> <Text>Scan complete — {scanStatus.devicesFound} device(s) found</Text></>}
+          {scanStatus.status === 'FAILED' && <><CloseCircleOutlined style={{ color: '#ff4d4f' }} /> <Text type="danger">Scan failed{scanStatus.errorMessage ? `: ${scanStatus.errorMessage}` : ''}</Text></>}
+          <Tag style={{ marginLeft: 'auto' }}>{scanStatus.status}</Tag>
+        </div>
+      )}
+
       <DataTable
         size="middle"
         columns={columns}
@@ -149,7 +173,16 @@ export const IPDiscovery = () => {
         footer={[<Button key="cancel" onClick={() => { setModalVisible(false); form.resetFields(); }}>Cancel</Button>, <Button key="submit" type="primary" onClick={handleSubmit}>{editingRange ? 'Update' : 'Create'} IP Range</Button>]}>
         <Form form={form} layout="vertical" style={{ marginTop: '24px' }}>
           <Form.Item name="name" label="Range Name" rules={[{ required: true, message: 'Please enter range name' }]}><Input placeholder="e.g., Corporate Network" /></Form.Item>
-          <Form.Item name="range" label="IP Range (CIDR)" rules={[{ required: true, message: 'Please enter IP range in CIDR notation' }]}><Input placeholder="e.g., 192.168.1.0/24" /></Form.Item>
+          <Form.Item name="range" label="IP Range (CIDR)" rules={[
+            { required: true, message: 'Please enter IP range in CIDR notation' },
+            { pattern: /^(\d{1,3}\.){3}\d{1,3}\/(\d{1,2})$/, message: 'Invalid CIDR format (e.g., 192.168.1.0/24)' },
+            { validator: (_, value) => {
+              if (!value) return Promise.resolve();
+              const match = value.match(/\/(\d+)$/);
+              if (match) { const prefix = parseInt(match[1], 10); if (prefix < 20 || prefix > 32) return Promise.reject('Prefix must be /20 to /32 (max 4096 IPs)'); }
+              return Promise.resolve();
+            }},
+          ]}><Input placeholder="e.g., 192.168.1.0/24" /></Form.Item>
           <Form.Item name="description" label="Description"><Input.TextArea placeholder="Optional description" rows={3} /></Form.Item>
         </Form>
       </Modal>

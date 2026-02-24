@@ -103,6 +103,7 @@ export const settingsMenuItems: MenuItem[] = [
     label: 'Discovery',
     children: [
       { key: 'discovery-ip-discovery', label: 'IP Discovery' },
+      { key: 'discovery-discovered-devices', label: 'Discovered Devices' },
       { key: 'discovery-device-credentials', label: 'Device Credentials' },
     ],
   },
@@ -143,6 +144,7 @@ export const sideMenuRoutes: Record<string, string> = {
   'vulnerability-jobs': '/vulnerability/vulnerability-jobs/list',
   // Discovery
   'discovery-ip-discovery': '/discovery/ip-discovery',
+  'discovery-discovered-devices': '/discovery/discovered-devices',
   'discovery-device-credentials': '/discovery/device-credentials',
   // User Management
   'user-management': '/settings/user-management/organization',

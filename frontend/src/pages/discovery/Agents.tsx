@@ -155,7 +155,7 @@ export const Agents = () => {
   };
 
   const handleEdit = (agent: Agent) => {
-    message.info(`Editing ${agent.name}`);
+    handleView(agent);
   };
 
   const handleDelete = (agent: Agent) => {
@@ -168,8 +168,9 @@ export const Agents = () => {
       await deleteAgentMutation.mutateAsync(deleteModal.selectedItem.id);
       message.success(`${deleteModal.selectedItem.name} deleted successfully`);
       deleteModal.onClose();
-    } catch {
-      message.error('Failed to delete agent');
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: { message?: string } } }; message?: string };
+      message.error(e?.response?.data?.error?.message || e?.message || 'Failed to delete agent');
     }
   };
 
@@ -189,8 +190,9 @@ export const Agents = () => {
       window.URL.revokeObjectURL(url);
       a.remove();
       message.success(`${download.os} agent downloaded successfully`);
-    } catch {
-      message.error(`Failed to download ${download.os} agent`);
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: { message?: string } } }; message?: string };
+      message.error(e?.response?.data?.error?.message || e?.message || `Failed to download ${download.os} agent`);
     }
   };
 
@@ -413,7 +415,7 @@ export const Agents = () => {
         width={600}
       >
         <Text type="secondary" style={{ display: 'block', marginBottom: '24px' }}>
-          Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+          Download and install the PatchIQ agent on target machines to enable remote management, patching, and telemetry collection.
         </Text>
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
           {agentDownloads.map((download) => (

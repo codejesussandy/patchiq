@@ -115,7 +115,7 @@ async function processDiscoveryScanJob(
   job: Job<DiscoveryScanJobData, DiscoveryScanJobResult>
 ): Promise<DiscoveryScanJobResult> {
   const startTime = Date.now();
-  const { scanId, ipRangeId } = job.data;
+  let { scanId, ipRangeId } = job.data;
 
   logger.info({ jobId: job.id, scanId, ipRangeId }, 'Processing discovery scan job');
 
@@ -124,6 +124,18 @@ async function processDiscoveryScanJob(
     const ipRange = await prisma.iPRange.findUnique({ where: { id: ipRangeId } });
     if (!ipRange) {
       throw new Error(`IP range not found: ${ipRangeId}`);
+    }
+
+    // For scheduled scans, create a scan record on the fly
+    if (!scanId) {
+      const scan = await prisma.discoveryScan.create({
+        data: { ipRangeId, status: 'PENDING' },
+      });
+      scanId = scan.id;
+      await prisma.iPRange.update({
+        where: { id: ipRangeId },
+        data: { lastScanned: new Date() },
+      });
     }
 
     // Update scan to IN_PROGRESS
@@ -138,6 +150,17 @@ async function processDiscoveryScanJob(
       ips = expandCIDR(ipRange.range);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Invalid CIDR';
+      await prisma.discoveryScan.update({
+        where: { id: scanId },
+        data: { status: 'FAILED', errorMessage: message, completedAt: new Date() },
+      });
+      return { success: false, devicesFound: 0, durationMs: Date.now() - startTime, error: message };
+    }
+
+    // Guard against excessively large ranges
+    const MAX_IPS = 4096;
+    if (ips.length > MAX_IPS) {
+      const message = `CIDR range too large: ${ips.length} IPs (max ${MAX_IPS}). Use /20 or smaller.`;
       await prisma.discoveryScan.update({
         where: { id: scanId },
         data: { status: 'FAILED', errorMessage: message, completedAt: new Date() },
@@ -318,12 +341,84 @@ export async function queueDiscoveryScanJob(
 }
 
 /**
+ * Cancel a discovery scan job by removing it from the queue.
+ */
+export async function cancelDiscoveryScanJob(scanId: string): Promise<void> {
+  const queue = getQueue();
+  const jobId = `discovery-scan-${scanId}`;
+  const job = await queue.getJob(jobId);
+  if (job) {
+    const state = await job.getState();
+    if (state === 'waiting' || state === 'delayed') {
+      await job.remove();
+      logger.info({ jobId, scanId }, 'Removed waiting discovery scan job');
+    } else {
+      logger.info({ jobId, scanId, state }, 'Cannot remove active job, marking as cancelled in DB only');
+    }
+  }
+}
+
+/**
  * Start the discovery scan worker
  */
 export function startDiscoveryScanWorker(): void {
   getDiscoveryScanWorker();
   initQueueEvents();
   logger.info('Discovery scan worker started');
+}
+
+/**
+ * Set up repeatable scan schedules from DB.
+ * Reads all IP ranges with a schedule and registers BullMQ repeatable jobs.
+ */
+export async function setupDiscoverySchedules(): Promise<void> {
+  const queue = getQueue();
+
+  // Remove all existing repeatable jobs first to avoid stale schedules
+  const existingRepeatables = await queue.getRepeatableJobs();
+  for (const job of existingRepeatables) {
+    if (job.name === 'scheduled-discovery-scan') {
+      await queue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // Load all active IP ranges with schedules
+  const scheduledRanges = await prisma.iPRange.findMany({
+    where: {
+      status: 'ACTIVE',
+      scanScheduleType: { not: null },
+    },
+  });
+
+  for (const range of scheduledRanges) {
+    if (!range.scanScheduleType || range.scanScheduleType === 'ONCE') continue;
+
+    let pattern: string;
+    const time = range.scanScheduleTime || '02:00';
+    const [hour, minute] = time.split(':');
+
+    if (range.scanScheduleType === 'DAILY') {
+      pattern = `${minute} ${hour} * * *`; // every day at HH:MM
+    } else if (range.scanScheduleType === 'WEEKLY') {
+      const day = range.scanScheduleDay ?? 0;
+      pattern = `${minute} ${hour} * * ${day}`; // specific day at HH:MM
+    } else {
+      continue;
+    }
+
+    await queue.add(
+      'scheduled-discovery-scan',
+      { scanId: '', ipRangeId: range.id },
+      {
+        repeat: { pattern },
+        jobId: `scheduled-scan-${range.id}`,
+      }
+    );
+
+    logger.info({ ipRangeId: range.id, schedule: range.scanScheduleType, pattern }, 'Registered scheduled discovery scan');
+  }
+
+  logger.info({ count: scheduledRanges.length }, 'Discovery scan schedules initialized');
 }
 
 /**

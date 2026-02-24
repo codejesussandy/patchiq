@@ -5,6 +5,8 @@ import type {
   IPRangeFormData,
   DeviceCredential,
   DeviceCredentialFormData,
+  DiscoveredDevice,
+  ScanStatus,
 } from '../types/discovery.types';
 import { api } from './api.service';
 
@@ -94,6 +96,28 @@ export const discoveryService = {
 
   async testCredential(id: string): Promise<Record<string, unknown>> {
     const response = await api.post(`/discovery/credentials/${id}/test`);
+    return response.data;
+  },
+
+  // Discovered Device APIs
+  async getDiscoveredDevices(params?: { status?: string; search?: string }): Promise<DiscoveredDevice[]> {
+    const response = await api.get(`/discovery/devices`, { params: { limit: 100, ...params } });
+    return response.data.data || [];
+  },
+
+  async enrollDevice(id: string, data?: { name?: string; type?: string }): Promise<Record<string, unknown>> {
+    const response = await api.post(`/discovery/devices/${id}/enroll`, data || {});
+    return response.data;
+  },
+
+  // Scan Status APIs
+  async getScanStatus(scanId: string): Promise<ScanStatus> {
+    const response = await api.get(`/discovery/scans/${scanId}`);
+    return response.data;
+  },
+
+  async cancelScan(scanId: string): Promise<Record<string, unknown>> {
+    const response = await api.post(`/discovery/scans/${scanId}/cancel`);
     return response.data;
   },
 };

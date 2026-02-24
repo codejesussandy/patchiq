@@ -234,6 +234,35 @@ export class DiscoveryService {
   }
 
   /**
+   * Cancel a running or pending scan
+   */
+  async cancelScan(id: string): Promise<{ message: string }> {
+    const scan = await prisma.discoveryScan.findUnique({ where: { id } });
+    if (!scan) {
+      throw new NotFoundError('Scan not found');
+    }
+
+    if (scan.status === 'COMPLETED' || scan.status === 'FAILED') {
+      throw new BadRequestError('Scan has already finished');
+    }
+
+    // Try to remove the job from the queue
+    try {
+      const { cancelDiscoveryScanJob } = await import('./discovery-scan.worker');
+      await cancelDiscoveryScanJob(id);
+    } catch {
+      // Job may already be processing, just update DB status
+    }
+
+    await prisma.discoveryScan.update({
+      where: { id },
+      data: { status: 'FAILED', errorMessage: 'Cancelled by user', completedAt: new Date() },
+    });
+
+    return { message: 'Scan cancelled' };
+  }
+
+  /**
    * Get scan status
    */
   async getScanStatus(id: string): Promise<ScanResponse> {

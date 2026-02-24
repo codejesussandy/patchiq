@@ -2,7 +2,7 @@ import './types';
 import { setSseManager, setEmailSender } from '@modules/notifications';
 import { startWorker, shutdownWorker, patchRepositoryService } from '@modules/patch-repository';
 import { startCveSyncWorker, shutdownCveSyncWorker, setupRepeatableSync } from '@modules/vulnerabilities';
-import { startDiscoveryScanWorker, shutdownDiscoveryScanWorker } from '@modules/discovery';
+import { startDiscoveryScanWorker, shutdownDiscoveryScanWorker, setupDiscoverySchedules } from '@modules/discovery';
 import { startLdapSyncWorker, shutdownLdapSyncWorker, setupLdapRepeatableSync } from '@modules/settings';
 import { executeDeployment } from '@modules/patches/patches.service';
 import { createLogger } from '@shared/services/logger';
@@ -176,10 +176,11 @@ async function main() {
     logger.error({ err: error }, 'Failed to start CVE sync worker');
   }
 
-  // Start Discovery scan BullMQ worker
+  // Start Discovery scan BullMQ worker + scheduled scans
   try {
     startDiscoveryScanWorker();
-    logger.info('Discovery scan worker started');
+    await setupDiscoverySchedules();
+    logger.info('Discovery scan worker started with scheduled scans');
   } catch (error) {
     logger.error({ err: error }, 'Failed to start discovery scan worker');
   }

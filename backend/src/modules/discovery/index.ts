@@ -8,7 +8,7 @@ export { DiscoveryController, discoveryController } from './discovery.controller
 export { DiscoveryService, discoveryService } from './discovery.service';
 
 // Worker
-export { startDiscoveryScanWorker, shutdownDiscoveryScanWorker, queueDiscoveryScanJob } from './discovery-scan.worker';
+export { startDiscoveryScanWorker, shutdownDiscoveryScanWorker, queueDiscoveryScanJob, setupDiscoverySchedules } from './discovery-scan.worker';
 
 // Types - export from types file (response types)
 export type {

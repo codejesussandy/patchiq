@@ -23,7 +23,7 @@ export interface PortResult {
   open: boolean;
 }
 
-export const COMMON_PORTS = [22, 80, 135, 443, 445, 3389, 5985, 8080, 8443];
+export const COMMON_PORTS = [22, 23, 80, 135, 161, 443, 445, 3306, 3389, 5432, 5985, 8080, 8443, 9100];
 
 /**
  * Parse CIDR notation into an array of individual IP addresses.

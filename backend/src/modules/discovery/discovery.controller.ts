@@ -129,6 +129,20 @@ export class DiscoveryController {
   };
 
   /**
+   * POST /v1/discovery/scans/:id/cancel
+   * Cancel a running or pending scan
+   */
+  cancelScan = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const result = await this.discoveryService.cancelScan(id);
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * GET /v1/discovery/scans/:id/results
    * Get scan results
    */

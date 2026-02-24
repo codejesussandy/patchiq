@@ -247,6 +247,7 @@ export function testCredentialConnection(
   switch (type) {
     case 'SSH':
       return testSSH(host, options.port || 22, options.username || '', options.password || '');
+    case 'WINDOWS':
     case 'WINRM':
       return testWinRM(
         host,

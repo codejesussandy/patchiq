@@ -9,6 +9,8 @@ export const discoveryKeys = {
   ipRange: (id: string) => ['discovery', 'ip-ranges', id] as const,
   credentials: () => ['discovery', 'credentials'] as const,
   credential: (id: string) => ['discovery', 'credentials', id] as const,
+  devices: () => ['discovery', 'devices'] as const,
+  scanStatus: (id: string) => ['discovery', 'scan', id] as const,
 };
 
 // ============================================
@@ -99,4 +101,45 @@ export function useDeleteCredential() {
 
 export function useTestCredential() {
   return useMutation({ mutationFn: (id: string) => discoveryService.testCredential(id) });
+}
+
+// ============================================
+// Discovered Device Queries
+// ============================================
+
+export function useDiscoveredDevices(params?: { status?: string; search?: string }) {
+  return useQuery({ queryKey: [...discoveryKeys.devices(), params], queryFn: () => discoveryService.getDiscoveredDevices(params) });
+}
+
+export function useEnrollDevice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data?: { name?: string; type?: string } }) => discoveryService.enrollDevice(id, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: discoveryKeys.devices() }); },
+  });
+}
+
+// ============================================
+// Scan Status Queries
+// ============================================
+
+export function useScanStatus(scanId: string | null) {
+  return useQuery({
+    queryKey: discoveryKeys.scanStatus(scanId || ''),
+    queryFn: () => discoveryService.getScanStatus(scanId!),
+    enabled: !!scanId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === 'PENDING' || status === 'IN_PROGRESS') return 2000;
+      return false;
+    },
+  });
+}
+
+export function useCancelScan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (scanId: string) => discoveryService.cancelScan(scanId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: discoveryKeys.ipRanges() }); },
+  });
 }

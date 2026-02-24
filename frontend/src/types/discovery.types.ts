@@ -62,6 +62,45 @@ export type DeviceCredential = {
 
 export type DeviceCredentialFormData = Omit<DeviceCredential, 'id' | 'lastUsed' | 'createdAt'>;
 
+// UI-specific Discovered Device type
+export type DiscoveredDevice = {
+  id: string;
+  ipRangeId: string;
+  ipAddress: string;
+  hostname: string | null;
+  macAddress: string | null;
+  deviceType: string | null;
+  os: string | null;
+  vendor: string | null;
+  openPorts: number[];
+  status: 'DISCOVERED' | 'ENROLLED' | 'IGNORED';
+  assetId: string | null;
+  discoveredAt: string;
+  lastSeenAt: string;
+};
+
+export type ScanStatus = {
+  id: string;
+  ipRangeId: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  devicesFound: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+};
+
+export type DiscoveredDeviceFilterState = {
+  showIpAddress: boolean;
+  showHostname: boolean;
+  showMacAddress: boolean;
+  showDeviceType: boolean;
+  showOs: boolean;
+  showOpenPorts: boolean;
+  showStatus: boolean;
+  showDiscoveredAt: boolean;
+};
+
 // UI Filter States
 export type AgentFilterState = {
   showId: boolean;

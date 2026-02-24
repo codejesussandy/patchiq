@@ -12,6 +12,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
+import { generateScripts } from './generate-package-scripts';
 
 interface PackageDef {
   name: string;
@@ -493,6 +494,17 @@ export async function seedHubPackages(prismaClient?: PrismaClient): Promise<numb
     const idx = `[${i + 1}/${PACKAGES.length}]`;
     const packageId = `SWP-${uuidv4().slice(0, 8).toUpperCase()}`;
 
+    // Generate platform-appropriate installer scripts
+    const scripts = generateScripts({
+      name: pkg.name,
+      displayName: pkg.displayName,
+      version: pkg.version,
+      platform: pkg.platform,
+      installSource: pkg.installSource,
+      installArgs: pkg.installArgs || null,
+      fileName: pkg.fileName,
+    });
+
     await prisma.softwarePackage.create({
       data: {
         packageId,
@@ -508,6 +520,7 @@ export async function seedHubPackages(prismaClient?: PrismaClient): Promise<numb
         installArgs: pkg.installArgs || null,
         silentInstall: pkg.silentInstall,
         requiresReboot: false,
+        requiresRoot: true,
         downloadUrl: pkg.downloadUrl,
         description: pkg.description,
         tags: pkg.tags,
@@ -518,6 +531,11 @@ export async function seedHubPackages(prismaClient?: PrismaClient): Promise<numb
         fileSize: pkg.fileSize || BigInt(0),
         isActive: true,
         isVerified: true,
+        // Inline scripts so deployments work without needing build-hub-bundles first
+        scriptsIncluded: true,
+        scriptInstall: scripts.install.content,
+        scriptUpdate: scripts.update.content,
+        scriptUninstall: scripts.uninstall.content,
       },
     });
 

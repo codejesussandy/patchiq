@@ -45,10 +45,15 @@ export const DeviceCredentials = () => {
   const handleEdit = (cred: DeviceCredential) => { setEditingCred(cred); form.setFieldsValue(cred); setModalVisible(true); };
   const handleViewItem = (cred: DeviceCredential) => { setViewingCred(cred); setIsViewModalEditing(false); setShowPassword(false); viewForm.setFieldsValue(cred); setViewModalVisible(true); };
 
+  const getApiErrorMessage = (err: unknown, fallback: string): string => {
+    const e = err as { response?: { data?: { error?: { message?: string } } }; message?: string };
+    return e?.response?.data?.error?.message || e?.message || fallback;
+  };
+
   const handleDeleteConfirm = async () => {
     if (!deleteModal.selectedItem) return;
     try { await deleteCredentialMutation.mutateAsync(deleteModal.selectedItem.id); message.success('Credential deleted successfully'); deleteModal.onClose(); }
-    catch { message.error('Failed to delete credential'); }
+    catch (err) { message.error(getApiErrorMessage(err, 'Failed to delete credential')); }
   };
 
   const handleSubmit = async () => {
@@ -57,14 +62,14 @@ export const DeviceCredentials = () => {
       if (editingCred) { await updateCredentialMutation.mutateAsync({ id: editingCred.id, data: values }); message.success('Credential updated successfully'); }
       else { await createCredentialMutation.mutateAsync(values); message.success('Credential created successfully'); }
       setModalVisible(false); form.resetFields();
-    } catch { message.error(`Failed to ${editingCred ? 'update' : 'create'} credential`); }
+    } catch (err) { message.error(getApiErrorMessage(err, `Failed to ${editingCred ? 'update' : 'create'} credential`)); }
   };
 
   const handleViewModalSave = async () => {
     try {
       const values = await viewForm.validateFields();
       if (viewingCred) { await updateCredentialMutation.mutateAsync({ id: viewingCred.id, data: values }); message.success('Credential updated successfully'); setViewModalVisible(false); setViewingCred(null); setIsViewModalEditing(false); setShowPassword(false); viewForm.resetFields(); }
-    } catch { message.error('Failed to update credential'); }
+    } catch (err) { message.error(getApiErrorMessage(err, 'Failed to update credential')); }
   };
 
   const handleExport = () => {
@@ -156,7 +161,7 @@ export const DeviceCredentials = () => {
         onCancel={() => { setViewModalVisible(false); setViewingCred(null); setIsViewModalEditing(false); setShowPassword(false); viewForm.resetFields(); }} width={600}
         footer={[
           <Button key="close" onClick={() => { if (isViewModalEditing) { if (viewingCred) viewForm.setFieldsValue(viewingCred); setIsViewModalEditing(false); setShowPassword(false); } else { setViewModalVisible(false); setViewingCred(null); setShowPassword(false); viewForm.resetFields(); } }}>{isViewModalEditing ? 'Cancel' : 'Close'}</Button>,
-          !isViewModalEditing && <Button key="test" onClick={() => viewingCred && testCredentialMutation.mutateAsync(viewingCred.id).then(() => message.success('Test passed')).catch(() => message.error('Test failed'))}>Test Credential</Button>,
+          !isViewModalEditing && <Button key="test" loading={testCredentialMutation.isPending} onClick={() => viewingCred && testCredentialMutation.mutateAsync(viewingCred.id).then(() => message.success('Test passed')).catch((err) => message.error(getApiErrorMessage(err, 'Test failed')))}>Test Credential</Button>,
           !isViewModalEditing && <Button key="edit" type="primary" onClick={() => setIsViewModalEditing(true)}>Edit</Button>,
           isViewModalEditing && <Button key="save" type="primary" onClick={handleViewModalSave}>Save</Button>,
         ]}>

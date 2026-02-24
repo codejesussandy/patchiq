@@ -827,6 +827,10 @@ func (e *BaseScriptExecutor) runScript(scriptPath string, workDir string, requir
 
 	cmd.Dir = workDir
 
+	// Prevent child processes from inheriting the agent's terminal stdin,
+	// which can cause them to block waiting for user input.
+	cmd.Stdin = nil
+
 	// Set environment variables
 	cmd.Env = os.Environ()
 	for k, v := range env {

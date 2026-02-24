@@ -15,7 +15,13 @@ const scanScheduleSchema = z.object({
 
 export const createIPRangeSchema = z.object({
   name: z.string().min(2).max(100),
-  range: z.string().regex(cidrRegex, 'Invalid CIDR notation (e.g., 192.168.1.0/24)'),
+  range: z.string().regex(cidrRegex, 'Invalid CIDR notation (e.g., 192.168.1.0/24)').refine(
+    (val) => {
+      const prefix = parseInt(val.split('/')[1], 10);
+      return prefix >= 20 && prefix <= 32;
+    },
+    'CIDR prefix must be between /20 and /32 (max 4096 IPs)'
+  ),
   description: z.string().max(500).optional(),
   credentialId: z.string().uuid().optional(),
   scanSchedule: scanScheduleSchema.optional(),

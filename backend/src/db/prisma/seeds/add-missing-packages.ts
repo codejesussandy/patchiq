@@ -9,6 +9,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
+import { generateScripts } from './generate-package-scripts';
 
 const prisma = new PrismaClient();
 
@@ -203,6 +204,16 @@ async function main() {
     const count = await prisma.softwarePackage.count();
     const packageId = `PKG-${pkg.platform.toUpperCase().slice(0, 3)}-${String(count + 1).padStart(4, '0')}`;
 
+    // Generate platform-appropriate installer scripts
+    const scripts = generateScripts({
+      name: pkg.name,
+      displayName: pkg.displayName,
+      version: pkg.version,
+      platform: pkg.platform,
+      installArgs: pkg.installArgs,
+      fileName: pkg.fileName,
+    });
+
     await prisma.softwarePackage.create({
       data: {
         id: uuidv4(),
@@ -218,14 +229,17 @@ async function main() {
         installArgs: pkg.installArgs,
         silentInstall: true,
         requiresReboot: false,
-        requiresRoot: pkg.platform !== 'windows',
+        requiresRoot: true,
         fileName: pkg.fileName,
         downloadUrl: pkg.downloadUrl,
         description: pkg.description,
         supportsRollback: false,
         isActive: true,
         isVerified: false,
-        scriptsIncluded: false,
+        scriptsIncluded: true,
+        scriptInstall: scripts.install.content,
+        scriptUpdate: scripts.update.content,
+        scriptUninstall: scripts.uninstall.content,
         cpeVendor: pkg.cpeVendor,
         cpeProduct: pkg.cpeProduct,
       },

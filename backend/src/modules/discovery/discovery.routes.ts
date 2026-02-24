@@ -384,6 +384,28 @@ router.get('/scans/:id', checkPermission('discovery', 'view'), controller.getSca
 
 /**
  * @openapi
+ * /v1/discovery/scans/{id}/cancel:
+ *   post:
+ *     summary: Cancel a running or pending scan
+ *     tags: [Discovery]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Scan cancelled
+ *       404:
+ *         description: Scan not found
+ */
+router.post('/scans/:id/cancel', checkPermission('discovery', 'edit'), audit({ action: AuditAction.UPDATE, resource: AuditResource.DISCOVERY, getResourceId: (req) => req.params.id }), controller.cancelScan);
+
+/**
+ * @openapi
  * /v1/discovery/scans/{id}/results:
  *   get:
  *     summary: Get the results of a completed scan
